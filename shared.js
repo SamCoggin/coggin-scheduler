@@ -10,8 +10,9 @@ function fmtVan(n){ if(n==null) return "not set"; if(n<=0) return "empty"; var v
   if(!vans) return rem+(rem===1?" chair space":" chair spaces")+" of "+VAN_FULL; var w=vans===1?"one van":vans+" vans"; return rem?w+" and "+rem+" spaces":w; }
 // plans saved before 13 Sep 2026 held quarters in "van"; read them as spaces
 function spacesOf(p){ if(!p) return null; if(p.spaces!=null) return p.spaces; if(p.van!=null) return p.van*10; return null; }
-// the working day: 8am to 4:30pm with 30 minutes for lunch, so 8 hours of work
-var DAY_MINS=480, DAY_H=DAY_MINS/60;
+// the working week is 38 hours 45 minutes Monday to Friday: 7 hours 45 minutes a day
+// (8am to 4:30pm with 30 minutes for lunch and a 15 minute break)
+var WEEK_MINS=38*60+45, DAY_MINS=WEEK_MINS/5, DAY_H=DAY_MINS/60;
 var QUICK=[[15,"15 min"],[30,"30 min"],[60,"1 hour"],[120,"2 hours"],[240,"Half day"],[DAY_MINS,"Full day"]];
 var WORKSHOP_LISTS=/Workshop Jobs - (Not Started|In-progress)/;
 var READY_LIST=/Workshop Jobs - Ready/;
