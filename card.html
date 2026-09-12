@@ -1,26 +1,40 @@
 <!DOCTYPE html>
 <html><head><meta charset="utf-8"><title>Scheduling</title>
 <style>
-  :root{ --text:#172b4d; --muted:#5e6c84; --line:#b8c0cc; --blue:#0c66e4; --blue-bg:#e9f2ff; --green:#1f845a; --amber:#974f0c; --red:#c9372c; --card:#fff; --list:#eef0f3; }
+  :root{ --text:#172b4d; --muted:#5e6c84; --line:#c7ced8; --blue:#0c66e4; --blue-bg:#e9f2ff; --green:#1f845a; --green-bg:#e3fcef; --amber:#974f0c; --amber-bg:#fff7d6; --red:#c9372c; --red-bg:#ffeceb; --card:#fff; --list:#f1f2f4; }
   *{box-sizing:border-box}
-  body{margin:0;padding:4px 2px 8px;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",sans-serif;font-size:14px;color:var(--text);background:transparent}
+  body{margin:0;padding:4px 2px 8px;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",sans-serif;font-size:15px;color:var(--text);background:transparent;line-height:1.35}
   button,input,select{font-family:inherit;font-size:inherit;color:inherit}
   button{cursor:pointer}
-  .blk{border:1px solid var(--line);border-radius:8px;padding:10px 12px;margin-bottom:8px;background:var(--card)}
-  .bh{font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.03em;margin-bottom:8px}
-  .people{display:flex;flex-wrap:wrap;gap:6px}
-  .p{border:2px solid var(--line);background:var(--card);border-radius:8px;padding:5px 10px;font-weight:600}
-  .p.on{border-color:var(--blue);background:var(--blue-bg);color:var(--blue)}
-  .row{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:6px}
-  .row input[type=number]{width:64px;border:2px solid var(--line);border-radius:6px;padding:5px 8px}
-  .row input[type=date]{border:2px solid var(--line);border-radius:6px;padding:5px 8px}
-  select{border:2px solid var(--line);border-radius:6px;padding:6px 8px;background:var(--card);font-weight:600;width:100%}
-  .seg{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
-  .seg button{border:2px solid var(--line);background:var(--card);border-radius:6px;padding:6px 4px;font-weight:600}
-  .seg button.on{border-color:var(--blue);background:var(--blue-bg);color:var(--blue)}
-  .hint{color:var(--muted);font-size:12px;margin-top:6px}
-  .hint.far{color:var(--red);font-weight:700}
-  .status{font-size:12px;color:var(--muted);text-align:right}
+  .sec{border:2px solid var(--line);border-radius:10px;margin-bottom:14px;background:var(--card);overflow:hidden}
+  .sec-h{padding:10px 14px;display:flex;align-items:baseline;justify-content:space-between;gap:10px;color:#fff}
+  .sec-h .name{font-size:16px;font-weight:800;text-transform:uppercase;letter-spacing:.04em}
+  .sec-h .when{font-size:14px;font-weight:700;opacity:.95}
+  .sec.transport .sec-h{background:var(--green)}
+  .sec.production .sec-h{background:var(--blue)}
+  .sec.labour .sec-h{background:#44546f}
+  .who{padding:12px 14px;font-size:16px;font-weight:800;border-bottom:1px solid var(--line);background:var(--green-bg)}
+  .sec.production .who{background:var(--blue-bg)}
+  .sec.labour .who{background:var(--list)}
+  .who.none{background:var(--red-bg);color:var(--red)}
+  .who small{display:block;font-size:13px;font-weight:600;color:var(--muted);margin-top:2px}
+  .fld{padding:12px 14px;border-bottom:1px solid var(--line)}
+  .fld:last-child{border-bottom:0}
+  .lbl{font-size:13px;font-weight:800;text-transform:uppercase;letter-spacing:.03em;margin-bottom:8px}
+  .people{display:flex;flex-wrap:wrap;gap:8px}
+  .p{border:2px solid var(--line);background:var(--card);border-radius:8px;padding:7px 12px;font-weight:700}
+  .p.on{border-color:var(--blue);background:var(--blue);color:#fff}
+  .row{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+  .row+.row{margin-top:8px}
+  input[type=number],input[type=date],input[type=text]{border:2px solid var(--line);border-radius:6px;padding:7px 8px;font-weight:600}
+  input[type=number]{width:70px}
+  select{border:2px solid var(--line);border-radius:6px;padding:8px;background:var(--card);font-weight:700;width:100%}
+  .seg{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:8px}
+  .seg button{border:2px solid var(--line);background:var(--card);border-radius:6px;padding:8px 4px;font-weight:700}
+  .seg button.on{border-color:var(--blue);background:var(--blue);color:#fff}
+  .hint{color:var(--muted);font-size:13px;margin-top:6px}
+  .warn{margin-top:8px;padding:8px 10px;border-radius:6px;background:var(--red-bg);color:var(--red);font-weight:700;font-size:14px}
+  .status{font-size:13px;color:var(--muted);text-align:right}
 </style></head>
 <body>
 <div id="app"></div>
@@ -43,54 +57,89 @@
   }
   function save(){ clearTimeout(saving); saving=setTimeout(function(){ t.set("card","shared","sched",d); },250); }
   function hm(get,set,label){
-    var w=el("span"); var v=get();
+    var w=el("span","row"); var v=get();
     var h=el("input"); h.type="number"; h.min="0"; h.value=v==null?"":String(Math.floor(v/60)); h.placeholder="0"; h.setAttribute("aria-label",label+" hours");
     var m=el("input"); m.type="number"; m.min="0"; m.max="55"; m.step="5"; m.value=v==null?"":String(v%60); m.placeholder="0"; m.setAttribute("aria-label",label+" minutes");
     var upd=function(){ if(h.value===""&&m.value==="") set(null); else set((parseInt(h.value,10)||0)*60+(parseInt(m.value,10)||0)); save(); render(); };
     h.onchange=upd; m.onchange=upd;
-    w.appendChild(h); w.appendChild(el("span",null," hours ")); w.appendChild(m); w.appendChild(el("span",null," minutes")); return w;
+    w.appendChild(h); w.appendChild(el("span",null,"hours")); w.appendChild(m); w.appendChild(el("span",null,"minutes")); return w;
   }
   function people(part){
     var w=el("div","people");
     CREW.forEach(function(n){ var b=el("button","p"+(part.who.indexOf(n)>=0?" on":""),n); b.onclick=function(){ var i=part.who.indexOf(n); if(i<0) part.who.push(n); else part.who.splice(i,1); save(); render(); }; w.appendChild(b); });
     return w;
   }
-  function timeBlock(part,title){
-    var b=el("div","blk"); b.appendChild(el("div","bh",title));
-    var seg=el("div","seg"); QUICK.forEach(function(q){ var x=el("button",part.mins===q[0]?"on":"",q[1]); x.onclick=function(){ part.mins=q[0]; save(); render(); }; seg.appendChild(x); }); b.appendChild(seg);
-    var r=el("div","row"); r.appendChild(el("span","hint","or exactly")); r.appendChild(hm(function(){return part.mins;},function(v){part.mins=v;},"Time")); b.appendChild(r);
-    return b;
+  function fld(label){ var f=el("div","fld"); if(label) f.appendChild(el("div","lbl",label)); return f; }
+  function timeField(part,label){
+    var f=fld(label);
+    var seg=el("div","seg"); QUICK.forEach(function(q){ var x=el("button",part.mins===q[0]?"on":"",q[1]); x.onclick=function(){ part.mins=q[0]; save(); render(); }; seg.appendChild(x); }); f.appendChild(seg);
+    var r=el("div","row"); r.appendChild(el("span","hint","or exactly")); r.appendChild(hm(function(){return part.mins;},function(v){part.mins=v;},label)); f.appendChild(r);
+    return f;
   }
+  function whoLine(part,detail,contractor){
+    var w=el("div","who");
+    if(contractor){ w.textContent=contractor+" is carrying out this work"; if(part.who.length) w.appendChild(el("small",null,"With "+part.who.join(", ")+" from Coggin")); return w; }
+    if(!part.who.length){ w.className="who none"; w.textContent="Nobody assigned"; w.appendChild(el("small",null,"Select the operatives below.")); return w; }
+    w.textContent="Assigned: "+part.who.join(", ");
+    var bits=[]; if(part.mins!=null) bits.push(fmt(part.mins)+" each"); if(detail) bits.push(detail);
+    w.appendChild(el("small",null,bits.length?bits.join(", "):"No time set yet."));
+    return w;
+  }
+  function section(kind,name,when){ var s=el("div","sec "+kind); var h=el("div","sec-h"); h.appendChild(el("span","name",name)); if(when) h.appendChild(el("span","when",when)); s.appendChild(h); return s; }
   function render(){
     var app=document.getElementById("app"); app.innerHTML="";
+    var due=(card.due||"").slice(0,10);
     var contractorOnly=!!d.contractor && !d.who.length;
-    var ob=el("div","blk"); ob.appendChild(el("div","bh","Operatives")); ob.appendChild(people(d)); app.appendChild(ob);
-    if(site){ var cb=el("div","blk"); cb.appendChild(el("div","bh","Carried out by")); var sel=el("select");
-    [["","Coggin operatives"]].concat(CONTRACTORS.map(function(c){return [c,c];})).forEach(function(o){ var op=el("option",null,o[1]); op.value=o[0]; if((d.contractor||"")===o[0]) op.selected=true; sel.appendChild(op); });
-    sel.onchange=function(){ d.contractor=sel.value; save(); render(); }; cb.appendChild(sel);
-    var addr=el("div","row"); var ai=el("input"); ai.type="text"; ai.placeholder="Add a subcontractor"; ai.style.cssText="border:2px solid var(--line);border-radius:6px;padding:5px 8px;min-width:180px";
-    var ab=el("button","p","Add"); ab.onclick=function(){ var n=ai.value.trim(); if(!n) return; if(CONTRACTORS.indexOf(n)<0) CONTRACTORS.splice(CONTRACTORS.length-1,0,n); d.contractor=n;
-      var extra=CONTRACTORS.filter(function(c){return ["MAK Installations","Courier","Other contractor"].indexOf(c)<0;}); boardData.contractors=extra; t.set("board","shared","sched",boardData); save(); render(); };
-    addr.appendChild(ai); addr.appendChild(ab); cb.appendChild(addr);
-    if(contractorOnly) cb.appendChild(el("div","hint",d.contractor+" is carrying out this job, so no travel or labour time applies."));
-    app.appendChild(cb); } else { d.contractor=""; }
-    if(site && !contractorOnly){ var tb=el("div","blk"); tb.appendChild(el("div","bh","Travel time, return")); var r=el("div","row"); r.appendChild(hm(function(){return d.drive;},function(v){d.drive=v;},"Travel")); tb.appendChild(r);
-      tb.appendChild(el("div","hint","There and back. The Scheduler works this out from the postcode; set it here if you know it."));
-      if(d.drive!=null&&d.drive>360) tb.appendChild(el("div","hint far","More than a day's travel with the job in between. Consider a courier or subcontractor."));
-      app.appendChild(tb); }
-    if(!contractorOnly) app.appendChild(timeBlock(d,site?"Site time per operative":"Labour time per operative"));
-    if(workshop){ var pb=el("div","blk"); pb.appendChild(el("div","bh","Production"));
-      var prodDue=d.prodDue||defaultDue; var pdr=el("div","row"); pdr.appendChild(el("span",null,"Production due")); var pdi=el("input"); pdi.type="date"; pdi.value=prodDue||""; pdi.onchange=function(){ d.prodDue=pdi.value||null; save(); render(); }; pdr.appendChild(pdi);
-      pdr.appendChild(el("span","hint",d.prodDue?"Set by you.":PRODUCTION_BUFFER_DAYS+" working days before delivery.")); pb.appendChild(pdr);
-      if(prodDue&&d.prep&&d.prep.date&&d.prep.date>prodDue) pb.appendChild(el("div","hint far","Scheduled to finish after it is due."));
-      var pr=el("div","row"); var d1=el("input"); d1.type="date"; d1.value=d.prep.start||""; var d2=el("input"); d2.type="date"; d2.value=d.prep.date||"";
+
+    // Production: the workshop part, shown first because it happens first.
+    if(workshop){
+      var prodDue=d.prodDue||defaultDue;
+      var ps=section("production","Production",prodDue?"Due "+niceShort(prodDue):"");
+      var pdet=d.prep.date?(d.prep.start&&d.prep.start!==d.prep.date?niceShort(d.prep.start)+" to "+niceShort(d.prep.date):niceShort(d.prep.date)):"";
+      ps.appendChild(whoLine(d.prep,pdet,""));
+      var pf=fld("Operatives on production"); pf.appendChild(people(d.prep)); ps.appendChild(pf);
+      var df=fld("Production days"); var pr=el("div","row");
+      var d1=el("input"); d1.type="date"; d1.value=d.prep.start||""; var d2=el("input"); d2.type="date"; d2.value=d.prep.date||"";
       d1.onchange=function(){ d.prep.start=d1.value||null; if(d.prep.start&&(!d.prep.date||d.prep.date<d.prep.start)) d.prep.date=d.prep.start; if(!d.prep.start) d.prep.date=null; save(); render(); };
       d2.onchange=function(){ d.prep.date=d2.value||null; if(d.prep.date&&(!d.prep.start||d.prep.start>d.prep.date)) d.prep.start=d.prep.date; if(!d.prep.date) d.prep.start=null; save(); render(); };
-      pr.appendChild(el("span",null,"From")); pr.appendChild(d1); pr.appendChild(el("span",null,"to")); pr.appendChild(d2); var clr=el("button","p","Clear"); clr.onclick=function(){ d.prep.start=null; d.prep.date=null; save(); render(); }; pr.appendChild(clr); pb.appendChild(pr);
-      pb.appendChild(el("div","hint",d.prep.date?"Operatives and time for the production days:":"Not scheduled. Set the production dates and it appears under Production in the Scheduler."));
-      if(d.prep.date){ pb.appendChild(people(d.prep)); pb.appendChild(timeBlock(d.prep,"Production time per operative")); }
-      app.appendChild(pb); }
-    if(d.legs&&d.legs.length){ var lb=el("div","blk"); lb.appendChild(el("div","bh","Legs")); d.legs.forEach(function(L){ lb.appendChild(el("div",null,L.type.replace("_"," ")+(L.where?": "+L.where:"")+", "+L.date+(L.who&&L.who.length?", "+L.who.join(", "):", unassigned")+(L.mins!=null?", "+fmt(L.mins):""))); }); lb.appendChild(el("div","hint","Legs are added and edited in the Scheduler.")); app.appendChild(lb); }
+      pr.appendChild(el("span",null,"From")); pr.appendChild(d1); pr.appendChild(el("span",null,"to")); pr.appendChild(d2); var clr=el("button","p","Clear"); clr.onclick=function(){ d.prep.start=null; d.prep.date=null; save(); render(); }; pr.appendChild(clr); df.appendChild(pr);
+      if(!d.prep.date) df.appendChild(el("div","hint","Not scheduled yet. Set the days and it appears under Production in the Scheduler."));
+      if(prodDue&&d.prep.date&&d.prep.date>prodDue) df.appendChild(el("div","warn","Finishes after the production due date."));
+      ps.appendChild(df);
+      ps.appendChild(timeField(d.prep,"Production time per operative"));
+      var duef=fld("Production due date"); var pdr=el("div","row"); var pdi=el("input"); pdi.type="date"; pdi.value=prodDue||""; pdi.onchange=function(){ d.prodDue=pdi.value||null; save(); render(); }; pdr.appendChild(pdi);
+      if(d.prodDue){ var rs=el("button","p","Reset"); rs.onclick=function(){ d.prodDue=null; save(); render(); }; pdr.appendChild(rs); }
+      duef.appendChild(pdr); duef.appendChild(el("div","hint",d.prodDue?"Set by you.":PRODUCTION_BUFFER_DAYS+" working days before delivery.")); ps.appendChild(duef);
+      app.appendChild(ps);
+    }
+
+    // Transport (site jobs) or Labour (yard and workshop-only jobs): the part on the card's date.
+    var kind=site?"transport":"labour", name=site?"Transport":"Labour";
+    var ts=section(kind,name,due?niceShort(due):"");
+    var tdet=[]; if(site&&!contractorOnly&&d.drive!=null) tdet.push("travel "+fmt(d.drive)+" return");
+    ts.appendChild(whoLine(d,tdet.join(", "),site?d.contractor:""));
+    if(site){
+      var cf=fld("Carried out by"); var sel=el("select");
+      [["","Coggin operatives"]].concat(CONTRACTORS.map(function(c){return [c,c];})).forEach(function(o){ var op=el("option",null,o[1]); op.value=o[0]; if((d.contractor||"")===o[0]) op.selected=true; sel.appendChild(op); });
+      sel.onchange=function(){ d.contractor=sel.value; save(); render(); }; cf.appendChild(sel);
+      var addr=el("div","row"); addr.style.marginTop="8px"; var ai=el("input"); ai.type="text"; ai.placeholder="Add a subcontractor"; ai.style.minWidth="180px";
+      var ab=el("button","p","Add"); ab.onclick=function(){ var n=ai.value.trim(); if(!n) return; if(CONTRACTORS.indexOf(n)<0) CONTRACTORS.splice(CONTRACTORS.length-1,0,n); d.contractor=n;
+        var extra=CONTRACTORS.filter(function(c){return ["MAK Installations","Courier","Other contractor"].indexOf(c)<0;}); boardData.contractors=extra; t.set("board","shared","sched",boardData); save(); render(); };
+      addr.appendChild(ai); addr.appendChild(ab); cf.appendChild(addr);
+      if(contractorOnly) cf.appendChild(el("div","hint","No travel or site time for our operatives. Tick an operative below if one of ours goes too."));
+      ts.appendChild(cf);
+    } else { d.contractor=""; }
+    var of=fld(site?"Coggin operatives on the "+(d.contractor?"job":"transport"):"Operatives"); of.appendChild(people(d)); ts.appendChild(of);
+    if(site && !contractorOnly){
+      var tf=fld("Travel time, return"); tf.appendChild(hm(function(){return d.drive;},function(v){d.drive=v;},"Travel"));
+      tf.appendChild(el("div","hint","There and back. The Scheduler works this out from the postcode. Set it here if you know it."));
+      if(d.drive!=null&&d.drive>360) tf.appendChild(el("div","warn","More than a day's travel with the job in between. Consider a courier or subcontractor."));
+      ts.appendChild(tf);
+    }
+    if(!contractorOnly) ts.appendChild(timeField(d,site?"Site time per operative":"Labour time per operative"));
+    app.appendChild(ts);
+
+    if(d.legs&&d.legs.length){ var ls=section("labour","Legs",""); var lf=fld(""); d.legs.forEach(function(L){ lf.appendChild(el("div",null,L.type.replace("_"," ")+(L.where?": "+L.where:"")+", "+(L.date?niceShort(L.date):"no date")+(L.who&&L.who.length?", "+L.who.join(", "):", unassigned")+(L.mins!=null?", "+fmt(L.mins):""))); }); lf.appendChild(el("div","hint","Legs are added and edited in the Scheduler.")); ls.appendChild(lf); app.appendChild(ls); }
     var b=badgeText(d,site); app.appendChild(el("div","status",b.text));
     t.sizeTo("#app").catch(function(){});
   }
