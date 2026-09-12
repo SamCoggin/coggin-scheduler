@@ -117,7 +117,9 @@
     }
 
     // Transport (site jobs) or Labour (yard and workshop-only jobs): the part on the card's date.
-    if(workshop){ var note=el("div","hint"); note.style.margin="0 4px 10px"; note.textContent="Transport is assigned once this job is in Ready for Delivery / Collection. Delivery "+(due?niceShort(due):"date not set")+"."; app.appendChild(note); }
+    function vanField(){ var f=fld("Van space"); var seg=el("div","seg"); VAN.forEach(function(v){ var x=el("button",d.van===v[0]?"on":"",v[1]); x.onclick=function(){ d.van=d.van===v[0]?null:v[0]; save(); render(); }; seg.appendChild(x); }); f.appendChild(seg);
+      f.appendChild(el("div","hint",d.van!=null?"Takes "+fmtVan(d.van)+". The Scheduler adds up each round against one van.":"How much of the van this job fills. Set it so the Scheduler can check what fits on a round.")); return f; }
+    if(workshop){ var vs=section("transport","Transport",due?niceShort(due):""); var note=el("div","who"); note.textContent="Assigned once in Ready for Delivery / Collection"; note.appendChild(el("small",null,"Set the van space now so the Scheduler can plan the round.")); vs.appendChild(note); if(site) vs.appendChild(vanField()); app.appendChild(vs); }
     else {
     var kind=site?"transport":"labour", name=site?"Transport":(loading?"Loading":"Labour");
     var ts=section(kind,name,due?niceShort(due):"");
@@ -137,6 +139,7 @@
     var of=fld(site?"Coggin operatives on the "+(d.contractor?"job":"transport"):"Operatives"); of.appendChild(people(d,site));
     if(site&&d.who.length&&!d.who.some(function(w){return DRIVERS.indexOf(w)>=0;})) of.appendChild(el("div","warn","No driver on this job. Rob, Jack or Bart must be on it to drive the van."));
     ts.appendChild(of);
+    if(site && !contractorOnly) ts.appendChild(vanField());
     if(site && !contractorOnly){
       var tf=fld("Travel time, return"); tf.appendChild(hm(function(){return d.drive;},function(v){d.drive=v;},"Travel"));
       tf.appendChild(el("div","hint","There and back. The Scheduler works this out from the postcode. Set it here if you know it."));

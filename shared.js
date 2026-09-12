@@ -3,6 +3,9 @@ var CREW=["Jack","Jordan","Bart","Rob","Bradley"];
 // only these three drive the van. the others go along as a second pair of hands.
 var DRIVERS=["Rob","Jack","Bart"];
 var CONTRACTORS=["MAK Installations","Courier","Other contractor"];
+// van space per transport job, in quarters of one van
+var VAN=[[1,"Quarter van"],[2,"Half a van"],[3,"Three quarters"],[4,"Full van"],[8,"Two vans"]];
+function fmtVan(q){ if(q==null) return "not set"; if(q<=0) return "empty"; var vans=Math.floor(q/4), rem=q%4, names={1:"a quarter",2:"half",3:"three quarters"}; if(!vans) return names[rem]+" of a van"; var w=vans===1?"one van":vans+" vans"; return rem?w+" and "+names[rem]:w; }
 var QUICK=[[15,"15 min"],[30,"30 min"],[60,"1 hour"],[120,"2 hours"],[240,"Half day"],[450,"Full day"]];
 var WORKSHOP_LISTS=/Workshop Jobs - (Not Started|In-progress)/;
 var READY_LIST=/Workshop Jobs - Ready/;
