@@ -1,6 +1,6 @@
 import fs from 'fs';
 const html=fs.readFileSync(process.env.D+'/scheduler.html','utf8');
-const shared=fs.readFileSync(process.env.D+'/shared.js','utf8'); const scripts=[shared,...[...html.matchAll(/<script>([\s\S]*?)<\/script>/g)].map(m=>m[1])];
+const shared=fs.readFileSync(process.env.D+'/shared.js','utf8'); const scripts=[shared,...[...html.matchAll(/<script>([\s\S]*?)<\/script>/g)].map(m=>m[1]).filter(b=>!/document\.write/.test(b))];
 function mk(tag){ return { tag, querySelector(){return null;}, scrollTop:0, className:'', textContent:'', children:[], style:{}, value:'', hidden:false, parentNode:null, classList:{add(){},contains(){return false;}}, appendChild(c){c.parentNode=this;this.children.push(c);return c;}, removeChild(c){this.children=this.children.filter(x=>x!==c);}, setAttribute(){}, set innerHTML(v){this.children=[];}, get innerHTML(){return '';} }; }
 const reg={}; const body=mk('body'); global.document={ body, createElement:mk, createTextNode:t=>({tag:'#text',textContent:String(t),children:[]}), querySelector:s=>s==='.veil'?null:(reg[s]||(reg[s]=mk('div'))) };
 const lists=[{id:'l1',name:'Workshop Jobs - Not Started'},{id:'l2',name:'Removals / Recycling / Skips / Stock / Plastic'},{id:'l3',name:'Holidays / Leave'}];
