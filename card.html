@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><title>Scheduling</title>
+<style>
+  :root{ --text:#172b4d; --muted:#5e6c84; --line:#b8c0cc; --blue:#0c66e4; --blue-bg:#e9f2ff; --green:#1f845a; --amber:#974f0c; --red:#c9372c; --card:#fff; --list:#eef0f3; }
+  *{box-sizing:border-box}
+  body{margin:0;padding:4px 2px 8px;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",sans-serif;font-size:14px;color:var(--text);background:transparent}
+  button,input,select{font-family:inherit;font-size:inherit;color:inherit}
+  button{cursor:pointer}
+  .blk{border:1px solid var(--line);border-radius:8px;padding:10px 12px;margin-bottom:8px;background:var(--card)}
+  .bh{font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.03em;margin-bottom:8px}
+  .people{display:flex;flex-wrap:wrap;gap:6px}
+  .p{border:2px solid var(--line);background:var(--card);border-radius:8px;padding:5px 10px;font-weight:600}
+  .p.on{border-color:var(--blue);background:var(--blue-bg);color:var(--blue)}
+  .row{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:6px}
+  .row input[type=number]{width:64px;border:2px solid var(--line);border-radius:6px;padding:5px 8px}
+  .row input[type=date]{border:2px solid var(--line);border-radius:6px;padding:5px 8px}
+  select{border:2px solid var(--line);border-radius:6px;padding:6px 8px;background:var(--card);font-weight:600;width:100%}
+  .seg{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+  .seg button{border:2px solid var(--line);background:var(--card);border-radius:6px;padding:6px 4px;font-weight:600}
+  .seg button.on{border-color:var(--blue);background:var(--blue-bg);color:var(--blue)}
+  .hint{color:var(--muted);font-size:12px;margin-top:6px}
+  .hint.far{color:var(--red);font-weight:700}
+  .status{font-size:12px;color:var(--muted);text-align:right}
+</style></head>
+<body>
+<div id="app"></div>
+<script src="https://p.trellocdn.com/power-up.min.js"></script>
+<script src="./shared.js"></script>
+<script>
+(function(){
+  var t=TrelloPowerUp.iframe();
+  var el=function(tag,c,x){var n=document.createElement(tag);if(c)n.className=c;if(x!=null)n.textContent=x;return n;};
+  var card=null, d=null, workshop=false, site=false, saving=null;
+  function load(){
+    return Promise.all([t.card("id","name","labels","idList"), t.lists("all"), t.get("card","shared","sched",null)]).then(function(r){
+      card=r[0]; var list=r[1].filter(function(l){return l.id===card.idList;})[0]; workshop=!!(list&&WORKSHOP_LISTS.test(list.name));
+      site=(card.labels||[]).some(function(l){return SITE_LABELS.test(l.name);});
+      d=r[2]||{who:[],mins:null,drive:null,contractor:"",prep:null,legs:[]}; if(!d.who) d.who=[]; if(workshop&&!d.prep) d.prep={who:[],mins:null,start:null,date:null};
+      render();
+    });
+  }
+  function save(){ clearTimeout(saving); saving=setTimeout(function(){ t.set("card","shared","sched",d); },250); }
+  function hm(get,set,label){
+    var w=el("span"); var v=get();
+    var h=el("input"); h.type="number"; h.min="0"; h.value=v==null?"":String(Math.floor(v/60)); h.placeholder="0"; h.setAttribute("aria-label",label+" hours");
+    var m=el("input"); m.type="number"; m.min="0"; m.max="55"; m.step="5"; m.value=v==null?"":String(v%60); m.placeholder="0"; m.setAttribute("aria-label",label+" minutes");
+    var upd=function(){ if(h.value===""&&m.value==="") set(null); else set((parseInt(h.value,10)||0)*60+(parseInt(m.value,10)||0)); save(); render(); };
+    h.onchange=upd; m.onchange=upd;
+    w.appendChild(h); w.appendChild(el("span",null," hours ")); w.appendChild(m); w.appendChild(el("span",null," minutes")); return w;
+  }
+  function people(part){
+    var w=el("div","people");
+    CREW.forEach(function(n){ var b=el("button","p"+(part.who.indexOf(n)>=0?" on":""),n); b.onclick=function(){ var i=part.who.indexOf(n); if(i<0) part.who.push(n); else part.who.splice(i,1); save(); render(); }; w.appendChild(b); });
+    return w;
+  }
+  function timeBlock(part,title){
+    var b=el("div","blk"); b.appendChild(el("div","bh",title));
+    var seg=el("div","seg"); QUICK.forEach(function(q){ var x=el("button",part.mins===q[0]?"on":"",q[1]); x.onclick=function(){ part.mins=q[0]; save(); render(); }; seg.appendChild(x); }); b.appendChild(seg);
+    var r=el("div","row"); r.appendChild(el("span","hint","or exactly")); r.appendChild(hm(function(){return part.mins;},function(v){part.mins=v;},"Time")); b.appendChild(r);
+    return b;
+  }
+  function render(){
+    var app=document.getElementById("app"); app.innerHTML="";
+    var contractorOnly=!!d.contractor && !d.who.length;
+    var ob=el("div","blk"); ob.appendChild(el("div","bh","Operatives")); ob.appendChild(people(d)); app.appendChild(ob);
+    var cb=el("div","blk"); cb.appendChild(el("div","bh","Carried out by")); var sel=el("select");
+    [["","Coggin operatives"]].concat(CONTRACTORS.map(function(c){return [c,c];})).forEach(function(o){ var op=el("option",null,o[1]); op.value=o[0]; if((d.contractor||"")===o[0]) op.selected=true; sel.appendChild(op); });
+    sel.onchange=function(){ d.contractor=sel.value; save(); render(); }; cb.appendChild(sel);
+    if(contractorOnly) cb.appendChild(el("div","hint",d.contractor+" is carrying out this job, so no travel or labour time applies."));
+    app.appendChild(cb);
+    if(site && !contractorOnly){ var tb=el("div","blk"); tb.appendChild(el("div","bh","Travel time, return")); var r=el("div","row"); r.appendChild(hm(function(){return d.drive;},function(v){d.drive=v;},"Travel")); tb.appendChild(r);
+      tb.appendChild(el("div","hint","There and back. The Scheduler works this out from the postcode; set it here if you know it."));
+      if(d.drive!=null&&d.drive>360) tb.appendChild(el("div","hint far","More than a day's travel with the job in between. Consider a courier or subcontractor."));
+      app.appendChild(tb); }
+    if(!contractorOnly) app.appendChild(timeBlock(d,site?"Site time per operative":"Labour time per operative"));
+    if(workshop){ var pb=el("div","blk"); pb.appendChild(el("div","bh","Production"));
+      var pr=el("div","row"); var d1=el("input"); d1.type="date"; d1.value=d.prep.start||""; var d2=el("input"); d2.type="date"; d2.value=d.prep.date||"";
+      d1.onchange=function(){ d.prep.start=d1.value||null; if(d.prep.start&&(!d.prep.date||d.prep.date<d.prep.start)) d.prep.date=d.prep.start; if(!d.prep.start) d.prep.date=null; save(); render(); };
+      d2.onchange=function(){ d.prep.date=d2.value||null; if(d.prep.date&&(!d.prep.start||d.prep.start>d.prep.date)) d.prep.start=d.prep.date; if(!d.prep.date) d.prep.start=null; save(); render(); };
+      pr.appendChild(el("span",null,"From")); pr.appendChild(d1); pr.appendChild(el("span",null,"to")); pr.appendChild(d2); var clr=el("button","p","Clear"); clr.onclick=function(){ d.prep.start=null; d.prep.date=null; save(); render(); }; pr.appendChild(clr); pb.appendChild(pr);
+      pb.appendChild(el("div","hint",d.prep.date?"Operatives and time for the production days:":"Not scheduled. Set the production dates and it appears under Production in the Scheduler."));
+      if(d.prep.date){ pb.appendChild(people(d.prep)); pb.appendChild(timeBlock(d.prep,"Production time per operative")); }
+      app.appendChild(pb); }
+    if(d.legs&&d.legs.length){ var lb=el("div","blk"); lb.appendChild(el("div","bh","Legs")); d.legs.forEach(function(L){ lb.appendChild(el("div",null,L.type.replace("_"," ")+(L.where?": "+L.where:"")+", "+L.date+(L.who&&L.who.length?", "+L.who.join(", "):", unassigned")+(L.mins!=null?", "+fmt(L.mins):""))); }); lb.appendChild(el("div","hint","Legs are added and edited in the Scheduler.")); app.appendChild(lb); }
+    var b=badgeText(d,site); app.appendChild(el("div","status",b.text));
+    t.sizeTo("#app").catch(function(){});
+  }
+  t.render(function(){ load(); });
+  load();
+})();
+</script>
+</body></html>

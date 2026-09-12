@@ -2,12 +2,33 @@
 <html><head><meta charset="utf-8"><title>Coggin Scheduler</title></head>
 <body>
 <script src="https://p.trellocdn.com/power-up.min.js"></script>
+<script src="./shared.js"></script>
 <script>
-  // the Power-Up connector: adds a "Scheduler" button to the board that
-  // opens the scheduler page over the board
+  // the Power-Up connector: a Scheduler button on the board, a badge on the
+  // front of each card, a Scheduling section and a button on the back
+  var ICON="https://samcoggin.github.io/coggin-scheduler/icon.png";
+  function isSite(card){ return (card.labels||[]).some(function(l){return SITE_LABELS.test(l.name);}); }
   TrelloPowerUp.initialize({
     "board-buttons": function(t){
-      return [{ text: "Scheduler", callback: function(t){ return t.modal({ url: "./scheduler.html", fullscreen: true, title: "Scheduler" }); } }];
+      return [{ text: "Scheduler", icon: ICON, callback: function(t){ return t.modal({ url: "./scheduler.html", fullscreen: true, title: "Scheduler" }); } }];
+    },
+    "card-badges": function(t){
+      return Promise.all([t.card("labels"), t.get("card","shared","sched",null)]).then(function(r){
+        var d=r[1]; if(!d) return [];
+        var b=badgeText(d,isSite(r[0])); return [{ text:b.text, color:b.color }];
+      });
+    },
+    "card-detail-badges": function(t){
+      return Promise.all([t.card("labels"), t.get("card","shared","sched",null)]).then(function(r){
+        var d=r[1]; if(!d) return [{ title:"Scheduling", text:"Not planned", color:"yellow" }];
+        var b=badgeText(d,isSite(r[0])); return [{ title:"Scheduling", text:b.text, color:b.color }];
+      });
+    },
+    "card-back-section": function(t){
+      return { title:"Scheduling", icon:ICON, content:{ type:"iframe", url:t.signUrl("./card.html"), height:260 } };
+    },
+    "card-buttons": function(t){
+      return [{ icon:ICON, text:"Open in Scheduler", callback:function(t){ return t.modal({ url:"./scheduler.html", fullscreen:true, title:"Scheduler" }); } }];
     }
   });
 </script>
