@@ -84,14 +84,17 @@
     return box;
   }
   function load(){
-    return Promise.all([t.card("id","name","labels","idList","due","desc","checklists").catch(function(){ return t.card("id","name","labels","idList","due","desc"); }), t.lists("all"), t.get("card","shared","sched",null), t.get("board","shared","sched",{})]).then(function(r){
+    return Promise.all([t.card("id","name","labels","idList","due","desc"), t.lists("all"), t.get("card","shared","sched",null), t.get("board","shared","sched",{})]).then(function(r){
       boardData=r[3]||{}; (boardData.contractors||[]).forEach(function(c){ if(CONTRACTORS.indexOf(c)<0) CONTRACTORS.splice(CONTRACTORS.length-1,0,c); });
       card=r[0]; var list=r[1].filter(function(l){return l.id===card.idList;})[0]; workshop=!!(list&&WORKSHOP_LISTS.test(list.name));
       site=(card.labels||[]).some(function(l){return SITE_LABELS.test(l.name);});
       loading=!site&&(card.labels||[]).some(function(l){return /collecting/i.test(l.name);});
       defaultDue=productionDue("",(card.due||"").slice(0,10));
       d=r[2]||{who:[],mins:null,drive:null,contractor:"",prep:null,legs:[]}; if(!d.who) d.who=[]; if(workshop&&!d.prep) d.prep={who:[],mins:null,start:null,date:null};
-      render(); return loadOthers().then(render);
+      render();
+      // checklists only come through the board-wide cards call, the same way the Scheduler reads them
+      var cl=t.cards("id","checklists").then(function(cs){ var me=cs.filter(function(x){return x.id===card.id;})[0]; if(me&&me.checklists) card.checklists=me.checklists; }).catch(function(){});
+      return Promise.all([cl,loadOthers()]).then(render);
     });
   }
   function save(){ clearTimeout(saving); saving=setTimeout(function(){ t.set("card","shared","sched",d); },250); }
