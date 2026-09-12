@@ -7,7 +7,7 @@ const lists=[{id:'l1',name:'Workshop Jobs - Not Started'},{id:'l2',name:'Removal
 const cards=[{id:'c1',name:'Skipton - C4B36B - Harrison Drury',idList:'l1',due:'2026-09-15T12:00:00.000Z',start:null,labels:[{name:'Delivery/Installation'}],members:[{fullName:'Bart H'}],desc:'x',customFieldItems:[]},
              {id:'c2',name:'Blackpool - 5FAEDC - James Knowles',idList:'l2',due:'2026-09-14T12:00:00.000Z',labels:[{name:'Removal Job'}],members:[],desc:'**Clearance Details**\n\n**Job**\nRef: **5FAEDC**\n\n**Site Contact**\nMichael Knowles \u2014 **07946508174**\n\n**Collection Address**\n**20 Dickson Road, Blackpool, FY1 2AE**\n\n**Items to Clear**\n{"metal\\_filing\\_cabinets":5}\n\n**Sign-off link:** [Open the sign-off form](https://x.y/z)'},
              {id:'c3',name:'Rob (Annual Leave)',idList:'l3',due:'2026-09-18T12:00:00.000Z',labels:[],members:[]}];
-global.window={TrelloPowerUp:{iframe(){return { lists:()=>Promise.resolve(lists), cards:()=>Promise.resolve(cards), board:()=>Promise.resolve({name:'Jobs - Planning Board',members:[]}), get:(a,b,c,d)=>Promise.resolve(d), set:()=>Promise.resolve() };}}};
+global.window={__TODAY:'2026-09-14T12:00',TrelloPowerUp:{iframe(){return { lists:()=>Promise.resolve(lists), cards:()=>Promise.resolve(cards), board:()=>Promise.resolve({name:'Jobs - Planning Board',members:[]}), get:(a,b,c,d)=>Promise.resolve(d), set:()=>Promise.resolve() };}}};
 global.TrelloPowerUp=global.window.TrelloPowerUp;
 try{ new Function(scripts.join('\n'))(); }catch(e){ console.log('SYNC THROW',e.stack.split('\n').slice(0,3).join('\n')); }
 setTimeout(()=>{ console.log('src:',reg['#src'].textContent); console.log('title:',reg['#title'].textContent); },200);

@@ -233,7 +233,7 @@ var SNAP=null, DETAIL={};
   "use strict";
   var t=window.TrelloPowerUp?TrelloPowerUp.iframe():null;
   var TODAY_REAL=new Date(); TODAY_REAL.setHours(12,0,0,0);
-  var TODAY=new Date(TODAY_REAL), DAY_H=7.5;
+  var TODAY=window.__TODAY?new Date(window.__TODAY):new Date(TODAY_REAL), DAY_H=7.5;   // __TODAY is only set by check.mjs
   var TEAM=CREW, open=null, week=0;
   // ── read the live board through Trello's client, then run the scheduler ──
   var ROLE={"Workshop Jobs - Not Started":"waiting","Workshop Jobs - In-progress":"shop","Workshop Jobs - Ready for Delivery / Collection":"ready",
