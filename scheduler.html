@@ -328,7 +328,7 @@ var SNAP=null, DETAIL={};
     LEAVE=SNAP.cards.filter(function(c){return c.role==="leave"&&c.due;}).map(function(c){ return {date:c.due,text:c.name.replace(/\s*\(.*$/,"").replace(/BANK HOLIDAY\s*-\s*/i,"")+(/BANK HOLIDAY/i.test(c.name)?" (bank holiday)":" on leave")}; });
     // what was saved on the cards last time
     SNAP.cards.forEach(function(c){ var d=c.saved; if(!d) return; var j=JOBS.filter(function(x){return x.id===c.id;})[0]; if(!j) return;
-      if(d.who) j.who=d.who.slice(); if(d.van!=null) j.van=d.van; if(d.mins!=null) j.mins=d.mins; if(d.drive!=null) j.drive=d.drive; if(d.contractor) j.contractor=d.contractor;
+      if(d.who) j.who=d.who.slice(); if(spacesOf(d)!=null) j.van=spacesOf(d); if(d.mins!=null) j.mins=d.mins; if(d.drive!=null) j.drive=d.drive; if(d.contractor) j.contractor=d.contractor;
       if(d.prep&&j.prep){ j.prep.who=d.prep.who||[]; j.prep.mins=d.prep.mins; j.prep.start=d.prep.start||null; j.prep.date=d.prep.date||null; }
       if(d.prodDue&&j.prep){ j.prodDue=d.prodDue; j.prodDueSet=true; }
       (d.legs||[]).forEach(function(L){ LEGS.push({parent:j.id,type:L.type,date:L.date,who:L.who||[],mins:L.mins,drive:L.drive,where:L.where||""}); });
@@ -356,7 +356,7 @@ var SNAP=null, DETAIL={};
   function persist(){
     if(!t) return;
     JOBS.forEach(function(j){
-      var d={who:j.who,mins:j.mins,drive:j.drive,van:j.van!=null?j.van:null,contractor:j.contractor||"",prodDue:j.prodDueSet?j.prodDue:null,prep:j.prep?{who:j.prep.who,mins:j.prep.mins,start:j.prep.start,date:j.prep.date}:null,
+      var d={who:j.who,mins:j.mins,drive:j.drive,spaces:j.van!=null?j.van:null,contractor:j.contractor||"",prodDue:j.prodDueSet?j.prodDue:null,prep:j.prep?{who:j.prep.who,mins:j.prep.mins,start:j.prep.start,date:j.prep.date}:null,
         legs:LEGS.filter(function(L){return L.parent===j.id;}).map(function(L){return {type:L.type,date:L.date,who:L.who,mins:L.mins,drive:L.drive,where:L.where};})};
       var js=JSON.stringify(d); if(lastSaved[j.id]===js) return; lastSaved[j.id]=js; t.set(j.id,"shared","sched",d);
     });
@@ -523,7 +523,8 @@ var SNAP=null, DETAIL={};
       if(j.drive!=null && j.drive>6*60) drb.appendChild(el("div","hint far","More than a day's travel with the job in between. Consider a courier or subcontractor."));
       right.appendChild(drb); }
     if(!o.shop && j.site && !contractorOnly && !j.isLeg){ var vb=block("Van Space","van"); var vs=el("div","seg"); VAN.forEach(function(v){ var b=el("button",j.van===v[0]?"on":"",v[1]); b.onclick=function(){ j.van=j.van===v[0]?null:v[0]; render(); }; vs.appendChild(b); }); vb.appendChild(vs);
-      vb.appendChild(el("div","hint","How much of the van this job fills. The Routes view adds up each round against one van.")); right.appendChild(vb); }
+      var vr=el("div","row"); vr.appendChild(el("span","hint","or exactly")); var vn=el("input"); vn.type="number"; vn.min="0"; vn.value=j.van==null?"":String(j.van); vn.placeholder="0"; vn.setAttribute("aria-label","Chair spaces"); vn.onchange=function(){ j.van=vn.value===""?null:Math.max(0,parseInt(vn.value,10)||0); render(); }; vr.appendChild(vn); vr.appendChild(el("span",null,"chair spaces")); vb.appendChild(vr);
+      vb.appendChild(el("div","hint","In chair spaces: a Luton takes about "+VAN_FULL+" swivel chairs, so one task chair is 1. The Routes view adds each round up against one van.")); right.appendChild(vb); }
     if(!contractorOnly){ var tb=block(o.shop?"Production Time per Operative":(j.site?"Site Time per Operative":"Labour Time per Operative"),"time");
       var q=el("div","seg"); QUICK.forEach(function(qq){ var b=el("button",part.mins===qq[0]?"on":"",qq[1]); b.onclick=function(){ setMins(qq[0]); render(); }; q.appendChild(b); }); tb.appendChild(q);
       var r3=el("div","row"); r3.appendChild(el("span","hint","or exactly")); r3.appendChild(hmBoxes(function(){return part.mins;},setMins,"Time")); tb.appendChild(r3); right.appendChild(tb); }
@@ -561,7 +562,7 @@ var SNAP=null, DETAIL={};
     contractor:"Transport jobs only. Coggin operatives by default; select a subcontractor or courier when they carry out the job. Workshop and yard work is always our own operatives.",
     days:"The dates production takes place. Set a later end date to spread it over several days.",
     drivers:"Rob, Jack and Bart drive the van. Jordan and Bradley go along as a second pair of hands, so every transport job needs one of the drivers on it.",
-    van:"How much of one van this job takes up. A round over a full van needs splitting or a second van.",
+    van:"Van space in chair spaces. A Luton takes about 40 swivel chairs. A round over a full van needs splitting or a second van.",
     routes:"Combine Trips finds jobs booked for later that are near a stop already going out this week, and says what it takes to put them on the same van. Below it, where the week's transport jobs are. Each round is drawn from the yard in its day's colour. Nearby jobs on other days could join a round if there is room in the van and production is done.",
     drive:"Return travel time, calculated from the site postcode plus 20 percent for traffic. Overtype if you know better.",
     time:"Labour time per operative. Use the quick options or enter hours and minutes."
@@ -719,7 +720,7 @@ var SNAP=null, DETAIL={};
       var sugs=[], today=iso(TODAY_REAL);
       weekJobs.forEach(function(A){ if(!A.pt) return; var k=A.date; var i=days.indexOf(k); if(i<0||k<today) return;
         var mates=weekJobs.filter(function(x){return x!==A && onDay(x,k) && x.who.some(function(w){return A.who.indexOf(w)>=0;});});
-        var group=[A].concat(mates), vanQ=group.reduce(function(t,j){return t+(j.van||0);},0), room=4-vanQ;
+        var group=[A].concat(mates), vanQ=group.reduce(function(t,j){return t+(j.van||0);},0), room=VAN_FULL-vanQ;
         all.forEach(function(B){ if(!B.pt||B===A||group.indexOf(B)>=0) return; if(B.date<=k||B.date>horizon) return;
           var apart=roadMiles(miles(A.pt,B.pt)); if(apart>25) return;
           var alone=2*roadMiles(miles(BASE,B.pt)), detour=apart+roadMiles(miles(B.pt,BASE))-roadMiles(miles(A.pt,BASE)); var saved=alone-Math.max(detour,0); if(saved<15) return;
@@ -758,11 +759,11 @@ var SNAP=null, DETAIL={};
           if(MAP&&stops.length&&!g.unassigned){ var line=[[BASE.lat,BASE.lng]].concat(stops.map(function(x){return [x.pt.lat,x.pt.lng];})).concat([[BASE.lat,BASE.lng]]); L.polyline(line,{color:col,weight:4,opacity:.8}).addTo(MAP); }
           day.appendChild(grp);
           var vanLine=el("div","rnote","Van load: "+(vanQ?fmtVan(vanQ):"nothing set")+(vanUnknown?" ("+vanUnknown+(vanUnknown===1?" job":" jobs")+" without van space)":"")); day.appendChild(vanLine);
-          if(vanQ>4) day.appendChild(el("div","rwarn","Over one van. Split the round or send a second van."));
+          if(vanQ>VAN_FULL) day.appendChild(el("div","rwarn","Over one van. Split the round or send a second van."));
           if(!g.unassigned && DRIVERS.indexOf(g.name)<0){ var withDriver=g.jobs.every(function(j){return j.who.some(function(w){return DRIVERS.indexOf(w)>=0;});}); if(!withDriver) day.appendChild(el("div","rwarn",g.name+" cannot drive transport. Add a driver: Rob, Jack or Bart.")); }
           // jobs on other days close to this round
           if(stops.length){
-            var room=4-vanQ, near=[];
+            var room=VAN_FULL-vanQ, near=[];
             all.forEach(function(o){ if(!o.pt||g.jobs.indexOf(o)>=0||o.date===k) return; if(o.date<days[0]||o.date>horizon) return;
               var best=null; stops.forEach(function(x){ var m=roadMiles(miles(x.pt,o.pt)); if(best==null||m<best.m) best={m:m,x:x}; });
               if(best&&best.m<=20) near.push({o:o,m:best.m,x:best.x}); });

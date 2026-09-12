@@ -153,8 +153,9 @@
     }
 
     // Transport (site jobs) or Labour (yard and workshop-only jobs): the part on the card's date.
-    function vanField(){ var f=fld("Van space"); var seg=el("div","seg"); VAN.forEach(function(v){ var x=el("button",d.van===v[0]?"on":"",v[1]); x.onclick=function(){ d.van=d.van===v[0]?null:v[0]; save(); render(); }; seg.appendChild(x); }); f.appendChild(seg);
-      f.appendChild(el("div","hint",d.van!=null?"Takes "+fmtVan(d.van)+". The Scheduler adds up each round against one van.":"How much of the van this job fills. Set it so the Scheduler can check what fits on a round.")); return f; }
+    function vanField(){ var f=fld("Van space"); var sp=spacesOf(d); var seg=el("div","seg"); VAN.forEach(function(v){ var x=el("button",sp===v[0]?"on":"",v[1]); x.onclick=function(){ d.spaces=sp===v[0]?null:v[0]; delete d.van; save(); render(); }; seg.appendChild(x); }); f.appendChild(seg);
+      var r=el("div","row"); r.appendChild(el("span","hint","or exactly")); var n=el("input"); n.type="number"; n.min="0"; n.value=sp==null?"":String(sp); n.placeholder="0"; n.setAttribute("aria-label","Chair spaces"); n.onchange=function(){ d.spaces=n.value===""?null:Math.max(0,parseInt(n.value,10)||0); delete d.van; save(); render(); }; r.appendChild(n); r.appendChild(el("span",null,"chair spaces")); f.appendChild(r);
+      f.appendChild(el("div","hint",sp!=null?"Takes "+fmtVan(sp)+". A full Luton is about "+VAN_FULL+" swivel chairs; count desks, pedestals and cabinets as the chairs they displace.":"In chair spaces: a Luton takes about "+VAN_FULL+" swivel chairs. One task chair is 1. The Scheduler adds each round up against one van.")); return f; }
     if(workshop){ var vs=section("transport","Transport",due?niceShort(due):""); var note=el("div","who"); note.textContent="Assigned once in Ready for Delivery / Collection"; note.appendChild(el("small",null,"Set the van space now so the Scheduler can plan the round.")); vs.appendChild(note); if(site) vs.appendChild(vanField()); app.appendChild(vs); }
     else {
     var kind=site?"transport":"labour", name=site?"Transport":(loading?"Loading":"Labour");
