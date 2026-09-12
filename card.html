@@ -30,11 +30,13 @@
 (function(){
   var t=TrelloPowerUp.iframe();
   var el=function(tag,c,x){var n=document.createElement(tag);if(c)n.className=c;if(x!=null)n.textContent=x;return n;};
-  var card=null, d=null, workshop=false, site=false, saving=null;
+  var card=null, d=null, workshop=false, site=false, saving=null, prodDue=null, prodFromCard=false;
   function load(){
-    return Promise.all([t.card("id","name","labels","idList"), t.lists("all"), t.get("card","shared","sched",null)]).then(function(r){
+    return Promise.all([t.card("id","name","labels","idList","due","customFieldItems"), t.lists("all"), t.get("card","shared","sched",null)]).then(function(r){
       card=r[0]; var list=r[1].filter(function(l){return l.id===card.idList;})[0]; workshop=!!(list&&WORKSHOP_LISTS.test(list.name));
       site=(card.labels||[]).some(function(l){return SITE_LABELS.test(l.name);});
+      var ready=""; (card.customFieldItems||[]).forEach(function(i){ if(i.value&&i.value.date) ready=i.value.date.slice(0,10); });
+      prodDue=productionDue(ready,(card.due||"").slice(0,10)); prodFromCard=!!ready;
       d=r[2]||{who:[],mins:null,drive:null,contractor:"",prep:null,legs:[]}; if(!d.who) d.who=[]; if(workshop&&!d.prep) d.prep={who:[],mins:null,start:null,date:null};
       render();
     });
@@ -74,6 +76,8 @@
       app.appendChild(tb); }
     if(!contractorOnly) app.appendChild(timeBlock(d,site?"Site time per operative":"Labour time per operative"));
     if(workshop){ var pb=el("div","blk"); pb.appendChild(el("div","bh","Production"));
+      if(prodDue) pb.appendChild(el("div","hint","Production due "+prodDue+(prodFromCard?" (Production Due Date on the card)":" ("+PRODUCTION_BUFFER_DAYS+" working days before delivery)")));
+      if(prodDue&&d.prep&&d.prep.date&&d.prep.date>prodDue) pb.appendChild(el("div","hint far","Scheduled to finish after it is due."));
       var pr=el("div","row"); var d1=el("input"); d1.type="date"; d1.value=d.prep.start||""; var d2=el("input"); d2.type="date"; d2.value=d.prep.date||"";
       d1.onchange=function(){ d.prep.start=d1.value||null; if(d.prep.start&&(!d.prep.date||d.prep.date<d.prep.start)) d.prep.date=d.prep.start; if(!d.prep.start) d.prep.date=null; save(); render(); };
       d2.onchange=function(){ d.prep.date=d2.value||null; if(d.prep.date&&(!d.prep.start||d.prep.start>d.prep.date)) d.prep.start=d.prep.date; if(!d.prep.date) d.prep.start=null; save(); render(); };

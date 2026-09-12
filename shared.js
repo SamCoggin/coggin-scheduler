@@ -17,3 +17,9 @@ function badgeText(d,site){
   if(missing.length) return {text:who.join(", ")+": "+missing.join(", "),color:"yellow"};
   return {text:who.join(", ")+": "+(site&&d.drive?fmt(d.drive)+" travel + ":"")+fmt(d.mins)+(who.length>1?" each":""),color:"green"};
 }
+
+// production is due this many working days before the delivery date unless
+// the card's Production Due Date field says otherwise
+var PRODUCTION_BUFFER_DAYS=2;
+function workingDaysBefore(iso,n){ var d=new Date(iso+"T12:00"); var left=n; while(left>0){ d.setDate(d.getDate()-1); if(d.getDay()!==0&&d.getDay()!==6) left--; } return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
+function productionDue(readyBy,due){ if(readyBy) return readyBy; if(!due) return null; return workingDaysBefore(due,PRODUCTION_BUFFER_DAYS); }
