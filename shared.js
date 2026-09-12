@@ -6,7 +6,7 @@ var WORKSHOP_LISTS=/Workshop Jobs - (Not Started|In-progress)/;
 var READY_LIST=/Workshop Jobs - Ready/;
 // QC evidence is the card checklist (photos, labels): all items ticked
 function qcDone(badges){ return !!(badges&&badges.checkItems>0&&badges.checkItemsChecked>=badges.checkItems); }
-var SITE_LABELS=/delivery\/installation|collect & return|warranty|removal/i;
+var SITE_LABELS=/delivery\/installation|collect & return|warranty|removal|donation/i;
 function fmt(m){ if(m==null) return ""; if(m<60) return m+" min"; var h=Math.floor(m/60), r=m%60; return h+"h"+(r?" "+r+"m":""); }
 // what the front of the card says, from the saved plan
 function badgeText(d,site){
