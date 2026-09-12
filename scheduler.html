@@ -1,0 +1,654 @@
+<title>Coggin Scheduler</title>
+<style>
+  :root{ --board:#cfd6e0; --list:#eef0f3; --card:#fff; --text:#172b4d; --muted:#5e6c84; --line:#b8c0cc; --blue:#0c66e4; --blue-bg:#e9f2ff; --red:#c9372c; --red-bg:#ffeceb; --green:#1f845a; --green-bg:#e3fcef; --amber:#974f0c; --amber-bg:#fff7d6; --shadow:0 1px 1px rgba(9,30,66,.25),0 0 1px rgba(9,30,66,.31); }
+  @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){ --board:#1d2125; --list:#101204; --card:#22272b; --text:#b6c2cf; --muted:#8c9bab; --line:#4a5661; --blue:#579dff; --blue-bg:#1c2b41; --red:#f87168; --red-bg:#42221f; --green:#4bce97; --green-bg:#1c3329; --amber:#f5cd47; --amber-bg:#3d2e00; --shadow:0 1px 1px rgba(0,0,0,.5); }}
+  :root[data-theme="dark"]{ --board:#1d2125; --list:#101204; --card:#22272b; --text:#b6c2cf; --muted:#8c9bab; --line:#4a5661; --blue:#579dff; --blue-bg:#1c2b41; --red:#f87168; --red-bg:#42221f; --green:#4bce97; --green-bg:#1c3329; --amber:#f5cd47; --amber-bg:#3d2e00; --shadow:0 1px 1px rgba(0,0,0,.5); }
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{margin:0;background:var(--board);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Noto Sans",Ubuntu,"Helvetica Neue",sans-serif;font-size:14px;line-height:1.4;overflow:hidden}
+  button,input{font-family:inherit;font-size:inherit;color:inherit}
+  button{cursor:pointer}
+  button:focus-visible,input:focus-visible{outline:2px solid var(--blue);outline-offset:1px}
+
+  .hdr{display:flex;align-items:center;gap:10px;padding:10px 16px;background:var(--card);border-bottom:1px solid var(--line)}
+  .hdr h1{font-size:22px;font-weight:800;margin:0}
+  .hdr .src{color:var(--muted);font-size:13px;margin-right:auto;margin-left:6px}
+  .hdr button{border:0;background:var(--list);border-radius:6px;padding:7px 14px;font-weight:600}
+  .hdr button:hover{background:var(--line)}
+  .hdr .t{font-weight:800;min-width:210px;text-align:center;font-size:17px}
+.tip{width:18px;height:18px;border-radius:50%;border:1px solid var(--line);background:var(--card);color:var(--muted);font-size:11px;font-weight:700;line-height:1;padding:0;margin-left:6px;vertical-align:middle}
+  .tip:hover{border-color:var(--blue);color:var(--blue)}
+  .tipw{position:relative;display:inline-block}
+  .tipp{position:absolute;left:0;top:24px;z-index:5;background:var(--text);color:#fff;font-size:13px;font-weight:500;text-transform:none;letter-spacing:0;line-height:1.4;padding:8px 10px;border-radius:8px;width:240px;box-shadow:0 4px 12px rgba(9,30,66,.3)}
+  .hdr .views{display:inline-flex;gap:4px;margin-right:8px;background:var(--list);border-radius:8px;padding:3px}
+  .hdr .views button{padding:5px 12px;border-radius:6px;background:transparent}
+  .hdr .views button.on{background:var(--card);box-shadow:var(--shadow)}
+  .board.day{grid-template-columns:repeat(4,minmax(260px,1fr))}
+  .board.month{grid-template-columns:repeat(5,1fr);grid-auto-rows:1fr;gap:8px;overflow:hidden}
+  .mh{font-weight:800;font-size:14px;text-transform:uppercase;letter-spacing:.04em;color:var(--text);padding:4px 6px}
+  .mcell{background:var(--list);border:2px solid #3d4451;border-radius:10px;padding:8px 10px;text-align:left;display:flex;flex-direction:column;gap:6px;min-height:0;overflow:hidden}
+  .mcell.today{border-color:var(--blue)}
+  .mcell.dim{opacity:.35}
+  .mcell .d{font-weight:800;font-size:16px;display:flex;justify-content:space-between}
+  .mcell .d span{font-weight:600;font-size:12px;color:var(--muted)}
+  .mcell:hover{outline:2px solid var(--blue)}
+  .mp{display:flex;flex-direction:column;gap:4px}
+  .mp span{font-size:13px;font-weight:700;border-radius:6px;padding:2px 8px;background:var(--card);border:1px solid var(--line);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .mp .p{color:#0055cc} .mp .t{color:#1f845a} .mp .y{color:#626f86} .mp .l{color:var(--amber);background:var(--amber-bg);border-color:var(--amber-bg)}
+  .mp .ov{color:var(--red);background:var(--red-bg);border-color:var(--red-bg)}
+  .prow{display:grid;grid-template-columns:auto 1fr;gap:10px;align-items:start;background:var(--card);border:1px solid var(--line);border-radius:8px;padding:10px 12px;flex-shrink:0}
+  .prow .av{margin:0;border:0;width:32px;height:32px;font-size:12px}
+  .prow b{display:block;font-size:16px}
+  .prow .ld{font-size:12px;font-weight:600}
+  .prow .ld.free{color:var(--green)} .prow .ld.over{color:var(--red)} .prow .ld.off{color:var(--amber)} .prow .ld.busy{color:var(--muted)}
+  .prow ul{margin:6px 0 0;padding-left:16px;font-size:13px;color:var(--muted)}
+  .prow li{margin:2px 0}
+
+  .board{display:grid;grid-template-columns:repeat(5,minmax(230px,1fr));gap:12px;padding:12px 16px;height:calc(100vh - 53px);overflow-x:auto;min-height:0}
+  .list{background:var(--list);border-radius:12px;display:flex;flex-direction:column;min-height:0;border:2px solid #3d4451;box-shadow:0 2px 6px rgba(9,30,66,.18)}
+  .list.today{border-color:var(--blue)}
+  .list h2{font-size:18px;font-weight:800;margin:0;padding:12px 14px;display:flex;justify-content:space-between;align-items:baseline;background:var(--card);border-bottom:2px solid #3d4451;border-radius:10px 10px 0 0}
+  .list h2 span{color:var(--muted);font-weight:500;font-size:12px}
+  .list h2{flex-wrap:wrap}
+  .list h2 .viewday{order:3;flex-basis:100%;margin-top:8px;border:1px solid var(--line);background:var(--list);border-radius:6px;padding:5px 10px;font-size:13px;font-weight:700;color:var(--blue);text-align:center}
+  .list h2 .viewday:hover{background:var(--blue-bg);border-color:var(--blue)}
+  .list.today h2 em{font-style:normal;color:var(--blue)}
+  .cards{flex:1;overflow:auto;padding:8px 8px 8px;display:flex;flex-direction:column;gap:6px;min-height:0}
+  .sec-h{flex-shrink:0;font-size:14px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:var(--text);padding:9px 12px;margin-top:8px;display:flex;justify-content:space-between;background:rgba(9,30,66,.10);border-radius:6px}
+  .sec-h:first-child{margin-top:0}
+  .sec-h.shop{color:#0055cc;background:rgba(0,85,204,.14)}
+  .card{background:var(--card);border-radius:8px;border:1px solid var(--line);box-shadow:0 1px 2px rgba(9,30,66,.2);padding:0;text-align:left;width:100%;position:relative;overflow:hidden;flex-shrink:0}
+  .card .top{padding:8px 12px 4px}
+  .card .mid{padding:0 12px 8px}
+  .card .foot{padding:6px 12px 8px;border-top:1px solid var(--line);display:flex;align-items:center;gap:6px;background:rgba(9,30,66,.04)}
+  .card:hover{outline:2px solid var(--blue)}
+  .card.shop{background:var(--blue-bg)}
+  .card.round{background:var(--green-bg);border-color:#1f845a}
+  .lab{display:inline-block;font-size:11px;font-weight:700;color:#fff;border-radius:4px;padding:2px 8px;margin-bottom:6px;line-height:1.3}
+  .lab.stage{background:var(--list);color:var(--text);border:1px solid var(--line);margin-left:4px}
+  .card.shop .lab.stage{background:#0055cc;color:#fff;border-color:#0055cc}
+  .ttl{font-weight:700;display:block;font-size:16px;line-height:1.3;color:var(--text)}
+  .for{display:block;font-size:13px;color:var(--muted);margin-top:3px;font-weight:500}
+  .meta{display:flex;align-items:center;gap:6px;flex-wrap:wrap;width:100%}
+  .av{width:28px;height:28px;border-radius:50%;background:#0c66e4;color:#fff;font-size:11px;font-weight:700;display:inline-flex;align-items:center;justify-content:center;border:2px solid var(--card);margin-right:-8px}
+  .avs{display:flex;padding-right:8px}
+  .bdg{margin-left:auto;font-size:12px;font-weight:600;border-radius:4px;padding:2px 8px;background:var(--list);color:var(--muted)}
+  .bdg.todo{background:var(--amber-bg);color:var(--amber)}
+  .bdg.now{background:var(--red-bg);color:var(--red)}
+  .leave{flex-shrink:0;background:var(--amber-bg);color:var(--amber);font-weight:600;border-radius:8px;padding:8px 12px;font-size:13px}
+
+  .tot{border-top:2px solid #3d4451;background:var(--card);border-radius:0 0 10px 10px;padding:10px 14px 12px;font-size:13px;display:flex;flex-direction:column;gap:3px}
+  .tot div{display:flex;justify-content:space-between;align-items:center}
+  .tot .n{font-weight:600}
+  .tot .ok{color:var(--green);font-weight:600} .tot .over{color:var(--red);font-weight:700} .tot .free{color:var(--muted)} .tot .todo{color:var(--amber);font-weight:600}
+  .bar{height:5px;border-radius:3px;background:var(--line);margin-top:6px;overflow:hidden}
+  .bar i{display:block;height:100%;background:var(--green)}
+  .bar i.over{background:var(--red)}
+
+  .veil{position:fixed;inset:0;background:rgba(0,0,0,.55);display:flex;align-items:flex-start;justify-content:center;padding:48px 16px;overflow:auto;z-index:10}
+  .modal{background:var(--card);border-radius:12px;width:min(640px,100%);box-shadow:0 8px 24px rgba(9,30,66,.35);padding:22px 26px 26px}
+  .modal .head{display:flex;align-items:flex-start;gap:12px;margin-bottom:6px}
+  .modal h3{margin:0;font-size:20px;font-weight:700;flex:1;line-height:1.3}
+  .modal .close{border:0;background:var(--list);border-radius:6px;padding:6px 12px;font-weight:600}
+  .modal .sub{color:var(--muted);font-size:13px;margin-bottom:18px}
+  .sec{margin-top:18px}
+  .sec .k{font-size:12px;text-transform:uppercase;letter-spacing:.02em;color:var(--muted);font-weight:700;margin-bottom:8px}
+  .people{display:flex;gap:8px;flex-wrap:wrap}
+  .person{border:2px solid var(--line);background:var(--card);border-radius:10px;padding:8px 12px;display:flex;align-items:center;gap:8px;font-weight:600}
+  .person .av{margin:0;border:0;background:var(--line);color:var(--muted)}
+  .person .pn{display:flex;flex-direction:column;line-height:1.2;text-align:left}
+  .person .ld{font-weight:500;font-size:12px;color:var(--muted)}
+  .person .ld.free{color:var(--green);font-weight:700} .person .ld.over{color:var(--red);font-weight:700} .person .ld.off{color:var(--amber)}
+  .person.off{opacity:.6}
+  .person.on{border-color:var(--blue);background:var(--blue-bg)}
+  .person.on .av{background:#0c66e4;color:#fff}
+  .hint{color:var(--muted);font-size:13px}
+  .hint.far{color:var(--red);font-weight:700;margin-top:8px}
+  .quick{display:flex;gap:8px;flex-wrap:wrap}
+  .quick button{border:2px solid var(--line);background:var(--card);border-radius:10px;padding:8px 14px;font-weight:600}
+  .quick button.on{border-color:var(--blue);background:var(--blue-bg);color:var(--blue)}
+  .row{display:flex;align-items:center;gap:10px;margin-top:10px;flex-wrap:wrap}
+  .row input{border:2px solid var(--line);border-radius:8px;padding:8px 12px;background:var(--card);font-weight:600;min-width:120px}
+  .row input[type=number]{width:90px}
+  .hm{display:inline-flex;align-items:center;gap:8px}
+  .hm input{width:72px}
+  .row .hint{color:var(--muted);font-size:13px}
+  .facts{border:1px solid var(--line);border-radius:10px;overflow:hidden}
+  .fld{display:grid;grid-template-columns:96px 1fr;gap:12px;padding:10px 14px;border-top:1px solid var(--line);font-size:14px;line-height:1.45}
+  .fld:first-child{border-top:0}
+  .fld b{color:var(--muted);font-size:12px;text-transform:uppercase;letter-spacing:.03em;padding-top:2px}
+  .fld a{color:var(--blue);font-weight:600;text-decoration:none}
+  .checks{margin-top:12px;border:1px solid var(--line);border-radius:10px;padding:10px 14px}
+  .checks b{font-size:12px;text-transform:uppercase;letter-spacing:.03em;color:var(--muted)}
+  .over{background:var(--list);border-radius:10px;padding:12px 14px;margin-top:8px}
+  .over pre{white-space:pre-wrap;font-family:inherit;margin:0;font-size:13px;line-height:1.5;color:var(--text)}
+  .over h4{margin:0 0 4px;font-size:12px;text-transform:uppercase;color:var(--muted);letter-spacing:.03em}
+  .items{list-style:none;margin:8px 0 0;padding:0}
+  .items li{padding:5px 0;border-top:1px solid var(--line);font-size:13px;display:flex;gap:8px;align-items:flex-start}
+  .items.plain li{padding-left:14px;position:relative}
+  .items.plain li:before{content:"";position:absolute;left:0;top:11px;width:6px;height:6px;border-radius:50%;background:var(--muted)}
+  .items li .box{width:16px;height:16px;border:2px solid var(--line);border-radius:4px;flex-shrink:0;margin-top:2px}
+  .items li.done{color:var(--muted);text-decoration:line-through}
+  .items li.done .box{background:var(--green);border-color:var(--green)}
+  .modal{max-height:calc(100vh - 96px);overflow:auto}
+  .two{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+  @media (max-width:700px){.two{grid-template-columns:1fr}}
+  .modal.wide{width:min(960px,100%);padding:0}
+  .modal.wide .head{padding:20px 24px 14px;border-bottom:1px solid var(--line);margin:0;align-items:flex-start}
+  .modal.wide .head h3{font-size:28px;margin:8px 0 4px;font-weight:800}
+  .modal.wide .sub{margin:0}
+  .labs .lab{margin-bottom:0}
+  .cols{display:grid;grid-template-columns:1.1fr 1fr;gap:0}
+  .colL{padding:18px 24px;border-right:1px solid var(--line);background:var(--list)}
+  .colR{padding:18px 24px;display:flex;flex-direction:column;gap:14px}
+  .colL .blk+.blk{margin-top:14px}
+  .blk{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:12px 14px}
+  .colL .blk{background:var(--card)}
+  .bh{font-size:16px;font-weight:800;margin-bottom:10px;display:flex;align-items:center;text-transform:uppercase;letter-spacing:.02em}
+  .plist{display:flex;flex-direction:column;gap:6px}
+  .prow2{display:grid;grid-template-columns:32px 1fr auto auto;align-items:center;gap:10px;border:1px solid var(--line);background:var(--card);border-radius:8px;padding:6px 10px;text-align:left}
+  .prow2 .av{margin:0;border:0;width:30px;height:30px;font-size:11px;background:var(--line);color:var(--muted)}
+  .prow2 .nm{font-weight:600}
+  .prow2 .ld{font-size:12px;color:var(--muted)}
+  .prow2 .ld.free{color:var(--green);font-weight:700} .prow2 .ld.over{color:var(--red);font-weight:700} .prow2 .ld.off{color:var(--amber)}
+  .prow2 .tick{font-size:12px;font-weight:700;color:var(--blue);border:1px solid var(--blue);border-radius:6px;padding:3px 9px}
+  .prow2.on{border-color:var(--blue);background:var(--blue-bg)}
+  .prow2.on .av{background:#0c66e4;color:#fff}
+  .prow2.on .tick{background:var(--blue);color:#fff}
+  .prow2.off{opacity:.55}
+  .blk select{width:100%;border:2px solid var(--line);border-radius:8px;padding:8px 10px;background:var(--card);font-weight:600}
+  .blk .row{margin-top:0}
+  .blk .hint{margin-top:8px}
+  .prep{display:grid;grid-template-columns:1fr auto;gap:4px 12px;align-items:center;font-weight:600}
+  .prep .hint{margin:0;grid-column:1}
+  .prep button{grid-row:1/3;grid-column:2}
+  .seg{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+  .seg button{border:2px solid var(--line);background:var(--card);border-radius:8px;padding:8px 6px;font-weight:600}
+  .seg button.on{border-color:var(--blue);background:var(--blue-bg);color:var(--blue)}
+  .seg+.row{margin-top:10px}
+  .modal.wide .save{padding:0 24px 20px;margin-top:0}
+  @media (max-width:800px){.cols{grid-template-columns:1fr}.colL{border-right:0;border-bottom:1px solid var(--line)}}
+  .save{margin-top:22px;display:flex;justify-content:flex-end}
+  .save button{border:0;background:var(--blue);color:#fff;border-radius:8px;padding:10px 20px;font-weight:700}
+</style>
+
+<div class="hdr">
+  <h1>Scheduler</h1>
+  <span class="src" id="src"></span>
+  <span class="views"><button id="vday">Day</button><button id="vweek" class="on">Week</button><button id="vmonth">Month</button></span>
+  <button id="prev">Back</button><span class="t" id="title"></span><button id="next">Next</button>
+</div>
+<div class="board" id="board"></div>
+
+<script>
+var SNAP=null, DETAIL={};
+</script>
+
+<script src="https://p.trellocdn.com/power-up.min.js"></script>
+<script>
+(function(){
+  "use strict";
+  var t=window.TrelloPowerUp?TrelloPowerUp.iframe():null;
+  var TODAY_REAL=new Date(); TODAY_REAL.setHours(12,0,0,0);
+  var TODAY=new Date(2026,8,14), DAY_H=7.5;
+  var TEAM=CREW, open=null, week=0;
+  // ── read the live board through Trello's client, then run the scheduler ──
+  var ROLE={"Workshop Jobs - Not Started":"waiting","Workshop Jobs - In-progress":"shop","Workshop Jobs - Pending Quality Control":"shop","Workshop Jobs - Ready for Delivery / Collection":"ready",
+    "Removals / Recycling / Skips / Stock / Plastic":"yard","Other Planned Activity":"yard","Holidays / Leave":"leave","Operations Transfer List":"handed"};
+  var CREW=["Jack","Jordan","Bart","Rob","Bradley"];
+  function loadBoard(){
+    return Promise.all([t.lists("all"),t.cards("all"),t.board("name","members"),t.get("board","shared","sched",{})]).then(function(r){
+      var lists=r[0], cards=r[1], board=r[2], boardData=r[3];
+      var lm={}; lists.forEach(function(l){ lm[l.id]=l; });
+      var out=[];
+      cards.forEach(function(c){
+        var l=lm[c.idList]; if(!l||!ROLE[l.name]) return;
+        var role=ROLE[l.name], due=(c.due||"").slice(0,10), start=(c.start||"").slice(0,10);
+        if((role==="yard"||role==="leave")&&!due) return;
+        var ready="";(c.customFieldItems||[]).forEach(function(i){ if(i.value&&i.value.date) ready=i.value.date.slice(0,10); });
+        out.push({id:c.id,name:c.name.trim(),role:role,due:due,start:start,ready_by:ready,labels:(c.labels||[]).map(function(x){return x.name;}),who:(c.members||[]).map(function(m){return m.fullName.split(" ")[0];}),desc:c.desc||""});
+      });
+      return Promise.all(out.map(function(c){ return t.get(c.id,"shared","sched",null).then(function(d){ c.saved=d; return c; }); })).then(function(cs){
+        cs.forEach(function(c){ DETAIL[c.id]={desc:c.desc,checks:[]}; });
+        return {board:board.name,crew:CREW,cards:cs,boardData:boardData};
+      });
+    });
+  }
+
+  var CONTRACTORS=["MAK Installations","Courier","Other contractor"];
+  var COL={"Removal Job":"#0c66e4","Delivery/Installation":"#1f845a","Recycling Delivery":"#6e5dc6","Skip Exchange":"#626f86","New Stock Delivery":"#e56910","Collect & Return":"#227d9b","Customer Collecting":"#ae4787","Courier Collecting":"#ae4787","Warranty/Job Issue":"#c9372c","Donations":"#ae4787"};
+  var el=function(t,c,x){var n=document.createElement(t);if(c)n.className=c;if(x!=null)n.textContent=x;return n;};
+  var $=function(s){return document.querySelector(s);};
+  var pad=function(n){return (n<10?"0":"")+n;};
+  var iso=function(d){return d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate());};
+  var DAYS=["Sun","Mon","Tue","Wed","Thu","Fri","Sat"], MON=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+  var addDays=function(d,n){var x=new Date(d);x.setDate(x.getDate()+n);return x;};
+  var monday=function(d){var x=new Date(d);x.setDate(x.getDate()-((x.getDay()+6)%7));return x;};
+  var ini=function(n){return n.slice(0,2).toUpperCase();};
+  // time is kept in minutes. a skip exchange is 20 minutes of standing there; a delivery is a day.
+  var fmt=function(m){ if(m==null) return ""; if(m<60) return m+" min"; var h=Math.floor(m/60), r=m%60; return h+"h"+(r?" "+r+"m":""); };
+  // one-way drive hours from Forton to each postcode area, from the CRM's
+  // delivery quote table. the Power-Up will look the postcode up on the deal.
+  var DRIVE={"AB":{"area":"Aberdeen","h":7.17},"AL":{"area":"St Albans","h":5.5},"B":{"area":"Birmingham","h":3.15},"BA":{"area":"Bath","h":5.37},"BB":{"area":"Blackburn","h":0.38},"BD":{"area":"Bradford","h":1.23},"BH":{"area":"Bournemouth","h":6.85},"BL":{"area":"Bolton","h":0.7},"BN":{"area":"Brighton","h":7.38},"BR":{"area":"Bromley","h":6.38},"BS":{"area":"Bristol","h":5.18},"BT":{"area":"Belfast","h":4.35},"CA":{"area":"Carlisle","h":2.27},"CB":{"area":"Cambridge","h":5.13},"CF":{"area":"Cardiff","h":5.15},"CH":{"area":"Chester","h":1.43},"CM":{"area":"Chelmsford","h":6.18},"CO":{"area":"Colchester","h":6.35},"CR":{"area":"Croydon","h":6.37},"CT":{"area":"Canterbury","h":7.47},"CV":{"area":"Coventry","h":3.33},"CW":{"area":"Crewe","h":1.67},"DA":{"area":"Dartford","h":6.47},"DD":{"area":"Dundee","h":5.63},"DE":{"area":"Derby","h":2.57},"DG":{"area":"Dumfries","h":2.85},"DH":{"area":"Durham","h":2.45},"DL":{"area":"Darlington","h":2.07},"DN":{"area":"Doncaster","h":2.17},"DT":{"area":"Dorchester","h":6.8},"DY":{"area":"Dudley","h":3.02},"E":{"area":"East London","h":6.13},"EC":{"area":"London (EC)","h":6.12},"EH":{"area":"Edinburgh","h":4.57},"EN":{"area":"Enfield","h":5.87},"EX":{"area":"Exeter","h":6.85},"FK":{"area":"Falkirk","h":4.82},"FY":{"area":"Blackpool","h":0.42},"G":{"area":"Glasgow","h":4.73},"GL":{"area":"Gloucester","h":4.33},"GU":{"area":"Guildford","h":6.32},"GY":{"area":"Guernsey","h":9.5},"HA":{"area":"Harrow","h":5.82},"HD":{"area":"Huddersfield","h":1.28},"HG":{"area":"Harrogate","h":1.53},"HP":{"area":"Hemel Hempstead","h":5.4},"HR":{"area":"Hereford","h":3.88},"HS":{"area":"Outer Hebrides","h":10.38},"HU":{"area":"Hull","h":3.07},"HX":{"area":"Halifax","h":1.13},"IG":{"area":"Ilford","h":6.15},"IM":{"area":"Isle of Man","h":2.33},"IP":{"area":"Ipswich","h":6.35},"IV":{"area":"Inverness","h":8.03},"JE":{"area":"Jersey","h":10.1},"KA":{"area":"Kilmarnock","h":4.4},"KT":{"area":"Kingston upon Thames","h":6.15},"KW":{"area":"Kirkwall (Orkney)","h":11.08},"KY":{"area":"Kirkcaldy","h":4.92},"L":{"area":"Liverpool","h":1.02},"LA":{"area":"Lancaster","h":0.43},"LD":{"area":"Llandrindod Wells","h":3.58},"LE":{"area":"Leicester","h":3.33},"LL":{"area":"Llandudno","h":1.82},"LN":{"area":"Lincoln","h":3.1},"LS":{"area":"Leeds","h":1.5},"LU":{"area":"Luton","h":5.22},"M":{"area":"Manchester","h":1.02},"ME":{"area":"Medway","h":6.83},"MK":{"area":"Milton Keynes","h":4.67},"ML":{"area":"Motherwell","h":4.47},"N":{"area":"North London","h":5.98},"NE":{"area":"Newcastle upon Tyne","h":2.8},"NG":{"area":"Nottingham","h":2.8},"NN":{"area":"Northampton","h":4.22},"NP":{"area":"Newport","h":4.92},"NR":{"area":"Norwich","h":5.83},"NW":{"area":"North West London","h":6.0},"OL":{"area":"Oldham","h":1.03},"OX":{"area":"Oxford","h":4.92},"PA":{"area":"Paisley","h":4.8},"PE":{"area":"Peterborough","h":4.23},"PH":{"area":"Perth","h":5.55},"PL":{"area":"Plymouth","h":7.73},"PO":{"area":"Portsmouth","h":6.92},"PR":{"area":"Preston","h":0.2},"RG":{"area":"Reading","h":5.67},"RH":{"area":"Redhill","h":6.57},"RM":{"area":"Romford","h":6.22},"S":{"area":"Sheffield","h":1.9},"SA":{"area":"Swansea","h":5.07},"SE":{"area":"South East London","h":6.15},"SG":{"area":"Stevenage","h":5.35},"SK":{"area":"Stockport","h":1.2},"SL":{"area":"Slough","h":5.78},"SM":{"area":"Sutton","h":6.32},"SN":{"area":"Swindon","h":5.12},"SO":{"area":"Southampton","h":6.58},"SP":{"area":"Salisbury","h":6.13},"SR":{"area":"Sunderland","h":2.83},"SS":{"area":"Southend-on-Sea","h":6.7},"ST":{"area":"Stoke-on-Trent","h":1.97},"SW":{"area":"South West London","h":6.08},"SY":{"area":"Shrewsbury","h":2.47},"TA":{"area":"Taunton","h":6.15},"TD":{"area":"Galashiels","h":3.8},"TF":{"area":"Telford","h":2.57},"TN":{"area":"Tonbridge","h":6.97},"TQ":{"area":"Torquay","h":7.4},"TR":{"area":"Truro","h":8.35},"TS":{"area":"Middlesbrough","h":2.45},"TW":{"area":"Twickenham","h":6.07},"UB":{"area":"Uxbridge","h":5.78},"W":{"area":"West London","h":6.03},"WA":{"area":"Warrington","h":1.02},"WC":{"area":"London (WC)","h":6.08},"WD":{"area":"Watford","h":5.63},"WF":{"area":"Wakefield","h":1.62},"WN":{"area":"Wigan","h":0.68},"WR":{"area":"Worcester","h":3.33},"WS":{"area":"Walsall","h":3.03},"WV":{"area":"Wolverhampton","h":2.98},"YO":{"area":"York","h":2.18},"ZE":{"area":"Shetland","h":13.75}};
+  var TOWN={"Blackpool":"FY","Preston":"PR","Skipton":"BD","Sedbergh":"LA","Nottingham":"NG","West Midlands":"B","Lymm":"WA","Sheffield":"S","Nelson":"BB","London":"EC","Garstang":"PR","Barton":"PR","Lancaster":"LA","Manchester":"M","Liverpool":"L","Leeds":"LS","York":"YO"};
+  // there and back, plus 20 percent for traffic and getting parked, to the nearest 5 minutes
+  var TRAFFIC=1.2;
+  function driveMins(title){ var town=title.split(" - ")[0].trim(); var pc=TOWN[town]; return pc&&DRIVE[pc] ? Math.round(DRIVE[pc].h*2*60*TRAFFIC/5)*5 : null; }
+  var QUICK=[[15,"15 min"],[30,"30 min"],[60,"1 hour"],[120,"2 hours"],[240,"Half day"],[450,"Full day"]];
+  // card names on the real board carry refs and invoice numbers. show the town and the customer.
+  function nice(n){ var parts=n.split(/\s+-\s*|\s*-\s+/).map(function(p){return p.trim();}).filter(Boolean);
+    parts=parts.filter(function(p){ return !/^[0-9A-F]{6}$/i.test(p) && !/estimate|invoice|^\[|^00000|^\d{5,}$|MAK/i.test(p) && !/^\d+\s*tonnes$/i.test(p); });
+    return parts.slice(0,2).join(" - "); }
+  // every dated card on the board is a job on the calendar. hours start empty.
+  // extra legs on a job: a delivery to a subcontractor, the collection back,
+  // a second production stint, a site visit. each has its own day, people,
+  // travel and time, and shows on the board like any other job.
+  var LEG_TYPES=[["to_sub","Deliver to subcontractor",true],["from_sub","Collect from subcontractor",true],["production","Production",false],["site","Site visit",true]];
+  var LEGS=[];
+  function legJobs(){
+    return LEGS.map(function(L,i){
+      var parent=JOBS.filter(function(j){return j.id===L.parent;})[0]; if(!parent) return null;
+      var tdef=LEG_TYPES.filter(function(t){return t[0]===L.type;})[0];
+      var j={id:L.parent+":leg"+i,leg:L,parentJob:parent,title:parent.title,label:parent.label,stageLabel:tdef[1]+(L.where?": "+L.where:""),date:L.date,start:null,who:L.who,contractor:"",mins:L.mins,site:tdef[2],drive:L.drive,isLeg:true};
+      return j; }).filter(Boolean);
+  }
+  function allJobs(){ return JOBS.concat(legJobs()); }
+  var prevWork=function(k){ var d=new Date(k+"T12:00"); do{ d.setDate(d.getDate()-1); }while(d.getDay()===0||d.getDay()===6); return iso(d); };
+  // the list a card sits in says what it is:
+  //   Not Started / In-progress   workshop work, one card, on the day it is being done
+  //   Ready for Delivery          the workshop is done, one card, the trip out
+  //   removals, skips, stock etc  the trip, as dated
+  var JOBS=[], LEAVE=[];
+  function buildFromSnap(SNAP){
+    JOBS=SNAP.cards.filter(function(c){return c.due && c.role!=="leave" && c.role!=="handed";}).map(function(c){
+    var lb=c.labels[0]||"", title=nice(c.name), subName=c.who.filter(function(w){return TEAM.indexOf(w)<0;})[0]||"";
+    var j={id:c.id,title:title,label:lb,who:c.who.filter(function(w){return TEAM.indexOf(w)>=0;}),contractor:subName?(subName==="MAK"?"MAK Installations":subName):"",mins:null,out:c.due};
+    if(c.role==="waiting"||c.role==="shop"){
+      j.stage=c.role==="shop"?"In progress":"Not started"; j.stageLabel=c.role==="shop"?"Workshop: In-progress":"Workshop: Not Started";
+      j.date=c.due;   // where the Trello calendar shows it, as the trip out
+      j.collect=/collecting/i.test(lb);
+      j.site=!j.collect && /delivery\/installation|collect & return/i.test(lb); if(j.site) j.drive=driveMins(title);
+      // the prep: who is getting it ready, and on which day
+      // the prep is not planned until you give it days
+      j.prep={who:[],mins:null,start:null,date:null,job:j,isPrep:true};
+    } else {
+      j.date=c.due; j.site=/delivery\/installation|collect & return|warranty|removal/i.test(lb);
+      j.stageLabel=c.role==="ready"?"Workshop: Ready":"Booked";
+      if(j.site) j.drive=driveMins(title);
+    }
+    j.start=c.start&&c.start<c.due?c.start:null;
+    return j; });
+  // a card with a start date is on the board every working day from start to due
+  function daysOf(j){ if(!j.start||j.start>=j.date) return [j.date]; var out=[]; for(var d=new Date(j.start+"T12:00");iso(d)<=j.date;d.setDate(d.getDate()+1)){ if(d.getDay()!==0&&d.getDay()!==6) out.push(iso(d)); } return out; }
+  // what each person already has on a day, in minutes, for the "who could jump on" hints
+  function loadOn(k){
+    var jobs=allJobs().filter(function(j){return onDay(j,k);}), preps=JOBS.filter(function(j){return j.prep&&j.prep.date&&daysOf(j.prep).indexOf(k)>=0;}), rounds=roundsOn(k,jobs), out={};
+    var off=LEAVE.filter(function(l){return l.date===k;}).map(function(l){return l.text.split(" ")[0];});
+    TEAM.forEach(function(w){
+      if(off.indexOf(w)>=0){ out[w]={t:"annual leave",c:"off"}; return; }
+      var mine=jobs.filter(function(j){return j.who.indexOf(w)>=0;}), myPreps=preps.filter(function(j){return j.prep.who.indexOf(w)>=0;}), myRound=rounds.filter(function(r){return r.who===w;})[0];
+      var mins=mine.reduce(function(s,j){return s+(j.mins||0)+(j.site&&!j.onRound?(j.drive||0):0);},0)+(myRound&&myRound.drive?myRound.drive:0)+myPreps.reduce(function(s,j){return s+(j.prep.mins||0);},0);
+      var n=mine.length+myPreps.length;
+      out[w]= !n ? {t:"available",c:"free"} : mins>DAY_H*60 ? {t:fmt(mins)+", over capacity",c:"over"} : !mins ? {t:n+(n===1?" job":" jobs")+", no time",c:"busy"} : {t:fmt(mins)+" allocated"+(n>1?", "+n+" jobs":""),c:"busy"};
+    });
+    return out;
+  }
+  function onDay(j,k){ return daysOf(j).indexOf(k)>=0; }
+    LEAVE=SNAP.cards.filter(function(c){return c.role==="leave"&&c.due;}).map(function(c){ return {date:c.due,text:c.name.replace(/\s*\(.*$/,"").replace(/BANK HOLIDAY\s*-\s*/i,"")+(/BANK HOLIDAY/i.test(c.name)?" (bank holiday)":" on leave")}; });
+    // what was saved on the cards last time
+    SNAP.cards.forEach(function(c){ var d=c.saved; if(!d) return; var j=JOBS.filter(function(x){return x.id===c.id;})[0]; if(!j) return;
+      if(d.who) j.who=d.who.slice(); if(d.mins!=null) j.mins=d.mins; if(d.drive!=null) j.drive=d.drive; if(d.contractor) j.contractor=d.contractor;
+      if(d.prep&&j.prep){ j.prep.who=d.prep.who||[]; j.prep.mins=d.prep.mins; j.prep.start=d.prep.start||null; j.prep.date=d.prep.date||null; }
+      (d.legs||[]).forEach(function(L){ LEGS.push({parent:j.id,type:L.type,date:L.date,who:L.who||[],mins:L.mins,drive:L.drive,where:L.where||""}); });
+    });
+    if(SNAP.boardData&&SNAP.boardData.roundDrive){ for(var k in SNAP.boardData.roundDrive) ROUND_DRIVE[k]=SNAP.boardData.roundDrive[k]; }
+  }
+  // save what changed back onto the cards
+  var lastSaved={};
+  function persist(){
+    if(!t) return;
+    JOBS.forEach(function(j){
+      var d={who:j.who,mins:j.mins,drive:j.drive,contractor:j.contractor||"",prep:j.prep?{who:j.prep.who,mins:j.prep.mins,start:j.prep.start,date:j.prep.date}:null,
+        legs:LEGS.filter(function(L){return L.parent===j.id;}).map(function(L){return {type:L.type,date:L.date,who:L.who,mins:L.mins,drive:L.drive,where:L.where};})};
+      var js=JSON.stringify(d); if(lastSaved[j.id]===js) return; lastSaved[j.id]=js; t.set(j.id,"shared","sched",d);
+    });
+    var rd=JSON.stringify(ROUND_DRIVE); if(lastSaved.__rounds!==rd){ lastSaved.__rounds=rd; t.set("board","shared","sched",{roundDrive:ROUND_DRIVE}); }
+  }
+
+  // the bit that opens under a card: who, quick times, minutes, and one extra row
+  // two boxes, hours and minutes, reading and writing one minutes value
+  function hmBoxes(get,set,label){
+    var wrap=el("span","hm"); var v=get();
+    var h=el("input"); h.type="number"; h.min="0"; h.step="1"; h.value=v==null?"":String(Math.floor(v/60)); h.placeholder="0"; h.setAttribute("aria-label",label+" hours");
+    var mn=el("input"); mn.type="number"; mn.min="0"; mn.max="55"; mn.step="5"; mn.value=v==null?"":String(v%60); mn.placeholder="0"; mn.setAttribute("aria-label",label+" minutes");
+    var upd=function(){ var hh=parseInt(h.value,10)||0, mm=parseInt(mn.value,10)||0; if(h.value===""&&mn.value===""){ set(null); } else set(hh*60+mm); render(); };
+    h.onchange=upd; mn.onchange=upd;
+    wrap.appendChild(h); wrap.appendChild(el("span",null,"hours")); wrap.appendChild(mn); wrap.appendChild(el("span",null,"minutes"));
+    return wrap;
+  }
+  // a round: one person, one day, two or more site jobs. one drive for the lot.
+  var ROUND_DRIVE={};   // "date|person" -> minutes, when you have changed it
+  function roundsOn(k,jobs){
+    var out=[];
+    TEAM.forEach(function(w){
+      var stops=jobs.filter(function(j){return j.site&&!j.shop&&j.who.indexOf(w)>=0;});
+      if(stops.length<2) return;
+      var key=k+"|"+w, longest=Math.max.apply(null,stops.map(function(j){return j.drive||0;}));
+      var def=longest?longest+20*(stops.length-1):null;
+      out.push({key:key,who:w,stops:stops,drive:ROUND_DRIVE[key]!=null?ROUND_DRIVE[key]:def,def:def});
+    });
+    return out;
+  }
+  function inRound(j,k){ var rs=roundsOn(k,allJobs().filter(function(x){return onDay(x,k);})); return rs.filter(function(r){return r.stops.indexOf(j)>=0;}); }
+  var openRound=null;
+  // turn the card text into fields, going by the headings the cards use.
+  // a heading line sets the group; every line after it goes in that group
+  // until the next heading. items are the "N x thing" lines.
+  var HEAD=[
+    [/^(site contact|contact details|supplier details|seller contact|contact)$/i,"contact"],
+    [/address|their site/i,"where"],
+    [/^(items.*|load details|warranty\/job issue|deliver\/collect|additional items.*)$/i,"what"],
+    [/^(access.*|logistics|safety.*)$/i,"access"],
+    [/^(job|ref|service|delivery details|clearance details|refurb collection details|buyback drop-off details|delivery info|other items|additional info)$/i,"skip"]
+  ];
+  function parseDesc(txt){
+    var groups={contact:[],where:[],what:[],access:[],notes:[]}, cur="notes";
+    txt.split("\n").forEach(function(raw){
+      var l=raw.replace(/^\s*[-*_]+\s*/,"").replace(/_+$/,"").trim(); if(!l) return;
+      var bare=l.replace(/:$/,"").trim(), hit=null;
+      if(bare.length<40 && !/\d/.test(bare)) HEAD.forEach(function(h){ if(!hit && h[0].test(bare)) hit=h[1]; });
+      if(hit){ cur=hit==="skip"?(/^(other items|additional info|delivery info)$/i.test(bare)?"notes":cur):hit; if(/:$/.test(l)||hit==="skip"||bare===l) return; }
+      if(/:$/.test(l)) return;                                              // a sub-heading with nothing on it
+      if(/^(service|mode|method|collection date|ref):/i.test(l)) return;
+      if(/sign-off|click here|attach photos|photo evidence|link this order|remove when created|^delivered|^collected|^tracking/i.test(l)) return;
+      if(/^[^:]*:\s*(n\/a|none|-)\s*$/i.test(l)) return;
+      var line=/^(name|phone|mobile number|site contact name|email|number):/i.test(l)?"contact":/^(address|postcode|delivery\/collection address|collection address|delivery address):/i.test(l)?"where":/^(access|floor|parking|stairs|lift|loading|distance|working hours|known hazards|security|rams|ppe|time restrictions|vehicle size|parking permits):/i.test(l)?"access":null;
+      groups[line||cur].push(l.replace(/^(address|postcode|collection address|delivery address|delivery\/collection address|site contact name|name|mobile number|phone|number):\s*/i,""));
+    });
+    return groups;
+  }
+  function field(label,lines){
+    if(!lines.length) return null;
+    var row=el("div","fld"); row.appendChild(el("b",null,label)); var v=el("div");
+    lines.forEach(function(l){ var d=el("div"); var m=/(\+?\d[\d ]{8,}\d)/.exec(l); if(m){ d.appendChild(document.createTextNode(l.slice(0,m.index))); var a=el("a",null,m[1]); a.href="tel:"+m[1].replace(/\s/g,""); d.appendChild(a); d.appendChild(document.createTextNode(l.slice(m.index+m[1].length))); } else d.textContent=l; v.appendChild(d); });
+    row.appendChild(v); return row;
+  }
+  // the badge says exactly what is still missing, since a transport job has
+  // more than one time on it
+  function badge(part,isToday){
+    var cls="bdg "+(isToday?"now":"todo");
+    if(part.contractor&&!part.who.length) return el("span","bdg",part.contractor);
+    if(!part.who.length) return el("span",cls,"Unassigned");
+    if(part.isPrep){ if(part.mins==null) return el("span",cls,"No production time"); return el("span","bdg",fmt(part.mins)+(part.who.length>1?" each":"")); }
+    var missing=[];
+    if(part.site&&part.drive==null&&!part.onRound) missing.push("No travel time");
+    if(part.mins==null) missing.push(part.site?"No site time":"No labour time");
+    if(part.prep&&!part.prep.date) missing.push("Production not scheduled");
+    if(missing.length) return el("span",cls,missing.join(", "));
+    if(part.onRound) return el("span","bdg","On round, "+fmt(part.mins)+" on site");
+    return el("span","bdg"+(part.site&&part.drive>6*60?" now":""),(part.site&&part.drive?fmt(part.drive)+" travel + ":"")+fmt(part.mins)+(part.who.length>1?" each":""));
+  }
+  function avatars(who){ var w=el("span","avs"); who.forEach(function(n){ var a=el("span","av",ini(n)); a.title=n; w.appendChild(a); }); return w; }
+  function findOpen(){ if(!open) return null; var parts=open.split(":"); if(parts[1]&&parts[1].indexOf("leg")===0){ var lj=legJobs().filter(function(x){return x.id===open;})[0]; return lj?{job:lj,part:lj,shop:false,leg:true}:null; } var j=JOBS.filter(function(x){return x.id===parts[0];})[0]; if(!j) return null; return parts[1]==="prep"?{job:j,part:j.prep,shop:true}:{job:j,part:j,shop:false}; }
+
+  function block(title,tipKey){ var d=el("div","blk"); var h=el("div","bh"); h.appendChild(el("span",null,title)); if(tipKey) h.appendChild(tip(tipKey)); d.appendChild(h); return d; }
+  function modal(){
+    var o=findOpen(); if(!o) return null;
+    var j=o.job, part=o.part;
+    var veil=el("div","veil"); veil.onclick=function(e){ if(e.target===veil){ open=null; render(); } };
+    var m=el("div","modal wide");
+    // header: labels, title, when
+    var head=el("div","head"); var ht=el("div"); var labs=el("div","labs");
+    if(o.shop){ var gl=el("span","lab","Production"); gl.style.background="#0055cc"; labs.appendChild(gl); }
+    if(j.label){ var lb=el("span","lab",j.label); lb.style.background=COL[j.label]||"#626f86"; labs.appendChild(lb); }
+    labs.appendChild(el("span","lab stage",j.stageLabel)); ht.appendChild(labs);
+    ht.appendChild(el("h3",null,j.title));
+    ht.appendChild(el("div","sub",o.shop?"Production for "+niceDay(j.date)+(j.collect?", customer collecting":""):(j.start?niceDay(j.start)+" to "+niceDay(j.date)+", "+daysOf(j).length+" days":niceDay(j.date))));
+    head.appendChild(ht); var x=el("button","close","Close"); x.onclick=function(){open=null;render();}; head.appendChild(x); m.appendChild(head);
+
+    var cols=el("div","cols"), left=el("div","colL"), right=el("div","colR");
+    // left: the job
+    var dt=DETAIL[j.id];
+    var jb=block("Job Details"); var g=dt?parseDesc(dt.desc):{contact:[],where:[],what:[],access:[],notes:[]}, box=el("div","facts");
+    var items=g.what.filter(function(l){return /^\d+\s*x\s*/i.test(l);}); g.notes=g.notes.concat(g.what.filter(function(l){return !/^\d+\s*x\s*/i.test(l);}));
+    if(dt) dt.checks.forEach(function(c){ var n=c.n.replace(/\s*-\s*(above showroom|unit \d+|pending).*$/i,"").trim(); if(/^\d+\s*x\s*/i.test(n) && !/photo|label|sign-off/i.test(n) && items.indexOf(n)<0) items.push(n); });
+    [["Contact",g.contact],["Where",g.where],["Access",g.access],["Notes",g.notes]].forEach(function(f){ var r=field(f[0],f[1]); if(r) box.appendChild(r); });
+    if(!box.children.length) box.appendChild(el("div","hint","Nothing written on the card yet."));
+    jb.appendChild(box); left.appendChild(jb);
+    if(items.length){ var ib=block("Items ("+items.length+")"); var ul=el("ul","items plain"); items.forEach(function(x){ ul.appendChild(el("li",null,x)); }); ib.appendChild(ul); left.appendChild(ib); }
+
+    // right: the plan
+    var oursOn=part.who.length>0, contractorOnly=!o.shop && !!j.contractor && !oursOn;
+    var dayK=o.shop?(part.start||iso(TODAY)):(j.start||j.date), load=loadOn(dayK);
+    var wb=block("Operatives","who"); var pl=el("div","plist");
+    TEAM.forEach(function(w){ var on=part.who.indexOf(w)>=0; var row=el("button","prow2"+(on?" on":"")+(load[w].c==="off"?" off":"")); row.setAttribute("aria-pressed",on?"true":"false");
+      row.appendChild(el("span","av",ini(w))); row.appendChild(el("span","nm",w)); row.appendChild(el("span","ld "+load[w].c,load[w].t)); row.appendChild(el("span","tick",on?"Assigned":"Assign"));
+      row.onclick=function(){ var i=part.who.indexOf(w); if(i<0) part.who.push(w); else part.who.splice(i,1); render(); }; pl.appendChild(row); });
+    var setMins=function(v){ part.mins=v; if(part.leg) part.leg.mins=v; }, setDrive=function(v){ part.drive=v; if(part.leg) part.leg.drive=v; };
+    wb.appendChild(pl);
+    var freeOnes=TEAM.filter(function(w){return load[w].c==="free"&&part.who.indexOf(w)<0;});
+    wb.appendChild(el("div","hint",freeOnes.length?"Available "+shortDay(dayK)+": "+freeOnes.join(", ")+".":"No operatives available on "+shortDay(dayK)+"."));
+    right.appendChild(wb);
+    if(o.leg){ var lgb=block("This leg"); var lr=el("div","row"); var ld=el("input"); ld.type="date"; ld.value=j.leg.date; ld.onchange=function(){ if(ld.value){ j.leg.date=ld.value; render(); } }; lr.appendChild(el("span",null,"Date")); lr.appendChild(ld); lgb.appendChild(lr);
+      var wr=el("div","row"); var wi=el("input"); wi.type="text"; wi.value=j.leg.where||""; wi.placeholder="Subcontractor or site, with postcode"; wi.style.minWidth="260px"; wi.onchange=function(){ j.leg.where=wi.value; var pc=/\b([A-Z]{1,2})\d/i.exec(wi.value); j.leg.drive=pc&&DRIVE[pc[1].toUpperCase()]?Math.round(DRIVE[pc[1].toUpperCase()].h*2*60*TRAFFIC/5)*5:j.leg.drive; render(); }; wr.appendChild(el("span",null,"Where")); wr.appendChild(wi); lgb.appendChild(wr);
+      var rm=el("button","close","Remove this leg"); rm.style.marginTop="8px"; rm.onclick=function(){ LEGS.splice(LEGS.indexOf(j.leg),1); open=null; render(); }; lgb.appendChild(rm); right.appendChild(lgb); }
+    if(!o.shop && !o.leg){ var cb=block("Carried Out By","contractor"); var sel=el("select"); [["","Coggin operatives"]].concat(CONTRACTORS.map(function(c){return [c,c];})).forEach(function(op){ var o2=el("option",null,op[1]); o2.value=op[0]; if((j.contractor||"")===op[0]) o2.selected=true; sel.appendChild(o2); });
+      sel.onchange=function(){ j.contractor=sel.value; render(); }; cb.appendChild(sel);
+      if(contractorOnly) cb.appendChild(el("div","hint",j.contractor+" is carrying out this job, so no travel or labour time applies. Assign an operative above if one attends."));
+      right.appendChild(cb); }
+    if(o.shop){ var db=block("Production Dates","days"); var r=el("div","row");
+      var d1=el("input"); d1.type="date"; d1.value=part.start||""; d1.setAttribute("aria-label","From"); d1.onchange=function(){ part.start=d1.value||null; if(part.start&&(!part.date||part.date<part.start)) part.date=part.start; if(!part.start) part.date=null; render(); };
+      var d2=el("input"); d2.type="date"; d2.value=part.date||""; d2.setAttribute("aria-label","To"); d2.onchange=function(){ part.date=d2.value||null; if(part.date&&(!part.start||part.start>part.date)) part.start=part.date; if(!part.date) part.start=null; render(); };
+      r.appendChild(d1); r.appendChild(el("span",null,"to")); r.appendChild(d2); var clr=el("button","close","Clear"); clr.onclick=function(){ part.start=null; part.date=null; render(); }; r.appendChild(clr); db.appendChild(r);
+      var nd=part.date?daysOf(part).length:0; db.appendChild(el("div","hint",!part.date?"Not scheduled. Set the production dates and it appears under Production.":nd>1?nd+" days. Time below is per day, per person.":"One day. Set the second date later if it needs more."));
+      right.appendChild(db); }
+    if(!o.shop && !o.leg){ var lb2=block("Legs"); var mine=LEGS.map(function(L,i){return {L:L,i:i};}).filter(function(x){return x.L.parent===j.id;});
+      if(mine.length){ var lul=el("ul","items plain"); mine.forEach(function(x){ var t2=LEG_TYPES.filter(function(t){return t[0]===x.L.type;})[0]; var li=el("li",null,t2[1]+(x.L.where?" ("+x.L.where+")":"")+", "+niceDay(x.L.date)+(x.L.who.length?", "+x.L.who.join(", "):", unassigned")+(x.L.mins!=null?", "+fmt(x.L.mins):"")); var eb2=el("button","close","Edit"); eb2.style.marginLeft="8px"; eb2.onclick=function(){ open=j.id+":leg"+x.i; render(); }; li.appendChild(eb2); lul.appendChild(li); }); lb2.appendChild(lul); }
+      else lb2.appendChild(el("div","hint","No extra legs. Add one when part of the job goes to a subcontractor or needs another visit."));
+      var ar=el("div","row"); var ts=el("select"); LEG_TYPES.forEach(function(t){ var o3=el("option",null,t[1]); o3.value=t[0]; ts.appendChild(o3); }); var ad=el("input"); ad.type="date"; ad.value=j.date; var ab=el("button","close","Add leg"); ab.onclick=function(){ if(!ad.value) return; LEGS.push({parent:j.id,type:ts.value,date:ad.value,who:[],mins:null,drive:null,where:""}); open=j.id+":leg"+(LEGS.length-1); render(); }; ar.appendChild(ts); ar.appendChild(ad); ar.appendChild(ab); lb2.appendChild(ar); right.appendChild(lb2); }
+    if(!o.shop && j.prep){ var pb=block("Production"); var pr=el("div","prep"); pr.appendChild(el("div",null,(j.prep.date?niceDay(j.prep.start)+(j.prep.start!==j.prep.date?" to "+niceDay(j.prep.date):""):"Not scheduled")));
+      pr.appendChild(el("div","hint",(j.prep.who.length?j.prep.who.join(", "):"no operatives assigned")+(j.prep.mins!=null?", "+fmt(j.prep.mins)+" each":", no time allocated")));
+      var eb=el("button","close",j.prep.date?"Edit":"Schedule"); eb.onclick=function(){ open=j.id+":prep"; render(); }; pr.appendChild(eb); pb.appendChild(pr); right.appendChild(pb); }
+    if(!o.shop && j.site && !contractorOnly){ var drb=block("Travel Time, return","drive"); var r2=el("div","row"); r2.appendChild(hmBoxes(function(){return j.drive;},setDrive,"Drive")); drb.appendChild(r2);
+      drb.appendChild(el("div","hint",j.drive!=null?"Calculated from the postcode, plus 20 percent for traffic. Change it if you know better.":"No postcode found. Type it in."));
+      if(j.drive!=null && j.drive>6*60) drb.appendChild(el("div","hint far","More than a day's travel with the job in between. Consider a courier or subcontractor."));
+      right.appendChild(drb); }
+    if(!contractorOnly){ var tb=block(o.shop?"Production Time per Operative":(j.site?"Site Time per Operative":"Labour Time per Operative"),"time");
+      var q=el("div","seg"); QUICK.forEach(function(qq){ var b=el("button",part.mins===qq[0]?"on":"",qq[1]); b.onclick=function(){ setMins(qq[0]); render(); }; q.appendChild(b); }); tb.appendChild(q);
+      var r3=el("div","row"); r3.appendChild(el("span","hint","or exactly")); r3.appendChild(hmBoxes(function(){return part.mins;},setMins,"Time")); tb.appendChild(r3); right.appendChild(tb); }
+    cols.appendChild(left); cols.appendChild(right); m.appendChild(cols);
+    var sv=el("div","save"); var sb=el("button",null,"Done"); sb.onclick=function(){open=null;render();}; sv.appendChild(sb); m.appendChild(sv);
+    veil.appendChild(m); return veil;
+  }
+  function roundModal(){
+    var parts=openRound.split("|"), k=parts[0], w=parts[1];
+    var r=roundsOn(k,JOBS.filter(function(x){return onDay(x,k);})).filter(function(x){return x.who===w;})[0];
+    if(!r){ openRound=null; return null; }
+    var veil=el("div","veil"); veil.onclick=function(e){ if(e.target===veil){ openRound=null; render(); } };
+    var m=el("div","modal"); var head=el("div","head"); head.appendChild(el("h3",null,"Delivery Round, "+w+", "+niceDay(k))); var x=el("button","close","Close"); x.onclick=function(){openRound=null;render();}; head.appendChild(x); m.appendChild(head);
+    m.appendChild(el("div","sub",r.stops.length+" stops in one trip. One travel time for the round, then each job's site time."));
+    var st=el("div","sec"); st.appendChild(el("div","k","Stops")); var ul=el("ul","items"); r.stops.forEach(function(j){ var li=el("li"); li.appendChild(document.createTextNode(j.title+(j.mins!=null?", "+fmt(j.mins)+" on site":", time on site not set"))); ul.appendChild(li); }); st.appendChild(ul); m.appendChild(st);
+    var dv=el("div","sec"); dv.appendChild(el("div","k","Travel Time for the round")); var row=el("div","row");
+    row.appendChild(hmBoxes(function(){return r.drive;},function(v){ ROUND_DRIVE[r.key]=v; },"Round drive"));
+    row.appendChild(el("span","hint",ROUND_DRIVE[r.key]!=null?"You set this.":(r.def!=null?"Longest single journey plus 20 minutes per stop. Change it if you know better.":"No postcodes found. Type it in."))); dv.appendChild(row); m.appendChild(dv);
+    var sv=el("div","save"); var sb=el("button",null,"Done"); sb.onclick=function(){openRound=null;render();}; sv.appendChild(sb); m.appendChild(sv);
+    veil.appendChild(m); return veil;
+  }
+  var shortDay=function(k){ var d=new Date(k+"T12:00"); return DAYS[d.getDay()]+" "+d.getDate(); };
+  var niceDay=function(k){ var d=new Date(k+"T12:00"); return DAYS[d.getDay()]+" "+d.getDate()+" "+MON[d.getMonth()]; };
+
+  // a small "?" that explains an area in a sentence, on hover or tap
+  var TIPS={
+    shop:"Production work: jobs being prepared in the workshop. Select a job to assign operatives, set production dates and allocate time per day.",
+    road:"Transport: deliveries, installations, collections and site visits. Select a job for operatives, return travel time and site time. Two or more transport jobs for one operative on the same day form a delivery round.",
+    yard:"Yard operations: inbound recycling loads, skip exchanges, stock deliveries and other on-site work. Select a job for operatives and time.",
+    leave:"Annual leave and bank holidays, read from the Holidays / Leave list on the board.",
+    people:"Each operative's allocation for the day. Green is available, red is over capacity.",
+    tot:"Each operative's allocated hours for the day. Amber means a job has no time allocated yet. Red means over a working day.",
+    round:"A delivery round: several transport jobs by one operative in one trip. One travel time for the round, then each job's site time.",
+    who:"Assign operatives. Under each name is their existing allocation for that day.",
+    contractor:"Coggin operatives by default. Select a subcontractor when they carry out the job. No labour time applies unless an operative is also assigned.",
+    days:"The dates production takes place. Set a later end date to spread it over several days.",
+    drive:"Return travel time, calculated from the site postcode plus 20 percent for traffic. Overtype if you know better.",
+    time:"Labour time per operative. Use the quick options or enter hours and minutes."
+  };
+  var tipOpen=null;
+  function tip(key){
+    var b=el("button","tip","?"); b.setAttribute("aria-label","What is this"); b.title=TIPS[key];
+    b.onclick=function(e){ e.stopPropagation(); tipOpen=tipOpen===key?null:key; render(); };
+    var w=el("span","tipw"); w.appendChild(b);
+    if(tipOpen===key){ var pop=el("span","tipp",TIPS[key]); w.appendChild(pop); }
+    return w;
+  }
+  function cardEl(j,k,isPrep,isToday){
+    if(j.isLeg) isPrep=false;
+    var c=el("button","card"+(isPrep||(j.isLeg&&j.leg.type==="production")?" shop":""));
+    var top=el("div","top");
+    if(isPrep){ var gl=el("span","lab","Production"); gl.style.background="#0055cc"; top.appendChild(gl); }
+    if(j.isLeg){ var ll=el("span","lab","Leg"); ll.style.background="#6e5dc6"; top.appendChild(ll); }
+    if(j.label){ var lb=el("span","lab",j.label); lb.style.background=COL[j.label]||"#626f86"; top.appendChild(lb); }
+    top.appendChild(el("span","lab stage",j.stageLabel)); c.appendChild(top);
+    var mid=el("div","mid"); mid.appendChild(el("span","ttl",j.title));
+    if(isPrep){ var pdays=daysOf(j.prep); mid.appendChild(el("span","for",(pdays.length>1?"Day "+(pdays.indexOf(k)+1)+" of "+pdays.length+". ":"")+"Required for "+niceDay(j.date)+(j.collect?", customer collecting":""))); }
+    if(j.start){ var ds=daysOf(j); mid.appendChild(el("span","for","Day "+(ds.indexOf(k)+1)+" of "+ds.length+", "+niceDay(j.start)+" to "+niceDay(j.date))); }
+    if(!isPrep&&j.collect) mid.appendChild(el("span","for","Customer collecting"));
+    c.appendChild(mid);
+    var partX=isPrep?j.prep:j;
+    var ft=el("div","foot"); ft.appendChild(avatars(partX.who)); ft.appendChild(badge(partX,isToday)); c.appendChild(ft);
+    c.onclick=function(){ open=isPrep?j.id+":prep":j.id; render(); };
+    return c;
+  }
+  function roundEl(r){
+    var rc=el("div","card round"); var top=el("div","top"); var lb=el("span","lab","Delivery Round"); lb.style.background="#1f845a"; top.appendChild(lb); top.appendChild(tip("round")); rc.appendChild(top);
+    var mid=el("div","mid"); mid.appendChild(el("span","ttl",r.who+", "+r.stops.length+" stops")); mid.appendChild(el("span","for",r.stops.map(function(j){return j.title.split(" - ")[0];}).join(", "))); rc.appendChild(mid);
+    var ft=el("div","foot"); ft.appendChild(avatars([r.who])); ft.appendChild(el("span","bdg"+(r.drive==null?" todo":""),r.drive==null?"No travel time":fmt(r.drive)+" travel for the round")); rc.appendChild(ft);
+    rc.onclick=function(){ openRound=r.key; open=null; render(); };
+    return rc;
+  }
+  var view="week", dayCur=iso(TODAY);
+  function renderDay(){
+    var k=dayCur, d=new Date(k+"T12:00"), isToday=k===iso(TODAY);
+    $("#title").textContent=DAYS[d.getDay()]+" "+d.getDate()+" "+MON[d.getMonth()]+" "+d.getFullYear()+(isToday?", today":"");
+    var b=$("#board"); b.innerHTML=""; b.className="board day"; b.style.gridTemplateRows="";
+    var jobs=allJobs().filter(function(j){return onDay(j,k);}), preps=JOBS.filter(function(j){return j.prep&&j.prep.date&&daysOf(j.prep).indexOf(k)>=0;});
+    var rounds=roundsOn(k,jobs); jobs.forEach(function(j){ j.onRound=rounds.some(function(r){return r.stops.indexOf(j)>=0;}); });
+    var cols=[["shop","Production",preps.concat(jobs.filter(function(j){return j.isLeg&&j.leg.type==="production";}))],["road","Transport",jobs.filter(function(j){return j.site;})],["yard","Yard Operations",jobs.filter(function(j){return !j.site&&!(j.isLeg&&j.leg.type==="production");})]];
+    cols.forEach(function(g){
+      var list=el("div","list"+(isToday?" today":"")); var h=el("h2"); var hl=el(isToday?"em":"span",null,g[1]); hl.appendChild(tip(g[0])); h.appendChild(hl); h.appendChild(el("span",null,g[2].length?g[2].length+(g[2].length===1?" job":" jobs"):"nothing")); list.appendChild(h);
+      var cards=el("div","cards");
+      if(g[0]==="road") rounds.forEach(function(r){ cards.appendChild(roundEl(r)); });
+      g[2].forEach(function(j){ cards.appendChild(cardEl(j,k,g[0]==="shop",isToday)); });
+      if(!g[2].length) cards.appendChild(el("div","hint","Nothing here today."));
+      list.appendChild(cards); b.appendChild(list);
+    });
+    // people column: what each person has, and what they are on
+    var pl=el("div","list"+(isToday?" today":"")); var ph=el("h2"); var phl=el(isToday?"em":"span",null,"Operatives"); phl.appendChild(tip("people")); ph.appendChild(phl); ph.appendChild(el("span",null,TEAM.length+" operatives")); pl.appendChild(ph);
+    var pc=el("div","cards"); var load=loadOn(k);
+    var lv=LEAVE.filter(function(l){return l.date===k;}); lv.forEach(function(l){ pc.appendChild(el("div","leave",l.text)); });
+    TEAM.forEach(function(w){
+      var row=el("div","prow"); row.appendChild(el("span","av",ini(w))); var tx=el("div"); tx.appendChild(el("b",null,w)); tx.appendChild(el("span","ld "+load[w].c,load[w].t));
+      var ul=el("ul");
+      preps.filter(function(j){return j.prep.who.indexOf(w)>=0;}).forEach(function(j){ ul.appendChild(el("li",null,"Production: "+j.title+(j.prep.mins!=null?", "+fmt(j.prep.mins):""))); });
+      var r=rounds.filter(function(x){return x.who===w;})[0]; if(r) ul.appendChild(el("li",null,"Delivery round, "+r.stops.length+" stops"+(r.drive?", "+fmt(r.drive)+" travel":"")));
+      jobs.filter(function(j){return j.who.indexOf(w)>=0;}).forEach(function(j){ ul.appendChild(el("li",null,j.title+(j.mins!=null?", "+fmt(j.mins)+(j.site&&!j.onRound&&j.drive?" + "+fmt(j.drive)+" travel":""):""))); });
+      if(!ul.children.length && load[w].c!=="off") ul.appendChild(el("li",null,"Recycling"));
+      tx.appendChild(ul); row.appendChild(tx); pc.appendChild(row);
+    });
+    pl.appendChild(pc); b.appendChild(pl);
+    var mo=openRound?roundModal():modal(); if(mo) document.body.appendChild(mo);
+    $("#prev").onclick=function(){ var x=new Date(dayCur+"T12:00"); do{x.setDate(x.getDate()-1);}while(x.getDay()===0||x.getDay()===6); dayCur=iso(x); render(); };
+    $("#next").onclick=function(){ var x=new Date(dayCur+"T12:00"); do{x.setDate(x.getDate()+1);}while(x.getDay()===0||x.getDay()===6); dayCur=iso(x); render(); };
+  }
+  var monthCur=new Date(TODAY.getFullYear(),TODAY.getMonth(),1);
+  function renderMonth(){
+    var m0=monthCur; $("#title").textContent=MONTHS[m0.getMonth()]+" "+m0.getFullYear();
+    var b=$("#board"); b.innerHTML=""; b.className="board month";
+    ["Monday","Tuesday","Wednesday","Thursday","Friday"].forEach(function(n){ b.appendChild(el("div","mh",n)); });
+    var weeks=0; for(var w0=monday(m0); w0.getMonth()===m0.getMonth()||addDays(w0,4).getMonth()===m0.getMonth(); w0=addDays(w0,7)) weeks++;
+    b.style.gridTemplateRows="auto repeat("+weeks+",1fr)";
+    for(var w=monday(m0); w.getMonth()===m0.getMonth()||addDays(w,4).getMonth()===m0.getMonth(); w=addDays(w,7)){
+      for(var i=0;i<5;i++){
+        var d=addDays(w,i), k=iso(d), inMonth=d.getMonth()===m0.getMonth(), isToday=k===iso(TODAY);
+        var c=el("button","mcell"+(isToday?" today":"")+(inMonth?"":" dim"));
+        var dh=el("div","d",String(d.getDate())); if(isToday) dh.appendChild(el("span",null,"Today")); c.appendChild(dh);
+        var jobs=allJobs().filter(function(j){return onDay(j,k);}), preps=JOBS.filter(function(j){return j.prep&&j.prep.date&&daysOf(j.prep).indexOf(k)>=0;});
+        var nP=preps.length, nT=jobs.filter(function(j){return j.site;}).length, nY=jobs.filter(function(j){return !j.site;}).length;
+        var lv=LEAVE.filter(function(l){return l.date===k;});
+        var pills=el("div","mp");
+        if(nP) pills.appendChild(el("span","p",nP+" production"));
+        if(nT) pills.appendChild(el("span","t",nT+" transport"));
+        if(nY) pills.appendChild(el("span","y",nY+" yard"));
+        lv.forEach(function(l){ pills.appendChild(el("span","l",l.text)); });
+        var load=loadOn(k); var over=TEAM.filter(function(x){return load[x].c==="over";}); if(over.length) pills.appendChild(el("span","ov",over.join(", ")+" over capacity"));
+        c.appendChild(pills);
+        c.onclick=(function(kk){return function(){ dayCur=kk; view="day"; render(); };})(k);
+        b.appendChild(c);
+      }
+    }
+    $("#prev").onclick=function(){ monthCur=new Date(monthCur.getFullYear(),monthCur.getMonth()-1,1); render(); };
+    $("#next").onclick=function(){ monthCur=new Date(monthCur.getFullYear(),monthCur.getMonth()+1,1); render(); };
+  }
+  var MONTHS=["January","February","March","April","May","June","July","August","September","October","November","December"];
+  function render(){
+    persist();
+    document.body.onclick=function(){ if(tipOpen){ tipOpen=null; render(); } };
+    $("#vday").className=view==="day"?"on":""; $("#vweek").className=view==="week"?"on":""; $("#vmonth").className=view==="month"?"on":"";
+    $("#vday").onclick=function(){view="day";render();}; $("#vweek").onclick=function(){view="week";render();}; $("#vmonth").onclick=function(){view="month";render();};
+    var oldV=document.querySelector(".veil"); if(oldV) oldV.parentNode.removeChild(oldV);
+    if(view==="day") return renderDay();
+    if(view==="month") return renderMonth();
+    $("#board").className="board"; $("#board").style.gridTemplateRows="";
+    var mon=addDays(monday(TODAY),week*7);
+    $("#title").textContent="Week of "+mon.getDate()+" "+MON[mon.getMonth()]+" "+mon.getFullYear();
+    $("#src").textContent="Select a job to assign operatives and allocate time.";
+    var old=document.querySelector(".veil"); if(old) old.parentNode.removeChild(old);
+    var b=$("#board"); b.innerHTML="";
+    for(var i=0;i<5;i++){
+      var d=addDays(mon,i), k=iso(d), isToday=k===iso(TODAY);
+      var list=el("div","list"+(isToday?" today":""));
+      var jobs=allJobs().filter(function(j){return onDay(j,k);});
+      var preps=JOBS.filter(function(j){return j.prep&&j.prep.date&&daysOf(j.prep).indexOf(k)>=0;});
+      var n=jobs.length;
+      var h=el("h2"); h.appendChild(el(isToday?"em":"span",null,DAYS[d.getDay()]+" "+d.getDate()+(isToday?"  Today":"")));
+      var vb=el("button","viewday","View day"); vb.onclick=(function(kk){return function(){ dayCur=kk; view="day"; render(); };})(k); h.appendChild(vb);
+      h.appendChild(el("span",null,n?n+(n===1?" job":" jobs"):"")); list.appendChild(h);
+      var cards=el("div","cards");
+      var lv=LEAVE.filter(function(l){return l.date===k;}); if(lv.length){ var lh=el("div","sec-h"); var lhl=el("span",null,"Annual Leave"); lhl.appendChild(tip("leave")); lh.appendChild(lhl); cards.appendChild(lh); lv.forEach(function(l){ cards.appendChild(el("div","leave",l.text)); }); }
+      var rounds=roundsOn(k,jobs); jobs.forEach(function(j){ j.onRound=rounds.some(function(r){return r.stops.indexOf(j)>=0;}); });
+      var groups=[["shop","Production",preps],["road","Transport",jobs.filter(function(j){return j.site;})],["yard","Yard Operations",jobs.filter(function(j){return !j.site&&!(j.isLeg&&j.leg.type==="production");})]];
+      var prodLegs=jobs.filter(function(j){return j.isLeg&&j.leg.type==="production";}); prodLegs.forEach(function(j){ groups[0][2]=groups[0][2].concat([j]); });
+      groups.forEach(function(g){
+        if(!g[2].length) return;
+        var sh=el("div","sec-h"+(g[0]==="shop"?" shop":"")); var shl=el("span",null,g[1]); shl.appendChild(tip(g[0])); sh.appendChild(shl); sh.appendChild(el("span",null,String(g[2].length))); cards.appendChild(sh);
+        if(g[0]==="road") rounds.forEach(function(r){ cards.appendChild(roundEl(r)); });
+        g[2].forEach(function(j){ cards.appendChild(cardEl(j,k,g[0]==="shop",isToday)); });
+      });
+      list.appendChild(cards);
+      var tot=el("div","tot"); var th=el("div"); var thl=el("span","n","Operative Hours"); thl.appendChild(tip("tot")); th.appendChild(thl); tot.appendChild(th); var off=LEAVE.filter(function(l){return l.date===k;}).map(function(l){return l.text.split(" ")[0];});
+      TEAM.forEach(function(w){
+        var mine=jobs.filter(function(j){return j.who.indexOf(w)>=0;}), myPreps=preps.filter(function(j){return j.prep.who.indexOf(w)>=0;});
+        var myRound=rounds.filter(function(r){return r.who===w;})[0];
+        var mins=mine.reduce(function(s,j){return s+(j.mins||0)+(j.site&&!j.onRound?(j.drive||0):0);},0)+(myRound&&myRound.drive?myRound.drive:0);
+        mins+=myPreps.reduce(function(s,j){return s+(j.prep.mins||0);},0);
+        var unset=mine.filter(function(j){return j.mins==null;}).length+myPreps.filter(function(j){return j.prep.mins==null;}).length;
+        mine=mine.concat(myPreps);
+        var row=el("div"); row.appendChild(el("span","n",w));
+        var txt, cls;
+        if(off.indexOf(w)>=0){ txt="annual leave"; cls="free"; }
+        else if(!mine.length){ txt="Recycling"; cls="free"; }
+        else if(unset&&!mins){ txt=unset+(unset===1?" job, no time":" jobs, no time"); cls="todo"; }
+        else { txt=fmt(mins)+(unset?" + "+unset+" no time":"")+(mins>DAY_H*60?", over capacity":""); cls=mins>DAY_H*60?"over":(unset?"todo":"ok"); }
+        row.appendChild(el("span",cls,txt)); tot.appendChild(row);
+        if(mins){ var bar=el("div","bar"); var fill=el("i",mins>DAY_H*60?"over":""); fill.style.width=Math.min(100,mins/(DAY_H*60)*100)+"%"; bar.appendChild(fill); tot.appendChild(bar); }
+      });
+      list.appendChild(tot); b.appendChild(list);
+    }
+    var mo=openRound?roundModal():modal(); if(mo) document.body.appendChild(mo);
+    $("#prev").onclick=function(){week--;render();}; $("#next").onclick=function(){week++;render();};
+  }
+  if(t){
+    $("#src").textContent="Reading the board...";
+    loadBoard().then(function(snap){ buildFromSnap(snap); lastSaved={}; JOBS.forEach(function(j){}); render(); }).catch(function(e){ $("#src").textContent="Could not read the board: "+(e&&e.message||e); });
+  } else { $("#src").textContent="Open this from the Scheduler button on the Trello board."; }
+})();
+</script>
