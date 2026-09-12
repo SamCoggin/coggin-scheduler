@@ -2,7 +2,7 @@
 <html><head><meta charset="utf-8"><title>Coggin Scheduler</title></head>
 <body>
 <script src="https://p.trellocdn.com/power-up.min.js"></script>
-<script src="./shared.js"></script>
+<script>document.write('<script src="./shared.js?v='+Math.floor(Date.now()/60000)+'"><\/script>');</script>
 <script>
   // the Power-Up connector: a Scheduler button on the board, a badge on the
   // front of each card, a Scheduling section and a button on the back
@@ -10,7 +10,7 @@
   function isSite(card){ return (card.labels||[]).some(function(l){return SITE_LABELS.test(l.name);}); }
   TrelloPowerUp.initialize({
     "board-buttons": function(t){
-      return [{ text: "Scheduler", icon: ICON, callback: function(t){ return t.modal({ url: "./scheduler.html", fullscreen: true, title: "Scheduler" }); } }];
+      return [{ text: "Scheduler", icon: ICON, callback: function(t){ return t.modal({ url: "./scheduler.html?v="+Math.floor(Date.now()/60000), fullscreen: true, title: "Scheduler" }); } }];
     },
     "card-badges": function(t){
       return Promise.all([t.card("labels","idList","due"), t.get("card","shared","sched",null), t.lists("all")]).then(function(r){
@@ -31,10 +31,10 @@
       });
     },
     "card-back-section": function(t){
-      return { title:"Scheduling", icon:ICON, content:{ type:"iframe", url:t.signUrl("./card.html"), height:260 } };
+      return { title:"Scheduling", icon:ICON, content:{ type:"iframe", url:t.signUrl("./card.html?v="+Math.floor(Date.now()/60000)), height:260 } };
     },
     "card-buttons": function(t){
-      return [{ icon:ICON, text:"Open in Scheduler", callback:function(t){ return t.modal({ url:"./scheduler.html", fullscreen:true, title:"Scheduler" }); } }];
+      return [{ icon:ICON, text:"Open in Scheduler", callback:function(t){ return t.modal({ url:"./scheduler.html?v="+Math.floor(Date.now()/60000), fullscreen:true, title:"Scheduler" }); } }];
     }
   });
 </script>
