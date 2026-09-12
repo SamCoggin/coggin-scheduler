@@ -278,7 +278,7 @@ var SNAP=null, DETAIL={};
   // there and back, plus 20 percent for traffic and getting parked, to the nearest 5 minutes
   var TRAFFIC=1.2;
   function driveMins(title){ var town=title.split(" - ")[0].trim(); var pc=TOWN[town]; return pc&&DRIVE[pc] ? Math.round(DRIVE[pc].h*2*60*TRAFFIC/5)*5 : null; }
-  var QUICK=[[15,"15 min"],[30,"30 min"],[60,"1 hour"],[120,"2 hours"],[240,"Half day"],[450,"Full day"]];
+  var QUICK=[[15,"15 min"],[30,"30 min"],[60,"1 hour"],[120,"2 hours"],[240,"Half day"],[DAY_MINS,"Full day"]];
   // card names on the real board carry refs and invoice numbers. show the town and the customer.
   function nice(n){ var parts=n.split(/\s+-\s*|\s*-\s+/).map(function(p){return p.trim();}).filter(Boolean);
     parts=parts.filter(function(p){ return !/^[0-9A-F]{6}$/i.test(p) && !/estimate|invoice|^\[|^00000|^\d{5,}$|MAK/i.test(p) && !/^\d+\s*tonnes$/i.test(p); });
