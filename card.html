@@ -156,12 +156,18 @@
     }
 
     // Transport (site jobs) or Labour (yard and workshop-only jobs): the part on the card's date.
-    function vanField(){ var f=fld("Van load"); var checks=[]; (card.checklists||[]).forEach(function(cl){ (cl.checkItems||[]).forEach(function(it){ checks.push({n:it.name||""}); }); }); var L=loadOf(itemsOf(card.desc,checks));
+    function vanField(){ var f=fld("Van load");
+      var checks=[]; (card.checklists||[]).forEach(function(cl){ (cl.checkItems||[]).forEach(function(it){ checks.push({n:it.name||""}); }); });
+      var auto=itemsOf(card.desc,checks), manual=d.items||[], L;
+      if(!auto.length && d.load && d.load.rows && !manual.length){ L=d.load; L.fromScheduler=true; } else { L=loadOf(auto.concat(manual)); }
       if(L.rows.length){ var ul=el("ul"); ul.style.cssText="margin:0 0 6px;padding-left:18px"; L.rows.forEach(function(r){ ul.appendChild(el("li",null,r.n+" x "+r.type+(r.built?", built":"")+": "+fmtM3(r.m3)+", "+r.kg+" kg"+(r.est?" (estimate)":""))); }); f.appendChild(ul); }
-      if(L.unmatched.length) f.appendChild(el("div","warn","Not counted: "+L.unmatched.join("; ")));
-      if(!L.rows.length&&!L.unmatched.length) f.appendChild(el("div","hint","No items listed on the card yet, so nothing to add up."));
+      if(L.unmatched&&L.unmatched.length) f.appendChild(el("div","warn","Not counted: "+L.unmatched.join("; ")));
+      if(!L.rows.length&&!(L.unmatched&&L.unmatched.length)) f.appendChild(el("div","hint","No items found on the card. Add them below."));
+      if(L.fromScheduler) f.appendChild(el("div","hint","From the items the Scheduler read on this card."));
       var tot=el("div"); tot.style.fontWeight="800"; tot.textContent="Estimated: "+fmtLoad(L.rows.length?L.m3:null,L.kg); f.appendChild(tot);
-      var r=el("div","row"); r.style.marginTop="8px"; r.appendChild(el("span","hint","or set it to")); var n=el("input"); n.type="number"; n.min="0"; n.step="0.5"; n.value=d.cube==null?"":String(d.cube); n.placeholder=L.rows.length?String(L.m3):"0"; n.setAttribute("aria-label","Cubic metres"); n.onchange=function(){ d.cube=n.value===""?null:Math.max(0,parseFloat(n.value)||0); delete d.van; delete d.spaces; save(); render(); }; r.appendChild(n); r.appendChild(el("span",null,"cubic metres"));
+      if(manual.length){ var ml=el("ul"); ml.style.cssText="margin:6px 0;padding-left:18px"; manual.forEach(function(m,i){ var li=el("li",null,m+" (added here) "); var x=el("button","p","Remove"); x.style.padding="2px 8px"; x.onclick=function(){ d.items.splice(i,1); save(); render(); }; li.appendChild(x); ml.appendChild(li); }); f.appendChild(ml); }
+      var ar=el("div","row"); ar.style.marginTop="8px"; var qn=el("input"); qn.type="number"; qn.min="1"; qn.value="1"; qn.style.width="64px"; qn.setAttribute("aria-label","Quantity"); var ts=el("select"); ts.style.width="auto"; LOAD.forEach(function(r){ var o2=el("option",null,r.t); o2.value=r.t; ts.appendChild(o2); }); var ab=el("button","p","Add item"); ab.onclick=function(){ var n=parseInt(qn.value,10)||1; d.items=d.items||[]; d.items.push(n+" x "+ts.value); save(); render(); }; ar.appendChild(qn); ar.appendChild(el("span",null,"x")); ar.appendChild(ts); ar.appendChild(ab); f.appendChild(ar);
+      var r=el("div","row"); r.style.marginTop="8px"; r.appendChild(el("span","hint","or set the load to")); var n=el("input"); n.type="number"; n.min="0"; n.step="0.5"; n.value=d.cube==null?"":String(d.cube); n.placeholder=L.rows.length?String(L.m3):"0"; n.setAttribute("aria-label","Cubic metres"); n.onchange=function(){ d.cube=n.value===""?null:Math.max(0,parseFloat(n.value)||0); delete d.van; delete d.spaces; save(); render(); }; r.appendChild(n); r.appendChild(el("span",null,"cubic metres"));
       if(d.cube!=null){ var rs=el("button","p","Use the estimate"); rs.onclick=function(){ d.cube=null; save(); render(); }; r.appendChild(rs); } f.appendChild(r);
       f.appendChild(el("div","hint","A Luton box is about "+VAN_M3+" cubic metres, payload about "+VAN_KG+" kg. Desks count flat unless the item says built.")); return f; }
     if(workshop){ var vs=section("transport","Transport",due?niceShort(due):""); var note=el("div","who"); note.textContent="Assigned once in Ready for Delivery / Collection"; note.appendChild(el("small",null,"The van load below comes from the items, so the Scheduler can plan the round now.")); vs.appendChild(note); if(site) vs.appendChild(vanField()); app.appendChild(vs); }

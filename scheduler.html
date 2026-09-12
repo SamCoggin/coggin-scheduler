@@ -327,13 +327,13 @@ var SNAP=null, DETAIL={};
       if(j.site) j.drive=driveMins(title);
     }
     j.start=c.start&&c.start<c.due?c.start:null;
-    var dd=DETAIL[c.id]; j.load=loadOf(itemsOf(dd?dd.desc:c.desc,dd?dd.checks:c.checks)); j.cubeSet=null;
+    var dd=DETAIL[c.id]; j.items=itemsOf(dd?dd.desc:c.desc,dd?dd.checks:c.checks); j.manual=[]; j.load=loadOf(j.items); j.cubeSet=null;
     return j; });
   // a card with a start date is on the board every working day from start to due
     LEAVE=SNAP.cards.filter(function(c){return c.role==="leave"&&c.due;}).map(function(c){ return {date:c.due,text:c.name.replace(/\s*\(.*$/,"").replace(/BANK HOLIDAY\s*-\s*/i,"")+(/BANK HOLIDAY/i.test(c.name)?" (bank holiday)":" on leave")}; });
     // what was saved on the cards last time
     SNAP.cards.forEach(function(c){ var d=c.saved; if(!d) return; var j=JOBS.filter(function(x){return x.id===c.id;})[0]; if(!j) return;
-      if(d.who) j.who=d.who.slice(); if(d.cube!=null) j.cubeSet=d.cube; if(d.mins!=null) j.mins=d.mins; if(d.drive!=null) j.drive=d.drive; if(d.contractor) j.contractor=d.contractor;
+      if(d.who) j.who=d.who.slice(); if(d.cube!=null) j.cubeSet=d.cube; if(d.items&&d.items.length){ j.manual=d.items.slice(); j.load=loadOf(j.items.concat(j.manual)); } if(d.mins!=null) j.mins=d.mins; if(d.drive!=null) j.drive=d.drive; if(d.contractor) j.contractor=d.contractor;
       if(d.prep&&j.prep){ j.prep.who=d.prep.who||[]; j.prep.mins=d.prep.mins; j.prep.start=d.prep.start||null; j.prep.date=d.prep.date||null; }
       if(d.prodDue&&j.prep){ j.prodDue=d.prodDue; j.prodDueSet=true; }
       (d.legs||[]).forEach(function(L){ LEGS.push({parent:j.id,type:L.type,date:L.date,who:L.who||[],mins:L.mins,drive:L.drive,where:L.where||""}); });
@@ -362,7 +362,7 @@ var SNAP=null, DETAIL={};
   function persist(){
     if(!t) return;
     JOBS.forEach(function(j){
-      var d={who:j.who,mins:j.mins,drive:j.drive,cube:j.cubeSet,contractor:j.contractor||"",prodDue:j.prodDueSet?j.prodDue:null,prep:j.prep?{who:j.prep.who,mins:j.prep.mins,start:j.prep.start,date:j.prep.date}:null,
+      var d={who:j.who,mins:j.mins,drive:j.drive,cube:j.cubeSet,items:j.manual&&j.manual.length?j.manual:undefined,load:j.load&&j.load.rows.length?{m3:j.load.m3,kg:j.load.kg,rows:j.load.rows.map(function(r){return {n:r.n,type:r.type,m3:r.m3,kg:r.kg,built:r.built,est:r.est};}),unmatched:j.load.unmatched}:undefined,contractor:j.contractor||"",prodDue:j.prodDueSet?j.prodDue:null,prep:j.prep?{who:j.prep.who,mins:j.prep.mins,start:j.prep.start,date:j.prep.date}:null,
         legs:LEGS.filter(function(L){return L.parent===j.id;}).map(function(L){return {type:L.type,date:L.date,who:L.who,mins:L.mins,drive:L.drive,where:L.where};})};
       var js=JSON.stringify(d); if(lastSaved[j.id]===js) return; lastSaved[j.id]=js; t.set(j.id,"shared","sched",d);
     });
@@ -502,6 +502,8 @@ var SNAP=null, DETAIL={};
     if(!o.shop && j.site && !contractorOnly && !j.isLeg){ var vb=block("Van Load","van"); var L=j.load||loadOf([]);
       if(L.rows.length){ var lu=el("ul","items plain"); L.rows.forEach(function(r){ lu.appendChild(el("li",null,r.n+" x "+r.type+(r.built?", built":"")+": "+fmtM3(r.m3)+", "+r.kg+" kg"+(r.est?" (estimate)":""))); }); vb.appendChild(lu); }
       if(L.unmatched.length) vb.appendChild(el("div","hint far","Not counted, no match in the load table: "+L.unmatched.join("; ")));
+      if(j.manual&&j.manual.length){ var ml=el("ul","items plain"); j.manual.forEach(function(m,i){ var li=el("li",null,m+" (added here) "); var x=el("button","close","Remove"); x.onclick=function(){ j.manual.splice(i,1); j.load=loadOf(j.items.concat(j.manual)); render(); }; li.appendChild(x); ml.appendChild(li); }); vb.appendChild(ml); }
+      var ar=el("div","row"); var qn=el("input"); qn.type="number"; qn.min="1"; qn.value="1"; qn.style.width="60px"; qn.setAttribute("aria-label","Quantity"); var ts=el("select"); LOAD.forEach(function(r){ var o2=el("option",null,r.t); o2.value=r.t; ts.appendChild(o2); }); var ab=el("button","close","Add item"); ab.onclick=function(){ var n=parseInt(qn.value,10)||1; j.manual.push(n+" x "+ts.value); j.load=loadOf(j.items.concat(j.manual)); render(); }; ar.appendChild(qn); ar.appendChild(el("span",null,"x")); ar.appendChild(ts); ar.appendChild(ab); vb.appendChild(ar);
       if(!L.rows.length&&!L.unmatched.length) vb.appendChild(el("div","hint","No items listed on the card, so nothing to add up. Type the load below."));
       var tot=el("div","hint"); tot.style.fontWeight="700"; tot.textContent="Estimated: "+fmtLoad(L.rows.length?L.m3:null,L.kg); vb.appendChild(tot);
       var vr=el("div","row"); vr.appendChild(el("span","hint","or set the load to")); var vn=el("input"); vn.type="number"; vn.min="0"; vn.step="0.5"; vn.value=j.cubeSet==null?"":String(j.cubeSet); vn.placeholder=L.rows.length?String(L.m3):"0"; vn.setAttribute("aria-label","Cubic metres"); vn.onchange=function(){ j.cubeSet=vn.value===""?null:Math.max(0,parseFloat(vn.value)||0); render(); }; vr.appendChild(vn); vr.appendChild(el("span",null,"cubic metres"));
