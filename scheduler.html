@@ -362,7 +362,7 @@ var SNAP=null, DETAIL={};
   function persist(){
     if(!t) return;
     JOBS.forEach(function(j){
-      var d={who:j.who,mins:j.mins,drive:j.drive,cube:j.cubeSet,items:j.manual&&j.manual.length?j.manual:undefined,load:j.load&&j.load.rows.length?{m3:j.load.m3,kg:j.load.kg,rows:j.load.rows.map(function(r){return {n:r.n,type:r.type,m3:r.m3,kg:r.kg,built:r.built,est:r.est};}),unmatched:j.load.unmatched}:undefined,contractor:j.contractor||"",prodDue:j.prodDueSet?j.prodDue:null,prep:j.prep?{who:j.prep.who,mins:j.prep.mins,start:j.prep.start,date:j.prep.date}:null,
+      var d={who:j.who,mins:j.mins,drive:j.drive,cube:j.cubeSet,items:j.manual&&j.manual.length?j.manual:undefined,load:j.load&&j.load.any?{m3:j.load.m3,kg:j.load.kg,complete:j.load.complete,rows:j.load.rows.map(function(r){return {n:r.n,type:r.type,m3:r.m3,kg:r.kg,built:r.built,est:r.est};}),unmatched:j.load.unmatched}:undefined,contractor:j.contractor||"",prodDue:j.prodDueSet?j.prodDue:null,prep:j.prep?{who:j.prep.who,mins:j.prep.mins,start:j.prep.start,date:j.prep.date}:null,
         legs:LEGS.filter(function(L){return L.parent===j.id;}).map(function(L){return {type:L.type,date:L.date,who:L.who,mins:L.mins,drive:L.drive,where:L.where};})};
       var js=JSON.stringify(d); if(lastSaved[j.id]===js) return; lastSaved[j.id]=js; t.set(j.id,"shared","sched",d);
     });
@@ -501,12 +501,12 @@ var SNAP=null, DETAIL={};
       right.appendChild(drb); }
     if(!o.shop && j.site && !contractorOnly && !j.isLeg){ var vb=block("Van Load","van"); var L=j.load||loadOf([]);
       if(L.rows.length){ var lu=el("ul","items plain"); L.rows.forEach(function(r){ lu.appendChild(el("li",null,r.n+" x "+r.type+(r.built?", built":"")+": "+fmtM3(r.m3)+", "+r.kg+" kg"+(r.est?" (estimate)":""))); }); vb.appendChild(lu); }
-      if(L.unmatched.length) vb.appendChild(el("div","hint far","Not counted, no match in the load table: "+L.unmatched.join("; ")));
+      if(L.unmatched.length) vb.appendChild(el("div","hint far","No estimate: "+L.unmatched.length+(L.unmatched.length===1?" item":" items")+" could not be matched, so nothing has been added up. Unmatched: "+L.unmatched.join("; ")+". Add the missing items below or set the load."));
       if(j.manual&&j.manual.length){ var ml=el("ul","items plain"); j.manual.forEach(function(m,i){ var li=el("li",null,m+" (added here) "); var x=el("button","close","Remove"); x.onclick=function(){ j.manual.splice(i,1); j.load=loadOf(j.items.concat(j.manual)); render(); }; li.appendChild(x); ml.appendChild(li); }); vb.appendChild(ml); }
       var ar=el("div","row"); var qn=el("input"); qn.type="number"; qn.min="1"; qn.value="1"; qn.style.width="60px"; qn.setAttribute("aria-label","Quantity"); var ts=el("select"); LOAD.forEach(function(r){ var o2=el("option",null,r.t); o2.value=r.t; ts.appendChild(o2); }); var ab=el("button","close","Add item"); ab.onclick=function(){ var n=parseInt(qn.value,10)||1; j.manual.push(n+" x "+ts.value); j.load=loadOf(j.items.concat(j.manual)); render(); }; ar.appendChild(qn); ar.appendChild(el("span",null,"x")); ar.appendChild(ts); ar.appendChild(ab); vb.appendChild(ar);
       if(!L.rows.length&&!L.unmatched.length) vb.appendChild(el("div","hint","No items listed on the card, so nothing to add up. Type the load below."));
-      var tot=el("div","hint"); tot.style.fontWeight="700"; tot.textContent="Estimated: "+fmtLoad(L.rows.length?L.m3:null,L.kg); vb.appendChild(tot);
-      var vr=el("div","row"); vr.appendChild(el("span","hint","or set the load to")); var vn=el("input"); vn.type="number"; vn.min="0"; vn.step="0.5"; vn.value=j.cubeSet==null?"":String(j.cubeSet); vn.placeholder=L.rows.length?String(L.m3):"0"; vn.setAttribute("aria-label","Cubic metres"); vn.onchange=function(){ j.cubeSet=vn.value===""?null:Math.max(0,parseFloat(vn.value)||0); render(); }; vr.appendChild(vn); vr.appendChild(el("span",null,"cubic metres"));
+      var tot=el("div","hint"); tot.style.fontWeight="700"; tot.textContent="Estimated: "+(L.complete?fmtLoad(L.m3,L.kg):"not set"); vb.appendChild(tot);
+      var vr=el("div","row"); vr.appendChild(el("span","hint","or set the load to")); var vn=el("input"); vn.type="number"; vn.min="0"; vn.step="0.5"; vn.value=j.cubeSet==null?"":String(j.cubeSet); vn.placeholder=L.complete?String(L.m3):"0"; vn.setAttribute("aria-label","Cubic metres"); vn.onchange=function(){ j.cubeSet=vn.value===""?null:Math.max(0,parseFloat(vn.value)||0); render(); }; vr.appendChild(vn); vr.appendChild(el("span",null,"cubic metres"));
       if(j.cubeSet!=null){ var rs2=el("button","close","Use the estimate"); rs2.onclick=function(){ j.cubeSet=null; render(); }; vr.appendChild(rs2); } vb.appendChild(vr);
       vb.appendChild(el("div","hint","A Luton box is about "+VAN_M3+" cubic metres. Desks count flat unless the item says built.")); right.appendChild(vb); }
     if(!contractorOnly){ var tb=block(o.shop?"Production Time per Operative":(j.site?"Site Time per Operative":"Labour Time per Operative"),"time");
@@ -652,8 +652,8 @@ var SNAP=null, DETAIL={};
 
   // ── Routes: where the week's transport jobs are, as rounds from the yard ──
   // the load a job puts on the van: the estimate from its items, unless overtyped
-  function cubeOf(j){ if(j.cubeSet!=null) return j.cubeSet; return j.load&&j.load.rows.length?j.load.m3:null; }
-  function kgOf(j){ return j.load&&j.load.rows.length?j.load.kg:0; }
+  function cubeOf(j){ if(j.cubeSet!=null) return j.cubeSet; return j.load&&j.load.complete?j.load.m3:null; }
+  function kgOf(j){ return j.load&&j.load.complete?j.load.kg:0; }
   var BASE={lat:53.940279,lng:-2.775468,name:"Coggin yard, Forton"};
   var DAYCOL=["#0c66e4","#1f845a","#ae4787","#e56910","#626f86"];
   var GEO={}; try{ GEO=JSON.parse(localStorage.getItem("cg-geo")||"{}"); }catch(e){ GEO={}; }

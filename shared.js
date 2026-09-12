@@ -45,7 +45,9 @@ function matchLoad(line){
 function loadOf(items){
   var out={m3:0,kg:0,rows:[],unmatched:[]};
   (items||[]).forEach(function(l){ var r=matchLoad(l); if(!r) return; if(!r.type){ out.unmatched.push(l); return; } out.rows.push(r); out.m3+=r.m3; out.kg+=r.kg; });
-  out.m3=Math.round(out.m3*10)/10; out.any=out.rows.length>0||out.unmatched.length>0; return out;
+  out.m3=Math.round(out.m3*10)/10; out.any=out.rows.length>0||out.unmatched.length>0;
+  // guardrail: if any line could not be matched there is no estimate at all. a partial total would mislead.
+  out.complete=out.rows.length>0&&out.unmatched.length===0; return out;
 }
 function fmtM3(v){ return v==null?"not set":(Math.round(v*10)/10)+" m\u00b3"; }
 function fmtLoad(m3,kg){ if(m3==null) return "not set"; var s=fmtM3(m3)+" of "+VAN_M3; if(kg) s+=", "+Math.round(kg)+" kg of "+VAN_KG; return s; }
