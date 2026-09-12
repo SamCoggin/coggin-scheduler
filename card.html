@@ -3,6 +3,7 @@
 <style>
   :root{ --text:#172b4d; --muted:#5e6c84; --line:#c7ced8; --blue:#0c66e4; --blue-bg:#e9f2ff; --green:#1f845a; --green-bg:#e3fcef; --amber:#974f0c; --amber-bg:#fff7d6; --red:#c9372c; --red-bg:#ffeceb; --card:#fff; --list:#f1f2f4; }
   *{box-sizing:border-box}
+  html,body{overflow:hidden}
   body{margin:0;padding:4px 2px 8px;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",sans-serif;font-size:15px;color:var(--text);background:transparent;line-height:1.35}
   button,input,select{font-family:inherit;font-size:inherit;color:inherit}
   button{cursor:pointer}
@@ -141,8 +142,11 @@
 
     if(d.legs&&d.legs.length){ var ls=section("labour","Legs",""); var lf=fld(""); d.legs.forEach(function(L){ lf.appendChild(el("div",null,L.type.replace("_"," ")+(L.where?": "+L.where:"")+", "+(L.date?niceShort(L.date):"no date")+(L.who&&L.who.length?", "+L.who.join(", "):", unassigned")+(L.mins!=null?", "+fmt(L.mins):""))); }); lf.appendChild(el("div","hint","Legs are added and edited in the Scheduler.")); ls.appendChild(lf); app.appendChild(ls); }
     var b=badgeText(d,site); app.appendChild(el("div","status",b.text));
-    t.sizeTo("#app").catch(function(){});
+    fit();
   }
+  function fit(){ requestAnimationFrame(function(){ var h=document.getElementById("app").getBoundingClientRect().height+16; t.sizeTo(Math.ceil(h)).catch(function(){}); }); }
+  if(window.ResizeObserver){ new ResizeObserver(function(){ fit(); }).observe(document.getElementById("app")); }
+  window.addEventListener("resize",fit);
   t.render(function(){ load(); });
   load();
 })();
