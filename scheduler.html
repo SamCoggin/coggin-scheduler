@@ -191,11 +191,11 @@ var SNAP=null, DETAIL={};
   var t=window.TrelloPowerUp?TrelloPowerUp.iframe():null;
   var TODAY_REAL=new Date(); TODAY_REAL.setHours(12,0,0,0);
   var TODAY=new Date(2026,8,14), DAY_H=7.5;
+  var CREW=["Jack","Jordan","Bart","Rob","Bradley"];
   var TEAM=CREW, open=null, week=0;
   // ── read the live board through Trello's client, then run the scheduler ──
   var ROLE={"Workshop Jobs - Not Started":"waiting","Workshop Jobs - In-progress":"shop","Workshop Jobs - Pending Quality Control":"shop","Workshop Jobs - Ready for Delivery / Collection":"ready",
     "Removals / Recycling / Skips / Stock / Plastic":"yard","Other Planned Activity":"yard","Holidays / Leave":"leave","Operations Transfer List":"handed"};
-  var CREW=["Jack","Jordan","Bart","Rob","Bradley"];
   function loadBoard(){
     return Promise.all([t.lists("all"),t.cards("all"),t.board("name","members"),t.get("board","shared","sched",{})]).then(function(r){
       var lists=r[0], cards=r[1], board=r[2], boardData=r[3];
@@ -206,7 +206,7 @@ var SNAP=null, DETAIL={};
         var role=ROLE[l.name], due=(c.due||"").slice(0,10), start=(c.start||"").slice(0,10);
         if((role==="yard"||role==="leave")&&!due) return;
         var ready="";(c.customFieldItems||[]).forEach(function(i){ if(i.value&&i.value.date) ready=i.value.date.slice(0,10); });
-        out.push({id:c.id,name:c.name.trim(),role:role,due:due,start:start,ready_by:ready,labels:(c.labels||[]).map(function(x){return x.name;}),who:(c.members||[]).map(function(m){return m.fullName.split(" ")[0];}),desc:c.desc||""});
+        out.push({id:c.id,name:c.name.trim(),role:role,due:due,start:start,ready_by:ready,labels:(c.labels||[]).map(function(x){return x.name;}),who:(c.members||[]).map(function(m){return (m.fullName||m.username||"").split(" ")[0];}).filter(Boolean),desc:c.desc||""});
       });
       return Promise.all(out.map(function(c){ return t.get(c.id,"shared","sched",null).then(function(d){ c.saved=d; return c; }); })).then(function(cs){
         cs.forEach(function(c){ DETAIL[c.id]={desc:c.desc,checks:[]}; });
