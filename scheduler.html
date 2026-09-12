@@ -54,6 +54,10 @@
   .sug .must{margin-top:6px;padding:6px 8px;border-radius:6px;background:var(--card);font-weight:600}
   .sug .must.bad{color:var(--red)}
   .sug .steps{margin-top:6px;color:var(--muted);font-size:13px}
+  .fleet{display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:8px 14px;background:var(--card);border-bottom:1px solid var(--line);font-size:13px}
+  .fleet b{font-size:13px;text-transform:uppercase;letter-spacing:.03em}
+  .fleet button{border:1px solid var(--line);border-radius:6px;padding:4px 10px;font-weight:700;background:var(--list)}
+  .fleet button.on{color:var(--green);background:var(--green-bg);border-color:var(--green-bg)} .fleet button.off{color:var(--red);background:var(--red-bg);border-color:var(--red-bg)}
   .rwarn{margin:6px 14px 0;padding:8px 10px;border-radius:8px;background:var(--red-bg);color:var(--red);font-weight:700;font-size:13px}
   .rnote{color:var(--muted);font-size:13px;padding:6px 14px}
   .prow2 .drv{font-style:normal;font-weight:600;font-size:11px;color:var(--muted);margin-left:6px;border:1px solid var(--line);border-radius:4px;padding:1px 5px}
@@ -335,6 +339,7 @@ var SNAP=null, DETAIL={};
       (d.legs||[]).forEach(function(L){ LEGS.push({parent:j.id,type:L.type,date:L.date,who:L.who||[],mins:L.mins,drive:L.drive,where:L.where||""}); });
     });
     if(SNAP.boardData&&SNAP.boardData.roundDrive){ for(var k in SNAP.boardData.roundDrive) ROUND_DRIVE[k]=SNAP.boardData.roundDrive[k]; }
+    if(SNAP.boardData&&SNAP.boardData.vansOff){ VANS_OFF=SNAP.boardData.vansOff.slice(); }
     if(SNAP.boardData&&SNAP.boardData.contractors){ SNAP.boardData.contractors.forEach(function(c){ if(CONTRACTORS.indexOf(c)<0) CONTRACTORS.splice(CONTRACTORS.length-1,0,c); }); }
   }
   function daysOf(j){ if(!j.start||j.start>=j.date) return [j.date]; var out=[]; for(var d=new Date(j.start+"T12:00");iso(d)<=j.date;d.setDate(d.getDate()+1)){ if(d.getDay()!==0&&d.getDay()!==6) out.push(iso(d)); } return out; }
@@ -362,7 +367,7 @@ var SNAP=null, DETAIL={};
       var js=JSON.stringify(d); if(lastSaved[j.id]===js) return; lastSaved[j.id]=js; t.set(j.id,"shared","sched",d);
     });
     var extra=CONTRACTORS.filter(function(c){return ["MAK Installations","Courier","Other contractor"].indexOf(c)<0;});
-    var bd=JSON.stringify({roundDrive:ROUND_DRIVE,contractors:extra}); if(lastSaved.__board!==bd){ lastSaved.__board=bd; t.set("board","shared","sched",{roundDrive:ROUND_DRIVE,contractors:extra}); }
+    var bd=JSON.stringify({roundDrive:ROUND_DRIVE,contractors:extra,vansOff:VANS_OFF}); if(lastSaved.__board!==bd){ lastSaved.__board=bd; t.set("board","shared","sched",{roundDrive:ROUND_DRIVE,contractors:extra,vansOff:VANS_OFF}); }
   }
 
   // the bit that opens under a card: who, quick times, minutes, and one extra row
@@ -378,6 +383,8 @@ var SNAP=null, DETAIL={};
   }
   // a round: one person, one day, two or more site jobs. one drive for the lot.
   var ROUND_DRIVE={};   // "date|person" -> minutes, when you have changed it
+  var VANS_OFF=[];      // registrations currently off the road
+  function vansOnRoad(){ return VEHICLES.filter(function(v){return VANS_OFF.indexOf(v.reg)<0;}).length; }
   function roundsOn(k,jobs){
     var out=[];
     TEAM.forEach(function(w){
@@ -537,7 +544,7 @@ var SNAP=null, DETAIL={};
     contractor:"Transport jobs only. Coggin operatives by default; select a subcontractor or courier when they carry out the job. Workshop and yard work is always our own operatives.",
     days:"The dates production takes place. Set a later end date to spread it over several days.",
     drivers:"Rob, Jack and Bart drive the van. Jordan and Bradley go along as a second pair of hands, so every transport job needs one of the drivers on it.",
-    van:"The load worked out from the items on the card, in cubic metres and kilos, against a "+VAN_M3+" cubic metre Luton and its payload. Overtype it if the yard knows better. We run two vans.",
+    van:"The load worked out from the items on the card, in cubic metres and kilos, against a "+VAN_M3+" cubic metre Luton and its payload. Overtype it if the yard knows better. Two Lutons on the fleet; a van off the road is marked in the Routes view and extra vans are hired in.",
     routes:"Combine Trips finds jobs booked for later that are near a stop already going out this week, and says what it takes to put them on the same van. Below it, where the week's transport jobs are. Each round is drawn from the yard in its day's colour. Nearby jobs on other days could join a round if there is room in the van and production is done.",
     drive:"Return travel time, calculated from the site postcode plus 20 percent for traffic. Overtype if you know better.",
     time:"Labour time per operative. Use the quick options or enter hours and minutes."
@@ -682,6 +689,8 @@ var SNAP=null, DETAIL={};
     var pool=all.filter(function(j){return weekJobs.indexOf(j)<0 && j.date>=days[0] && j.date<=horizon;});
     var wrap=el("div","mapwrap"); var lg=el("div","legend"); days.forEach(function(k,i){ var sp=el("span"); var dot=el("i"); dot.style.background=DAYCOL[i]; sp.appendChild(dot); sp.appendChild(document.createTextNode(niceDay(k))); lg.appendChild(sp); });
     var sp0=el("span"); var d0=el("i"); d0.style.background="#172b4d"; sp0.appendChild(d0); sp0.appendChild(document.createTextNode("Yard")); lg.appendChild(sp0); lg.appendChild(tip("routes")); wrap.appendChild(lg);
+    var fleet=el("div","fleet"); fleet.appendChild(el("b",null,"Vans")); VEHICLES.forEach(function(v){ var off=VANS_OFF.indexOf(v.reg)>=0; var bt=el("button",off?"off":"on",v.name+": "+(off?"off the road":"on the road")); bt.title="Select to change"; bt.onclick=function(){ if(off) VANS_OFF=VANS_OFF.filter(function(r){return r!==v.reg;}); else VANS_OFF.push(v.reg); render(); }; fleet.appendChild(bt); });
+    fleet.appendChild(el("span","hint",vansOnRoad()+" of "+VEHICLES.length+" on the road. More than that on one day means hiring a van in.")); wrap.appendChild(fleet);
     var mapDiv=el("div"); mapDiv.id="map"; wrap.appendChild(mapDiv); b.appendChild(wrap);
     var panel=el("div","rpanel"); b.appendChild(panel); panel.appendChild(el("div","rnote","Finding postcodes..."));
     var pcs=weekJobs.concat(pool).map(function(j){ j.pc=pcOf(j); return j.pc; });
@@ -710,7 +719,7 @@ var SNAP=null, DETAIL={};
       if(sugs.length){ var cb=el("div","combine"); var ch=el("h3"); ch.appendChild(document.createTextNode("Combine Trips")); ch.appendChild(el("span",null,sugs.length+(sugs.length===1?" way to save a trip":" ways to save trips"))); cb.appendChild(ch);
         sugs.slice(0,6).forEach(function(x){ var d=el("div","sug"); d.appendChild(el("b",null,"Take "+x.B.title+" on "+niceDay(x.k)+(x.who.length?" with "+x.who.join(", "):"")));
           var l1=el("div"); l1.appendChild(document.createTextNode("Booked for "+niceDay(x.B.date)+", "+x.apart+" miles from "+x.A.title.split(" - ")[0]+". ")); var sv=el("span","save","Saves about "+x.saved+" miles and a day out."); l1.appendChild(sv); d.appendChild(l1);
-          d.appendChild(el("div","must"+(x.fits===false?" bad":""),x.fits===null?"No items on the job to add up. Set its load to check the fit.":(x.fits?"Fits on the van: "+fmtM3(cubeOf(x.B))+" into "+fmtM3(x.room)+" spare.":"Does not fit: "+fmtM3(cubeOf(x.B))+" and "+kgOf(x.B)+" kg, with "+fmtM3(x.room)+" and "+Math.round(x.kgRoom)+" kg spare. Move a stop or use the second van.")));
+          d.appendChild(el("div","must"+(x.fits===false?" bad":""),x.fits===null?"No items on the job to add up. Set its load to check the fit.":(x.fits?"Fits on the van: "+fmtM3(cubeOf(x.B))+" into "+fmtM3(x.room)+" spare.":"Does not fit: "+fmtM3(cubeOf(x.B))+" and "+kgOf(x.B)+" kg, with "+fmtM3(x.room)+" and "+Math.round(x.kgRoom)+" kg spare. Move a stop or use "+(vansOnRoad()>1?"the second van":"a hired van")+".")));
           if(x.prod){ var pm=el("div","must"+(x.prod.move?" bad":"")); pm.textContent="Production must finish by "+niceDay(x.prod.due)+(x.prod.sched?(x.prod.move?", it is scheduled to finish "+niceDay(x.prod.sched)+". Bring it forward.":", it is scheduled to finish "+niceDay(x.prod.sched)+".") :", not scheduled yet."); d.appendChild(pm); }
           d.appendChild(el("div","steps","To do it: move the delivery date on the Trello card to "+niceDay(x.k)+(x.prod?", set production due "+niceDay(x.prod.due)+" and schedule the production days":"")+", then assign "+(x.who.length?x.who.join(", "):"a driver")+" to it here."));
           cb.appendChild(d);
@@ -724,7 +733,7 @@ var SNAP=null, DETAIL={};
         var groups=[]; TEAM.forEach(function(w){ var mine=jobs.filter(function(j){return j.who.indexOf(w)>=0;}); if(mine.length) groups.push({name:w,jobs:mine}); });
         var none=jobs.filter(function(j){return !j.who.length;}); if(none.length) groups.push({name:"Unassigned",jobs:none,unassigned:true});
         var driving=groups.filter(function(g){return !g.unassigned && DRIVERS.indexOf(g.name)>=0;}).length;
-        if(driving>VANS) day.appendChild(el("div","rwarn",driving+" drivers out but only "+VANS+" vans. Combine rounds or move a job."));
+        if(driving>vansOnRoad()) day.appendChild(el("div","rwarn",driving+" drivers out with "+vansOnRoad()+(vansOnRoad()===1?" van":" vans")+" on the road. Hire a van in, combine rounds or move a job."));
         groups.forEach(function(g){
           var placed=g.jobs.filter(function(j){return j.pt;}), lost=g.jobs.filter(function(j){return !j.pt;});
           var stops=orderStops(placed.map(function(j){ return {j:j,pt:j.pt}; }));
@@ -738,7 +747,7 @@ var SNAP=null, DETAIL={};
           if(MAP&&stops.length&&!g.unassigned){ var line=[[BASE.lat,BASE.lng]].concat(stops.map(function(x){return [x.pt.lat,x.pt.lng];})).concat([[BASE.lat,BASE.lng]]); L.polyline(line,{color:col,weight:4,opacity:.8}).addTo(MAP); }
           day.appendChild(grp);
           var vanLine=el("div","rnote","Van load: "+(vanQ?fmtLoad(vanQ,kgQ):"nothing to add up")+(vanUnknown?" ("+vanUnknown+(vanUnknown===1?" job":" jobs")+" with no items listed)":"")); day.appendChild(vanLine);
-          if(vanQ>VAN_M3||kgQ>VAN_KG) day.appendChild(el("div","rwarn",(vanQ>VAN_M3?"Over one van by volume":"Over the payload by weight")+". Split the round or use the second van."));
+          if(vanQ>VAN_M3||kgQ>VAN_KG) day.appendChild(el("div","rwarn",(vanQ>VAN_M3?"Over one van by volume":"Over the payload by weight")+". Split the round, or use "+(vansOnRoad()>1?"the second van":"a hired van")+"."));
           if(!g.unassigned && DRIVERS.indexOf(g.name)<0){ var withDriver=g.jobs.every(function(j){return j.who.some(function(w){return DRIVERS.indexOf(w)>=0;});}); if(!withDriver) day.appendChild(el("div","rwarn",g.name+" cannot drive transport. Add a driver: Rob, Jack or Bart.")); }
           // jobs on other days close to this round
           if(stops.length){

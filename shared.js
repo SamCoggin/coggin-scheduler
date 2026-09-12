@@ -5,7 +5,9 @@ var DRIVERS=["Rob","Jack","Bart"];
 var CONTRACTORS=["MAK Installations","Courier","Other contractor"];
 // ── the van and what goes on it ──
 // a 3.5 tonne Luton: about 17 cubic metres of box, payload from the plate (about 1,000 kg).
-var VAN_M3=17, VAN_KG=1000, VANS=2;   // two Lutons on the fleet
+var VAN_M3=17, VAN_KG=1000;
+// the fleet: two Lutons. one can be off the road (service, MOT); then a van is hired in.
+var VEHICLES=[{reg:"FX75 BKG",name:"Luton FX75 BKG"},{reg:"FX73 CWF",name:"Luton FX73 CWF"}];
 // loaded volume (item plus the space around it on the van) and weight per product type.
 // figures: removals trade lists and a council reuse dataset; rows marked est are estimates until the yard corrects them.
 var LOAD=[
