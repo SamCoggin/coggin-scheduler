@@ -195,10 +195,10 @@ var SNAP=null, DETAIL={};
   var TODAY=new Date(2026,8,14), DAY_H=7.5;
   var TEAM=CREW, open=null, week=0;
   // ── read the live board through Trello's client, then run the scheduler ──
-  var ROLE={"Workshop Jobs - Not Started":"waiting","Workshop Jobs - In-progress":"shop","Workshop Jobs - Pending Quality Control":"shop","Workshop Jobs - Ready for Delivery / Collection":"ready",
+  var ROLE={"Workshop Jobs - Not Started":"waiting","Workshop Jobs - In-progress":"shop","Workshop Jobs - Ready for Delivery / Collection":"ready",
     "Removals / Recycling / Skips / Stock / Plastic":"yard","Other Planned Activity":"yard","Holidays / Leave":"leave","Operations Transfer List":"handed"};
   function loadBoard(){
-    var cardsP=t.cards("id","name","desc","due","start","idList","labels","members","customFieldItems","checklists").catch(function(){ return t.cards("all"); });
+    var cardsP=t.cards("id","name","desc","due","start","idList","labels","members","customFieldItems","checklists","badges").catch(function(){ return t.cards("all"); });
     return Promise.all([t.lists("all"),cardsP,t.board("name","members"),t.get("board","shared","sched",{})]).then(function(r){
       var lists=r[0], cards=r[1], board=r[2], boardData=r[3];
       var lm={}; lists.forEach(function(l){ lm[l.id]=l; });
@@ -210,7 +210,7 @@ var SNAP=null, DETAIL={};
         var ready="";(c.customFieldItems||[]).forEach(function(i){ if(i.value&&i.value.date) ready=i.value.date.slice(0,10); });
         // checklists come through on some reads; use them for the items when they do
         var checks=[]; (c.checklists||[]).forEach(function(cl){ (cl.checkItems||[]).forEach(function(it){ checks.push({n:(it.name||"").slice(0,160),done:it.state==="complete"}); }); });
-        out.push({id:c.id,name:c.name.trim(),role:role,due:due,start:start,ready_by:ready,labels:(c.labels||[]).map(function(x){return x.name;}),who:(c.members||[]).map(function(m){return (m.fullName||m.username||"").split(" ")[0];}).filter(Boolean),desc:c.desc||"",checks:checks});
+        out.push({id:c.id,qc:qcDone(c.badges),name:c.name.trim(),role:role,due:due,start:start,ready_by:ready,labels:(c.labels||[]).map(function(x){return x.name;}),who:(c.members||[]).map(function(m){return (m.fullName||m.username||"").split(" ")[0];}).filter(Boolean),desc:c.desc||"",checks:checks});
       });
       return Promise.all(out.map(function(c){ return t.get(c.id,"shared","sched",null).then(function(d){ c.saved=d; return c; }); })).then(function(cs){
         cs.forEach(function(c){ DETAIL[c.id]={desc:c.desc,checks:c.checks||[]}; });
@@ -265,7 +265,7 @@ var SNAP=null, DETAIL={};
   function buildFromSnap(SNAP){
     JOBS=SNAP.cards.filter(function(c){return c.due && c.role!=="leave" && c.role!=="handed";}).map(function(c){
     var lb=c.labels[0]||"", title=nice(c.name), subName=c.who.filter(function(w){return TEAM.indexOf(w)<0;})[0]||"";
-    var j={id:c.id,title:title,label:lb,who:c.who.filter(function(w){return TEAM.indexOf(w)>=0;}),contractor:subName?(subName==="MAK"?"MAK Installations":subName):"",mins:null,out:c.due};
+    var j={id:c.id,title:title,label:lb,who:c.who.filter(function(w){return TEAM.indexOf(w)>=0;}),contractor:subName?(subName==="MAK"?"MAK Installations":subName):"",mins:null,out:c.due,notQc:c.role==="ready"&&c.qc===false};
     if(c.role==="waiting"||c.role==="shop"){
       j.stage=c.role==="shop"?"In progress":"Not started"; j.stageLabel=c.role==="shop"?"Workshop: In-progress":"Workshop: Not Started";
       j.date=c.due;   // where the Trello calendar shows it, as the trip out
@@ -393,6 +393,7 @@ var SNAP=null, DETAIL={};
     if(!part.who.length) return el("span",cls,"Unassigned");
     if(part.isPrep){ if(part.mins==null) return el("span",cls,"No production time"); return el("span","bdg",fmt(part.mins)+(part.who.length>1?" each":"")); }
     var missing=[];
+    if(part.notQc) missing.push("Not QC'd");
     if(part.site&&part.drive==null&&!part.onRound) missing.push("No travel time");
     if(part.mins==null) missing.push(part.site?"No site time":"No labour time");
     if(part.prep&&!part.prep.date) missing.push("Production not scheduled");

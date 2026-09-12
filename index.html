@@ -13,18 +13,20 @@
       return [{ text: "Scheduler", icon: ICON, callback: function(t){ return t.modal({ url: "./scheduler.html?v="+Math.floor(Date.now()/60000), fullscreen: true, title: "Scheduler" }); } }];
     },
     "card-badges": function(t){
-      return Promise.all([t.card("labels","idList","due"), t.get("card","shared","sched",null), t.lists("all")]).then(function(r){
+      return Promise.all([t.card("labels","idList","due","badges"), t.get("card","shared","sched",null), t.lists("all")]).then(function(r){
         var card=r[0], d=r[1], out=[];
         var list=r[2].filter(function(l){return l.id===card.idList;})[0], workshop=!!(list&&WORKSHOP_LISTS.test(list.name));
+        if(list&&READY_LIST.test(list.name)&&!qcDone(card.badges)) out.push({ text:"Not QC'd", color:"red" });
         if(workshop&&card.due){ var pd=(d&&d.prodDue)||productionDue("",card.due.slice(0,10)); var late=!!(d&&d.prep&&d.prep.date&&d.prep.date>pd); out.push({ text:"Production due "+niceShort(pd), color:late?"red":(pd<todayIso()?"red":"blue") }); }
         if(d){ var b=badgeText(d,isSite(card)); out.push({ text:b.text, color:b.color }); }
         return out;
       });
     },
     "card-detail-badges": function(t){
-      return Promise.all([t.card("labels","idList","due"), t.get("card","shared","sched",null), t.lists("all")]).then(function(r){
+      return Promise.all([t.card("labels","idList","due","badges"), t.get("card","shared","sched",null), t.lists("all")]).then(function(r){
         var card=r[0], d=r[1], out=[];
         var list=r[2].filter(function(l){return l.id===card.idList;})[0], workshop=!!(list&&WORKSHOP_LISTS.test(list.name));
+        if(list&&READY_LIST.test(list.name)&&!qcDone(card.badges)) out.push({ title:"QC", text:"Not QC'd: checklist not complete", color:"red" });
         if(workshop&&card.due){ var pd=(d&&d.prodDue)||productionDue("",card.due.slice(0,10)); out.push({ title:"Production due", text:niceShort(pd), color:pd<todayIso()?"red":"blue" }); }
         if(!d) out.push({ title:"Scheduling", text:"Not planned", color:"yellow" }); else { var b=badgeText(d,isSite(card)); out.push({ title:"Scheduling", text:b.text, color:b.color }); }
         return out;
