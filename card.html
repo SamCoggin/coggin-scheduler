@@ -30,9 +30,10 @@
 (function(){
   var t=TrelloPowerUp.iframe();
   var el=function(tag,c,x){var n=document.createElement(tag);if(c)n.className=c;if(x!=null)n.textContent=x;return n;};
-  var card=null, d=null, workshop=false, site=false, saving=null, defaultDue=null;
+  var card=null, d=null, workshop=false, site=false, saving=null, defaultDue=null, boardData={};
   function load(){
-    return Promise.all([t.card("id","name","labels","idList","due"), t.lists("all"), t.get("card","shared","sched",null)]).then(function(r){
+    return Promise.all([t.card("id","name","labels","idList","due"), t.lists("all"), t.get("card","shared","sched",null), t.get("board","shared","sched",{})]).then(function(r){
+      boardData=r[3]||{}; (boardData.contractors||[]).forEach(function(c){ if(CONTRACTORS.indexOf(c)<0) CONTRACTORS.splice(CONTRACTORS.length-1,0,c); });
       card=r[0]; var list=r[1].filter(function(l){return l.id===card.idList;})[0]; workshop=!!(list&&WORKSHOP_LISTS.test(list.name));
       site=(card.labels||[]).some(function(l){return SITE_LABELS.test(l.name);});
       defaultDue=productionDue("",(card.due||"").slice(0,10));
@@ -67,6 +68,10 @@
     if(site){ var cb=el("div","blk"); cb.appendChild(el("div","bh","Carried out by")); var sel=el("select");
     [["","Coggin operatives"]].concat(CONTRACTORS.map(function(c){return [c,c];})).forEach(function(o){ var op=el("option",null,o[1]); op.value=o[0]; if((d.contractor||"")===o[0]) op.selected=true; sel.appendChild(op); });
     sel.onchange=function(){ d.contractor=sel.value; save(); render(); }; cb.appendChild(sel);
+    var addr=el("div","row"); var ai=el("input"); ai.type="text"; ai.placeholder="Add a subcontractor"; ai.style.cssText="border:2px solid var(--line);border-radius:6px;padding:5px 8px;min-width:180px";
+    var ab=el("button","p","Add"); ab.onclick=function(){ var n=ai.value.trim(); if(!n) return; if(CONTRACTORS.indexOf(n)<0) CONTRACTORS.splice(CONTRACTORS.length-1,0,n); d.contractor=n;
+      var extra=CONTRACTORS.filter(function(c){return ["MAK Installations","Courier","Other contractor"].indexOf(c)<0;}); boardData.contractors=extra; t.set("board","shared","sched",boardData); save(); render(); };
+    addr.appendChild(ai); addr.appendChild(ab); cb.appendChild(addr);
     if(contractorOnly) cb.appendChild(el("div","hint",d.contractor+" is carrying out this job, so no travel or labour time applies."));
     app.appendChild(cb); } else { d.contractor=""; }
     if(site && !contractorOnly){ var tb=el("div","blk"); tb.appendChild(el("div","bh","Travel time, return")); var r=el("div","row"); r.appendChild(hm(function(){return d.drive;},function(v){d.drive=v;},"Travel")); tb.appendChild(r);

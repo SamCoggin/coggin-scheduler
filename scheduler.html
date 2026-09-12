@@ -294,6 +294,7 @@ var SNAP=null, DETAIL={};
       (d.legs||[]).forEach(function(L){ LEGS.push({parent:j.id,type:L.type,date:L.date,who:L.who||[],mins:L.mins,drive:L.drive,where:L.where||""}); });
     });
     if(SNAP.boardData&&SNAP.boardData.roundDrive){ for(var k in SNAP.boardData.roundDrive) ROUND_DRIVE[k]=SNAP.boardData.roundDrive[k]; }
+    if(SNAP.boardData&&SNAP.boardData.contractors){ SNAP.boardData.contractors.forEach(function(c){ if(CONTRACTORS.indexOf(c)<0) CONTRACTORS.splice(CONTRACTORS.length-1,0,c); }); }
   }
   function daysOf(j){ if(!j.start||j.start>=j.date) return [j.date]; var out=[]; for(var d=new Date(j.start+"T12:00");iso(d)<=j.date;d.setDate(d.getDate()+1)){ if(d.getDay()!==0&&d.getDay()!==6) out.push(iso(d)); } return out; }
   // what each person already has on a day, in minutes, for the "who could jump on" hints
@@ -319,7 +320,8 @@ var SNAP=null, DETAIL={};
         legs:LEGS.filter(function(L){return L.parent===j.id;}).map(function(L){return {type:L.type,date:L.date,who:L.who,mins:L.mins,drive:L.drive,where:L.where};})};
       var js=JSON.stringify(d); if(lastSaved[j.id]===js) return; lastSaved[j.id]=js; t.set(j.id,"shared","sched",d);
     });
-    var rd=JSON.stringify(ROUND_DRIVE); if(lastSaved.__rounds!==rd){ lastSaved.__rounds=rd; t.set("board","shared","sched",{roundDrive:ROUND_DRIVE}); }
+    var extra=CONTRACTORS.filter(function(c){return ["MAK Installations","Courier","Other contractor"].indexOf(c)<0;});
+    var bd=JSON.stringify({roundDrive:ROUND_DRIVE,contractors:extra}); if(lastSaved.__board!==bd){ lastSaved.__board=bd; t.set("board","shared","sched",{roundDrive:ROUND_DRIVE,contractors:extra}); }
   }
 
   // the bit that opens under a card: who, quick times, minutes, and one extra row
@@ -450,6 +452,9 @@ var SNAP=null, DETAIL={};
       var rm=el("button","close","Remove this leg"); rm.style.marginTop="8px"; rm.onclick=function(){ LEGS.splice(LEGS.indexOf(j.leg),1); open=null; render(); }; lgb.appendChild(rm); right.appendChild(lgb); }
     if(!o.shop && !o.leg && j.site){ var cb=block("Carried Out By","contractor"); var sel=el("select"); [["","Coggin operatives"]].concat(CONTRACTORS.map(function(c){return [c,c];})).forEach(function(op){ var o2=el("option",null,op[1]); o2.value=op[0]; if((j.contractor||"")===op[0]) o2.selected=true; sel.appendChild(o2); });
       sel.onchange=function(){ j.contractor=sel.value; render(); }; cb.appendChild(sel);
+      var addr=el("div","row"); var ai=el("input"); ai.type="text"; ai.placeholder="Add a subcontractor"; ai.style.minWidth="200px"; ai.setAttribute("aria-label","New subcontractor name");
+      var ab2=el("button","close","Add"); ab2.onclick=function(){ var n=ai.value.trim(); if(!n) return; if(CONTRACTORS.indexOf(n)<0) CONTRACTORS.splice(CONTRACTORS.length-1,0,n); j.contractor=n; render(); };
+      addr.appendChild(ai); addr.appendChild(ab2); cb.appendChild(addr);
       if(contractorOnly) cb.appendChild(el("div","hint",j.contractor+" is carrying out this job, so no travel or labour time applies. Assign an operative above if one attends."));
       right.appendChild(cb); }
     if(o.shop){ var db=block("Production Dates","days"); var r=el("div","row");
