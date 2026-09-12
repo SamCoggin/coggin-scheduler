@@ -4,10 +4,11 @@ var CREW=["Jack","Jordan","Bart","Rob","Bradley"];
 var DRIVERS=["Rob","Jack","Bart"];
 var CONTRACTORS=["MAK Installations","Courier","Other contractor"];
 // ── the van and what goes on it ──
-// a 3.5 tonne Luton: about 17 cubic metres of box, payload from the plate (about 1,000 kg).
-var VAN_M3=17, VAN_KG=1000;
-// the fleet: two Lutons. one can be off the road (service, MOT); then a van is hired in.
-var VEHICLES=[{reg:"FX75 BKG",name:"Luton FX75 BKG"},{reg:"FX73 CWF",name:"Luton FX73 CWF"}];
+// the vans: two Renault Master 3.5 tonne Lutons (DVLA: FX75 BKG 2025, FX73 CWF 2024, revenue weight 3,500 kg).
+// Renault quotes the Master Luton box at 4,100 x 2,070 x 2,200 mm inside, 18.7 cubic metres, payload up to about 1,200 kg
+// before a tail lift and the crew. planning figures: 18.7 m3 and 1,000 kg.
+var VAN_M3=18.7, VAN_KG=1000;
+var VEHICLES=[{reg:"FX75 BKG",name:"Renault Master Luton FX75 BKG (2025)"},{reg:"FX73 CWF",name:"Renault Master Luton FX73 CWF (2024)"}];
 // loaded volume (item plus the space around it on the van) and weight per product type.
 // figures: removals trade lists and a council reuse dataset; rows marked est are estimates until the yard corrects them.
 var LOAD=[
