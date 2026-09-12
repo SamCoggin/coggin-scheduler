@@ -351,7 +351,14 @@ var SNAP=null, DETAIL={};
     [/^(access.*|logistics|safety.*)$/i,"access"],
     [/^(job|ref|service|delivery details|clearance details|refurb collection details|buyback drop-off details|delivery info|other items|additional info)$/i,"skip"]
   ];
+  function cleanDesc(txt){
+    txt=(txt||"").replace(/\[([^\]]+)\]\([^)]*\)/g,"$1").replace(/\*\*/g,"").replace(/\\_/g,"_").replace(/[\u200c\u200b]/g,"").replace(/\s*\u2014\s*/g,", ").replace(/\s*\u00b7\s*/g,", ").replace(/\u00d7/g,"x").replace(/^\s*_+\s*$/gm,"");
+    // the clearance form writes items as {"metal_filing_cabinets":5}: turn that into "5 x Metal filing cabinets"
+    txt=txt.replace(/\{[^{}]*:\s*\d+[^{}]*\}/g,function(m){ try{ var o=JSON.parse(m); return Object.keys(o).map(function(k){ var n=k.replace(/_/g," "); return o[k]+" x "+n.charAt(0).toUpperCase()+n.slice(1); }).join("\n"); }catch(e){ return m; } });
+    return txt.replace(/\n{3,}/g,"\n\n");
+  }
   function parseDesc(txt){
+    txt=cleanDesc(txt);
     var groups={contact:[],where:[],what:[],access:[],notes:[]}, cur="notes";
     txt.split("\n").forEach(function(raw){
       var l=raw.replace(/^\s*[-*_]+\s*/,"").replace(/_+$/,"").trim(); if(!l) return;
@@ -555,7 +562,7 @@ var SNAP=null, DETAIL={};
       tx.appendChild(ul); row.appendChild(tx); pc.appendChild(row);
     });
     pl.appendChild(pc); b.appendChild(pl);
-    var mo=openRound?roundModal():modal(); if(mo) document.body.appendChild(mo);
+    var mo=openRound?roundModal():modal(); if(mo){ document.body.appendChild(mo); var nm2=mo.querySelector(".modal"); if(nm2&&window.__keepScroll) nm2.scrollTop=window.__keepScroll; }
     $("#prev").onclick=function(){ var x=new Date(dayCur+"T12:00"); do{x.setDate(x.getDate()-1);}while(x.getDay()===0||x.getDay()===6); dayCur=iso(x); render(); };
     $("#next").onclick=function(){ var x=new Date(dayCur+"T12:00"); do{x.setDate(x.getDate()+1);}while(x.getDay()===0||x.getDay()===6); dayCur=iso(x); render(); };
   }
@@ -594,7 +601,8 @@ var SNAP=null, DETAIL={};
     document.body.onclick=function(){ if(tipOpen){ tipOpen=null; render(); } };
     $("#vday").className=view==="day"?"on":""; $("#vweek").className=view==="week"?"on":""; $("#vmonth").className=view==="month"?"on":"";
     $("#vday").onclick=function(){view="day";render();}; $("#vweek").onclick=function(){view="week";render();}; $("#vmonth").onclick=function(){view="month";render();};
-    var oldV=document.querySelector(".veil"); if(oldV) oldV.parentNode.removeChild(oldV);
+    var oldV=document.querySelector(".veil"), keepScroll=0; if(oldV){ var om=oldV.querySelector(".modal"); keepScroll=om?om.scrollTop:0; oldV.parentNode.removeChild(oldV); }
+    window.__keepScroll=keepScroll;
     if(view==="day") return renderDay();
     if(view==="month") return renderMonth();
     $("#board").className="board"; $("#board").style.gridTemplateRows="";
@@ -643,7 +651,7 @@ var SNAP=null, DETAIL={};
       });
       list.appendChild(tot); b.appendChild(list);
     }
-    var mo=openRound?roundModal():modal(); if(mo) document.body.appendChild(mo);
+    var mo=openRound?roundModal():modal(); if(mo){ document.body.appendChild(mo); var nm=mo.querySelector(".modal"); if(nm&&window.__keepScroll) nm.scrollTop=window.__keepScroll; }
     $("#prev").onclick=function(){week--;render();}; $("#next").onclick=function(){week++;render();};
   }
   if(t){
