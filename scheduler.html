@@ -508,7 +508,7 @@ var SNAP=null, DETAIL={};
       var tot=el("div","hint"); tot.style.fontWeight="700"; tot.textContent="Estimated: "+(L.complete?fmtLoad(L.m3,L.kg):"not set"); vb.appendChild(tot);
       var vr=el("div","row"); vr.appendChild(el("span","hint","or set the load to")); var vn=el("input"); vn.type="number"; vn.min="0"; vn.step="0.5"; vn.value=j.cubeSet==null?"":String(j.cubeSet); vn.placeholder=L.complete?String(L.m3):"0"; vn.setAttribute("aria-label","Cubic metres"); vn.onchange=function(){ j.cubeSet=vn.value===""?null:Math.max(0,parseFloat(vn.value)||0); render(); }; vr.appendChild(vn); vr.appendChild(el("span",null,"cubic metres"));
       if(j.cubeSet!=null){ var rs2=el("button","close","Use the estimate"); rs2.onclick=function(){ j.cubeSet=null; render(); }; vr.appendChild(rs2); } vb.appendChild(vr);
-      vb.appendChild(el("div","hint","A Luton box is about "+VAN_M3+" cubic metres. Desks count flat unless the item says built.")); right.appendChild(vb); }
+      vb.appendChild(el("div","hint","A Luton box is about "+VAN_M3+" cubic metres. Desks count flat unless the item says built. Chair figures assume double stacking.")); right.appendChild(vb); }
     if(!contractorOnly){ var tb=block(o.shop?"Production Time per Operative":(j.site?"Site Time per Operative":"Labour Time per Operative"),"time");
       var q=el("div","seg"); QUICK.forEach(function(qq){ var b=el("button",part.mins===qq[0]?"on":"",qq[1]); b.onclick=function(){ setMins(qq[0]); render(); }; q.appendChild(b); }); tb.appendChild(q);
       var r3=el("div","row"); r3.appendChild(el("span","hint","or exactly")); r3.appendChild(hmBoxes(function(){return part.mins;},setMins,"Time")); tb.appendChild(r3); right.appendChild(tb); }

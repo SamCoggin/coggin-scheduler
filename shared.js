@@ -11,6 +11,8 @@ var VAN_M3=18.7, VAN_KG=1000;
 var VEHICLES=[{reg:"FX75 BKG",name:"Renault Master Luton FX75 BKG (2025)"},{reg:"FX73 CWF",name:"Renault Master Luton FX73 CWF (2024)"}];
 // loaded volume (item plus the space around it on the van) and weight per product type.
 // figures: removals trade lists and a council reuse dataset; rows marked est are estimates until the yard corrects them.
+// chairs are DOUBLE STACKED figures: 0.40 per swivel chair is Sam's "40 in a Luton", which only works stacked two high;
+// loose meeting chairs at 0.20 (about 90 a van) and stacking chairs at 0.10 (stacks of five or six) assume the same.
 var LOAD=[
   {t:"Swivel chair",     re:/swivel|task chair|operator|mesh chair|office chair|executive chair|ergonomic/i, m3:0.40, kg:12},
   {t:"Meeting chair, stacking", re:/stack/i, m3:0.10, kg:8},
