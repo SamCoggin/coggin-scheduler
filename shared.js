@@ -1,5 +1,7 @@
 // shared by the connector, the card back section and the scheduler
 var CREW=["Jack","Jordan","Bart","Rob","Bradley"];
+// only these three drive the van. the others go along as a second pair of hands.
+var DRIVERS=["Rob","Jack","Bart"];
 var CONTRACTORS=["MAK Installations","Courier","Other contractor"];
 var QUICK=[[15,"15 min"],[30,"30 min"],[60,"1 hour"],[120,"2 hours"],[240,"Half day"],[450,"Full day"]];
 var WORKSHOP_LISTS=/Workshop Jobs - (Not Started|In-progress)/;

@@ -1,4 +1,5 @@
 <title>Coggin Scheduler</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
 <style>
   :root{ --board:#cfd6e0; --list:#eef0f3; --card:#fff; --text:#172b4d; --muted:#5e6c84; --line:#b8c0cc; --blue:#0c66e4; --blue-bg:#e9f2ff; --red:#c9372c; --red-bg:#ffeceb; --green:#1f845a; --green-bg:#e3fcef; --amber:#974f0c; --amber-bg:#fff7d6; --shadow:0 1px 1px rgba(9,30,66,.25),0 0 1px rgba(9,30,66,.31); }
   @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){ --board:#1d2125; --list:#101204; --card:#22272b; --text:#b6c2cf; --muted:#8c9bab; --line:#4a5661; --blue:#579dff; --blue-bg:#1c2b41; --red:#f87168; --red-bg:#42221f; --green:#4bce97; --green-bg:#1c3329; --amber:#f5cd47; --amber-bg:#3d2e00; --shadow:0 1px 1px rgba(0,0,0,.5); }}
@@ -23,6 +24,35 @@
   .hdr .views{display:inline-flex;gap:4px;margin-right:8px;background:var(--list);border-radius:8px;padding:3px}
   .hdr .views button{padding:5px 12px;border-radius:6px;background:transparent}
   .hdr .views button.on{background:var(--card);box-shadow:var(--shadow)}
+  .board.routes{grid-template-columns:minmax(380px,1.3fr) minmax(340px,1fr);overflow:hidden}
+  .mapwrap{background:var(--list);border:2px solid #3d4451;border-radius:12px;overflow:hidden;display:flex;flex-direction:column;min-height:0}
+  .mapwrap .legend{display:flex;flex-wrap:wrap;gap:8px 14px;padding:10px 14px;background:var(--card);border-bottom:1px solid var(--line);font-weight:700;font-size:13px}
+  .legend i{display:inline-block;width:12px;height:12px;border-radius:50%;margin-right:5px;vertical-align:-1px}
+  #map{flex:1;min-height:320px}
+  .rpanel{background:var(--list);border:2px solid #3d4451;border-radius:12px;overflow:auto;min-height:0;padding:10px;display:flex;flex-direction:column;gap:10px}
+  .rday{background:var(--card);border-radius:10px;border:1px solid var(--line);padding:0 0 8px}
+  .rday h3{margin:0;padding:10px 14px;font-size:16px;font-weight:800;color:#fff;border-radius:9px 9px 0 0;display:flex;justify-content:space-between}
+  .rday h3 span{font-weight:600;font-size:13px;opacity:.95}
+  .rgrp{padding:8px 14px 4px}
+  .rgrp .k{font-size:13px;font-weight:800;text-transform:uppercase;letter-spacing:.03em;margin-bottom:6px;display:flex;justify-content:space-between}
+  .rgrp .k .ok{color:var(--green)} .rgrp .k .over{color:var(--red)}
+  .stop{display:grid;grid-template-columns:26px 1fr auto;gap:8px;align-items:baseline;padding:5px 0;border-top:1px solid var(--line);font-size:14px}
+  .stop:first-of-type{border-top:0}
+  .stop .n{width:22px;height:22px;border-radius:50%;color:#fff;font-weight:800;font-size:12px;display:inline-flex;align-items:center;justify-content:center}
+  .stop b{display:block} .stop small{color:var(--muted);font-weight:600;font-size:12px}
+  .stop .mi{font-weight:700;font-size:13px;color:var(--muted);white-space:nowrap}
+  .near{margin:6px 14px 4px;padding:8px 10px;border-radius:8px;background:var(--blue-bg);font-size:13px;line-height:1.4}
+  .near b{display:block;font-size:13px;text-transform:uppercase;letter-spacing:.03em;margin-bottom:4px}
+  .near div{padding:3px 0}
+  .near .no{color:var(--red);font-weight:700}
+  .rwarn{margin:6px 14px 0;padding:8px 10px;border-radius:8px;background:var(--red-bg);color:var(--red);font-weight:700;font-size:13px}
+  .rnote{color:var(--muted);font-size:13px;padding:6px 14px}
+  .prow2 .drv{font-style:normal;font-weight:600;font-size:11px;color:var(--muted);margin-left:6px;border:1px solid var(--line);border-radius:4px;padding:1px 5px}
+  .crew{display:flex;flex-wrap:wrap;gap:6px;padding:8px 14px;border-bottom:1px solid var(--line)}
+  .crew span{font-size:13px;font-weight:700;border-radius:6px;padding:4px 9px;border:1px solid var(--line);background:var(--list)}
+  .crew .free{color:var(--green);background:var(--green-bg);border-color:var(--green-bg)} .crew .over{color:var(--red);background:var(--red-bg);border-color:var(--red-bg)} .crew .off{color:var(--amber);background:var(--amber-bg);border-color:var(--amber-bg)}
+  .crew i{font-style:normal;font-weight:600;font-size:11px;opacity:.8;margin-left:4px}
+  .leaflet-container{font-family:inherit}
   .board.day{grid-template-columns:repeat(4,minmax(260px,1fr))}
   .board.month{grid-template-columns:repeat(5,1fr);grid-auto-rows:1fr;gap:8px;overflow:hidden}
   .mh{font-weight:800;font-size:14px;text-transform:uppercase;letter-spacing:.04em;color:var(--text);padding:4px 6px}
@@ -177,7 +207,7 @@
 <div class="hdr">
   <h1>Scheduler</h1>
   <span class="src" id="src"></span>
-  <span class="views"><button id="vday">Day</button><button id="vweek" class="on">Week</button><button id="vmonth">Month</button></span>
+  <span class="views"><button id="vday">Day</button><button id="vweek" class="on">Week</button><button id="vmonth">Month</button><button id="vroutes">Routes</button></span>
   <button id="prev">Back</button><span class="t" id="title"></span><button id="next">Next</button>
 </div>
 <div class="board" id="board"></div>
@@ -187,6 +217,7 @@ var SNAP=null, DETAIL={};
 </script>
 
 <script src="https://p.trellocdn.com/power-up.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script>document.write('<script src="./shared.js?v='+Math.floor(Date.now()/60000)+'"><\/script>');</script>
 <script>
 (function(){
@@ -271,13 +302,13 @@ var SNAP=null, DETAIL={};
       j.stage=c.role==="shop"?"In progress":"Not started"; j.stageLabel=c.role==="shop"?"Workshop: In-progress":"Workshop: Not Started";
       j.date=c.due;   // where the Trello calendar shows it, as the trip out
       j.collect=/collecting/i.test(lb);
-      j.site=!j.collect && /delivery\/installation|collect & return/i.test(lb); if(j.site) j.drive=driveMins(title);
+      j.site=!j.collect && /delivery\/installation|collect & return|donation/i.test(lb); if(j.site) j.drive=driveMins(title);
       // the prep: who is getting it ready, and on which day
       // the prep is not planned until you give it days
       j.prep={who:[],mins:null,start:null,date:null,job:j,isPrep:true};
       j.prodDue=productionDue("",c.due); j.prodDueSet=false;
     } else {
-      j.date=c.due; j.site=/delivery\/installation|collect & return|warranty|removal/i.test(lb);
+      j.date=c.due; j.site=/delivery\/installation|collect & return|warranty|removal|donation/i.test(lb);
       j.stageLabel=c.role==="ready"?"Workshop: Ready":"Booked";
       if(!j.site) j.contractor="";
       if(j.site) j.drive=driveMins(title);
@@ -288,7 +319,7 @@ var SNAP=null, DETAIL={};
     LEAVE=SNAP.cards.filter(function(c){return c.role==="leave"&&c.due;}).map(function(c){ return {date:c.due,text:c.name.replace(/\s*\(.*$/,"").replace(/BANK HOLIDAY\s*-\s*/i,"")+(/BANK HOLIDAY/i.test(c.name)?" (bank holiday)":" on leave")}; });
     // what was saved on the cards last time
     SNAP.cards.forEach(function(c){ var d=c.saved; if(!d) return; var j=JOBS.filter(function(x){return x.id===c.id;})[0]; if(!j) return;
-      if(d.who) j.who=d.who.slice(); if(d.mins!=null) j.mins=d.mins; if(d.drive!=null) j.drive=d.drive; if(d.contractor) j.contractor=d.contractor;
+      if(d.who) j.who=d.who.slice(); if(d.van!=null) j.van=d.van; if(d.mins!=null) j.mins=d.mins; if(d.drive!=null) j.drive=d.drive; if(d.contractor) j.contractor=d.contractor;
       if(d.prep&&j.prep){ j.prep.who=d.prep.who||[]; j.prep.mins=d.prep.mins; j.prep.start=d.prep.start||null; j.prep.date=d.prep.date||null; }
       if(d.prodDue&&j.prep){ j.prodDue=d.prodDue; j.prodDueSet=true; }
       (d.legs||[]).forEach(function(L){ LEGS.push({parent:j.id,type:L.type,date:L.date,who:L.who||[],mins:L.mins,drive:L.drive,where:L.where||""}); });
@@ -316,7 +347,7 @@ var SNAP=null, DETAIL={};
   function persist(){
     if(!t) return;
     JOBS.forEach(function(j){
-      var d={who:j.who,mins:j.mins,drive:j.drive,contractor:j.contractor||"",prodDue:j.prodDueSet?j.prodDue:null,prep:j.prep?{who:j.prep.who,mins:j.prep.mins,start:j.prep.start,date:j.prep.date}:null,
+      var d={who:j.who,mins:j.mins,drive:j.drive,van:j.van!=null?j.van:null,contractor:j.contractor||"",prodDue:j.prodDueSet?j.prodDue:null,prep:j.prep?{who:j.prep.who,mins:j.prep.mins,start:j.prep.start,date:j.prep.date}:null,
         legs:LEGS.filter(function(L){return L.parent===j.id;}).map(function(L){return {type:L.type,date:L.date,who:L.who,mins:L.mins,drive:L.drive,where:L.where};})};
       var js=JSON.stringify(d); if(lastSaved[j.id]===js) return; lastSaved[j.id]=js; t.set(j.id,"shared","sched",d);
     });
@@ -440,12 +471,13 @@ var SNAP=null, DETAIL={};
     var dayK=o.shop?(part.start||iso(TODAY)):(j.start||j.date), load=loadOn(dayK);
     var wb=block("Operatives","who"); var pl=el("div","plist");
     TEAM.forEach(function(w){ var on=part.who.indexOf(w)>=0; var row=el("button","prow2"+(on?" on":"")+(load[w].c==="off"?" off":"")); row.setAttribute("aria-pressed",on?"true":"false");
-      row.appendChild(el("span","av",ini(w))); row.appendChild(el("span","nm",w)); row.appendChild(el("span","ld "+load[w].c,load[w].t)); row.appendChild(el("span","tick",on?"Assigned":"Assign"));
+      row.appendChild(el("span","av",ini(w))); var nm=el("span","nm",w); if(!o.shop&&j.site&&DRIVERS.indexOf(w)>=0) nm.appendChild(el("i","drv","driver")); row.appendChild(nm); row.appendChild(el("span","ld "+load[w].c,load[w].t)); row.appendChild(el("span","tick",on?"Assigned":"Assign"));
       row.onclick=function(){ var i=part.who.indexOf(w); if(i<0) part.who.push(w); else part.who.splice(i,1); render(); }; pl.appendChild(row); });
     var setMins=function(v){ part.mins=v; if(part.leg) part.leg.mins=v; }, setDrive=function(v){ part.drive=v; if(part.leg) part.leg.drive=v; };
     wb.appendChild(pl);
     var freeOnes=TEAM.filter(function(w){return load[w].c==="free"&&part.who.indexOf(w)<0;});
     wb.appendChild(el("div","hint",freeOnes.length?"Available "+shortDay(dayK)+": "+freeOnes.join(", ")+".":"No operatives available on "+shortDay(dayK)+"."));
+    if(!o.shop&&j.site&&!contractorOnly&&part.who.length&&!part.who.some(function(w){return DRIVERS.indexOf(w)>=0;})) wb.appendChild(el("div","hint far","No driver on this job. Rob, Jack or Bart must be on it to drive the van."));
     right.appendChild(wb);
     if(o.leg){ var lgb=block("This leg"); var lr=el("div","row"); var ld=el("input"); ld.type="date"; ld.value=j.leg.date; ld.onchange=function(){ if(ld.value){ j.leg.date=ld.value; render(); } }; lr.appendChild(el("span",null,"Date")); lr.appendChild(ld); lgb.appendChild(lr);
       var wr=el("div","row"); var wi=el("input"); wi.type="text"; wi.value=j.leg.where||""; wi.placeholder="Subcontractor or site, with postcode"; wi.style.minWidth="260px"; wi.onchange=function(){ j.leg.where=wi.value; var pc=/\b([A-Z]{1,2})\d/i.exec(wi.value); j.leg.drive=pc&&DRIVE[pc[1].toUpperCase()]?Math.round(DRIVE[pc[1].toUpperCase()].h*2*60*TRAFFIC/5)*5:j.leg.drive; render(); }; wr.appendChild(el("span",null,"Where")); wr.appendChild(wi); lgb.appendChild(wr);
@@ -481,6 +513,8 @@ var SNAP=null, DETAIL={};
       drb.appendChild(el("div","hint",j.drive!=null?"Calculated from the postcode, plus 20 percent for traffic. Change it if you know better.":"No postcode found. Type it in."));
       if(j.drive!=null && j.drive>6*60) drb.appendChild(el("div","hint far","More than a day's travel with the job in between. Consider a courier or subcontractor."));
       right.appendChild(drb); }
+    if(!o.shop && j.site && !contractorOnly && !j.isLeg){ var vb=block("Van Space","van"); var vs=el("div","seg"); VAN.forEach(function(v){ var b=el("button",j.van===v[0]?"on":"",v[1]); b.onclick=function(){ j.van=j.van===v[0]?null:v[0]; render(); }; vs.appendChild(b); }); vb.appendChild(vs);
+      vb.appendChild(el("div","hint","How much of the van this job fills. The Routes view adds up each round against one van.")); right.appendChild(vb); }
     if(!contractorOnly){ var tb=block(o.shop?"Production Time per Operative":(j.site?"Site Time per Operative":"Labour Time per Operative"),"time");
       var q=el("div","seg"); QUICK.forEach(function(qq){ var b=el("button",part.mins===qq[0]?"on":"",qq[1]); b.onclick=function(){ setMins(qq[0]); render(); }; q.appendChild(b); }); tb.appendChild(q);
       var r3=el("div","row"); r3.appendChild(el("span","hint","or exactly")); r3.appendChild(hmBoxes(function(){return part.mins;},setMins,"Time")); tb.appendChild(r3); right.appendChild(tb); }
@@ -517,6 +551,9 @@ var SNAP=null, DETAIL={};
     who:"Assign operatives. Under each name is their existing allocation for that day.",
     contractor:"Transport jobs only. Coggin operatives by default; select a subcontractor or courier when they carry out the job. Workshop and yard work is always our own operatives.",
     days:"The dates production takes place. Set a later end date to spread it over several days.",
+    drivers:"Rob, Jack and Bart drive the van. Jordan and Bradley go along as a second pair of hands, so every transport job needs one of the drivers on it.",
+    van:"How much of one van this job takes up. A round over a full van needs splitting or a second van.",
+    routes:"Where the week's transport jobs are. Each round is drawn from the yard in its day's colour. Nearby jobs on other days could join a round if there is room in the van and production is done.",
     drive:"Return travel time, calculated from the site postcode plus 20 percent for traffic. Overtype if you know better.",
     time:"Labour time per operative. Use the quick options or enter hours and minutes."
   };
@@ -618,15 +655,112 @@ var SNAP=null, DETAIL={};
     $("#next").onclick=function(){ monthCur=new Date(monthCur.getFullYear(),monthCur.getMonth()+1,1); render(); };
   }
   var MONTHS=["January","February","March","April","May","June","July","August","September","October","November","December"];
+
+  // ── Routes: where the week's transport jobs are, as rounds from the yard ──
+  var VAN=[[1,"Quarter van"],[2,"Half a van"],[3,"Three quarters"],[4,"Full van"],[8,"Two vans"]];
+  function fmtVan(q){ if(q==null) return "not set"; if(q<=0) return "empty"; var vans=Math.floor(q/4), rem=q%4, names={1:"a quarter",2:"half",3:"three quarters"};
+    if(!vans) return names[rem]+" of a van"; var w=vans===1?"one van":vans+" vans"; return rem?w+" and "+names[rem]:w; }
+  var BASE={lat:53.940279,lng:-2.775468,name:"Coggin yard, Forton"};
+  var DAYCOL=["#0c66e4","#1f845a","#ae4787","#e56910","#626f86"];
+  var GEO={}; try{ GEO=JSON.parse(localStorage.getItem("cg-geo")||"{}"); }catch(e){ GEO={}; }
+  var PC_FULL=/\b([A-Z]{1,2}\d[A-Z\d]?)\s*(\d[A-Z]{2})\b/i, PC_OUT=/\b([A-Z]{1,2}\d[A-Z\d]?)\b/;
+  function pcOf(j){
+    var text=j.isLeg?(j.leg.where||""):(DETAIL[j.id]?parseDesc(DETAIL[j.id].desc).where.join(" "):"");
+    var m=PC_FULL.exec(text); if(m) return (m[1]+" "+m[2]).toUpperCase();
+    var o=PC_OUT.exec(text.toUpperCase()); if(o&&DRIVE[o[1].replace(/\d.*$/,"")]) return o[1];
+    var town=j.title.split(" - ")[0].trim(); return TOWN[town]?"area:"+TOWN[town]:null;
+  }
+  // postcodes.io: free, no key. full postcodes in one POST, outcodes one each. cached in the browser.
+  function geocode(pcs){
+    var need=pcs.filter(function(p){return p&&!GEO[p]&&p.indexOf("area:")!==0;});
+    var fulls=need.filter(function(p){return /\s/.test(p);}), outs=need.filter(function(p){return !/\s/.test(p);});
+    var jobs=[];
+    if(fulls.length) jobs.push(fetch("https://api.postcodes.io/postcodes",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({postcodes:fulls})}).then(function(r){return r.json();}).then(function(x){ (x.result||[]).forEach(function(r){ if(r.result) GEO[r.query.toUpperCase()]={lat:r.result.latitude,lng:r.result.longitude}; else GEO[r.query.toUpperCase()]=false; }); }).catch(function(){}));
+    outs.forEach(function(o){ jobs.push(fetch("https://api.postcodes.io/outcodes/"+encodeURIComponent(o)).then(function(r){return r.json();}).then(function(x){ GEO[o]=x.result?{lat:x.result.latitude,lng:x.result.longitude}:false; }).catch(function(){})); });
+    return Promise.all(jobs).then(function(){ try{ localStorage.setItem("cg-geo",JSON.stringify(GEO)); }catch(e){} });
+  }
+  function miles(a,b){ var R=3958.8, dLat=(b.lat-a.lat)*Math.PI/180, dLng=(b.lng-a.lng)*Math.PI/180, la=a.lat*Math.PI/180, lb=b.lat*Math.PI/180;
+    var h=Math.sin(dLat/2)*Math.sin(dLat/2)+Math.cos(la)*Math.cos(lb)*Math.sin(dLng/2)*Math.sin(dLng/2); return 2*R*Math.asin(Math.sqrt(h)); }
+  var roadMiles=function(m){ return Math.round(m*1.25); };   // as the crow flies to roughly as the van drives
+  function orderStops(stops){ var left=stops.slice(), out=[], at=BASE; while(left.length){ left.sort(function(a,b){return miles(at,a.pt)-miles(at,b.pt);}); var n=left.shift(); n.legMiles=roadMiles(miles(at,n.pt)); out.push(n); at=n.pt; } if(out.length) out[out.length-1].backMiles=roadMiles(miles(at,BASE)); return out; }
+  var MAP=null;
+  function renderRoutes(){
+    if(MAP){ try{ MAP.remove(); }catch(e){} MAP=null; }
+    var mon=addDays(monday(TODAY),week*7);
+    $("#title").textContent="Week of "+mon.getDate()+" "+MON[mon.getMonth()]+" "+mon.getFullYear();
+    $("#src").textContent="Transport jobs on the map. Plan the best rounds and spot jobs nearby.";
+    var b=$("#board"); b.innerHTML=""; b.className="board routes"; b.style.gridTemplateRows="";
+    var days=[]; for(var i=0;i<5;i++) days.push(iso(addDays(mon,i)));
+    var all=allJobs().filter(function(j){return j.site && !(j.contractor&&!j.who.length);});
+    var weekJobs=all.filter(function(j){return days.some(function(k){return onDay(j,k);});});
+    var horizon=iso(addDays(mon,42));
+    var pool=all.filter(function(j){return weekJobs.indexOf(j)<0 && j.date>=days[0] && j.date<=horizon;});
+    var wrap=el("div","mapwrap"); var lg=el("div","legend"); days.forEach(function(k,i){ var sp=el("span"); var dot=el("i"); dot.style.background=DAYCOL[i]; sp.appendChild(dot); sp.appendChild(document.createTextNode(niceDay(k))); lg.appendChild(sp); });
+    var sp0=el("span"); var d0=el("i"); d0.style.background="#172b4d"; sp0.appendChild(d0); sp0.appendChild(document.createTextNode("Yard")); lg.appendChild(sp0); lg.appendChild(tip("routes")); wrap.appendChild(lg);
+    var mapDiv=el("div"); mapDiv.id="map"; wrap.appendChild(mapDiv); b.appendChild(wrap);
+    var panel=el("div","rpanel"); b.appendChild(panel); panel.appendChild(el("div","rnote","Finding postcodes..."));
+    var pcs=weekJobs.concat(pool).map(function(j){ j.pc=pcOf(j); return j.pc; });
+    geocode(pcs).then(function(){
+      weekJobs.concat(pool).forEach(function(j){ j.pt=j.pc&&GEO[j.pc]?GEO[j.pc]:null; });
+      panel.innerHTML="";
+      if(!window.L){ panel.appendChild(el("div","rnote","The map could not load. Check the connection and try again.")); return; }
+      MAP=L.map(mapDiv,{scrollWheelZoom:true}); L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png",{maxZoom:18,attribution:"&copy; OpenStreetMap"}).addTo(MAP);
+      var bounds=[[BASE.lat,BASE.lng]];
+      L.circleMarker([BASE.lat,BASE.lng],{radius:9,color:"#172b4d",fillColor:"#172b4d",fillOpacity:1}).addTo(MAP).bindTooltip(BASE.name);
+      pool.forEach(function(j){ if(!j.pt) return; L.circleMarker([j.pt.lat,j.pt.lng],{radius:6,color:"#8c9bab",fillColor:"#fff",fillOpacity:1,weight:2,dashArray:"2 2"}).addTo(MAP).bindTooltip(j.title+", "+niceDay(j.date)+" (not this week)"); });
+      days.forEach(function(k,i){
+        var col=DAYCOL[i], jobs=weekJobs.filter(function(j){return onDay(j,k);}); if(!jobs.length) return;
+        var day=el("div","rday"); var h=el("h3"); h.style.background=col; h.appendChild(document.createTextNode(niceDay(k))); h.appendChild(el("span",null,jobs.length+(jobs.length===1?" transport job":" transport jobs"))); day.appendChild(h);
+        var load=loadOn(k), crew=el("div","crew"); TEAM.forEach(function(w){ var st=load[w]; var sp=el("span",st.c,w+": "+st.t); if(DRIVERS.indexOf(w)>=0) sp.appendChild(el("i",null,"driver")); crew.appendChild(sp); }); day.appendChild(crew);
+        // one group per operative (a round), plus the jobs nobody is on yet
+        var groups=[]; TEAM.forEach(function(w){ var mine=jobs.filter(function(j){return j.who.indexOf(w)>=0;}); if(mine.length) groups.push({name:w,jobs:mine}); });
+        var none=jobs.filter(function(j){return !j.who.length;}); if(none.length) groups.push({name:"Unassigned",jobs:none,unassigned:true});
+        groups.forEach(function(g){
+          var placed=g.jobs.filter(function(j){return j.pt;}), lost=g.jobs.filter(function(j){return !j.pt;});
+          var stops=orderStops(placed.map(function(j){ return {j:j,pt:j.pt}; }));
+          var total=stops.reduce(function(s,x){return s+x.legMiles;},0)+(stops.length?stops[stops.length-1].backMiles:0);
+          var vanQ=g.jobs.reduce(function(s,j){return s+(j.van||0);},0), vanUnknown=g.jobs.filter(function(j){return j.van==null;}).length;
+          var grp=el("div","rgrp"); var kk=el("div","k"); kk.appendChild(el("span",null,g.unassigned?"Nobody assigned yet":g.name+(g.jobs.length>1?", delivery round":"")));
+          if(total) kk.appendChild(el("span",null,total+" miles round trip")); grp.appendChild(kk);
+          stops.forEach(function(x,n){ var st=el("div","stop"); var num=el("span","n",String(n+1)); num.style.background=col; st.appendChild(num); var tx=el("span"); tx.appendChild(el("b",null,x.j.title)); tx.appendChild(el("small",null,(x.j.pc&&x.j.pc.indexOf("area:")!==0?x.j.pc:"postcode area only")+(x.j.mins!=null?", "+fmt(x.j.mins)+" on site":", no site time")+(x.j.van!=null?", "+fmtVan(x.j.van):""))); st.appendChild(tx); st.appendChild(el("span","mi",x.legMiles+" mi"+(x.backMiles!=null?", "+x.backMiles+" mi back":""))); grp.appendChild(st);
+            if(MAP){ L.circleMarker([x.pt.lat,x.pt.lng],{radius:8,color:"#fff",fillColor:col,fillOpacity:1,weight:2}).addTo(MAP).bindTooltip(x.j.title+", "+niceDay(k)+(g.unassigned?"":", "+g.name)); bounds.push([x.pt.lat,x.pt.lng]); } });
+          lost.forEach(function(j){ var st=el("div","stop"); st.appendChild(el("span","n","?")); var tx=el("span"); tx.appendChild(el("b",null,j.title)); tx.appendChild(el("small",null,"No postcode on the card, so it is not on the map.")); st.appendChild(tx); st.appendChild(el("span","mi","")); grp.appendChild(st); });
+          if(MAP&&stops.length&&!g.unassigned){ var line=[[BASE.lat,BASE.lng]].concat(stops.map(function(x){return [x.pt.lat,x.pt.lng];})).concat([[BASE.lat,BASE.lng]]); L.polyline(line,{color:col,weight:4,opacity:.8}).addTo(MAP); }
+          day.appendChild(grp);
+          var vanLine=el("div","rnote","Van load: "+(vanQ?fmtVan(vanQ):"nothing set")+(vanUnknown?" ("+vanUnknown+(vanUnknown===1?" job":" jobs")+" without van space)":"")); day.appendChild(vanLine);
+          if(vanQ>4) day.appendChild(el("div","rwarn","Over one van. Split the round or send a second van."));
+          if(!g.unassigned && DRIVERS.indexOf(g.name)<0){ var withDriver=g.jobs.every(function(j){return j.who.some(function(w){return DRIVERS.indexOf(w)>=0;});}); if(!withDriver) day.appendChild(el("div","rwarn",g.name+" cannot drive transport. Add a driver: Rob, Jack or Bart.")); }
+          // jobs on other days close to this round
+          if(stops.length){
+            var room=4-vanQ, near=[];
+            all.forEach(function(o){ if(!o.pt||g.jobs.indexOf(o)>=0||o.date===k) return; if(o.date<days[0]||o.date>horizon) return;
+              var best=null; stops.forEach(function(x){ var m=roadMiles(miles(x.pt,o.pt)); if(best==null||m<best.m) best={m:m,x:x}; });
+              if(best&&best.m<=20) near.push({o:o,m:best.m,x:best.x}); });
+            near.sort(function(a,b){return a.m-b.m;});
+            if(near.length){ var nb=el("div","near"); nb.appendChild(el("b",null,"Nearby, other days")); near.slice(0,5).forEach(function(n){
+              var o=n.o, fits=o.van==null?null:(o.van<=room), txt=o.title+", "+niceDay(o.date)+", "+n.m+" miles from "+n.x.j.title.split(" - ")[0]+".";
+              if(o.prep&&o.stage) txt+=" Still in production, due "+niceDay(o.prodDue)+".";
+              txt+=fits===null?" Van space not set.":(fits?" Fits in the van.":" No room in the van.");
+              var row=el("div",fits===false?"no":"",txt); nb.appendChild(row); }); day.appendChild(nb); }
+          }
+        });
+        panel.appendChild(day);
+      });
+      if(!panel.children.length) panel.appendChild(el("div","rnote","No transport jobs this week."));
+      if(MAP){ if(bounds.length>1) MAP.fitBounds(bounds,{padding:[30,30]}); else MAP.setView([BASE.lat,BASE.lng],9); }
+    });
+    $("#prev").onclick=function(){week--;render();}; $("#next").onclick=function(){week++;render();};
+  }
   function render(){
     persist();
     document.body.onclick=function(){ if(tipOpen){ tipOpen=null; render(); } };
-    $("#vday").className=view==="day"?"on":""; $("#vweek").className=view==="week"?"on":""; $("#vmonth").className=view==="month"?"on":"";
+    $("#vday").className=view==="day"?"on":""; $("#vweek").className=view==="week"?"on":""; $("#vmonth").className=view==="month"?"on":""; $("#vroutes").className=view==="routes"?"on":""; $("#vroutes").onclick=function(){view="routes";render();};
     $("#vday").onclick=function(){view="day";render();}; $("#vweek").onclick=function(){view="week";render();}; $("#vmonth").onclick=function(){view="month";render();};
     var oldV=document.querySelector(".veil"), keepScroll=0; if(oldV){ keepScroll=oldV.scrollTop||0; oldV.parentNode.removeChild(oldV); }
     window.__keepScroll=keepScroll;
     if(view==="day") return renderDay();
     if(view==="month") return renderMonth();
+    if(view==="routes") return renderRoutes();
     $("#board").className="board"; $("#board").style.gridTemplateRows="";
     var mon=addDays(monday(TODAY),week*7);
     $("#title").textContent="Week of "+mon.getDate()+" "+MON[mon.getMonth()]+" "+mon.getFullYear();

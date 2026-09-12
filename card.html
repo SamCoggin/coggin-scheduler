@@ -25,6 +25,7 @@
   .people{display:flex;flex-wrap:wrap;gap:8px}
   .p{border:2px solid var(--line);background:var(--card);border-radius:8px;padding:7px 12px;font-weight:700}
   .p.on{border-color:var(--blue);background:var(--blue);color:#fff}
+  .p .drv{font-style:normal;font-weight:600;font-size:11px;opacity:.75;margin-left:5px}
   .row{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
   .row+.row{margin-top:8px}
   input[type=number],input[type=date],input[type=text]{border:2px solid var(--line);border-radius:6px;padding:7px 8px;font-weight:600}
@@ -66,9 +67,9 @@
     h.onchange=upd; m.onchange=upd;
     w.appendChild(h); w.appendChild(el("span",null,"hours")); w.appendChild(m); w.appendChild(el("span",null,"minutes")); return w;
   }
-  function people(part){
+  function people(part,transport){
     var w=el("div","people");
-    CREW.forEach(function(n){ var b=el("button","p"+(part.who.indexOf(n)>=0?" on":""),n); b.onclick=function(){ var i=part.who.indexOf(n); if(i<0) part.who.push(n); else part.who.splice(i,1); save(); render(); }; w.appendChild(b); });
+    CREW.forEach(function(n){ var b=el("button","p"+(part.who.indexOf(n)>=0?" on":""),n); if(transport&&DRIVERS.indexOf(n)>=0) b.appendChild(el("i","drv","driver")); b.onclick=function(){ var i=part.who.indexOf(n); if(i<0) part.who.push(n); else part.who.splice(i,1); save(); render(); }; w.appendChild(b); });
     return w;
   }
   function fld(label){ var f=el("div","fld"); if(label) f.appendChild(el("div","lbl",label)); return f; }
@@ -133,7 +134,9 @@
       if(contractorOnly) cf.appendChild(el("div","hint","No travel or site time for our operatives. Tick an operative below if one of ours goes too."));
       ts.appendChild(cf);
     } else { d.contractor=""; }
-    var of=fld(site?"Coggin operatives on the "+(d.contractor?"job":"transport"):"Operatives"); of.appendChild(people(d)); ts.appendChild(of);
+    var of=fld(site?"Coggin operatives on the "+(d.contractor?"job":"transport"):"Operatives"); of.appendChild(people(d,site));
+    if(site&&d.who.length&&!d.who.some(function(w){return DRIVERS.indexOf(w)>=0;})) of.appendChild(el("div","warn","No driver on this job. Rob, Jack or Bart must be on it to drive the van."));
+    ts.appendChild(of);
     if(site && !contractorOnly){
       var tf=fld("Travel time, return"); tf.appendChild(hm(function(){return d.drive;},function(v){d.drive=v;},"Travel"));
       tf.appendChild(el("div","hint","There and back. The Scheduler works this out from the postcode. Set it here if you know it."));
