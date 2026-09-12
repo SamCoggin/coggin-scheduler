@@ -233,7 +233,7 @@ var SNAP=null, DETAIL={};
   "use strict";
   var t=window.TrelloPowerUp?TrelloPowerUp.iframe():null;
   var TODAY_REAL=new Date(); TODAY_REAL.setHours(12,0,0,0);
-  var TODAY=new Date(2026,8,14), DAY_H=7.5;
+  var TODAY=new Date(TODAY_REAL), DAY_H=7.5;
   var TEAM=CREW, open=null, week=0;
   // ── read the live board through Trello's client, then run the scheduler ──
   var ROLE={"Workshop Jobs - Not Started":"waiting","Workshop Jobs - In-progress":"shop","Workshop Jobs - Ready for Delivery / Collection":"ready",
@@ -719,14 +719,14 @@ var SNAP=null, DETAIL={};
       pool.forEach(function(j){ if(!j.pt) return; L.circleMarker([j.pt.lat,j.pt.lng],{radius:6,color:"#8c9bab",fillColor:"#fff",fillOpacity:1,weight:2,dashArray:"2 2"}).addTo(MAP).bindTooltip(j.title+", "+niceDay(j.date)+" (not this week)"); });
       // combine trips: a later job near one of this week's stops can ride along on that round
       var sugs=[], today=iso(TODAY_REAL);
-      weekJobs.forEach(function(A){ if(!A.pt) return; var k=A.date; var i=days.indexOf(k); if(i<0) return;
+      weekJobs.forEach(function(A){ if(!A.pt) return; var k=A.date; var i=days.indexOf(k); if(i<0||k<today) return;
         var mates=weekJobs.filter(function(x){return x!==A && onDay(x,k) && x.who.some(function(w){return A.who.indexOf(w)>=0;});});
         var group=[A].concat(mates), vanQ=group.reduce(function(t,j){return t+(j.van||0);},0), room=4-vanQ;
         all.forEach(function(B){ if(!B.pt||B===A||group.indexOf(B)>=0) return; if(B.date<=k||B.date>horizon) return;
           var apart=roadMiles(miles(A.pt,B.pt)); if(apart>25) return;
           var alone=2*roadMiles(miles(BASE,B.pt)), detour=apart+roadMiles(miles(B.pt,BASE))-roadMiles(miles(A.pt,BASE)); var saved=alone-Math.max(detour,0); if(saved<15) return;
           var fits=B.van==null?null:B.van<=room, newDue=productionDue("",k), prod=null;
-          if(B.prep){ prod={due:newDue,late:newDue<today,sched:B.prep.date,move:B.prep.date&&B.prep.date>newDue}; }
+          if(B.prep){ if(newDue<today) return; prod={due:newDue,sched:B.prep.date,move:B.prep.date&&B.prep.date>newDue}; }
           sugs.push({A:A,B:B,k:k,i:i,apart:apart,saved:saved,fits:fits,room:room,prod:prod,who:A.who.slice()}); }); });
       // one suggestion per job to move: the best saving
       var best={}; sugs.forEach(function(x){ if(!best[x.B.id]||best[x.B.id].saved<x.saved) best[x.B.id]=x; });
@@ -735,7 +735,7 @@ var SNAP=null, DETAIL={};
         sugs.slice(0,6).forEach(function(x){ var d=el("div","sug"); d.appendChild(el("b",null,"Take "+x.B.title+" on "+niceDay(x.k)+(x.who.length?" with "+x.who.join(", "):"")));
           var l1=el("div"); l1.appendChild(document.createTextNode("Booked for "+niceDay(x.B.date)+", "+x.apart+" miles from "+x.A.title.split(" - ")[0]+". ")); var sv=el("span","save","Saves about "+x.saved+" miles and a day out."); l1.appendChild(sv); d.appendChild(l1);
           d.appendChild(el("div","must"+(x.fits===false?" bad":""),x.fits===null?"Van space not set on the job. Set it to check the fit.":(x.fits?"Fits in the van, room for "+fmtVan(x.room)+".":"No room in the van, only "+fmtVan(x.room)+" left. Move a stop or send two vans.")));
-          if(x.prod){ var pm=el("div","must"+(x.prod.late?" bad":"")); pm.textContent=x.prod.late?"Production would need to be done by "+niceDay(x.prod.due)+", which has passed. Only if it is ready now.":"Production must finish by "+niceDay(x.prod.due)+(x.prod.sched?(x.prod.move?", it is scheduled to finish "+niceDay(x.prod.sched)+". Bring it forward.":", it is scheduled to finish "+niceDay(x.prod.sched)+".") :", not scheduled yet."); d.appendChild(pm); }
+          if(x.prod){ var pm=el("div","must"+(x.prod.move?" bad":"")); pm.textContent="Production must finish by "+niceDay(x.prod.due)+(x.prod.sched?(x.prod.move?", it is scheduled to finish "+niceDay(x.prod.sched)+". Bring it forward.":", it is scheduled to finish "+niceDay(x.prod.sched)+".") :", not scheduled yet."); d.appendChild(pm); }
           d.appendChild(el("div","steps","To do it: move the delivery date on the Trello card to "+niceDay(x.k)+(x.prod?", set production due "+niceDay(x.prod.due)+" and schedule the production days":"")+", then assign "+(x.who.length?x.who.join(", "):"a driver")+" to it here."));
           cb.appendChild(d);
           if(MAP){ L.polyline([[x.A.pt.lat,x.A.pt.lng],[x.B.pt.lat,x.B.pt.lng]],{color:DAYCOL[x.i],weight:3,dashArray:"6 6",opacity:.9}).addTo(MAP); L.circleMarker([x.B.pt.lat,x.B.pt.lng],{radius:8,color:DAYCOL[x.i],fillColor:"#fff",fillOpacity:1,weight:3,dashArray:"3 3"}).addTo(MAP).bindTooltip(x.B.title+", could join "+niceDay(x.k)); bounds.push([x.B.pt.lat,x.B.pt.lng]); } });
