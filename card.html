@@ -51,7 +51,7 @@
 (function(){
   var t=TrelloPowerUp.iframe();
   var el=function(tag,c,x){var n=document.createElement(tag);if(c)n.className=c;if(x!=null)n.textContent=x;return n;};
-  var card=null, d=null, workshop=false, site=false, loading=false, saving=null, defaultDue=null, boardData={}, OTHERS=[], LEAVE=[], DAY_MINS=450;
+  var card=null, d=null, workshop=false, site=false, loading=false, saving=null, defaultDue=null, boardData={}, OTHERS=[], LEAVE=[];
   // the other cards on the board, with their plans, so this card can say who is free
   function loadOthers(){
     return Promise.all([t.cards("id","name","due","start","idList","labels"), t.lists("all")]).then(function(r){

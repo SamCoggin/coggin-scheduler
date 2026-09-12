@@ -233,7 +233,7 @@ var SNAP=null, DETAIL={};
   "use strict";
   var t=window.TrelloPowerUp?TrelloPowerUp.iframe():null;
   var TODAY_REAL=new Date(); TODAY_REAL.setHours(12,0,0,0);
-  var TODAY=window.__TODAY?new Date(window.__TODAY):new Date(TODAY_REAL), DAY_H=7.5;   // __TODAY is only set by check.mjs
+  var TODAY=window.__TODAY?new Date(window.__TODAY):new Date(TODAY_REAL);   // __TODAY is only set by check.mjs
   var TEAM=CREW, open=null, week=0;
   // ── read the live board through Trello's client, then run the scheduler ──
   var ROLE={"Workshop Jobs - Not Started":"waiting","Workshop Jobs - In-progress":"shop","Workshop Jobs - Ready for Delivery / Collection":"ready",
@@ -556,7 +556,7 @@ var SNAP=null, DETAIL={};
     yard:"Yard operations: inbound recycling loads, skip exchanges, stock deliveries and other on-site work. Select a job for operatives and time.",
     leave:"Annual leave and bank holidays, read from the Holidays / Leave list on the board.",
     people:"Each operative's allocation for the day. Green is available, red is over capacity.",
-    tot:"Each operative's allocated hours for the day. Amber means a job has no time allocated yet. Red means over a working day.",
+    tot:"Each operative's allocated hours for the day, against an 8 hour working day (8am to 4:30pm with 30 minutes for lunch). Amber means a job has no time allocated yet. Red means over the day.",
     round:"A delivery round: several transport jobs by one operative in one trip. One travel time for the round, then each job's site time.",
     who:"Assign operatives. Under each name is their existing allocation for that day.",
     contractor:"Transport jobs only. Coggin operatives by default; select a subcontractor or courier when they carry out the job. Workshop and yard work is always our own operatives.",
