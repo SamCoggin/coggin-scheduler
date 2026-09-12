@@ -271,7 +271,7 @@ var SNAP=null, DETAIL={};
       // the prep: who is getting it ready, and on which day
       // the prep is not planned until you give it days
       j.prep={who:[],mins:null,start:null,date:null,job:j,isPrep:true};
-      j.prodDue=productionDue(c.ready_by,c.due); j.prodDueFromCard=!!c.ready_by;
+      j.prodDue=productionDue("",c.due); j.prodDueSet=false;
     } else {
       j.date=c.due; j.site=/delivery\/installation|collect & return|warranty|removal/i.test(lb);
       j.stageLabel=c.role==="ready"?"Workshop: Ready":"Booked";
@@ -285,6 +285,7 @@ var SNAP=null, DETAIL={};
     SNAP.cards.forEach(function(c){ var d=c.saved; if(!d) return; var j=JOBS.filter(function(x){return x.id===c.id;})[0]; if(!j) return;
       if(d.who) j.who=d.who.slice(); if(d.mins!=null) j.mins=d.mins; if(d.drive!=null) j.drive=d.drive; if(d.contractor) j.contractor=d.contractor;
       if(d.prep&&j.prep){ j.prep.who=d.prep.who||[]; j.prep.mins=d.prep.mins; j.prep.start=d.prep.start||null; j.prep.date=d.prep.date||null; }
+      if(d.prodDue&&j.prep){ j.prodDue=d.prodDue; j.prodDueSet=true; }
       (d.legs||[]).forEach(function(L){ LEGS.push({parent:j.id,type:L.type,date:L.date,who:L.who||[],mins:L.mins,drive:L.drive,where:L.where||""}); });
     });
     if(SNAP.boardData&&SNAP.boardData.roundDrive){ for(var k in SNAP.boardData.roundDrive) ROUND_DRIVE[k]=SNAP.boardData.roundDrive[k]; }
@@ -309,7 +310,7 @@ var SNAP=null, DETAIL={};
   function persist(){
     if(!t) return;
     JOBS.forEach(function(j){
-      var d={who:j.who,mins:j.mins,drive:j.drive,contractor:j.contractor||"",prep:j.prep?{who:j.prep.who,mins:j.prep.mins,start:j.prep.start,date:j.prep.date}:null,
+      var d={who:j.who,mins:j.mins,drive:j.drive,contractor:j.contractor||"",prodDue:j.prodDueSet?j.prodDue:null,prep:j.prep?{who:j.prep.who,mins:j.prep.mins,start:j.prep.start,date:j.prep.date}:null,
         legs:LEGS.filter(function(L){return L.parent===j.id;}).map(function(L){return {type:L.type,date:L.date,who:L.who,mins:L.mins,drive:L.drive,where:L.where};})};
       var js=JSON.stringify(d); if(lastSaved[j.id]===js) return; lastSaved[j.id]=js; t.set(j.id,"shared","sched",d);
     });
@@ -457,7 +458,10 @@ var SNAP=null, DETAIL={};
       else lb2.appendChild(el("div","hint","No extra legs. Add one when part of the job goes to a subcontractor or needs another visit."));
       var ar=el("div","row"); var ts=el("select"); LEG_TYPES.forEach(function(t){ var o3=el("option",null,t[1]); o3.value=t[0]; ts.appendChild(o3); }); var ad=el("input"); ad.type="date"; ad.value=j.date; var ab=el("button","close","Add leg"); ab.onclick=function(){ if(!ad.value) return; LEGS.push({parent:j.id,type:ts.value,date:ad.value,who:[],mins:null,drive:null,where:""}); open=j.id+":leg"+(LEGS.length-1); render(); }; ar.appendChild(ts); ar.appendChild(ad); ar.appendChild(ab); lb2.appendChild(ar); right.appendChild(lb2); }
     if(!o.shop && j.prep){ var pb=block("Production");
-      pb.appendChild(el("div","hint","Production due "+niceDay(j.prodDue)+(j.prodDueFromCard?", from the card's Production Due Date.":", "+PRODUCTION_BUFFER_DAYS+" working days before delivery. Set a Production Due Date on the card to change it."))).style.marginBottom="8px";
+      var pdr=el("div","row"); pdr.style.marginBottom="8px"; pdr.appendChild(el("span",null,"Production due")); var pdi=el("input"); pdi.type="date"; pdi.value=j.prodDue||""; pdi.setAttribute("aria-label","Production due date");
+      pdi.onchange=function(){ if(pdi.value){ j.prodDue=pdi.value; j.prodDueSet=true; } render(); }; pdr.appendChild(pdi);
+      if(j.prodDueSet){ var rs=el("button","close","Reset"); rs.onclick=function(){ j.prodDue=productionDue("",j.out); j.prodDueSet=false; render(); }; pdr.appendChild(rs); }
+      pdr.appendChild(el("span","hint",j.prodDueSet?"Set by you.":PRODUCTION_BUFFER_DAYS+" working days before delivery. Change it if this job needs more or less.")); pb.appendChild(pdr);
       if(j.prep.date&&j.prep.date>j.prodDue) pb.appendChild(el("div","hint far","Production is scheduled to finish "+niceDay(j.prep.date)+", after it is due."));
       var pr=el("div","prep"); pr.appendChild(el("div",null,(j.prep.date?niceDay(j.prep.start)+(j.prep.start!==j.prep.date?" to "+niceDay(j.prep.date):""):"Not scheduled")));
       pr.appendChild(el("div","hint",(j.prep.who.length?j.prep.who.join(", "):"no operatives assigned")+(j.prep.mins!=null?", "+fmt(j.prep.mins)+" each":", no time allocated")));
