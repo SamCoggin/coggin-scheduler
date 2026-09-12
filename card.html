@@ -55,6 +55,9 @@
   .vrow.bad{background:var(--red-bg)} .vrow.bad b,.vrow.bad .m{color:var(--red)}
   .vrow .rm{border:1px solid var(--line);background:var(--card);border-radius:6px;padding:3px 8px;font-size:13px;font-weight:700}
   .vadd{margin-top:10px}
+  .vday{padding:10px 12px;border-radius:8px;background:var(--blue-bg);margin-bottom:10px;font-size:13px}
+  .vday b{display:block;font-size:14px}
+  .vday .sub{color:var(--muted);margin-top:4px}
   .vadd .lbl{margin-bottom:6px}
 </style></head>
 <body>
@@ -70,10 +73,10 @@
   function loadOthers(){
     return Promise.all([t.cards("id","name","due","start","idList","labels"), t.lists("all")]).then(function(r){
       var listName={}; r[1].forEach(function(l){ listName[l.id]=l.name; });
-      var dated=r[0].filter(function(x){ return x.due && x.id!==card.id; });
+      var dated=r[0].filter(function(x){ return x.due && x.id!==card.id; }); var nameOf={}; r[0].forEach(function(x){ nameOf[x.id]=(x.name||"").split(" - ").slice(0,2).join(" - "); });
       LEAVE=dated.filter(function(x){ return /Holidays|Leave/i.test(listName[x.idList]||""); }).map(function(x){ return {date:x.due.slice(0,10),who:x.name.split(/\s*\(/)[0].trim()}; });
       var jobs=dated.filter(function(x){ return !/Holidays|Leave|Operations Transfer/i.test(listName[x.idList]||""); });
-      return Promise.all(jobs.map(function(x){ return t.get(x.id,"shared","sched",null).then(function(p){ return {id:x.id,due:x.due.slice(0,10),start:x.start?x.start.slice(0,10):null,site:(x.labels||[]).some(function(l){return SITE_LABELS.test(l.name);}),plan:p}; }); }));
+      return Promise.all(jobs.map(function(x){ return t.get(x.id,"shared","sched",null).then(function(p){ return {id:x.id,name:nameOf[x.id],due:x.due.slice(0,10),start:x.start?x.start.slice(0,10):null,site:(x.labels||[]).some(function(l){return SITE_LABELS.test(l.name);}),plan:p}; }); }));
     }).then(function(list){ OTHERS=list.filter(function(x){return x.plan;}); }).catch(function(){ OTHERS=[]; });
   }
   function workDays(a,b){ var out=[]; if(!a) return out; for(var x=new Date(a+"T12:00"); ; x.setDate(x.getDate()+1)){ var k=x.toISOString().slice(0,10); if(k>(b||a)) break; if(x.getDay()!==0&&x.getDay()!==6) out.push(k); } return out; }
@@ -180,6 +183,13 @@
       if(m3!=null){ var bar=el("div","vbar"); var fill=el("i"); var pc=Math.min(100,m3/VAN_M3*100); fill.style.width=pc+"%"; fill.className=m3>VAN_M3||kg>VAN_KG?"over":(pc>85?"near":""); bar.appendChild(fill); tot.appendChild(bar);
         tot.appendChild(el("div","sub",(kg?Math.round(kg)+" kg of "+VAN_KG+" kg payload. ":"")+(d.cube!=null?"Set by you.":"Worked out from the items"+(src==="scheduler"?" the Scheduler read.":" on the card."))+(m3>VAN_M3?" Over one van.":kg>VAN_KG?" Over the payload.":""))); }
       f.appendChild(tot);
+      // what else goes out the same day, from the plans the Scheduler saved on those cards
+      if(due){ var others=OTHERS.filter(function(o){ return o.site && o.due===due && o.plan; }); var known=0, om3=0, okg=0, names=[];
+        others.forEach(function(o){ var p=o.plan, cube=p.cube!=null?p.cube:(p.load&&p.load.complete?p.load.m3:null); if(cube==null) return; known++; om3+=cube; okg+=(p.load&&p.load.complete?p.load.kg:0); names.push((o.name||"another job")+" "+fmtM3(cube)); });
+        if(others.length){ var dayTot=(m3||0)+om3, dk=el("div","vday"); dk.appendChild(el("b",null,"Everything going out "+niceShort(due)+": "+fmtM3(dayTot)+" of "+VAN_M3+" m\u00b3"+(okg||kg?", "+Math.round((kg||0)+okg)+" kg":"")));
+          var dbar=el("div","vbar"); var dfill=el("i"); var dpc=Math.min(100,dayTot/VAN_M3*100); dfill.style.width=dpc+"%"; dfill.className=dayTot>VAN_M3?"over":(dpc>85?"near":""); dbar.appendChild(dfill); dk.appendChild(dbar);
+          dk.appendChild(el("div","sub","This job plus "+others.length+(others.length===1?" other transport job":" other transport jobs")+(known<others.length?" ("+(others.length-known)+" with no load worked out yet)":"")+": "+names.join(", ")+"."+(dayTot>VAN_M3?" More than one van: two rounds or the second van.":"")));
+          f.appendChild(dk); } }
       // one list of items, each saying where it came from
       var autoN=L.rows.length-(src==="card"?manual.length:0);
       if(L.rows.length||(L.unmatched&&L.unmatched.length)){ var tb=el("div","vlist");
@@ -192,7 +202,7 @@
       if(L.unmatched&&L.unmatched.length) f.appendChild(el("div","warn","No estimate: "+L.unmatched.length+(L.unmatched.length===1?" item":" items")+" could not be matched, so nothing has been added up. Add the missing items below as the right type, or set the load."));
       if(!L.rows.length&&!(L.unmatched&&L.unmatched.length)) f.appendChild(el("div","hint","No items found on the card. Add them below."));
       // add an item
-      var add=el("div","vadd"); add.appendChild(el("div","lbl","Add an item")); var ar=el("div","row"); var qn=el("input"); qn.type="number"; qn.min="1"; qn.value="1"; qn.style.width="64px"; qn.setAttribute("aria-label","Quantity"); var ts=el("select"); ts.style.width="auto"; ts.style.flex="1"; LOAD.forEach(function(r){ var o2=el("option",null,r.t); o2.value=r.t; ts.appendChild(o2); }); var ab=el("button","p","Add"); ab.onclick=function(){ var n=parseInt(qn.value,10)||1; d.items=d.items||[]; d.items.push(n+" x "+ts.value); save(); render(); }; ar.appendChild(qn); ar.appendChild(el("span",null,"x")); ar.appendChild(ts); ar.appendChild(ab); add.appendChild(ar); f.appendChild(add);
+      var add=el("div","vadd"); add.appendChild(el("div","lbl","Add an item not on the card")); var ar=el("div","row"); var qn=el("input"); qn.type="number"; qn.min="1"; qn.value=""; qn.placeholder="Qty"; qn.style.width="64px"; qn.setAttribute("aria-label","Quantity"); var ts=el("select"); ts.style.width="auto"; ts.style.flex="1"; var o0=el("option",null,"Choose a product type"); o0.value=""; ts.appendChild(o0); LOAD.forEach(function(r){ var o2=el("option",null,r.t); o2.value=r.t; ts.appendChild(o2); }); var ab=el("button","p","Add"); ab.disabled=true; ab.style.opacity=".5"; var chk=function(){ var ok=!!ts.value&&parseInt(qn.value,10)>0; ab.disabled=!ok; ab.style.opacity=ok?"1":".5"; }; ts.onchange=chk; qn.oninput=chk; ab.onclick=function(){ if(ab.disabled) return; var n=parseInt(qn.value,10)||1; d.items=d.items||[]; d.items.push(n+" x "+ts.value); save(); render(); }; ar.appendChild(qn); ar.appendChild(el("span",null,"x")); ar.appendChild(ts); ar.appendChild(ab); add.appendChild(ar); f.appendChild(add);
       // or set it
       var set=el("div","vadd"); set.appendChild(el("div","lbl","Or set the load yourself")); var r=el("div","row"); var n=el("input"); n.type="number"; n.min="0"; n.step="0.5"; n.value=d.cube==null?"":String(d.cube); n.placeholder=L.complete?String(L.m3):"0"; n.setAttribute("aria-label","Cubic metres"); n.onchange=function(){ d.cube=n.value===""?null:Math.max(0,parseFloat(n.value)||0); delete d.van; delete d.spaces; save(); render(); }; r.appendChild(n); r.appendChild(el("span",null,"cubic metres"));
       if(d.cube!=null){ var rs=el("button","p","Use the estimate"); rs.onclick=function(){ d.cube=null; save(); render(); }; r.appendChild(rs); } set.appendChild(r);
@@ -225,6 +235,11 @@
       if(d.drive!=null&&d.drive>360) tf.appendChild(el("div","warn","More than a day's travel with the job in between. Consider a courier or subcontractor."));
       ts.appendChild(tf);
     }
+    if(!contractorOnly){ var lbl=(card.labels||[]).map(function(l){return l.name;}).join(" "); var Lstd=loadOf(itemsOf(card.desc,(function(){ var cc=[]; (card.checklists||[]).forEach(function(cl){ (cl.checkItems||[]).forEach(function(it){ cc.push({n:it.name||""}); }); }); return cc; })()).concat(d.items||[])); if(!Lstd.rows.length&&d.load) Lstd=d.load;
+      var std=standardFor(lbl,Lstd); if(std){ var sf=fld("Standard for this job"); sf.appendChild(el("div",null,std.crew+(std.crew===1?" operative":" operatives")+(std.mins!=null?", "+fmt(std.mins)+" each on site":", time needs the items on the card"))); sf.appendChild(el("div","hint",std.why+"."));
+        var over=aboveStandard(std,d.who,d.mins); if(over) sf.appendChild(el("div","warn","Above standard: "+over+"."));
+        if(std.mins!=null&&d.mins!==std.mins){ var ub=el("button","p","Use standard time"); ub.style.marginTop="8px"; ub.onclick=function(){ d.mins=std.mins; save(); render(); }; sf.appendChild(ub); }
+        ts.appendChild(sf); } }
     if(!contractorOnly) ts.appendChild(timeField(d,site?"Site time per operative":(loading?"Loading time per operative":"Labour time per operative")));
     app.appendChild(ts);
     }

@@ -14,26 +14,27 @@ var VEHICLES=[{reg:"FX75 BKG",name:"Renault Master Luton FX75 BKG (2025)"},{reg:
 // chairs are DOUBLE STACKED figures: 0.40 per swivel chair is Sam's "40 in a Luton", which only works stacked two high;
 // loose meeting chairs (tub, cantilever) at 0.40 (about 45 a van, Sam corrected 0.20) and stacking chairs at 0.10 (stacks of five or six) assume the same.
 var LOAD=[
-  {t:"Swivel chair",     re:/swivel|task chair|operator|mesh chair|office chair|executive chair|ergonomic/i, m3:0.40, kg:12},
-  {t:"Meeting chair, stacking", re:/stack/i, m3:0.10, kg:8},
-  {t:"Meeting chair",    re:/meeting chair|tub chair|cantilever|visitor chair|conference chair|dining chair|breakout chair/i, m3:0.40, kg:10},
-  {t:"Stool",            re:/stool/i, m3:0.15, kg:6},
-  {t:"Sit-stand desk",   re:/sit.?stand|height adjust|electric desk|rise/i, m3:0.30, kg:60, built:1.10, est:true},
-  {t:"Bench desk position", re:/bench/i, m3:0.30, kg:30, est:true},
-  {t:"Desk",             re:/desk(?!\s*(screen|divider|mounted|pedestal|drawer))|workstation/i, m3:0.25, kg:35, built:0.90, w:1600},
-  {t:"Meeting table",    re:/meeting table|boardroom|conference table|table \d{4}/i, m3:1.20, kg:50, w:1800},
-  {t:"Folding table",    re:/folding|flip.?top/i, m3:0.15, kg:20},
-  {t:"Coffee table",     re:/coffee table|side table|occasional/i, m3:0.30, kg:15},
-  {t:"Pedestal",         re:/pedestal|desk drawer|drawer unit|mobile drawer/i, m3:0.25, kg:20},
-  {t:"Filing cabinet",   re:/filing cab|filer/i, m3:0.50, kg:35},
-  {t:"Cupboard or tambour", re:/cupboard|tambour|wardrobe|storage unit|bookcase|shelving/i, m3:0.80, kg:60},
-  {t:"Locker",           re:/locker/i, m3:0.60, kg:40, est:true},
-  {t:"Screen divider",   re:/screen|divider|partition/i, m3:0.05, kg:5},
-  {t:"Armchair",         re:/armchair|arm chair|lounge chair|easy chair/i, m3:0.60, kg:20, est:true},
-  {t:"Sofa",             re:/sofa|settee|couch|modular/i, m3:1.80, kg:45, est:true},
-  {t:"Booth",            re:/booth|high.?back/i, m3:3.00, kg:90, est:true},
-  {t:"Pod",              re:/\bpod\b/i, m3:17, kg:400, est:true}
+  {t:"Swivel chair", min:3,     re:/swivel|task chair|operator|mesh chair|office chair|executive chair|ergonomic/i, m3:0.40, kg:12},
+  {t:"Meeting chair, stacking", min:1, re:/stack/i, m3:0.10, kg:8},
+  {t:"Meeting chair", min:2,    re:/meeting chair|tub chair|cantilever|visitor chair|conference chair|dining chair|breakout chair/i, m3:0.40, kg:10},
+  {t:"Stool", min:2,            re:/stool/i, m3:0.15, kg:6},
+  {t:"Sit-stand desk", min:20,   re:/sit.?stand|height adjust|electric desk|rise/i, m3:0.30, kg:60, built:1.10, est:true},
+  {t:"Bench desk position", min:20, re:/bench/i, m3:0.30, kg:30, est:true},
+  {t:"Desk", min:15,             re:/desk(?!\s*(screen|divider|mounted|pedestal|drawer))|workstation/i, m3:0.25, kg:35, built:0.90, w:1600},
+  {t:"Meeting table", min:15,    re:/meeting table|boardroom|conference table|table \d{4}/i, m3:1.20, kg:50, w:1800},
+  {t:"Folding table", min:4,    re:/folding|flip.?top/i, m3:0.15, kg:20},
+  {t:"Coffee table", min:4,     re:/coffee table|side table|occasional/i, m3:0.30, kg:15},
+  {t:"Pedestal", min:3,         re:/pedestal|desk drawer|drawer unit|mobile drawer/i, m3:0.25, kg:20},
+  {t:"Filing cabinet", min:5,   re:/filing cab|filer/i, m3:0.50, kg:35},
+  {t:"Cupboard or tambour", min:8, re:/cupboard|tambour|wardrobe|storage unit|bookcase|shelving/i, m3:0.80, kg:60},
+  {t:"Locker", min:5,           re:/locker/i, m3:0.60, kg:40, est:true},
+  {t:"Screen divider", min:4,   re:/screen|divider|partition/i, m3:0.05, kg:5},
+  {t:"Armchair", min:4,         re:/armchair|arm chair|lounge chair|easy chair/i, m3:0.60, kg:20, est:true},
+  {t:"Sofa", min:8,             re:/sofa|settee|couch|modular/i, m3:1.80, kg:45, est:true},
+  {t:"Booth", min:30,            re:/booth|high.?back/i, m3:3.00, kg:90, est:true},
+  {t:"Pod", min:240,              re:/\bpod\b/i, m3:17, kg:400, est:true}
 ];
+// min = handling minutes per item on site for a two person crew (carry in, place, assemble a flat desk); built desks carry in only
 // "4 x Desk 1600 (built)" -> {n:4, type, m3, kg}
 function matchLoad(line){
   var m=/^(\d+)\s*x\s*(.+)$/i.exec(line.trim()); if(!m) return null;
@@ -42,11 +43,13 @@ function matchLoad(line){
   if(!row) return {n:n,name:name,type:null};
   var built=/\bbuilt\b|assembled|made up/i.test(name), each=row.built&&built?row.built:row.m3;
   if(row.w){ var wm=/\b(\d{3,4})\s*(?:x|mm|\b)/i.exec(name); if(wm){ var w=parseInt(wm[1],10); if(w>=600&&w<=4000) each=each*w/row.w; } }
-  return {n:n,name:name,type:row.t,built:built,m3:Math.round(each*n*100)/100,kg:row.kg*n,est:!!row.est};
+  var hm=row.min||0; if(row.t==="Desk"&&built) hm=6; if(row.t==="Sit-stand desk"&&built) hm=8;
+  return {n:n,name:name,type:row.t,built:built,m3:Math.round(each*n*100)/100,kg:row.kg*n,min:hm*n,est:!!row.est};
 }
 function loadOf(items){
   var out={m3:0,kg:0,rows:[],unmatched:[]};
-  (items||[]).forEach(function(l){ var r=matchLoad(l); if(!r) return; if(!r.type){ out.unmatched.push(l); return; } out.rows.push(r); out.m3+=r.m3; out.kg+=r.kg; });
+  out.min=0;
+  (items||[]).forEach(function(l){ var r=matchLoad(l); if(!r) return; if(!r.type){ out.unmatched.push(l); return; } out.rows.push(r); out.m3+=r.m3; out.kg+=r.kg; out.min+=r.min||0; });
   out.m3=Math.round(out.m3*10)/10; out.any=out.rows.length>0||out.unmatched.length>0;
   // guardrail: if any line could not be matched there is no estimate at all. a partial total would mislead.
   out.complete=out.rows.length>0&&out.unmatched.length===0; return out;
@@ -145,3 +148,35 @@ function productionDue(readyBy,due){ if(readyBy) return readyBy; if(!due) return
 var MON_SHORT=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"], DAY_SHORT=["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
 function niceShort(iso){ var d=new Date(iso+"T12:00"); return DAY_SHORT[d.getDay()]+" "+d.getDate()+" "+MON_SHORT[d.getMonth()]; }
 function todayIso(){ var d=new Date(); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
+
+// ── standards: how many operatives a job type needs and how long it should take ──
+// crew is the standard crew. base is minutes on site before the items (park, meet the contact, sign off).
+// site time per operative = (base + handling minutes for the items) / crew. fixed jobs have mins instead.
+var STANDARD=[
+  {re:/skip exchange/i,            crew:1, mins:20},
+  {re:/recycling delivery/i,       crew:2, mins:60},
+  {re:/new stock delivery/i,       crew:2, mins:60},
+  {re:/warranty|job issue/i,       crew:1, mins:45},
+  {re:/customer collecting|courier collecting/i, crew:1, base:10},
+  {re:/delivery\/installation/i,   crew:2, base:20},
+  {re:/collect & return/i,         crew:2, base:20},
+  {re:/donation/i,                 crew:2, base:20},
+  {re:/removal/i,                  crew:2, base:30}
+];
+// label + the job's load -> {crew, mins per operative, why}. null when there is no standard for that label
+function standardFor(label,load){
+  var st=null; for(var i=0;i<STANDARD.length;i++){ if(STANDARD[i].re.test(label||"")){ st=STANDARD[i]; break; } }
+  if(!st) return null;
+  if(st.mins!=null) return {crew:st.crew,mins:st.mins,why:"fixed time for a "+label.toLowerCase()};
+  if(!load||!load.complete) return {crew:st.crew,mins:null,why:"needs the items to work out the time"};
+  var crew=st.crew, big=load.m3>12||load.rows.some(function(r){return r.type==="Booth"||r.type==="Pod";}); if(big) crew+=1;
+  var total=st.base+load.min, each=Math.ceil(total/crew/5)*5;
+  return {crew:crew,mins:Math.max(15,each),why:st.base+" min on site plus "+load.min+" min handling the items, over "+crew+(big?" (big load, so one extra)":"")};
+}
+// allocated against standard: an amber flag when the crew or the time is well over
+function aboveStandard(std,who,mins){
+  if(!std) return null; var out=[];
+  if(who&&who.length>std.crew) out.push((who.length)+" operatives, standard is "+std.crew);
+  if(std.mins!=null&&mins!=null&&mins>std.mins*1.5) out.push(fmt(mins)+" each, standard is "+fmt(std.mins));
+  return out.length?out.join("; "):null;
+}

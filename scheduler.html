@@ -58,6 +58,12 @@
   .fleet b{font-size:13px;text-transform:uppercase;letter-spacing:.03em}
   .fleet button{border:1px solid var(--line);border-radius:6px;padding:4px 10px;font-weight:700;background:var(--list)}
   .fleet button.on{color:var(--green);background:var(--green-bg);border-color:var(--green-bg)} .fleet button.off{color:var(--red);background:var(--red-bg);border-color:var(--red-bg)}
+  .weektot{grid-column:1/-1;display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center;background:var(--card);border:2px solid #3d4451;border-radius:12px;padding:10px 14px;font-weight:700;font-size:14px}
+  .weektot .n{text-transform:uppercase;letter-spacing:.04em;font-size:13px;margin-right:6px}
+  .weektot span:not(.n){border-radius:6px;padding:4px 10px;background:var(--green-bg);color:var(--green)}
+  .weektot span.low{background:var(--amber-bg);color:var(--amber)}
+  .weektot span.team{background:var(--list);color:var(--text)}
+  .prow li.rec{color:var(--green);font-weight:700}
   .rwarn{margin:6px 14px 0;padding:8px 10px;border-radius:8px;background:var(--red-bg);color:var(--red);font-weight:700;font-size:13px}
   .rnote{color:var(--muted);font-size:13px;padding:6px 14px}
   .prow2 .drv{font-style:normal;font-weight:600;font-size:11px;color:var(--muted);margin-left:6px;border:1px solid var(--line);border-radius:4px;padding:1px 5px}
@@ -353,6 +359,7 @@ var SNAP=null, DETAIL={};
       var mins=mine.reduce(function(s,j){return s+(j.mins||0)+(j.site&&!j.onRound?(j.drive||0):0);},0)+(myRound&&myRound.drive?myRound.drive:0)+myPreps.reduce(function(s,j){return s+(j.prep.mins||0);},0);
       var n=mine.length+myPreps.length;
       out[w]= !n ? {t:"available",c:"free"} : mins>DAY_H*60 ? {t:fmt(mins)+", over capacity",c:"over"} : !mins ? {t:n+(n===1?" job":" jobs")+", no time",c:"busy"} : {t:fmt(mins)+" allocated"+(n>1?", "+n+" jobs":""),c:"busy"};
+      out[w].mins=mins; out[w].rec=Math.max(0,DAY_MINS-mins);
     });
     return out;
   }
@@ -509,6 +516,12 @@ var SNAP=null, DETAIL={};
       var vr=el("div","row"); vr.appendChild(el("span","hint","or set the load to")); var vn=el("input"); vn.type="number"; vn.min="0"; vn.step="0.5"; vn.value=j.cubeSet==null?"":String(j.cubeSet); vn.placeholder=L.complete?String(L.m3):"0"; vn.setAttribute("aria-label","Cubic metres"); vn.onchange=function(){ j.cubeSet=vn.value===""?null:Math.max(0,parseFloat(vn.value)||0); render(); }; vr.appendChild(vn); vr.appendChild(el("span",null,"cubic metres"));
       if(j.cubeSet!=null){ var rs2=el("button","close","Use the estimate"); rs2.onclick=function(){ j.cubeSet=null; render(); }; vr.appendChild(rs2); } vb.appendChild(vr);
       vb.appendChild(el("div","hint","A Luton box is about "+VAN_M3+" cubic metres. Desks count flat unless the item says built. Chair figures assume double stacking.")); right.appendChild(vb); }
+    if(!o.shop && !j.isLeg && !contractorOnly){ var std=standardFor(j.label,j.load); if(std){ var sb=block("Standard for this job","standard");
+      sb.appendChild(el("div",null,std.crew+(std.crew===1?" operative":" operatives")+(std.mins!=null?", "+fmt(std.mins)+" each on site":", time needs the items on the card")));
+      sb.appendChild(el("div","hint",std.why+"."));
+      var over=aboveStandard(std,part.who,part.mins); if(over) sb.appendChild(el("div","hint far","Above standard: "+over+"."));
+      if(std.mins!=null&&part.mins!==std.mins){ var ub=el("button","close","Use standard time"); ub.onclick=function(){ setMins(std.mins); render(); }; sb.appendChild(ub); }
+      right.appendChild(sb); } }
     if(!contractorOnly){ var tb=block(o.shop?"Production Time per Operative":(j.site?"Site Time per Operative":"Labour Time per Operative"),"time");
       var q=el("div","seg"); QUICK.forEach(function(qq){ var b=el("button",part.mins===qq[0]?"on":"",qq[1]); b.onclick=function(){ setMins(qq[0]); render(); }; q.appendChild(b); }); tb.appendChild(q);
       var r3=el("div","row"); r3.appendChild(el("span","hint","or exactly")); r3.appendChild(hmBoxes(function(){return part.mins;},setMins,"Time")); tb.appendChild(r3); right.appendChild(tb); }
@@ -545,6 +558,8 @@ var SNAP=null, DETAIL={};
     who:"Assign operatives. Under each name is their existing allocation for that day.",
     contractor:"Transport jobs only. Coggin operatives by default; select a subcontractor or courier when they carry out the job. Workshop and yard work is always our own operatives.",
     days:"The dates production takes place. Set a later end date to spread it over several days.",
+    recycling:"Every hour of a working day that is not allocated to a job is recycling. This is each operative's recycling time for the week. A low figure means the week is full of jobs; check the jobs are not carrying more people or time than their standard.",
+    standard:"The standard crew and time for this job type, worked out from the items on the card. Above it is not wrong, but it should be a decision. Use standard sets the time to it.",
     drivers:"Rob, Jack and Bart drive the van. Jordan and Bradley go along as a second pair of hands, so every transport job needs one of the drivers on it.",
     van:"The load worked out from the items on the card, in cubic metres and kilos, against a "+VAN_M3+" cubic metre Luton and its payload. Overtype it if the yard knows better. Two Lutons on the fleet; a van off the road is marked in the Routes view and extra vans are hired in.",
     routes:"Combine Trips finds jobs booked for later that are near a stop already going out this week, and says what it takes to put them on the same van. Below it, where the week's transport jobs are. Each round is drawn from the yard in its day's colour. Nearby jobs on other days could join a round if there is room in the van and production is done.",
@@ -572,6 +587,7 @@ var SNAP=null, DETAIL={};
     if(j.start){ var ds=daysOf(j); mid.appendChild(el("span","for","Day "+(ds.indexOf(k)+1)+" of "+ds.length+", "+niceDay(j.start)+" to "+niceDay(j.date))); }
     if(!isPrep&&j.prodDue) mid.appendChild(el("span","for"+(j.prep&&j.prep.date&&j.prep.date>j.prodDue?" late":""),"Production due "+niceDay(j.prodDue)+(j.collect?", customer collecting":"")));
     else if(!isPrep&&j.collect) mid.appendChild(el("span","for","Customer collecting"));
+    if(!isPrep&&!j.isLeg&&!(j.contractor&&!j.who.length)){ var stdX=standardFor(j.label,j.load), overX=aboveStandard(stdX,j.who,j.mins); if(overX) mid.appendChild(el("span","for late","Above standard: "+overX)); }
     c.appendChild(mid);
     var partX=isPrep?j.prep:j;
     var ft=el("div","foot"); ft.appendChild(avatars(partX.who)); ft.appendChild(badge(partX,isToday)); c.appendChild(ft);
@@ -611,7 +627,7 @@ var SNAP=null, DETAIL={};
       preps.filter(function(j){return j.prep.who.indexOf(w)>=0;}).forEach(function(j){ ul.appendChild(el("li",null,"Production: "+j.title+(j.prep.mins!=null?", "+fmt(j.prep.mins):""))); });
       var r=rounds.filter(function(x){return x.who===w;})[0]; if(r) ul.appendChild(el("li",null,"Delivery round, "+r.stops.length+" stops"+(r.drive?", "+fmt(r.drive)+" travel":"")));
       jobs.filter(function(j){return j.who.indexOf(w)>=0;}).forEach(function(j){ ul.appendChild(el("li",null,j.title+(j.mins!=null?", "+fmt(j.mins)+(j.site&&!j.onRound&&j.drive?" + "+fmt(j.drive)+" travel":""):""))); });
-      if(!ul.children.length && load[w].c!=="off") ul.appendChild(el("li",null,"Recycling"));
+      if(load[w].c!=="off"&&load[w].rec>=30) ul.appendChild(el("li","rec","Recycling: "+fmt(load[w].rec)));
       tx.appendChild(ul); row.appendChild(tx); pc.appendChild(row);
     });
     pl.appendChild(pc); b.appendChild(pl);
@@ -787,7 +803,7 @@ var SNAP=null, DETAIL={};
     $("#title").textContent="Week of "+mon.getDate()+" "+MON[mon.getMonth()]+" "+mon.getFullYear();
     $("#src").textContent="Select a job to assign operatives and allocate time.";
     var old=document.querySelector(".veil"); if(old) old.parentNode.removeChild(old);
-    var b=$("#board"); b.innerHTML="";
+    var b=$("#board"); b.innerHTML=""; b.style.gridTemplateRows="1fr auto"; var WEEK_REC={};
     for(var i=0;i<5;i++){
       var d=addDays(mon,i), k=iso(d), isToday=k===iso(TODAY);
       var list=el("div","list"+(isToday?" today":""));
@@ -820,14 +836,19 @@ var SNAP=null, DETAIL={};
         var row=el("div"); row.appendChild(el("span","n",w));
         var txt, cls;
         if(off.indexOf(w)>=0){ txt="annual leave"; cls="free"; }
-        else if(!mine.length){ txt="Recycling"; cls="free"; }
+        else if(!mine.length){ txt="Recycling "+fmt(DAY_MINS); cls="free"; }
         else if(unset&&!mins){ txt=unset+(unset===1?" job, no time":" jobs, no time"); cls="todo"; }
-        else { txt=fmt(mins)+(unset?" + "+unset+" no time":"")+(mins>DAY_H*60?", over capacity":""); cls=mins>DAY_H*60?"over":(unset?"todo":"ok"); }
+        else { var rec=Math.max(0,DAY_MINS-mins); txt=fmt(mins)+" on jobs"+(unset?" + "+unset+" no time":"")+(mins>DAY_H*60?", over capacity":(rec>=30?", "+fmt(rec)+" recycling":"")); cls=mins>DAY_H*60?"over":(unset?"todo":"ok"); }
+        if(off.indexOf(w)<0){ WEEK_REC[w]=(WEEK_REC[w]||0)+(mine.length&&!(unset&&!mins)?Math.max(0,DAY_MINS-mins):(mine.length?0:DAY_MINS)); }
         row.appendChild(el("span",cls,txt)); tot.appendChild(row);
         if(mins){ var bar=el("div","bar"); var fill=el("i",mins>DAY_H*60?"over":""); fill.style.width=Math.min(100,mins/(DAY_H*60)*100)+"%"; bar.appendChild(fill); tot.appendChild(bar); }
       });
       list.appendChild(tot); b.appendChild(list);
     }
+    // the week's recycling per operative: the hours nobody has allocated to a job are recycling, not spare
+    var wk=el("div","weektot"); var wh=el("span","n","Recycling this week"); wh.appendChild(tip("recycling")); wk.appendChild(wh); var teamRec=0;
+    TEAM.forEach(function(w){ var m=WEEK_REC[w]||0; teamRec+=m; wk.appendChild(el("span",m<DAY_MINS?"low":"",w+": "+fmt(m))); });
+    wk.appendChild(el("span","team","Team: "+fmt(teamRec))); b.appendChild(wk);
     var mo=openRound?roundModal():modal(); if(mo){ document.body.appendChild(mo); if(window.__keepScroll) mo.scrollTop=window.__keepScroll; }
     $("#prev").onclick=function(){week--;render();}; $("#next").onclick=function(){week++;render();};
   }
