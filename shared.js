@@ -12,7 +12,7 @@ function fmt(m){ if(m==null) return ""; if(m<60) return m+" min"; var h=Math.flo
 function badgeText(d,site){
   d=d||{};
   var who=d.who||[];
-  if(d.contractor&&!who.length) return {text:d.contractor,color:null};
+  if(d.contractor&&!who.length) return {text:(/courier/i.test(d.contractor)?"Courier: ":"Subcontractor: ")+d.contractor,color:"purple"};
   if(!who.length) return {text:"Unassigned",color:"yellow"};
   var missing=[];
   if(site&&d.drive==null) missing.push("no travel time");

@@ -75,6 +75,7 @@
   .avs{display:flex;padding-right:8px}
   .bdg{margin-left:auto;font-size:12px;font-weight:600;border-radius:4px;padding:2px 8px;background:var(--list);color:var(--muted)}
   .bdg.todo{background:var(--amber-bg);color:var(--amber)}
+  .bdg.sub{background:#6e5dc6;color:#fff}
   .bdg.now{background:var(--red-bg);color:var(--red)}
   .leave{flex-shrink:0;background:var(--amber-bg);color:var(--amber);font-weight:600;border-radius:8px;padding:8px 12px;font-size:13px}
 
@@ -278,6 +279,7 @@ var SNAP=null, DETAIL={};
     } else {
       j.date=c.due; j.site=/delivery\/installation|collect & return|warranty|removal/i.test(lb);
       j.stageLabel=c.role==="ready"?"Workshop: Ready":"Booked";
+      if(!j.site) j.contractor="";
       if(j.site) j.drive=driveMins(title);
     }
     j.start=c.start&&c.start<c.due?c.start:null;
@@ -389,7 +391,7 @@ var SNAP=null, DETAIL={};
   // more than one time on it
   function badge(part,isToday){
     var cls="bdg "+(isToday?"now":"todo");
-    if(part.contractor&&!part.who.length) return el("span","bdg",part.contractor);
+    if(part.contractor&&!part.who.length) return el("span","bdg sub",(/courier/i.test(part.contractor)?"Courier: ":"Subcontractor: ")+part.contractor);
     if(!part.who.length) return el("span",cls,"Unassigned");
     if(part.isPrep){ if(part.mins==null) return el("span",cls,"No production time"); return el("span","bdg",fmt(part.mins)+(part.who.length>1?" each":"")); }
     var missing=[];
@@ -446,7 +448,7 @@ var SNAP=null, DETAIL={};
     if(o.leg){ var lgb=block("This leg"); var lr=el("div","row"); var ld=el("input"); ld.type="date"; ld.value=j.leg.date; ld.onchange=function(){ if(ld.value){ j.leg.date=ld.value; render(); } }; lr.appendChild(el("span",null,"Date")); lr.appendChild(ld); lgb.appendChild(lr);
       var wr=el("div","row"); var wi=el("input"); wi.type="text"; wi.value=j.leg.where||""; wi.placeholder="Subcontractor or site, with postcode"; wi.style.minWidth="260px"; wi.onchange=function(){ j.leg.where=wi.value; var pc=/\b([A-Z]{1,2})\d/i.exec(wi.value); j.leg.drive=pc&&DRIVE[pc[1].toUpperCase()]?Math.round(DRIVE[pc[1].toUpperCase()].h*2*60*TRAFFIC/5)*5:j.leg.drive; render(); }; wr.appendChild(el("span",null,"Where")); wr.appendChild(wi); lgb.appendChild(wr);
       var rm=el("button","close","Remove this leg"); rm.style.marginTop="8px"; rm.onclick=function(){ LEGS.splice(LEGS.indexOf(j.leg),1); open=null; render(); }; lgb.appendChild(rm); right.appendChild(lgb); }
-    if(!o.shop && !o.leg){ var cb=block("Carried Out By","contractor"); var sel=el("select"); [["","Coggin operatives"]].concat(CONTRACTORS.map(function(c){return [c,c];})).forEach(function(op){ var o2=el("option",null,op[1]); o2.value=op[0]; if((j.contractor||"")===op[0]) o2.selected=true; sel.appendChild(o2); });
+    if(!o.shop && !o.leg && j.site){ var cb=block("Carried Out By","contractor"); var sel=el("select"); [["","Coggin operatives"]].concat(CONTRACTORS.map(function(c){return [c,c];})).forEach(function(op){ var o2=el("option",null,op[1]); o2.value=op[0]; if((j.contractor||"")===op[0]) o2.selected=true; sel.appendChild(o2); });
       sel.onchange=function(){ j.contractor=sel.value; render(); }; cb.appendChild(sel);
       if(contractorOnly) cb.appendChild(el("div","hint",j.contractor+" is carrying out this job, so no travel or labour time applies. Assign an operative above if one attends."));
       right.appendChild(cb); }
@@ -508,7 +510,7 @@ var SNAP=null, DETAIL={};
     tot:"Each operative's allocated hours for the day. Amber means a job has no time allocated yet. Red means over a working day.",
     round:"A delivery round: several transport jobs by one operative in one trip. One travel time for the round, then each job's site time.",
     who:"Assign operatives. Under each name is their existing allocation for that day.",
-    contractor:"Coggin operatives by default. Select a subcontractor when they carry out the job. No labour time applies unless an operative is also assigned.",
+    contractor:"Transport jobs only. Coggin operatives by default; select a subcontractor or courier when they carry out the job. Workshop and yard work is always our own operatives.",
     days:"The dates production takes place. Set a later end date to spread it over several days.",
     drive:"Return travel time, calculated from the site postcode plus 20 percent for traffic. Overtype if you know better.",
     time:"Labour time per operative. Use the quick options or enter hours and minutes."

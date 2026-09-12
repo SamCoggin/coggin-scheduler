@@ -64,11 +64,11 @@
     var app=document.getElementById("app"); app.innerHTML="";
     var contractorOnly=!!d.contractor && !d.who.length;
     var ob=el("div","blk"); ob.appendChild(el("div","bh","Operatives")); ob.appendChild(people(d)); app.appendChild(ob);
-    var cb=el("div","blk"); cb.appendChild(el("div","bh","Carried out by")); var sel=el("select");
+    if(site){ var cb=el("div","blk"); cb.appendChild(el("div","bh","Carried out by")); var sel=el("select");
     [["","Coggin operatives"]].concat(CONTRACTORS.map(function(c){return [c,c];})).forEach(function(o){ var op=el("option",null,o[1]); op.value=o[0]; if((d.contractor||"")===o[0]) op.selected=true; sel.appendChild(op); });
     sel.onchange=function(){ d.contractor=sel.value; save(); render(); }; cb.appendChild(sel);
     if(contractorOnly) cb.appendChild(el("div","hint",d.contractor+" is carrying out this job, so no travel or labour time applies."));
-    app.appendChild(cb);
+    app.appendChild(cb); } else { d.contractor=""; }
     if(site && !contractorOnly){ var tb=el("div","blk"); tb.appendChild(el("div","bh","Travel time, return")); var r=el("div","row"); r.appendChild(hm(function(){return d.drive;},function(v){d.drive=v;},"Travel")); tb.appendChild(r);
       tb.appendChild(el("div","hint","There and back. The Scheduler works this out from the postcode; set it here if you know it."));
       if(d.drive!=null&&d.drive>360) tb.appendChild(el("div","hint far","More than a day's travel with the job in between. Consider a courier or subcontractor."));
