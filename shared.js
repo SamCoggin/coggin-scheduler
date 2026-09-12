@@ -13,12 +13,21 @@ function badgeText(d,site){
   d=d||{};
   var who=d.who||[];
   if(d.contractor&&!who.length) return {text:(/courier/i.test(d.contractor)?"Courier: ":"Subcontractor: ")+d.contractor,color:"purple"};
-  if(!who.length) return {text:"Unassigned",color:"yellow"};
+  if(!who.length) return {text:(site?"Transport: ":"")+"Unassigned",color:"yellow"};
   var missing=[];
   if(site&&d.drive==null) missing.push("no travel time");
   if(d.mins==null) missing.push(site?"no site time":"no time");
-  if(missing.length) return {text:who.join(", ")+": "+missing.join(", "),color:"yellow"};
-  return {text:who.join(", ")+": "+(site&&d.drive?fmt(d.drive)+" travel + ":"")+fmt(d.mins)+(who.length>1?" each":""),color:"green"};
+  if(missing.length) return {text:(site?"Transport: ":"")+who.join(", ")+": "+missing.join(", "),color:"yellow"};
+  return {text:(site?"Transport: ":"")+who.join(", ")+": "+(site&&d.drive?fmt(d.drive)+" travel + ":"")+fmt(d.mins)+(who.length>1?" each":""),color:"green"};
+}
+
+// badge for the production (workshop) part of a workshop-stage card
+function prodBadgeText(d){
+  var p=d&&d.prep; if(!p||!p.date) return {text:"Production: not scheduled",color:"yellow"};
+  var who=p.who||[]; var days=p.start&&p.start!==p.date?niceShort(p.start)+" to "+niceShort(p.date):niceShort(p.date);
+  if(!who.length) return {text:"Production "+days+": unassigned",color:"yellow"};
+  if(p.mins==null) return {text:"Production "+days+": "+who.join(", ")+", no time",color:"yellow"};
+  return {text:"Production "+days+": "+who.join(", ")+", "+fmt(p.mins)+(who.length>1?" each":""),color:"blue"};
 }
 
 // production is due this many working days before the delivery date unless
