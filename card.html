@@ -45,12 +45,13 @@
 (function(){
   var t=TrelloPowerUp.iframe();
   var el=function(tag,c,x){var n=document.createElement(tag);if(c)n.className=c;if(x!=null)n.textContent=x;return n;};
-  var card=null, d=null, workshop=false, site=false, saving=null, defaultDue=null, boardData={};
+  var card=null, d=null, workshop=false, site=false, loading=false, saving=null, defaultDue=null, boardData={};
   function load(){
     return Promise.all([t.card("id","name","labels","idList","due"), t.lists("all"), t.get("card","shared","sched",null), t.get("board","shared","sched",{})]).then(function(r){
       boardData=r[3]||{}; (boardData.contractors||[]).forEach(function(c){ if(CONTRACTORS.indexOf(c)<0) CONTRACTORS.splice(CONTRACTORS.length-1,0,c); });
       card=r[0]; var list=r[1].filter(function(l){return l.id===card.idList;})[0]; workshop=!!(list&&WORKSHOP_LISTS.test(list.name));
       site=(card.labels||[]).some(function(l){return SITE_LABELS.test(l.name);});
+      loading=!site&&(card.labels||[]).some(function(l){return /collecting/i.test(l.name);});
       defaultDue=productionDue("",(card.due||"").slice(0,10));
       d=r[2]||{who:[],mins:null,drive:null,contractor:"",prep:null,legs:[]}; if(!d.who) d.who=[]; if(workshop&&!d.prep) d.prep={who:[],mins:null,start:null,date:null};
       render();
@@ -115,7 +116,7 @@
     }
 
     // Transport (site jobs) or Labour (yard and workshop-only jobs): the part on the card's date.
-    var kind=site?"transport":"labour", name=site?"Transport":"Labour";
+    var kind=site?"transport":"labour", name=site?"Transport":(loading?"Loading":"Labour");
     var ts=section(kind,name,due?niceShort(due):"");
     var tdet=[]; if(site&&!contractorOnly&&d.drive!=null) tdet.push("travel "+fmt(d.drive)+" return");
     ts.appendChild(whoLine(d,tdet.join(", "),site?d.contractor:""));
@@ -137,7 +138,7 @@
       if(d.drive!=null&&d.drive>360) tf.appendChild(el("div","warn","More than a day's travel with the job in between. Consider a courier or subcontractor."));
       ts.appendChild(tf);
     }
-    if(!contractorOnly) ts.appendChild(timeField(d,site?"Site time per operative":"Labour time per operative"));
+    if(!contractorOnly) ts.appendChild(timeField(d,site?"Site time per operative":(loading?"Loading time per operative":"Labour time per operative")));
     app.appendChild(ts);
 
     if(d.legs&&d.legs.length){ var ls=section("labour","Legs",""); var lf=fld(""); d.legs.forEach(function(L){ lf.appendChild(el("div",null,L.type.replace("_"," ")+(L.where?": "+L.where:"")+", "+(L.date?niceShort(L.date):"no date")+(L.who&&L.who.length?", "+L.who.join(", "):", unassigned")+(L.mins!=null?", "+fmt(L.mins):""))); }); lf.appendChild(el("div","hint","Legs are added and edited in the Scheduler.")); ls.appendChild(lf); app.appendChild(ls); }
