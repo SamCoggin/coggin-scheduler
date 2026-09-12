@@ -22,12 +22,23 @@ function badgeText(d,site){
 }
 
 // badge for the production (workshop) part of a workshop-stage card
-function prodBadgeText(d){
+function prodBadgeText(d,long){
   var p=d&&d.prep; if(!p||!p.date) return {text:"Production: not scheduled",color:"yellow"};
   var who=p.who||[]; var days=p.start&&p.start!==p.date?niceShort(p.start)+" to "+niceShort(p.date):niceShort(p.date);
-  if(!who.length) return {text:"Production "+days+": unassigned",color:"yellow"};
-  if(p.mins==null) return {text:"Production "+days+": "+who.join(", ")+", no time",color:"yellow"};
-  return {text:"Production "+days+": "+who.join(", ")+", "+fmt(p.mins)+(who.length>1?" each":""),color:"blue"};
+  var lead=long?"Production "+days+": ":"Production: ";
+  if(!who.length) return {text:lead+"unassigned",color:"yellow"};
+  if(p.mins==null) return {text:lead+who.join(", ")+", no time",color:"yellow"};
+  return {text:lead+who.join(", ")+", "+fmt(p.mins)+(who.length>1?" each":""),color:"blue"};
+}
+// short badges for the card front: Trello clips badge text at about 30 characters
+function frontBadges(d,site){
+  var who=(d&&d.who)||[], out=[];
+  if(d&&d.contractor&&!who.length) return [badgeText(d,site)];
+  if(!who.length) return [{text:(site?"Transport: ":"")+"Unassigned",color:"yellow"}];
+  var tag=site?"Transport: ":"";
+  out.push({text:tag+who.join(", ")+(d.mins==null?", no time":", "+fmt(d.mins)+(who.length>1?" each":"")),color:d.mins==null?"yellow":"green"});
+  if(site) out.push(d.drive==null?{text:"No travel time",color:"yellow"}:{text:"Travel "+fmt(d.drive)+" return",color:"green"});
+  return out;
 }
 
 // production is due this many working days before the delivery date unless
