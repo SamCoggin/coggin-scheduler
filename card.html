@@ -84,7 +84,7 @@
     return box;
   }
   function load(){
-    return Promise.all([t.card("id","name","labels","idList","due","desc"), t.lists("all"), t.get("card","shared","sched",null), t.get("board","shared","sched",{})]).then(function(r){
+    return Promise.all([t.card("id","name","labels","idList","due","desc","checklists").catch(function(){ return t.card("id","name","labels","idList","due","desc"); }), t.lists("all"), t.get("card","shared","sched",null), t.get("board","shared","sched",{})]).then(function(r){
       boardData=r[3]||{}; (boardData.contractors||[]).forEach(function(c){ if(CONTRACTORS.indexOf(c)<0) CONTRACTORS.splice(CONTRACTORS.length-1,0,c); });
       card=r[0]; var list=r[1].filter(function(l){return l.id===card.idList;})[0]; workshop=!!(list&&WORKSHOP_LISTS.test(list.name));
       site=(card.labels||[]).some(function(l){return SITE_LABELS.test(l.name);});
@@ -153,7 +153,7 @@
     }
 
     // Transport (site jobs) or Labour (yard and workshop-only jobs): the part on the card's date.
-    function vanField(){ var f=fld("Van load"); var L=loadOf(itemsOf(card.desc,[]));
+    function vanField(){ var f=fld("Van load"); var checks=[]; (card.checklists||[]).forEach(function(cl){ (cl.checkItems||[]).forEach(function(it){ checks.push({n:it.name||""}); }); }); var L=loadOf(itemsOf(card.desc,checks));
       if(L.rows.length){ var ul=el("ul"); ul.style.cssText="margin:0 0 6px;padding-left:18px"; L.rows.forEach(function(r){ ul.appendChild(el("li",null,r.n+" x "+r.type+(r.built?", built":"")+": "+fmtM3(r.m3)+", "+r.kg+" kg"+(r.est?" (estimate)":""))); }); f.appendChild(ul); }
       if(L.unmatched.length) f.appendChild(el("div","warn","Not counted: "+L.unmatched.join("; ")));
       if(!L.rows.length&&!L.unmatched.length) f.appendChild(el("div","hint","No items listed on the card yet, so nothing to add up."));
