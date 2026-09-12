@@ -323,12 +323,13 @@ var SNAP=null, DETAIL={};
       if(j.site) j.drive=driveMins(title);
     }
     j.start=c.start&&c.start<c.due?c.start:null;
+    var dd=DETAIL[c.id]; j.load=loadOf(itemsOf(dd?dd.desc:c.desc,dd?dd.checks:c.checks)); j.cubeSet=null;
     return j; });
   // a card with a start date is on the board every working day from start to due
     LEAVE=SNAP.cards.filter(function(c){return c.role==="leave"&&c.due;}).map(function(c){ return {date:c.due,text:c.name.replace(/\s*\(.*$/,"").replace(/BANK HOLIDAY\s*-\s*/i,"")+(/BANK HOLIDAY/i.test(c.name)?" (bank holiday)":" on leave")}; });
     // what was saved on the cards last time
     SNAP.cards.forEach(function(c){ var d=c.saved; if(!d) return; var j=JOBS.filter(function(x){return x.id===c.id;})[0]; if(!j) return;
-      if(d.who) j.who=d.who.slice(); if(spacesOf(d)!=null) j.van=spacesOf(d); if(d.mins!=null) j.mins=d.mins; if(d.drive!=null) j.drive=d.drive; if(d.contractor) j.contractor=d.contractor;
+      if(d.who) j.who=d.who.slice(); if(d.cube!=null) j.cubeSet=d.cube; if(d.mins!=null) j.mins=d.mins; if(d.drive!=null) j.drive=d.drive; if(d.contractor) j.contractor=d.contractor;
       if(d.prep&&j.prep){ j.prep.who=d.prep.who||[]; j.prep.mins=d.prep.mins; j.prep.start=d.prep.start||null; j.prep.date=d.prep.date||null; }
       if(d.prodDue&&j.prep){ j.prodDue=d.prodDue; j.prodDueSet=true; }
       (d.legs||[]).forEach(function(L){ LEGS.push({parent:j.id,type:L.type,date:L.date,who:L.who||[],mins:L.mins,drive:L.drive,where:L.where||""}); });
@@ -356,7 +357,7 @@ var SNAP=null, DETAIL={};
   function persist(){
     if(!t) return;
     JOBS.forEach(function(j){
-      var d={who:j.who,mins:j.mins,drive:j.drive,spaces:j.van!=null?j.van:null,contractor:j.contractor||"",prodDue:j.prodDueSet?j.prodDue:null,prep:j.prep?{who:j.prep.who,mins:j.prep.mins,start:j.prep.start,date:j.prep.date}:null,
+      var d={who:j.who,mins:j.mins,drive:j.drive,cube:j.cubeSet,contractor:j.contractor||"",prodDue:j.prodDueSet?j.prodDue:null,prep:j.prep?{who:j.prep.who,mins:j.prep.mins,start:j.prep.start,date:j.prep.date}:null,
         legs:LEGS.filter(function(L){return L.parent===j.id;}).map(function(L){return {type:L.type,date:L.date,who:L.who,mins:L.mins,drive:L.drive,where:L.where};})};
       var js=JSON.stringify(d); if(lastSaved[j.id]===js) return; lastSaved[j.id]=js; t.set(j.id,"shared","sched",d);
     });
@@ -393,36 +394,6 @@ var SNAP=null, DETAIL={};
   // turn the card text into fields, going by the headings the cards use.
   // a heading line sets the group; every line after it goes in that group
   // until the next heading. items are the "N x thing" lines.
-  var HEAD=[
-    [/^(site contact|contact details|supplier details|seller contact|contact)$/i,"contact"],
-    [/address|their site/i,"where"],
-    [/^(items.*|load details|warranty\/job issue|deliver\/collect|additional items.*)$/i,"what"],
-    [/^(access.*|logistics|safety.*)$/i,"access"],
-    [/^(job|ref|service|delivery details|clearance details|refurb collection details|buyback drop-off details|delivery info|other items|additional info)$/i,"skip"]
-  ];
-  function cleanDesc(txt){
-    txt=(txt||"").replace(/\[([^\]]+)\]\([^)]*\)/g,"$1").replace(/\*\*/g,"").replace(/\\_/g,"_").replace(/[\u200c\u200b]/g,"").replace(/\s*\u2014\s*/g,", ").replace(/\s*\u00b7\s*/g,", ").replace(/\u00d7/g,"x").replace(/^\s*_+\s*$/gm,"");
-    // the clearance form writes items as {"metal_filing_cabinets":5}: turn that into "5 x Metal filing cabinets"
-    txt=txt.replace(/\{[^{}]*:\s*\d+[^{}]*\}/g,function(m){ try{ var o=JSON.parse(m); return Object.keys(o).map(function(k){ var n=k.replace(/_/g," "); return o[k]+" x "+n.charAt(0).toUpperCase()+n.slice(1); }).join("\n"); }catch(e){ return m; } });
-    return txt.replace(/\n{3,}/g,"\n\n");
-  }
-  function parseDesc(txt){
-    txt=cleanDesc(txt);
-    var groups={contact:[],where:[],what:[],access:[],notes:[]}, cur="notes";
-    txt.split("\n").forEach(function(raw){
-      var l=raw.replace(/^\s*[-*_]+\s*/,"").replace(/_+$/,"").trim(); if(!l) return;
-      var bare=l.replace(/:$/,"").trim(), hit=null;
-      if(bare.length<40 && !/\d/.test(bare)) HEAD.forEach(function(h){ if(!hit && h[0].test(bare)) hit=h[1]; });
-      if(hit){ cur=hit==="skip"?(/^(other items|additional info|delivery info)$/i.test(bare)?"notes":cur):hit; if(/:$/.test(l)||hit==="skip"||bare===l) return; }
-      if(/:$/.test(l)) return;                                              // a sub-heading with nothing on it
-      if(/^(service|mode|method|collection date|ref):/i.test(l)) return;
-      if(/sign-off|click here|attach photos|photo evidence|link this order|remove when created|^delivered|^collected|^tracking/i.test(l)) return;
-      if(/^[^:]*:\s*(n\/a|none|-)\s*$/i.test(l)) return;
-      var line=/^(name|phone|mobile number|site contact name|email|number):/i.test(l)?"contact":/^(address|postcode|delivery\/collection address|collection address|delivery address):/i.test(l)?"where":/^(access|floor|parking|stairs|lift|loading|distance|working hours|known hazards|security|rams|ppe|time restrictions|vehicle size|parking permits):/i.test(l)?"access":null;
-      groups[line||cur].push(l.replace(/^(address|postcode|collection address|delivery address|delivery\/collection address|site contact name|name|mobile number|phone|number):\s*/i,""));
-    });
-    return groups;
-  }
   function field(label,lines){
     if(!lines.length) return null;
     var row=el("div","fld"); row.appendChild(el("b",null,label)); var v=el("div");
@@ -468,8 +439,7 @@ var SNAP=null, DETAIL={};
     // left: the job
     var dt=DETAIL[j.id];
     var jb=block("Job Details"); var g=dt?parseDesc(dt.desc):{contact:[],where:[],what:[],access:[],notes:[]}, box=el("div","facts");
-    var items=g.what.filter(function(l){return /^\d+\s*x\s*/i.test(l);}); g.notes=g.notes.concat(g.what.filter(function(l){return !/^\d+\s*x\s*/i.test(l);}));
-    if(dt) dt.checks.forEach(function(c){ var n=c.n.replace(/\s*-\s*(above showroom|unit \d+|pending).*$/i,"").trim(); if(/^\d+\s*x\s*/i.test(n) && !/photo|label|sign-off/i.test(n) && items.indexOf(n)<0) items.push(n); });
+    var items=itemsOf(dt?dt.desc:"",dt?dt.checks:[]); g.notes=g.notes.concat(g.what.filter(function(l){return !/^\d+\s*x\s*/i.test(l);}));
     [["Contact",g.contact],["Where",g.where],["Access",g.access],["Notes",g.notes]].forEach(function(f){ var r=field(f[0],f[1]); if(r) box.appendChild(r); });
     if(!box.children.length) box.appendChild(el("div","hint","Nothing written on the card yet."));
     jb.appendChild(box); left.appendChild(jb);
@@ -522,9 +492,14 @@ var SNAP=null, DETAIL={};
       drb.appendChild(el("div","hint",j.drive!=null?"Calculated from the postcode, plus 20 percent for traffic. Change it if you know better.":"No postcode found. Type it in."));
       if(j.drive!=null && j.drive>6*60) drb.appendChild(el("div","hint far","More than a day's travel with the job in between. Consider a courier or subcontractor."));
       right.appendChild(drb); }
-    if(!o.shop && j.site && !contractorOnly && !j.isLeg){ var vb=block("Van Space","van"); var vs=el("div","seg"); VAN.forEach(function(v){ var b=el("button",j.van===v[0]?"on":"",v[1]); b.onclick=function(){ j.van=j.van===v[0]?null:v[0]; render(); }; vs.appendChild(b); }); vb.appendChild(vs);
-      var vr=el("div","row"); vr.appendChild(el("span","hint","or exactly")); var vn=el("input"); vn.type="number"; vn.min="0"; vn.value=j.van==null?"":String(j.van); vn.placeholder="0"; vn.setAttribute("aria-label","Chair spaces"); vn.onchange=function(){ j.van=vn.value===""?null:Math.max(0,parseInt(vn.value,10)||0); render(); }; vr.appendChild(vn); vr.appendChild(el("span",null,"chair spaces")); vb.appendChild(vr);
-      vb.appendChild(el("div","hint","In chair spaces: a Luton takes about "+VAN_FULL+" swivel chairs, so one task chair is 1. The Routes view adds each round up against one van.")); right.appendChild(vb); }
+    if(!o.shop && j.site && !contractorOnly && !j.isLeg){ var vb=block("Van Load","van"); var L=j.load||loadOf([]);
+      if(L.rows.length){ var lu=el("ul","items plain"); L.rows.forEach(function(r){ lu.appendChild(el("li",null,r.n+" x "+r.type+(r.built?", built":"")+": "+fmtM3(r.m3)+", "+r.kg+" kg"+(r.est?" (estimate)":""))); }); vb.appendChild(lu); }
+      if(L.unmatched.length) vb.appendChild(el("div","hint far","Not counted, no match in the load table: "+L.unmatched.join("; ")));
+      if(!L.rows.length&&!L.unmatched.length) vb.appendChild(el("div","hint","No items listed on the card, so nothing to add up. Type the load below."));
+      var tot=el("div","hint"); tot.style.fontWeight="700"; tot.textContent="Estimated: "+fmtLoad(L.rows.length?L.m3:null,L.kg); vb.appendChild(tot);
+      var vr=el("div","row"); vr.appendChild(el("span","hint","or set the load to")); var vn=el("input"); vn.type="number"; vn.min="0"; vn.step="0.5"; vn.value=j.cubeSet==null?"":String(j.cubeSet); vn.placeholder=L.rows.length?String(L.m3):"0"; vn.setAttribute("aria-label","Cubic metres"); vn.onchange=function(){ j.cubeSet=vn.value===""?null:Math.max(0,parseFloat(vn.value)||0); render(); }; vr.appendChild(vn); vr.appendChild(el("span",null,"cubic metres"));
+      if(j.cubeSet!=null){ var rs2=el("button","close","Use the estimate"); rs2.onclick=function(){ j.cubeSet=null; render(); }; vr.appendChild(rs2); } vb.appendChild(vr);
+      vb.appendChild(el("div","hint","A Luton box is about "+VAN_M3+" cubic metres. Desks count flat unless the item says built.")); right.appendChild(vb); }
     if(!contractorOnly){ var tb=block(o.shop?"Production Time per Operative":(j.site?"Site Time per Operative":"Labour Time per Operative"),"time");
       var q=el("div","seg"); QUICK.forEach(function(qq){ var b=el("button",part.mins===qq[0]?"on":"",qq[1]); b.onclick=function(){ setMins(qq[0]); render(); }; q.appendChild(b); }); tb.appendChild(q);
       var r3=el("div","row"); r3.appendChild(el("span","hint","or exactly")); r3.appendChild(hmBoxes(function(){return part.mins;},setMins,"Time")); tb.appendChild(r3); right.appendChild(tb); }
@@ -562,7 +537,7 @@ var SNAP=null, DETAIL={};
     contractor:"Transport jobs only. Coggin operatives by default; select a subcontractor or courier when they carry out the job. Workshop and yard work is always our own operatives.",
     days:"The dates production takes place. Set a later end date to spread it over several days.",
     drivers:"Rob, Jack and Bart drive the van. Jordan and Bradley go along as a second pair of hands, so every transport job needs one of the drivers on it.",
-    van:"Van space in chair spaces. A Luton takes about 40 swivel chairs. A round over a full van needs splitting or a second van.",
+    van:"The load worked out from the items on the card, in cubic metres and kilos, against a "+VAN_M3+" cubic metre Luton and its payload. Overtype it if the yard knows better. We run two vans.",
     routes:"Combine Trips finds jobs booked for later that are near a stop already going out this week, and says what it takes to put them on the same van. Below it, where the week's transport jobs are. Each round is drawn from the yard in its day's colour. Nearby jobs on other days could join a round if there is room in the van and production is done.",
     drive:"Return travel time, calculated from the site postcode plus 20 percent for traffic. Overtype if you know better.",
     time:"Labour time per operative. Use the quick options or enter hours and minutes."
@@ -667,7 +642,9 @@ var SNAP=null, DETAIL={};
   var MONTHS=["January","February","March","April","May","June","July","August","September","October","November","December"];
 
   // ── Routes: where the week's transport jobs are, as rounds from the yard ──
-  // VAN and fmtVan come from shared.js
+  // the load a job puts on the van: the estimate from its items, unless overtyped
+  function cubeOf(j){ if(j.cubeSet!=null) return j.cubeSet; return j.load&&j.load.rows.length?j.load.m3:null; }
+  function kgOf(j){ return j.load&&j.load.rows.length?j.load.kg:0; }
   var BASE={lat:53.940279,lng:-2.775468,name:"Coggin yard, Forton"};
   var DAYCOL=["#0c66e4","#1f845a","#ae4787","#e56910","#626f86"];
   var GEO={}; try{ GEO=JSON.parse(localStorage.getItem("cg-geo")||"{}"); }catch(e){ GEO={}; }
@@ -720,20 +697,20 @@ var SNAP=null, DETAIL={};
       var sugs=[], today=iso(TODAY_REAL);
       weekJobs.forEach(function(A){ if(!A.pt) return; var k=A.date; var i=days.indexOf(k); if(i<0||k<today) return;
         var mates=weekJobs.filter(function(x){return x!==A && onDay(x,k) && x.who.some(function(w){return A.who.indexOf(w)>=0;});});
-        var group=[A].concat(mates), vanQ=group.reduce(function(t,j){return t+(j.van||0);},0), room=VAN_FULL-vanQ;
+        var group=[A].concat(mates), vanQ=group.reduce(function(t,j){return t+(cubeOf(j)||0);},0), kgQ=group.reduce(function(t,j){return t+kgOf(j);},0), room=VAN_M3-vanQ, kgRoom=VAN_KG-kgQ;
         all.forEach(function(B){ if(!B.pt||B===A||group.indexOf(B)>=0) return; if(B.date<=k||B.date>horizon) return;
           var apart=roadMiles(miles(A.pt,B.pt)); if(apart>25) return;
           var alone=2*roadMiles(miles(BASE,B.pt)), detour=apart+roadMiles(miles(B.pt,BASE))-roadMiles(miles(A.pt,BASE)); var saved=alone-Math.max(detour,0); if(saved<15) return;
-          var fits=B.van==null?null:B.van<=room, newDue=productionDue("",k), prod=null;
+          var fits=cubeOf(B)==null?null:(cubeOf(B)<=room&&kgOf(B)<=kgRoom), newDue=productionDue("",k), prod=null;
           if(B.prep){ if(newDue<today) return; prod={due:newDue,sched:B.prep.date,move:B.prep.date&&B.prep.date>newDue}; }
-          sugs.push({A:A,B:B,k:k,i:i,apart:apart,saved:saved,fits:fits,room:room,prod:prod,who:A.who.slice()}); }); });
+          sugs.push({A:A,B:B,k:k,i:i,apart:apart,saved:saved,fits:fits,room:room,kgRoom:kgRoom,prod:prod,who:A.who.slice()}); }); });
       // one suggestion per job to move: the best saving
       var best={}; sugs.forEach(function(x){ if(!best[x.B.id]||best[x.B.id].saved<x.saved) best[x.B.id]=x; });
       sugs=Object.keys(best).map(function(id){return best[id];}).sort(function(a,b){return b.saved-a.saved;});
       if(sugs.length){ var cb=el("div","combine"); var ch=el("h3"); ch.appendChild(document.createTextNode("Combine Trips")); ch.appendChild(el("span",null,sugs.length+(sugs.length===1?" way to save a trip":" ways to save trips"))); cb.appendChild(ch);
         sugs.slice(0,6).forEach(function(x){ var d=el("div","sug"); d.appendChild(el("b",null,"Take "+x.B.title+" on "+niceDay(x.k)+(x.who.length?" with "+x.who.join(", "):"")));
           var l1=el("div"); l1.appendChild(document.createTextNode("Booked for "+niceDay(x.B.date)+", "+x.apart+" miles from "+x.A.title.split(" - ")[0]+". ")); var sv=el("span","save","Saves about "+x.saved+" miles and a day out."); l1.appendChild(sv); d.appendChild(l1);
-          d.appendChild(el("div","must"+(x.fits===false?" bad":""),x.fits===null?"Van space not set on the job. Set it to check the fit.":(x.fits?"Fits in the van, room for "+fmtVan(x.room)+".":"No room in the van, only "+fmtVan(x.room)+" left. Move a stop or send two vans.")));
+          d.appendChild(el("div","must"+(x.fits===false?" bad":""),x.fits===null?"No items on the job to add up. Set its load to check the fit.":(x.fits?"Fits on the van: "+fmtM3(cubeOf(x.B))+" into "+fmtM3(x.room)+" spare.":"Does not fit: "+fmtM3(cubeOf(x.B))+" and "+kgOf(x.B)+" kg, with "+fmtM3(x.room)+" and "+Math.round(x.kgRoom)+" kg spare. Move a stop or use the second van.")));
           if(x.prod){ var pm=el("div","must"+(x.prod.move?" bad":"")); pm.textContent="Production must finish by "+niceDay(x.prod.due)+(x.prod.sched?(x.prod.move?", it is scheduled to finish "+niceDay(x.prod.sched)+". Bring it forward.":", it is scheduled to finish "+niceDay(x.prod.sched)+".") :", not scheduled yet."); d.appendChild(pm); }
           d.appendChild(el("div","steps","To do it: move the delivery date on the Trello card to "+niceDay(x.k)+(x.prod?", set production due "+niceDay(x.prod.due)+" and schedule the production days":"")+", then assign "+(x.who.length?x.who.join(", "):"a driver")+" to it here."));
           cb.appendChild(d);
@@ -746,32 +723,34 @@ var SNAP=null, DETAIL={};
         // one group per operative (a round), plus the jobs nobody is on yet
         var groups=[]; TEAM.forEach(function(w){ var mine=jobs.filter(function(j){return j.who.indexOf(w)>=0;}); if(mine.length) groups.push({name:w,jobs:mine}); });
         var none=jobs.filter(function(j){return !j.who.length;}); if(none.length) groups.push({name:"Unassigned",jobs:none,unassigned:true});
+        var driving=groups.filter(function(g){return !g.unassigned && DRIVERS.indexOf(g.name)>=0;}).length;
+        if(driving>VANS) day.appendChild(el("div","rwarn",driving+" drivers out but only "+VANS+" vans. Combine rounds or move a job."));
         groups.forEach(function(g){
           var placed=g.jobs.filter(function(j){return j.pt;}), lost=g.jobs.filter(function(j){return !j.pt;});
           var stops=orderStops(placed.map(function(j){ return {j:j,pt:j.pt}; }));
           var total=stops.reduce(function(s,x){return s+x.legMiles;},0)+(stops.length?stops[stops.length-1].backMiles:0);
-          var vanQ=g.jobs.reduce(function(s,j){return s+(j.van||0);},0), vanUnknown=g.jobs.filter(function(j){return j.van==null;}).length;
+          var vanQ=g.jobs.reduce(function(s,j){return s+(cubeOf(j)||0);},0), kgQ=g.jobs.reduce(function(s,j){return s+kgOf(j);},0), vanUnknown=g.jobs.filter(function(j){return cubeOf(j)==null;}).length;
           var grp=el("div","rgrp"); var kk=el("div","k"); kk.appendChild(el("span",null,g.unassigned?"Nobody assigned yet":g.name+(g.jobs.length>1?", delivery round":"")));
           if(total) kk.appendChild(el("span",null,total+" miles round trip")); grp.appendChild(kk);
-          stops.forEach(function(x,n){ var st=el("div","stop"); var num=el("span","n",String(n+1)); num.style.background=col; st.appendChild(num); var tx=el("span"); tx.appendChild(el("b",null,x.j.title)); tx.appendChild(el("small",null,(x.j.pc&&x.j.pc.indexOf("area:")!==0?x.j.pc:"postcode area only")+(x.j.mins!=null?", "+fmt(x.j.mins)+" on site":", no site time")+(x.j.van!=null?", "+fmtVan(x.j.van):""))); st.appendChild(tx); st.appendChild(el("span","mi",x.legMiles+" mi"+(x.backMiles!=null?", "+x.backMiles+" mi back":""))); grp.appendChild(st);
+          stops.forEach(function(x,n){ var st=el("div","stop"); var num=el("span","n",String(n+1)); num.style.background=col; st.appendChild(num); var tx=el("span"); tx.appendChild(el("b",null,x.j.title)); tx.appendChild(el("small",null,(x.j.pc&&x.j.pc.indexOf("area:")!==0?x.j.pc:"postcode area only")+(x.j.mins!=null?", "+fmt(x.j.mins)+" on site":", no site time")+(cubeOf(x.j)!=null?", "+fmtM3(cubeOf(x.j)):""))); st.appendChild(tx); st.appendChild(el("span","mi",x.legMiles+" mi"+(x.backMiles!=null?", "+x.backMiles+" mi back":""))); grp.appendChild(st);
             if(MAP){ L.circleMarker([x.pt.lat,x.pt.lng],{radius:8,color:"#fff",fillColor:col,fillOpacity:1,weight:2}).addTo(MAP).bindTooltip(x.j.title+", "+niceDay(k)+(g.unassigned?"":", "+g.name)); bounds.push([x.pt.lat,x.pt.lng]); } });
           lost.forEach(function(j){ var st=el("div","stop"); st.appendChild(el("span","n","?")); var tx=el("span"); tx.appendChild(el("b",null,j.title)); tx.appendChild(el("small",null,"No postcode on the card, so it is not on the map.")); st.appendChild(tx); st.appendChild(el("span","mi","")); grp.appendChild(st); });
           if(MAP&&stops.length&&!g.unassigned){ var line=[[BASE.lat,BASE.lng]].concat(stops.map(function(x){return [x.pt.lat,x.pt.lng];})).concat([[BASE.lat,BASE.lng]]); L.polyline(line,{color:col,weight:4,opacity:.8}).addTo(MAP); }
           day.appendChild(grp);
-          var vanLine=el("div","rnote","Van load: "+(vanQ?fmtVan(vanQ):"nothing set")+(vanUnknown?" ("+vanUnknown+(vanUnknown===1?" job":" jobs")+" without van space)":"")); day.appendChild(vanLine);
-          if(vanQ>VAN_FULL) day.appendChild(el("div","rwarn","Over one van. Split the round or send a second van."));
+          var vanLine=el("div","rnote","Van load: "+(vanQ?fmtLoad(vanQ,kgQ):"nothing to add up")+(vanUnknown?" ("+vanUnknown+(vanUnknown===1?" job":" jobs")+" with no items listed)":"")); day.appendChild(vanLine);
+          if(vanQ>VAN_M3||kgQ>VAN_KG) day.appendChild(el("div","rwarn",(vanQ>VAN_M3?"Over one van by volume":"Over the payload by weight")+". Split the round or use the second van."));
           if(!g.unassigned && DRIVERS.indexOf(g.name)<0){ var withDriver=g.jobs.every(function(j){return j.who.some(function(w){return DRIVERS.indexOf(w)>=0;});}); if(!withDriver) day.appendChild(el("div","rwarn",g.name+" cannot drive transport. Add a driver: Rob, Jack or Bart.")); }
           // jobs on other days close to this round
           if(stops.length){
-            var room=VAN_FULL-vanQ, near=[];
+            var room=VAN_M3-vanQ, kgRoom=VAN_KG-kgQ, near=[];
             all.forEach(function(o){ if(!o.pt||g.jobs.indexOf(o)>=0||o.date===k) return; if(o.date<days[0]||o.date>horizon) return;
               var best=null; stops.forEach(function(x){ var m=roadMiles(miles(x.pt,o.pt)); if(best==null||m<best.m) best={m:m,x:x}; });
               if(best&&best.m<=20) near.push({o:o,m:best.m,x:best.x}); });
             near.sort(function(a,b){return a.m-b.m;});
             if(near.length){ var nb=el("div","near"); nb.appendChild(el("b",null,"Nearby, other days")); near.slice(0,5).forEach(function(n){
-              var o=n.o, fits=o.van==null?null:(o.van<=room), txt=o.title+", "+niceDay(o.date)+", "+n.m+" miles from "+n.x.j.title.split(" - ")[0]+".";
+              var o=n.o, fits=cubeOf(o)==null?null:(cubeOf(o)<=room&&kgOf(o)<=kgRoom), txt=o.title+", "+niceDay(o.date)+", "+n.m+" miles from "+n.x.j.title.split(" - ")[0]+".";
               if(o.prep&&o.stage) txt+=" Still in production, due "+niceDay(o.prodDue)+".";
-              txt+=fits===null?" Van space not set.":(fits?" Fits in the van.":" No room in the van.");
+              txt+=fits===null?" No items to add up.":(fits?" Fits on the van.":" Would not fit on the van.");
               var row=el("div",fits===false?"no":"",txt); nb.appendChild(row); }); day.appendChild(nb); }
           }
         });

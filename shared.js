@@ -3,13 +3,89 @@ var CREW=["Jack","Jordan","Bart","Rob","Bradley"];
 // only these three drive the van. the others go along as a second pair of hands.
 var DRIVERS=["Rob","Jack","Bart"];
 var CONTRACTORS=["MAK Installations","Courier","Other contractor"];
-// van space per transport job, in chair spaces. a Luton takes about 40 swivel chairs.
-var VAN_FULL=40;
-var VAN=[[1,"1 chair"],[5,"Up to 5"],[10,"Quarter van"],[20,"Half a van"],[30,"Three quarters"],[40,"Full van"]];
-function fmtVan(n){ if(n==null) return "not set"; if(n<=0) return "empty"; var vans=Math.floor(n/VAN_FULL), rem=n%VAN_FULL;
-  if(!vans) return rem+(rem===1?" chair space":" chair spaces")+" of "+VAN_FULL; var w=vans===1?"one van":vans+" vans"; return rem?w+" and "+rem+" spaces":w; }
-// plans saved before 13 Sep 2026 held quarters in "van"; read them as spaces
-function spacesOf(p){ if(!p) return null; if(p.spaces!=null) return p.spaces; if(p.van!=null) return p.van*10; return null; }
+// ── the van and what goes on it ──
+// a 3.5 tonne Luton: about 17 cubic metres of box, payload from the plate (about 1,000 kg).
+var VAN_M3=17, VAN_KG=1000, VANS=2;   // two Lutons on the fleet
+// loaded volume (item plus the space around it on the van) and weight per product type.
+// figures: removals trade lists and a council reuse dataset; rows marked est are estimates until the yard corrects them.
+var LOAD=[
+  {t:"Swivel chair",     re:/swivel|task chair|operator|mesh chair|office chair|executive chair|ergonomic/i, m3:0.40, kg:12},
+  {t:"Meeting chair, stacking", re:/stack/i, m3:0.10, kg:8},
+  {t:"Meeting chair",    re:/meeting chair|tub chair|cantilever|visitor chair|conference chair|dining chair|breakout chair/i, m3:0.20, kg:10},
+  {t:"Stool",            re:/stool/i, m3:0.15, kg:6},
+  {t:"Sit-stand desk",   re:/sit.?stand|height adjust|electric desk|rise/i, m3:0.30, kg:60, built:1.10, est:true},
+  {t:"Bench desk position", re:/bench/i, m3:0.30, kg:30, est:true},
+  {t:"Desk",             re:/desk(?!\s*(screen|divider|mounted|pedestal|drawer))|workstation/i, m3:0.25, kg:35, built:0.90, w:1600},
+  {t:"Meeting table",    re:/meeting table|boardroom|conference table|table \d{4}/i, m3:1.20, kg:50, w:1800},
+  {t:"Folding table",    re:/folding|flip.?top/i, m3:0.15, kg:20},
+  {t:"Coffee table",     re:/coffee table|side table|occasional/i, m3:0.30, kg:15},
+  {t:"Pedestal",         re:/pedestal|desk drawer|drawer unit|mobile drawer/i, m3:0.25, kg:20},
+  {t:"Filing cabinet",   re:/filing cab|filer/i, m3:0.50, kg:35},
+  {t:"Cupboard or tambour", re:/cupboard|tambour|wardrobe|storage unit|bookcase|shelving/i, m3:0.80, kg:60},
+  {t:"Locker",           re:/locker/i, m3:0.60, kg:40, est:true},
+  {t:"Screen divider",   re:/screen|divider|partition/i, m3:0.05, kg:5},
+  {t:"Armchair",         re:/armchair|arm chair|lounge chair|easy chair/i, m3:0.60, kg:20, est:true},
+  {t:"Sofa",             re:/sofa|settee|couch|modular/i, m3:1.80, kg:45, est:true},
+  {t:"Booth",            re:/booth|high.?back/i, m3:3.00, kg:90, est:true},
+  {t:"Pod",              re:/\bpod\b/i, m3:17, kg:400, est:true}
+];
+// "4 x Desk 1600 (built)" -> {n:4, type, m3, kg}
+function matchLoad(line){
+  var m=/^(\d+)\s*x\s*(.+)$/i.exec(line.trim()); if(!m) return null;
+  var n=parseInt(m[1],10), name=m[2].trim(), row=null;
+  for(var i=0;i<LOAD.length;i++){ if(LOAD[i].re.test(name)){ row=LOAD[i]; break; } }
+  if(!row) return {n:n,name:name,type:null};
+  var built=/\bbuilt\b|assembled|made up/i.test(name), each=row.built&&built?row.built:row.m3;
+  if(row.w){ var wm=/\b(\d{3,4})\s*(?:x|mm|\b)/i.exec(name); if(wm){ var w=parseInt(wm[1],10); if(w>=600&&w<=4000) each=each*w/row.w; } }
+  return {n:n,name:name,type:row.t,built:built,m3:Math.round(each*n*100)/100,kg:row.kg*n,est:!!row.est};
+}
+function loadOf(items){
+  var out={m3:0,kg:0,rows:[],unmatched:[]};
+  (items||[]).forEach(function(l){ var r=matchLoad(l); if(!r) return; if(!r.type){ out.unmatched.push(l); return; } out.rows.push(r); out.m3+=r.m3; out.kg+=r.kg; });
+  out.m3=Math.round(out.m3*10)/10; out.any=out.rows.length>0||out.unmatched.length>0; return out;
+}
+function fmtM3(v){ return v==null?"not set":(Math.round(v*10)/10)+" m\u00b3"; }
+function fmtLoad(m3,kg){ if(m3==null) return "not set"; var s=fmtM3(m3)+" of "+VAN_M3; if(kg) s+=", "+Math.round(kg)+" kg of "+VAN_KG; return s; }
+
+// ── reading the card description ──
+var HEAD=[
+  [/^(site contact|contact details|supplier details|seller contact|contact)$/i,"contact"],
+  [/address|their site/i,"where"],
+  [/^(items.*|load details|warranty\/job issue|deliver\/collect|additional items.*)$/i,"what"],
+  [/^(access.*|logistics|safety.*)$/i,"access"],
+  [/^(job|ref|service|delivery details|clearance details|refurb collection details|buyback drop-off details|delivery info|other items|additional info)$/i,"skip"]
+];
+function cleanDesc(txt){
+  txt=(txt||"").replace(/\[([^\]]+)\]\([^)]*\)/g,"$1").replace(/\*\*/g,"").replace(/\\_/g,"_").replace(/[\u200c\u200b]/g,"").replace(/\s*\u2014\s*/g,", ").replace(/\s*\u00b7\s*/g,", ").replace(/\u00d7/g,"x").replace(/^\s*_+\s*$/gm,"");
+  // the clearance form writes items as {"metal_filing_cabinets":5}: turn that into "5 x Metal filing cabinets"
+  txt=txt.replace(/\{[^{}]*:\s*\d+[^{}]*\}/g,function(m){ try{ var o=JSON.parse(m); return Object.keys(o).map(function(k){ var n=k.replace(/_/g," "); return o[k]+" x "+n.charAt(0).toUpperCase()+n.slice(1); }).join("\n"); }catch(e){ return m; } });
+  return txt.replace(/\n{3,}/g,"\n\n");
+}
+function parseDesc(txt){
+  txt=cleanDesc(txt);
+  var groups={contact:[],where:[],what:[],access:[],notes:[]}, cur="notes";
+  txt.split("\n").forEach(function(raw){
+    var l=raw.replace(/^\s*[-*_]+\s*/,"").replace(/_+$/,"").trim(); if(!l) return;
+    var bare=l.replace(/:$/,"").trim(), hit=null;
+    if(bare.length<40 && !/\d/.test(bare)) HEAD.forEach(function(h){ if(!hit && h[0].test(bare)) hit=h[1]; });
+    if(hit){ cur=hit==="skip"?(/^(other items|additional info|delivery info)$/i.test(bare)?"notes":cur):hit; if(/:$/.test(l)||hit==="skip"||bare===l) return; }
+    if(/:$/.test(l)) return;                                              // a sub-heading with nothing on it
+    if(/^(service|mode|method|collection date|ref):/i.test(l)) return;
+    if(/sign-off|click here|attach photos|photo evidence|link this order|remove when created|^delivered|^collected|^tracking/i.test(l)) return;
+    if(/^[^:]*:\s*(n\/a|none|-)\s*$/i.test(l)) return;
+    var line=/^(name|phone|mobile number|site contact name|email|number):/i.test(l)?"contact":/^(address|postcode|delivery\/collection address|collection address|delivery address):/i.test(l)?"where":/^(access|floor|parking|stairs|lift|loading|distance|working hours|known hazards|security|rams|ppe|time restrictions|vehicle size|parking permits):/i.test(l)?"access":null;
+    groups[line||cur].push(l.replace(/^(address|postcode|collection address|delivery address|delivery\/collection address|site contact name|name|mobile number|phone|number):\s*/i,""));
+  });
+  return groups;
+}
+
+// the items on a card: "N x thing" lines from the description and the product checklist
+function itemsOf(desc,checks){
+  var g=parseDesc(desc||""), items=g.what.filter(function(l){return /^\d+\s*x\s*/i.test(l);});
+  (checks||[]).forEach(function(c){ var n=(c.n||"").replace(/\s*-\s*(above showroom|unit \d+|pending).*$/i,"").trim(); if(/^\d+\s*x\s*/i.test(n) && !/photo|label|sign-off/i.test(n) && items.indexOf(n)<0) items.push(n); });
+  return items;
+}
+
 // the working week is 38 hours 45 minutes Monday to Friday: 7 hours 45 minutes a day
 // (8am to 4:30pm with 30 minutes for lunch and a 15 minute break)
 var WEEK_MINS=38*60+45, DAY_MINS=WEEK_MINS/5, DAY_H=DAY_MINS/60;
