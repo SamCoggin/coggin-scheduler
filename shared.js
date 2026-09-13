@@ -54,8 +54,8 @@ function matchLoad(line){
 }
 function loadOf(items){
   var out={m3:0,kg:0,rows:[],unmatched:[]};
-  out.min=0; out.prod=0;
-  (items||[]).forEach(function(l){ var r=matchLoad(l); if(!r) return; if(!r.type){ out.unmatched.push(l); return; } out.rows.push(r); out.m3+=r.m3; out.kg+=r.kg; out.min+=r.min||0; out.prod+=r.prod||0; });
+  out.min=0; out.prod=0; out.chairM3=0;
+  (items||[]).forEach(function(l){ var r=matchLoad(l); if(!r) return; if(!r.type){ out.unmatched.push(l); return; } out.rows.push(r); out.m3+=r.m3; out.kg+=r.kg; out.min+=r.min||0; out.prod+=r.prod||0; if(/chair|stool/i.test(r.type)) out.chairM3+=r.m3; });
   out.m3=Math.round(out.m3*10)/10; out.any=out.rows.length>0||out.unmatched.length>0;
   // guardrail: if any line could not be matched there is no estimate at all. a partial total would mislead.
   out.complete=out.rows.length>0&&out.unmatched.length===0; return out;
@@ -241,9 +241,9 @@ var VEHICLE_CLASSES=[
   {t:"3.5 tonne Luton",  m3:VAN_M3, kg:VAN_KG, licence:"B", note:"our vans"},
   {t:"7.5 tonne box",    m3:32, kg:2600,  licence:"C1", note:"tail lift; hire with a driver unless someone holds C1"},
   {t:"12 tonne box",     m3:40, kg:6000,  licence:"C",  note:"haulier with driver; check site access and parking"},
-  {t:"18 tonne box",     m3:55, kg:9500,  licence:"C",  note:"haulier with driver; needs a proper loading bay or wide access"},
-  {t:"26 tonne box",     m3:65, kg:15000, licence:"C",  note:"haulier with driver; large site access only"},
-  {t:"Artic, 13.6 m",    m3:85, kg:26000, licence:"CE", note:"haulier; dock or yard access, not for most offices"}
+  {t:"18 tonne box",     m3:55, kg:9500,  licence:"C", tall:true,  note:"haulier with driver; needs a proper loading bay or wide access"},
+  {t:"26 tonne box",     m3:65, kg:15000, licence:"C", tall:true,  note:"haulier with driver; large site access only"},
+  {t:"Artic, 13.6 m",    m3:85, kg:26000, licence:"CE", tall:true, note:"haulier; dock or yard access, not for most offices"}
 ];
 // city centre postcode districts where nothing bigger than an 18 tonne gets to the door and bays must be booked
 var CITY_CENTRE=/^(EC\d|WC\d|E1|N1|NW1|SE1|SW1|W1|M[1-4]|B[1-5]|BA1|LS[12]|L[1-3]|BS1|EH[1-3]|G[1-3]|S1|NE1|NG1|CF10|BN1|OX1|CB[12]|YO1)$/i;
@@ -256,8 +256,9 @@ function vehicleAdvice(m3,kg,lutonsOnRoad,opts){
   var lutons=Math.max(Math.ceil(m3/VAN_M3),Math.ceil(kg/VAN_KG),1);
   var wagons=VEHICLE_CLASSES.filter(function(v){return v.licence!=="B"&&v.licence!=="CE"&&(!city||v.kg<=9500);});
   var common=wagons.filter(function(v){return /7\.5|18|26/.test(v.t);});
-  var single=wagons.filter(function(v){return v.m3>=m3&&v.kg>=kg;})[0]||null, pair=null;
-  common.forEach(function(a){ common.forEach(function(b){ if(a.m3+b.m3>=m3&&a.kg+b.kg>=kg){ if(!pair||a.m3+b.m3<pair.m3) pair=a.m3>=b.m3?{a:a,b:b,m3:a.m3+b.m3}:{a:b,b:a,m3:a.m3+b.m3}; } }); });
+  var chairM3=opts.chairM3||0, need=function(v){return v.tall?m3-chairM3*0.25:m3;};
+  var single=wagons.filter(function(v){return v.m3>=need(v)&&v.kg>=kg;})[0]||null, pair=null;
+  common.forEach(function(a){ common.forEach(function(b){ var needP=(a.tall&&b.tall)?m3-chairM3*0.25:(a.tall||b.tall)?m3-chairM3*0.125:m3; if(a.m3+b.m3>=needP&&a.kg+b.kg>=kg){ if(!pair||a.m3+b.m3<pair.m3) pair=a.m3>=b.m3?{a:a,b:b,m3:a.m3+b.m3}:{a:b,b:a,m3:a.m3+b.m3}; } }); });
   var out={lutons:lutons,fitsOurs:lutons<=on,city:city,hire:single,pair:pair};
   var cityNote=city?" City centre: nothing bigger than an 18 tonne, and book a parking suspension for the bays.":"";
   // fewest vehicles first (Sam, 13 Sep 2026: running several vehicles is expensive)
