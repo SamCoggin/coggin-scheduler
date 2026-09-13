@@ -73,6 +73,8 @@ Fix: a simple week summary at the top: hours planned against hours available, va
 
 - 13 Sep 2026: gap 9 built. Off today per operative in the day view with a reason, saved on the board; bank holidays for England and Wales built in through 2027; both flow into hours, capacity, crew picking and the rail.
 
+- 13 Sep 2026: gap 10 built. The saved plan carries the date it was made for; a card moved by sales shows Date moved, stays Outstanding and warns in the rail until Replanned is pressed on the card back.
+
 ## Suggested order
 1. Time windows on transport jobs (gap 1), then the driver day check (gap 2).
 2. Vehicle on the job and rounds vs vans (gap 3), then hire booked tick (gap 4).
