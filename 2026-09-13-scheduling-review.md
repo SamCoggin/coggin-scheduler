@@ -59,7 +59,7 @@ Fix: a simple week summary at the top: hours planned against hours available, va
 - Site visits and surveys use the same card as a delivery. Dropped: operatives do not use their own cars for work (insurance), so a site visit goes in a company vehicle and counts against the vans, which is what the Scheduler does.
 - Customer collects still needs a loading slot and someone in the yard. It shows in transport; it should show in yard operations with a time, so the yard is not empty when the customer turns up.
 - Multi-day transport jobs: done 13 Sep 2026, the load is shared equally across the days (a two-day 20 m³ clearance is 10 m³ a day), everywhere a day is added up.
-- Travel time is straight line times 1.25 plus 20 percent. Fine for planning, wrong for the Lake District and central Manchester. A postcode-pair cache of real drive times from one lookup would fix most of it.
+- Travel time: done 13 Sep 2026. Real road time from the yard to the postcode from OpenStreetMap routing (OSRM), cached 30 days, plus 20 percent for traffic; the area estimate stays as the fallback and typed times are never overwritten.
 - The Manager PIN is client-side. Fine for keeping £ off the yard screen, not a control.
 
 ## Done
