@@ -165,6 +165,7 @@
   .card.hold{border:2px dashed #6e5dc6;background:repeating-linear-gradient(135deg,var(--card),var(--card) 8px,rgba(110,93,198,.08) 8px,rgba(110,93,198,.08) 16px);cursor:default}
   .card.hold .ttl{color:#6e5dc6}
   .for.hold{color:#6e5dc6;font-weight:700}
+  .daywarn{flex-shrink:0;margin:0 8px 6px;padding:8px 10px;border-radius:8px;background:var(--red);color:#fff;font-weight:800;font-size:13px}
   .leave{flex-shrink:0;background:var(--amber-bg);color:var(--amber);font-weight:600;border-radius:8px;padding:8px 12px;font-size:13px}
 
   .tot{border-top:2px solid #3d4451;background:var(--card);border-radius:0 0 10px 10px;padding:10px 14px 12px;font-size:14px;display:flex;flex-direction:column;gap:4px}
@@ -407,6 +408,17 @@ var SNAP=null, DETAIL={};
   }
   function daysOf(j){ if(!j.start||j.start>=j.date) return [j.date]; var out=[]; for(var d=new Date(j.start+"T12:00");iso(d)<=j.date;d.setDate(d.getDate()+1)){ if(d.getDay()!==0&&d.getDay()!==6) out.push(iso(d)); } return out; }
   // what each person already has on a day, in minutes, for the "who could jump on" hints
+  // what a day needs against what it has, with holds counted at their standard crew and time
+  function dayCapacity(k,jobs,preps){
+    var off=LEAVE.filter(function(l){return l.date===k;}).map(function(l){return l.text.split(" ")[0];});
+    var avail=TEAM.filter(function(w){return off.indexOf(w)<0;}).length*DAY_MINS;
+    var need=0, trips=0;
+    jobs.forEach(function(j){ if(j.contractor&&!j.who.length) return; var crew=j.isHold?(j.holdCrew||2):Math.max(1,j.who.length); need+=(j.mins||0)*crew+(j.site?(j.drive||0)*crew:0); if(j.site) trips+=1; });
+    preps.forEach(function(j){ need+=(j.prep.mins||0)*Math.max(1,j.prep.who.length); });
+    var rounds=roundsOn(k,jobs); trips=Math.max(0,trips-rounds.reduce(function(t,r){return t+r.stops.length-1;},0));
+    var vans=vansOnRoad();
+    return {need:need,avail:avail,overTime:need>avail,trips:trips,vans:vans,overVans:trips>vans,holds:jobs.filter(function(j){return j.isHold;}).length};
+  }
   function loadOn(k){
     var jobs=allJobs().filter(function(j){return onDay(j,k);}), preps=JOBS.filter(function(j){return j.prep&&j.prep.date&&daysOf(j.prep).indexOf(k)>=0;}), rounds=roundsOn(k,jobs), out={};
     var off=LEAVE.filter(function(l){return l.date===k;}).map(function(l){return l.text.split(" ")[0];});
@@ -753,6 +765,7 @@ var SNAP=null, DETAIL={};
         if(nT) pills.appendChild(el("span","t",nT+" transport"));
         if(nY) pills.appendChild(el("span","y",nY+" yard"));
         lv.forEach(function(l){ pills.appendChild(el("span","l",l.text)); });
+        var capM=dayCapacity(k,allJobs().filter(function(j){return onDay(j,k);}),JOBS.filter(function(j){return j.prep&&j.prep.date&&daysOf(j.prep).indexOf(k)>=0;})); if(capM.overTime||capM.overVans) pills.appendChild(el("span","ov","Over if holds land"));
         var load=loadOn(k); var over=TEAM.filter(function(x){return load[x].c==="over";}); if(over.length) pills.appendChild(el("span","ov",over.join(", ")+" over capacity"));
         c.appendChild(pills);
         c.onclick=(function(kk){return function(){ dayCur=kk; view="day"; render(); };})(k);
@@ -957,6 +970,8 @@ var SNAP=null, DETAIL={};
       var n=jobs.length;
       var h=el("h2"); h.appendChild(el(isToday?"em":"span",null,DAYS[d.getDay()]+" "+d.getDate()+(isToday?"  Today":"")));
       var vb=el("button","viewday","View day"); vb.onclick=(function(kk){return function(){ dayCur=kk; view="day"; render(); };})(k); h.appendChild(vb);
+      // IF EVERY HOLD LANDS (Sam, 13 Sep 2026): booked plus held time against the operatives on that day, and van trips against the vans.
+      var cap=dayCapacity(k,jobs,preps); if(cap.overTime||cap.overVans){ var warn=el("div","daywarn"); warn.textContent=(cap.overTime?"Over capacity if every hold lands: "+fmt(cap.need)+" needed, "+fmt(cap.avail)+" available.":"")+(cap.overVans?" "+cap.trips+" van trips, "+cap.vans+" vans on the road.":""); list.appendChild(warn); }
       h.appendChild(el("span",null,n?n+(n===1?" job":" jobs"):"")); list.appendChild(h);
       var cards=el("div","cards");
       var lv=LEAVE.filter(function(l){return l.date===k;}); if(lv.length){ var lh=el("div","sec-h"); var lhl=el("span",null,"Annual Leave"); lhl.appendChild(tip("leave")); lh.appendChild(lhl); cards.appendChild(lh); lv.forEach(function(l){ cards.appendChild(el("div","leave",l.text)); }); }
