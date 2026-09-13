@@ -65,6 +65,8 @@ Fix: a simple week summary at the top: hours planned against hours available, va
 ## Done
 - 13 Sep 2026: gaps 1 and 2 built. Time windows (arrive after, finish by) on transport jobs, day walked from 8:00, cut-off misses and waits flagged, driver break over 4h 30m driving and day over 11 hours flagged.
 
+- 13 Sep 2026: gaps 3 and 4 built. Vehicle on every transport job (FX75, FX73 or Hire), van chip on the card, double-booked van and off-road van warnings, drivers out against vans on the road, hire supplier and reference with a Booked tick that nags from five working days out, vehicle on the routes view and both PDFs, no van counts as To plan.
+
 ## Suggested order
 1. Time windows on transport jobs (gap 1), then the driver day check (gap 2).
 2. Vehicle on the job and rounds vs vans (gap 3), then hire booked tick (gap 4).

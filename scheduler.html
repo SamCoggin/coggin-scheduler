@@ -1020,7 +1020,6 @@ var SNAP=null, DETAIL={};
         var dayM3=jobs.reduce(function(t,j){return t+(cubeOf(j)||0);},0), dayKg=jobs.reduce(function(t,j){return t+kgOf(j);},0), advD=vehicleAdvice(dayM3,dayKg,vansOnRoad());
         if(advD&&dayM3){ day.appendChild(el("div",advD.fitsOurs?"rnote":"rwarn","Whole day: "+fmtM3(dayM3)+(dayKg?", "+Math.round(dayKg)+" kg":"")+". Needs "+advD.text)); }
         var driving=groups.filter(function(g){return !g.unassigned && DRIVERS.indexOf(g.name)>=0;}).length;
-        if(driving>vansOnRoad()) day.appendChild(el("div","rwarn",driving+" drivers out with "+vansOnRoad()+(vansOnRoad()===1?" van":" vans")+" on the road. Hire a van in, combine rounds or move a job."));
         dayWarnings(k).forEach(function(tx){ day.appendChild(el("div","rwarn",tx)); });
         groups.forEach(function(g){
           var placed=g.jobs.filter(function(j){return j.pt;}), lost=g.jobs.filter(function(j){return !j.pt;});
@@ -1116,7 +1115,7 @@ var SNAP=null, DETAIL={};
       var lv=LEAVE.filter(function(l){return l.date===k;});
       var missing=0;
       var h=el("div","pdayh"); h.appendChild(el("span",null,niceDay(k))); var hr=el("span","sub2",(jobs.length+preps.length)?(jobs.length+preps.length)+((jobs.length+preps.length)===1?" item":" items"):"Nothing planned"); h.appendChild(hr); box.appendChild(h);
-      var cap=dayCapacity(k,jobs,preps); if(cap.overTime||cap.overVans) box.appendChild(el("div","pwarn",(cap.overTime?"Over capacity if every hold lands: "+fmt(cap.need)+" needed, "+fmt(cap.avail)+" available. ":"")+(cap.overVans?cap.trips+" van trips, "+cap.vans+" vans on the road.":"")));
+      var cap=dayCapacity(k,jobs,preps); if(cap.overTime||cap.overVans) box.appendChild(el("div","pwarn",(cap.overTime?"Over capacity if every hold lands: "+fmt(cap.need)+" needed, "+fmt(cap.avail)+" available. ":"")+(cap.overVans?cap.trips+" van trips, "+cap.vans+(cap.vans===1?" van":" vans")+" on the road.":"")));
       if(lv.length) box.appendChild(el("div","rsum","Annual leave: "+lv.map(function(l){return l.text;}).join(", ")));
       if(!(jobs.length+preps.length)){ return; }
       var tab=el("table","ptab"); var thead=el("thead"); var thr=el("tr"); ["Job","Operatives","Time each","Travel","Van load","Items"].forEach(function(t){ thr.appendChild(el("th",null,t)); }); thead.appendChild(thr); tab.appendChild(thead);
@@ -1251,7 +1250,7 @@ var SNAP=null, DETAIL={};
       var road=jobs.filter(function(j){return j.site;}); if(road.length){ section("TRANSPORT"); road.forEach(function(j){ push(j,false); }); }
       var yard=jobs.filter(function(j){return !j.site&&!(j.isLeg&&j.leg.type==="production");}); if(yard.length){ section("YARD OPERATIONS"); yard.forEach(function(j){ push(j,false); }); }
       y=pdfDayBand(doc,y,niceDay(k),(jobs.length+preps.length)?(jobs.length+preps.length)+((jobs.length+preps.length)===1?" item":" items")+(missing?", "+missing+" blank"+(missing===1?"":"s")+" to fill in":""):"Nothing planned");
-      var cap=dayCapacity(k,jobs,preps); var notes=[]; if(cap.overTime||cap.overVans) notes.push({t:(cap.overTime?"Over capacity if every hold lands: "+fmt(cap.need)+" needed, "+fmt(cap.avail)+" available. ":"")+(cap.overVans?cap.trips+" van trips, "+cap.vans+" vans on the road.":""),red:true});
+      var cap=dayCapacity(k,jobs,preps); var notes=[]; if(cap.overTime||cap.overVans) notes.push({t:(cap.overTime?"Over capacity if every hold lands: "+fmt(cap.need)+" needed, "+fmt(cap.avail)+" available. ":"")+(cap.overVans?cap.trips+" van trips, "+cap.vans+(cap.vans===1?" van":" vans")+" on the road.":""),red:true});
       if(lv.length) notes.push({t:"Annual leave: "+lv.map(function(l){return l.text;}).join(", ")});
       notes.forEach(function(n){ doc.setFontSize(9); doc.setFont("helvetica",n.red?"bold":"normal"); doc.setTextColor.apply(doc,n.red?PDF_RED:[51,51,51]); doc.text(n.t,12,y+2); y+=5; });
       if(rows.length){
@@ -1394,7 +1393,7 @@ var SNAP=null, DETAIL={};
       var h=el("h2"); h.appendChild(el(isToday?"em":"span",null,DAYS[d.getDay()]+" "+d.getDate()+(isToday?"  Today":"")));
       var vb=el("button","viewday","View day"); vb.onclick=(function(kk){return function(){ dayCur=kk; view="day"; render(); };})(k); h.appendChild(vb);
       // IF EVERY HOLD LANDS (Sam, 13 Sep 2026): booked plus held time against the operatives on that day, and van trips against the vans.
-      var cap=dayCapacity(k,jobs,preps); if(cap.overTime||cap.overVans){ var warn=el("div","daywarn"); warn.textContent=(cap.overTime?"Over capacity if every hold lands: "+fmt(cap.need)+" needed, "+fmt(cap.avail)+" available.":"")+(cap.overVans?" "+cap.trips+" van trips, "+cap.vans+" vans on the road.":""); list.appendChild(warn); }
+      var cap=dayCapacity(k,jobs,preps); if(cap.overTime||cap.overVans){ var warn=el("div","daywarn"); warn.textContent=(cap.overTime?"Over capacity if every hold lands: "+fmt(cap.need)+" needed, "+fmt(cap.avail)+" available.":"")+(cap.overVans?" "+cap.trips+" van trips, "+cap.vans+(cap.vans===1?" van":" vans")+" on the road.":""); list.appendChild(warn); }
       dayWarnings(k).forEach(function(tx){ list.appendChild(el("div","daywarn",tx)); });
       h.appendChild(el("span",null,n?n+(NEED?" to plan":(n===1?" job":" jobs")):"")); list.appendChild(h);
       var cards=el("div","cards");
