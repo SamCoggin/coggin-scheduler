@@ -60,6 +60,12 @@ function loadOf(items){
   // guardrail: if any line could not be matched there is no estimate at all. a partial total would mislead.
   out.complete=out.rows.length>0&&out.unmatched.length===0; return out;
 }
+// plural item names: "6 x Meeting chairs", never "6 x Meeting chair"
+var PLURAL_SAME=/^(furniture|equipment|stock|shelving|seating|storage|glass|misc|sundries|waste|scrap|metal|plastic|cardboard|timber)$/i;
+function pluralWord(w){ if(!w||PLURAL_SAME.test(w)||/s$/i.test(w)&&!/(ss|us)$/i.test(w)) return w; if(/(s|x|z|ch|sh)$/i.test(w)) return w+"es"; if(/[^aeiou]y$/i.test(w)) return w.slice(0,-1)+"ies"; if(/f$/i.test(w)&&!/(roof|proof|chief|belief)$/i.test(w)) return w.slice(0,-1)+"ves"; if(/fe$/i.test(w)) return w.slice(0,-2)+"ves"; return w+"s"; }
+function pluralName(name){ var m=/^(.*?)(\s*\(.*\))?$/.exec(name), core=m[1], tail=m[2]||""; var parts=core.split(/\s+(or|and|\/|with)\s+/i); if(parts.length>1){ return parts.map(function(p,i){ return i%2?p:pluralName(p); }).join(" ")+tail; } var ws=core.split(/\s+/); var last=ws.length-1; if(/^\d+(mm|cm|m)?$/i.test(ws[last])&&last>0) last--; ws[last]=pluralWord(ws[last]); return ws.join(" ")+tail; }
+function qty(n,name){ return n+" x "+(n>1?pluralName(name):name); }
+function pluralLine(line){ var m=/^(\d+)\s*x\s+(.+)$/i.exec(String(line).trim()); if(!m) return line; var n=parseInt(m[1],10); return n>1?n+" x "+pluralName(m[2]):line; }
 function fmtM3(v){ return v==null?"not set":(Math.round(v*10)/10)+" m\u00b3"; }
 function fmtLoad(m3,kg){ if(m3==null) return "not set"; var s=fmtM3(m3)+" of "+VAN_M3; if(kg) s+=", "+Math.round(kg)+" kg of "+VAN_KG; return s; }
 
