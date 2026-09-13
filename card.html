@@ -25,7 +25,8 @@
   .people{display:flex;flex-wrap:wrap;gap:8px}
   .p{border:2px solid var(--line);background:var(--card);border-radius:8px;padding:7px 12px;font-weight:700}
   .p.on{border-color:var(--blue);background:var(--blue);color:#fff}
-  .p .drv{font-style:normal;font-weight:600;font-size:11px;opacity:.75;margin-left:5px}
+  .p .drv{font-style:normal;font-weight:700;font-size:11px;margin-left:6px;border:1px solid currentColor;border-radius:4px;padding:1px 5px;opacity:.9}
+  .banner{padding:10px 14px;background:var(--red);color:#fff;font-weight:800;font-size:14px;border-bottom:1px solid var(--line)}
   .row{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
   .row+.row{margin-top:8px}
   input[type=number],input[type=date],input[type=text]{border:2px solid var(--line);border-radius:6px;padding:7px 8px;font-weight:600}
@@ -58,6 +59,7 @@
   .vday{padding:10px 12px;border-radius:8px;background:var(--blue-bg);margin-bottom:10px;font-size:13px}
   .vday b{display:block;font-size:14px}
   .vday .sub{color:var(--muted);margin-top:4px}
+  .vday .sub.bad{color:var(--red);font-weight:700}
   .vadd .lbl{margin-bottom:6px}
 </style></head>
 <body>
@@ -71,13 +73,18 @@
   var card=null, d=null, workshop=false, site=false, loading=false, saving=null, defaultDue=null, boardData={}, OTHERS=[], LEAVE=[];
   // the other cards on the board, with their plans, so this card can say who is free
   function loadOthers(){
-    return Promise.all([t.cards("id","name","due","start","idList","labels"), t.lists("all")]).then(function(r){
+    var cardsP=t.cards("id","name","due","start","idList","labels","desc","checklists").catch(function(){ return t.cards("id","name","due","start","idList","labels","desc"); });
+    return Promise.all([cardsP, t.lists("all")]).then(function(r){
       var listName={}; r[1].forEach(function(l){ listName[l.id]=l.name; });
       var dated=r[0].filter(function(x){ return x.due && x.id!==card.id; }); var nameOf={}; r[0].forEach(function(x){ nameOf[x.id]=(x.name||"").split(" - ").slice(0,2).join(" - "); });
       LEAVE=dated.filter(function(x){ return /Holidays|Leave/i.test(listName[x.idList]||""); }).map(function(x){ return {date:x.due.slice(0,10),who:x.name.split(/\s*\(/)[0].trim()}; });
       var jobs=dated.filter(function(x){ return !/Holidays|Leave|Operations Transfer/i.test(listName[x.idList]||""); });
-      return Promise.all(jobs.map(function(x){ return t.get(x.id,"shared","sched",null).then(function(p){ return {id:x.id,name:nameOf[x.id],due:x.due.slice(0,10),start:x.start?x.start.slice(0,10):null,site:(x.labels||[]).some(function(l){return SITE_LABELS.test(l.name);}),plan:p}; }); }));
-    }).then(function(list){ OTHERS=list.filter(function(x){return x.plan;}); }).catch(function(){ OTHERS=[]; });
+      return Promise.all(jobs.map(function(x){ return t.get(x.id,"shared","sched",null).then(function(p){
+        var cc=[]; (x.checklists||[]).forEach(function(cl){ (cl.checkItems||[]).forEach(function(it){ cc.push({n:it.name||""}); }); });
+        var L=loadOf(itemsOf(x.desc||"",cc).concat((p&&p.items)||[])); if(!L.any&&p&&p.load) L=p.load;
+        var cube=p&&p.cube!=null?p.cube:(L.complete?L.m3:null);
+        return {id:x.id,name:nameOf[x.id],due:x.due.slice(0,10),start:x.start?x.start.slice(0,10):null,site:(x.labels||[]).some(function(l){return SITE_LABELS.test(l.name);}),plan:p||{who:[]},cube:cube,kg:L.complete?L.kg:0,why:cube!=null?"":(L.unmatched&&L.unmatched.length?"items not matched":"no items on the card")}; }); }));
+    }).then(function(list){ OTHERS=list; }).catch(function(){ OTHERS=[]; });
   }
   function workDays(a,b){ var out=[]; if(!a) return out; for(var x=new Date(a+"T12:00"); ; x.setDate(x.getDate()+1)){ var k=x.toISOString().slice(0,10); if(k>(b||a)) break; if(x.getDay()!==0&&x.getDay()!==6) out.push(k); } return out; }
   function loadOn(k){
@@ -94,9 +101,8 @@
   function availability(days,part){
     var box=el("div","avail"); if(!days.length){ box.appendChild(el("div","hint","Set the days to see who is available.")); return box; }
     days.slice(0,5).forEach(function(k){ var row=el("div","arow"); row.appendChild(el("b",null,niceShort(k))); var free=[], rest=[];
-      var load=loadOn(k); CREW.forEach(function(w){ if(part.who.indexOf(w)>=0) return; if(load[w].c==="free") free.push(w); else rest.push({w:w,l:load[w]}); });
-      var f=el("span","free",free.length?"Available: "+free.join(", "):"Nobody else available"); row.appendChild(f);
-      rest.forEach(function(x){ row.appendChild(el("span",x.l.c,x.w+": "+x.l.t)); }); box.appendChild(row); });
+      var load=loadOn(k); CREW.forEach(function(w){ if(part.who.indexOf(w)>=0) return; var l=load[w]; row.appendChild(el("span",l.c,w+": "+(l.c==="free"?"available":l.c==="off"?"on leave":l.c==="over"?"over capacity":fmt(l.mins)+" allocated"))); });
+      if(row.children.length===1) row.appendChild(el("span","busy","everyone is on this job")); box.appendChild(row); });
     if(days.length>5) box.appendChild(el("div","hint","First 5 days shown."));
     return box;
   }
@@ -137,8 +143,8 @@
   }
   function whoLine(part,detail,contractor){
     var w=el("div","who");
-    if(contractor){ w.textContent=contractor+" is carrying out this work"; if(part.who.length) w.appendChild(el("small",null,"With "+part.who.join(", ")+" from Coggin")); return w; }
-    if(!part.who.length){ w.className="who none"; w.textContent="Nobody assigned"; w.appendChild(el("small",null,"Select the operatives below.")); return w; }
+    if(contractor){ w.textContent=contractor+" is carrying out this work"; if(part.who.length) w.appendChild(el("small",null,"With our operatives "+part.who.join(", "))); return w; }
+    if(!part.who.length){ w.className="who none"; w.textContent="Unassigned"; w.appendChild(el("small",null,"Select the operatives below.")); return w; }
     w.textContent="Assigned: "+part.who.join(", ");
     var bits=[]; if(part.mins!=null) bits.push(fmt(part.mins)+" each"); if(detail) bits.push(detail);
     w.appendChild(el("small",null,bits.length?bits.join(", "):"No time set yet."));
@@ -181,14 +187,16 @@
       // the total, big, with a bar against one van
       var tot=el("div","vtot"); var big=el("div","big",m3==null?"No load estimate yet":fmtM3(m3)+" of "+VAN_M3+" m\u00b3"); tot.appendChild(big);
       if(m3!=null){ var bar=el("div","vbar"); var fill=el("i"); var pc=Math.min(100,m3/VAN_M3*100); fill.style.width=pc+"%"; fill.className=m3>VAN_M3||kg>VAN_KG?"over":(pc>85?"near":""); bar.appendChild(fill); tot.appendChild(bar);
-        tot.appendChild(el("div","sub",(kg?Math.round(kg)+" kg of "+VAN_KG+" kg payload. ":"")+(d.cube!=null?"Set by you.":"Worked out from the items"+(src==="scheduler"?" the Scheduler read.":" on the card."))+(m3>VAN_M3?" Over one van.":kg>VAN_KG?" Over the payload.":""))); }
+        tot.appendChild(el("div","sub",(kg?Math.round(kg)+" kg of "+VAN_KG+" kg payload":"")+(m3>VAN_M3?". Over one van.":kg>VAN_KG?". Over the payload.":""))); }
       f.appendChild(tot);
+      if(m3!=null) f.appendChild(el("div","hint",d.cube!=null?"Load set by you.":"Worked out from the items"+(src==="scheduler"?" the Scheduler read on this card.":" on the card.")));
       // what else goes out the same day, from the plans the Scheduler saved on those cards
-      if(due){ var others=OTHERS.filter(function(o){ return o.site && o.due===due && o.plan; }); var known=0, om3=0, okg=0, names=[];
-        others.forEach(function(o){ var p=o.plan, cube=p.cube!=null?p.cube:(p.load&&p.load.complete?p.load.m3:null); if(cube==null) return; known++; om3+=cube; okg+=(p.load&&p.load.complete?p.load.kg:0); names.push((o.name||"another job")+" "+fmtM3(cube)); });
+      if(due){ var others=OTHERS.filter(function(o){ return o.site && o.due===due && !(o.plan.contractor&&!(o.plan.who||[]).length); }); var known=0, om3=0, okg=0, names=[], missing=[];
+        others.forEach(function(o){ if(o.cube==null){ missing.push((o.name||"another job")+" ("+o.why+")"); return; } known++; om3+=o.cube; okg+=o.kg; names.push((o.name||"another job")+" "+fmtM3(o.cube)); });
         if(others.length){ var dayTot=(m3||0)+om3, dk=el("div","vday"); dk.appendChild(el("b",null,"Everything going out "+niceShort(due)+": "+fmtM3(dayTot)+" of "+VAN_M3+" m\u00b3"+(okg||kg?", "+Math.round((kg||0)+okg)+" kg":"")));
           var dbar=el("div","vbar"); var dfill=el("i"); var dpc=Math.min(100,dayTot/VAN_M3*100); dfill.style.width=dpc+"%"; dfill.className=dayTot>VAN_M3?"over":(dpc>85?"near":""); dbar.appendChild(dfill); dk.appendChild(dbar);
-          dk.appendChild(el("div","sub","This job plus "+others.length+(others.length===1?" other transport job":" other transport jobs")+(known<others.length?" ("+(others.length-known)+" with no load worked out yet)":"")+": "+names.join(", ")+"."+(dayTot>VAN_M3?" More than one van: two rounds or the second van.":"")));
+          dk.appendChild(el("div","sub","This job plus "+others.length+(others.length===1?" other transport job":" other transport jobs")+(names.length?": "+names.join(", "):"")+"."+(dayTot>VAN_M3?" More than one van: two rounds or the second van.":"")));
+          if(missing.length) dk.appendChild(el("div","sub bad","Not in the total, no load yet: "+missing.join(", ")+". Open those cards and add their items."));
           f.appendChild(dk); } }
       // one list of items, each saying where it came from
       var autoN=L.rows.length-(src==="card"?manual.length:0);
@@ -214,9 +222,10 @@
     var ts=section(kind,name,due?niceShort(due):"");
     var tdet=[]; if(site&&!contractorOnly&&d.drive!=null) tdet.push("travel "+fmt(d.drive)+" return");
     ts.appendChild(whoLine(d,tdet.join(", "),site?d.contractor:""));
+    if(!contractorOnly){ var lbl0=(card.labels||[]).map(function(l){return l.name;}).join(" "); var chk0=[]; (card.checklists||[]).forEach(function(cl){ (cl.checkItems||[]).forEach(function(it){ chk0.push({n:it.name||""}); }); }); var L0=loadOf(itemsOf(card.desc,chk0).concat(d.items||[])); if(!L0.rows.length&&d.load) L0=d.load; var std0=standardFor(lbl0,L0), over0=aboveStandard(std0,d.who,d.mins); if(over0) ts.appendChild(el("div","banner","Above standard: "+over0+". Standard is "+std0.crew+(std0.crew===1?" operative":" operatives")+(std0.mins!=null?", "+fmt(std0.mins)+" each":"")+".")); }
     if(site){
       var cf=fld("Carried out by"); var sel=el("select");
-      [["","Coggin operatives"]].concat(CONTRACTORS.map(function(c){return [c,c];})).forEach(function(o){ var op=el("option",null,o[1]); op.value=o[0]; if((d.contractor||"")===o[0]) op.selected=true; sel.appendChild(op); });
+      [["","Our operatives"]].concat(CONTRACTORS.map(function(c){return [c,c];})).forEach(function(o){ var op=el("option",null,o[1]); op.value=o[0]; if((d.contractor||"")===o[0]) op.selected=true; sel.appendChild(op); });
       sel.onchange=function(){ d.contractor=sel.value; save(); render(); }; cf.appendChild(sel);
       var addr=el("div","row"); addr.style.marginTop="8px"; var ai=el("input"); ai.type="text"; ai.placeholder="Add a subcontractor"; ai.style.minWidth="180px";
       var ab=el("button","p","Add"); ab.onclick=function(){ var n=ai.value.trim(); if(!n) return; if(CONTRACTORS.indexOf(n)<0) CONTRACTORS.splice(CONTRACTORS.length-1,0,n); d.contractor=n;
@@ -225,7 +234,7 @@
       if(contractorOnly) cf.appendChild(el("div","hint","No travel or site time for our operatives. Tick an operative below if one of ours goes too."));
       ts.appendChild(cf);
     } else { d.contractor=""; }
-    var of=fld(site?"Coggin operatives on the "+(d.contractor?"job":"transport"):"Operatives"); of.appendChild(people(d,site)); of.appendChild(availability(due?[due]:[],d));
+    var of=fld(site?"Operatives on the transport":"Operatives"); of.appendChild(people(d,site)); of.appendChild(availability(due?[due]:[],d));
     if(site&&d.who.length&&!d.who.some(function(w){return DRIVERS.indexOf(w)>=0;})) of.appendChild(el("div","warn","No driver on this job. Rob, Jack or Bart must be on it to drive the van."));
     ts.appendChild(of);
     if(site && !contractorOnly) ts.appendChild(vanField());
@@ -237,7 +246,6 @@
     }
     if(!contractorOnly){ var lbl=(card.labels||[]).map(function(l){return l.name;}).join(" "); var Lstd=loadOf(itemsOf(card.desc,(function(){ var cc=[]; (card.checklists||[]).forEach(function(cl){ (cl.checkItems||[]).forEach(function(it){ cc.push({n:it.name||""}); }); }); return cc; })()).concat(d.items||[])); if(!Lstd.rows.length&&d.load) Lstd=d.load;
       var std=standardFor(lbl,Lstd); if(std){ var sf=fld("Standard for this job"); sf.appendChild(el("div",null,std.crew+(std.crew===1?" operative":" operatives")+(std.mins!=null?", "+fmt(std.mins)+" each on site":", time needs the items on the card"))); sf.appendChild(el("div","hint",std.why+"."));
-        var over=aboveStandard(std,d.who,d.mins); if(over) sf.appendChild(el("div","warn","Above standard: "+over+"."));
         if(std.mins!=null&&d.mins!==std.mins){ var ub=el("button","p","Use standard time"); ub.style.marginTop="8px"; ub.onclick=function(){ d.mins=std.mins; save(); render(); }; sf.appendChild(ub); }
         ts.appendChild(sf); } }
     if(!contractorOnly) ts.appendChild(timeField(d,site?"Site time per operative":(loading?"Loading time per operative":"Labour time per operative")));
