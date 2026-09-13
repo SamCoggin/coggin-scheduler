@@ -879,9 +879,14 @@ var SNAP=null, DETAIL={};
     return !isPrep&&!!j.site&&((j.drive==null&&!j.onRound)||!j.vehicle||hireDue(j));
   }
   // everything from today on that still needs planning, for the count on the button
-  function toPlanCount(){ var t0=iso(TODAY), n=0, seen={};
-    allJobs().forEach(function(j){ if(j.isHold||!j.date||j.date<t0) return; var k=j.date; if(!seen[k]){ var dj=allJobs().filter(function(x){return onDay(x,k);}); var rs=roundsOn(k,dj); dj.forEach(function(x){ x.onRound=rs.some(function(r){return r.stops.indexOf(x)>=0;}); }); seen[k]=1; } if(needsPlan(j,false)) n++; });
-    JOBS.forEach(function(j){ if(j.prep&&j.prep.date&&j.prep.date>=t0&&needsPlan(j,true)) n++; });
+  // what still needs planning on the days in view: the day, the week, or the month
+  function viewDays(){ var out=[];
+    if(view==="day") return [dayCur];
+    if(view==="month"){ for(var w=monday(monthCur); w.getMonth()===monthCur.getMonth()||addDays(w,4).getMonth()===monthCur.getMonth(); w=addDays(w,7)){ for(var i=0;i<5;i++){ var d=addDays(w,i); if(d.getMonth()===monthCur.getMonth()) out.push(iso(d)); } } return out; }
+    var mon=addDays(monday(TODAY),week*7); for(var i2=0;i2<5;i2++) out.push(iso(addDays(mon,i2))); return out; }
+  function toPlanCount(days){ days=days||viewDays(); var n=0;
+    days.forEach(function(k){ var jobs=allJobs().filter(function(j){return onDay(j,k);}), rs=roundsOn(k,jobs); jobs.forEach(function(x){ x.onRound=rs.some(function(r){return r.stops.indexOf(x)>=0;}); });
+      var pf=planFilter(jobs,JOBS.filter(function(j){return j.prep&&j.prep.date&&daysOf(j.prep).indexOf(k)>=0;}),true); n+=pf.jobs.filter(function(j){return !j.isHold;}).length+pf.preps.length; });
     return n; }
   function planFilter(jobs,preps,force){ if(!NEED&&!force) return {jobs:jobs,preps:preps}; return {jobs:jobs.filter(function(j){return needsPlan(j,false);}),preps:preps.filter(function(j){return needsPlan(j,true);})}; }
   function renderDay(){
@@ -1390,7 +1395,7 @@ var SNAP=null, DETAIL={};
     persist();
     $("#pdf").onclick=function(){ try{ if(view==="routes") routesPdf(); else schedulePdf(); }catch(e){ alert("The PDF could not be built: "+(e&&e.message||e)); } };
     $("#print").onclick=function(){ if(view==="routes") buildRoutesSheet(); else buildPrintSheet(); window.print(); };
-    $("#need").hidden=(view==="week"); $("#need").className=NEED?"on":""; var nTP=toPlanCount(); $("#need").textContent=(NEED?"To plan: on":"To plan")+(nTP?" ("+nTP+")":""); $("#need").title=nTP?nTP+(nTP===1?" job still needs":" jobs still need")+" operatives, time or travel, counting from today":"Everything from today on is planned"; $("#need").onclick=function(){ NEED=!NEED; try{ localStorage.setItem("cg-need",NEED?"1":"0"); }catch(e){} render(); };
+    $("#need").hidden=(view==="week"); $("#need").className=NEED?"on":""; var nTP=toPlanCount(); $("#need").textContent=(NEED?"To plan: on":"To plan")+(nTP?" ("+nTP+")":""); $("#need").title=nTP?nTP+(nTP===1?" job still needs":" jobs still need")+" operatives, time, travel or a van on the "+(view==="day"?"day":view==="month"?"month":"week")+" in view":"Everything in view is planned"; $("#need").onclick=function(){ NEED=!NEED; try{ localStorage.setItem("cg-need",NEED?"1":"0"); }catch(e){} render(); };
     document.body.onclick=function(){ if(tipOpen){ tipOpen=null; render(); } };
     $("#vday").className=view==="day"?"on":""; $("#vweek").className=view==="week"?"on":""; $("#vmonth").className=view==="month"?"on":""; $("#vroutes").className=view==="routes"?"on":""; $("#vroutes").onclick=function(){view="routes";render();}; $("#vmanager").className=view==="manager"?"on":""; $("#vmanager").onclick=function(){view="manager";render();};
     $("#vday").onclick=function(){view="day";render();}; $("#vweek").onclick=function(){view="week";render();}; $("#vmonth").onclick=function(){view="month";render();};
@@ -1468,7 +1473,7 @@ var SNAP=null, DETAIL={};
     rail.appendChild(rc); b.appendChild(rail);
     var strip=$("#strip"); strip.hidden=false; strip.innerHTML="";
     var tile=function(lbl,val,cls,onclick){ var bt=el("button",null); bt.appendChild(el("small",null,lbl)); bt.appendChild(el("b",cls||"",val)); if(onclick) bt.onclick=onclick; strip.appendChild(bt); return bt; };
-    var nTP=toPlanCount(); var tp=tile("To plan, all dates",String(nTP),nTP?"bad":"",function(){ NEED=!NEED; try{ localStorage.setItem("cg-need",NEED?"1":"0"); }catch(e){} render(); }); if(NEED) tp.className="on";
+    var nTP=toPlanCount(); var tp=tile("To plan this week",String(nTP),nTP?"bad":"",function(){ NEED=!NEED; try{ localStorage.setItem("cg-need",NEED?"1":"0"); }catch(e){} render(); }); if(NEED) tp.className="on";
     var reds=ISSUES.filter(function(x){return !x.amber;}).length; tile("Warnings this week",ISSUES.length?String(ISSUES.length):"0",reds?"bad":(ISSUES.length?"warn":""));
     tile("Vans on the road",vansOnRoad()+" of "+VEHICLES.length,vansOnRoad()<VEHICLES.length?"warn":"",function(){ view="routes"; render(); });
     tile("Hours planned",fmt(HOURS.need)+" of "+fmt(HOURS.avail),HOURS.need>HOURS.avail?"bad":"");
