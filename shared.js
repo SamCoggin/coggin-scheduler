@@ -188,7 +188,7 @@ function standardFor(label,load){
 function aboveStandard(std,who,mins){
   if(!std) return null; var out=[];
   if(who&&who.length>std.crew) out.push((who.length)+" operatives, standard is "+std.crew);
-  if(std.mins!=null&&mins!=null&&mins>std.mins*1.5) out.push(fmt(mins)+" each, standard is "+fmt(std.mins));
+  if(std.mins!=null&&mins!=null&&mins>std.mins*1.5) out.push(fmt(mins)+(who.length>1?" each":"")+", standard is "+fmt(std.mins));
   return out.length?out.join("; "):null;
 }
 
@@ -207,7 +207,7 @@ function prodStandardFor(load,crewNow){
 function aboveProdStandard(std,who,mins,start,end){
   if(!std||!who||!who.length||mins==null) return null; var out=[];
   var allocated=mins*who.length, allowed=std.work*(who.length>1?1.1:1);
-  if(allocated>allowed*1.5) out.push(fmt(mins)+" each for "+who.length+" is "+fmt(allocated)+" of work, standard is "+fmt(std.work));
+  if(allocated>allowed*1.5) out.push((who.length>1?fmt(mins)+" each for "+who.length+" is "+fmt(allocated)+" of work":fmt(mins)+" of work")+", standard is "+fmt(std.work));
   if(who.length>3) out.push(who.length+" operatives, never more than three on one job");
   if(start&&end){ var days=0; for(var x=new Date(start+"T12:00"); x.toISOString().slice(0,10)<=end; x.setDate(x.getDate()+1)){ if(x.getDay()!==0&&x.getDay()!==6) days++; } var need=Math.max(1,Math.ceil(mins/DAY_MINS)); if(days>need+1) out.push(days+" days scheduled, "+need+(need===1?" day":" days")+" of work"); }
   return out.length?out.join("; "):null;

@@ -161,7 +161,7 @@
     if(contractor){ w.textContent=contractor+" is carrying out this work"; if(part.who.length) w.appendChild(el("small",null,"With our operatives "+part.who.join(", "))); return w; }
     if(!part.who.length){ w.className="who none"; w.textContent="Unassigned"; w.appendChild(el("small",null,"Select the operatives below.")); return w; }
     w.textContent="Assigned: "+part.who.join(", ");
-    var bits=[]; if(part.mins!=null) bits.push(fmt(part.mins)+" each"); if(detail) bits.push(detail);
+    var bits=[]; if(part.mins!=null) bits.push(fmt(part.mins)+(part.who.length>1?" each":"")); if(detail) bits.push(detail);
     w.appendChild(el("small",null,bits.length?bits.join(", "):"No time set yet."));
     return w;
   }
@@ -191,7 +191,7 @@
       var Lp=loadNow(), pstd=prodStandardFor(Lp,d.prep.who.length), overP=aboveProdStandard(pstd,d.prep.who,d.prep.mins,d.prep.start,d.prep.date);
       if(overP) ps.appendChild(banner("Above standard: "+overP+". Standard is "+fmt(pstd.work)+" of work."));
       if(!d.prep.who.length) OPEN.pwho=OPEN.pwho===undefined?true:OPEN.pwho;
-      ps.appendChild(rowEl("pwho","Operatives",d.prep.who.length?d.prep.who.join(", "):"Unassigned",function(ed){ ed.appendChild(people(d.prep)); ed.appendChild(availability(d.prep.date?workDays(d.prep.start||d.prep.date,d.prep.date):[],d.prep)); },d.prep.who.length?"":"bad"));
+      ps.appendChild(rowEl("pwho",d.prep.who.length===1?"Operative":"Operatives",d.prep.who.length?d.prep.who.join(", "):"Unassigned",function(ed){ ed.appendChild(people(d.prep)); ed.appendChild(availability(d.prep.date?workDays(d.prep.start||d.prep.date,d.prep.date):[],d.prep)); },d.prep.who.length?"":"bad"));
       var daysTxt=d.prep.date?(d.prep.start&&d.prep.start!==d.prep.date?niceShort(d.prep.start)+" to "+niceShort(d.prep.date):niceShort(d.prep.date)):"Not set";
       ps.appendChild(rowEl("pdays","Production days",daysTxt,function(ed){ var pr=el("div","row");
         var d1=el("input"); d1.type="date"; d1.value=d.prep.start||""; var d2=el("input"); d2.type="date"; d2.value=d.prep.date||"";
@@ -199,8 +199,8 @@
         d2.onchange=function(){ d.prep.date=d2.value||null; if(d.prep.date&&(!d.prep.start||d.prep.start>d.prep.date)) d.prep.start=d.prep.date; if(!d.prep.date) d.prep.start=null; save(); render(); };
         pr.appendChild(el("span",null,"From")); pr.appendChild(d1); pr.appendChild(el("span",null,"to")); pr.appendChild(d2); var clr=el("button","p","Clear"); clr.onclick=function(){ d.prep.start=null; d.prep.date=null; save(); render(); }; pr.appendChild(clr); ed.appendChild(pr);
         ed.appendChild(el("div","hint","Set the days and it appears under Production in the Scheduler.")); },d.prep.date?"":"todo"));
-      ps.appendChild(rowEl("ptime","Time per operative",d.prep.mins!=null?fmt(d.prep.mins):(pstd?"Not set, standard "+fmt(pstd.mins):"Not set"),function(ed){
-        if(pstd){ var sb=el("div","stdbox"); sb.appendChild(el("b",null,"Standard: "+pstd.crew+(pstd.crew===1?" operative":" operatives")+", "+fmt(pstd.mins)+" each"+(pstd.days>1?", "+pstd.days+" days":""))); sb.appendChild(el("div","hint",pstd.why)); if(d.prep.mins!==pstd.mins){ var ub=el("button","p","Use standard time"); ub.style.marginTop="6px"; ub.onclick=function(){ d.prep.mins=pstd.mins; save(); render(); }; sb.appendChild(ub); } ed.appendChild(sb); }
+      ps.appendChild(rowEl("ptime",d.prep.who.length>1?"Time per operative":"Time",d.prep.mins!=null?fmt(d.prep.mins)+(d.prep.who.length>1?" each":""):(pstd?"Not set, standard "+fmt(pstd.mins):"Not set"),function(ed){
+        if(pstd){ var sb=el("div","stdbox"); sb.appendChild(el("b",null,"Standard: "+pstd.crew+(pstd.crew===1?" operative":" operatives")+", "+fmt(pstd.mins)+(pstd.crew>1?" each":"")+(pstd.days>1?", "+pstd.days+" days":""))); sb.appendChild(el("div","hint",pstd.why)); if(d.prep.mins!==pstd.mins){ var ub=el("button","p","Use standard time"); ub.style.marginTop="6px"; ub.onclick=function(){ d.prep.mins=pstd.mins; save(); render(); }; sb.appendChild(ub); } ed.appendChild(sb); }
         else ed.appendChild(el("div","hint","The standard comes from the items on the card. "+(Lp.unmatched.length?"Some items are not in the table: "+Lp.unmatched.join("; ")+".":Lp.rows.length?"":"No items found on the card.")));
         ed.appendChild(el("div","lbl","Production time per operative")); ed.appendChild(timeField(d.prep,"")); },d.prep.mins!=null?"":"todo"));
       ps.appendChild(rowEl("pdue","Production due",(prodDue?niceShort(prodDue):"Not set")+(d.prodDue?"":", 2 working days before delivery"),function(ed){ var pdr=el("div","row"); var pdi=el("input"); pdi.type="date"; pdi.value=prodDue||""; pdi.onchange=function(){ d.prodDue=pdi.value||null; save(); render(); }; pdr.appendChild(pdi);
@@ -220,19 +220,19 @@
       if(contractorOnly) ts.appendChild(el("div","who",d.contractor+" is carrying out this work"));
       else if(!d.who.length){ ts.appendChild(banner("Unassigned. Choose who is on it.")); OPEN.who=OPEN.who===undefined?true:OPEN.who; }
       else if(site&&!d.who.some(function(w){return DRIVERS.indexOf(w)>=0;})) ts.appendChild(banner("No driver on this job. Rob, Jack or Bart must be on it."));
-      if(over) ts.appendChild(banner("Above standard: "+over+". Standard is "+std.crew+(std.crew===1?" operative":" operatives")+(std.mins!=null?", "+fmt(std.mins)+" each":"")+"."));
+      if(over) ts.appendChild(banner("Above standard: "+over+". Standard is "+std.crew+(std.crew===1?" operative":" operatives")+(std.mins!=null?", "+fmt(std.mins)+(std.crew>1?" each":""):"")+"."));
       // who
       var whoTxt=contractorOnly?d.contractor:(d.who.length?d.who.join(", ")+(d.contractor?" with "+d.contractor:""):"Unassigned");
-      ts.appendChild(rowEl("who","Operatives",whoTxt,function(ed){
+      ts.appendChild(rowEl("who",(contractorOnly||d.who.length===1)?"Operative":"Operatives",whoTxt,function(ed){
         if(site){ ed.appendChild(el("div","lbl","Carried out by")); var sel=el("select"); [["","Our operatives"]].concat(CONTRACTORS.map(function(c){return [c,c];})).forEach(function(o){ var op=el("option",null,o[1]); op.value=o[0]; if((d.contractor||"")===o[0]) op.selected=true; sel.appendChild(op); }); sel.onchange=function(){ d.contractor=sel.value; save(); render(); }; ed.appendChild(sel);
           var addr=el("div","row"); addr.style.margin="8px 0 12px"; var ai=el("input"); ai.type="text"; ai.placeholder="Add a subcontractor"; ai.style.minWidth="180px"; var ab=el("button","p","Add"); ab.onclick=function(){ var n=ai.value.trim(); if(!n) return; if(CONTRACTORS.indexOf(n)<0) CONTRACTORS.splice(CONTRACTORS.length-1,0,n); d.contractor=n; var extra=CONTRACTORS.filter(function(c){return ["MAK Installations","Courier","Other contractor"].indexOf(c)<0;}); boardData.contractors=extra; t.set("board","shared","sched",boardData); save(); render(); }; addr.appendChild(ai); addr.appendChild(ab); ed.appendChild(addr);
           ed.appendChild(el("div","lbl",d.contractor?"Our operatives going too":"Our operatives")); }
         ed.appendChild(people(d,site)); ed.appendChild(availability(due?[due]:[],d)); },contractorOnly?"":(d.who.length?"":"bad")));
       if(!contractorOnly){
         // time
-        var timeTxt=(d.mins!=null?fmt(d.mins)+" each on site":"No site time")+(site?(d.drive!=null?", travel "+fmt(d.drive)+" return":", no travel time"):"");
+        var timeTxt=(d.mins!=null?fmt(d.mins)+(d.who.length>1?" each":"")+" on site":"No site time")+(site?(d.drive!=null?", travel "+fmt(d.drive)+" return":", no travel time"):"");
         ts.appendChild(rowEl("time",site?"Time":"Time",timeTxt,function(ed){
-          if(std){ var sb=el("div","stdbox"); sb.appendChild(el("b",null,"Standard: "+std.crew+(std.crew===1?" operative":" operatives")+(std.mins!=null?", "+fmt(std.mins)+" each":""))); sb.appendChild(el("div","hint",/[.]$/.test(std.why)?std.why:std.why+".")); if(std.mins!=null&&d.mins!==std.mins){ var ub=el("button","p","Use standard time"); ub.style.marginTop="6px"; ub.onclick=function(){ d.mins=std.mins; save(); render(); }; sb.appendChild(ub); } ed.appendChild(sb); }
+          if(std){ var sb=el("div","stdbox"); sb.appendChild(el("b",null,"Standard: "+std.crew+(std.crew===1?" operative":" operatives")+(std.mins!=null?", "+fmt(std.mins)+(std.crew>1?" each":""):""))); sb.appendChild(el("div","hint",/[.]$/.test(std.why)?std.why:std.why+".")); if(std.mins!=null&&d.mins!==std.mins){ var ub=el("button","p","Use standard time"); ub.style.marginTop="6px"; ub.onclick=function(){ d.mins=std.mins; save(); render(); }; sb.appendChild(ub); } ed.appendChild(sb); }
           ed.appendChild(el("div","lbl",site?"Site time per operative":(loading?"Loading time per operative":"Labour time per operative"))); ed.appendChild(timeField(d,""));
           if(site){ ed.appendChild(el("div","lbl","Travel time, return")); ed.appendChild(hm(function(){return d.drive;},function(v){d.drive=v;},"Travel")); ed.appendChild(el("div","hint","There and back. The Scheduler works this out from the postcode. Set it here if you know it.")); if(d.drive!=null&&d.drive>360) ed.appendChild(el("div","warn","More than a day's travel with the job in between. Consider a courier or subcontractor.")); }
         },(d.mins==null||(site&&d.drive==null))?"todo":""));
