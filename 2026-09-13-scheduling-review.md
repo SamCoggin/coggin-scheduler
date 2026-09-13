@@ -55,7 +55,7 @@ Combine Trips looks ahead for nearby jobs, but capacity does not. Friday is full
 Fix: a simple week summary at the top: hours planned against hours available, vans out against vans on the road, and a nudge when one day is over and a neighbour is empty.
 
 ### 13. Smaller things
-- Contractor jobs carry no time or cost to us, but they still need someone to hand over keys or meet the truck. Allow "our operative to attend" on a contractor job.
+- Contractor jobs with our operative attending: done 13 Sep 2026. Choose a contractor and put an operative on: they attend, their time is time on site, the load stays on the contractor vehicle, no two-person rule, a van only if they go in ours.
 - Site visits and surveys use the same card as a delivery. Dropped: operatives do not use their own cars for work (insurance), so a site visit goes in a company vehicle and counts against the vans, which is what the Scheduler does.
 - Customer collects still needs a loading slot and someone in the yard. It shows in transport; it should show in yard operations with a time, so the yard is not empty when the customer turns up.
 - Multi-day transport jobs: done 13 Sep 2026, the load is shared equally across the days (a two-day 20 m³ clearance is 10 m³ a day), everywhere a day is added up.
