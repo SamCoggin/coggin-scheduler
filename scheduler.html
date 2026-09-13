@@ -322,6 +322,13 @@
   .blk select{width:100%;border:2px solid var(--line);border-radius:8px;padding:8px 10px;background:var(--card);font-weight:600}
   .blk .row{margin-top:0}
   .blk .hint{margin-top:8px}
+  .plan-sum{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+  .plan-sum span{background:var(--list);border-radius:6px;padding:3px 9px;font-size:14px;font-weight:700}
+  .plan-sum span.bad{background:var(--red-bg);color:var(--red)}
+  details.more{border:1px dashed var(--line);border-radius:10px;padding:0 14px}
+  details.more summary{cursor:pointer;font-weight:800;padding:12px 0;color:var(--blue);list-style:none}
+  details.more summary::before{content:"\25B8  ";} details.more[open] summary::before{content:"\25BE  ";}
+  details.more .blk{margin-bottom:12px}
   .prep{display:grid;grid-template-columns:1fr auto;gap:4px 12px;align-items:center;font-weight:600}
   .prep .hint{margin:0;grid-column:1}
   .prep button{grid-row:1/3;grid-column:2}
@@ -640,7 +647,9 @@ var SNAP=null, DETAIL={};
   function avatars(who){ var w=el("span","avs"); who.forEach(function(n){ var a=el("span","av",ini(n)); a.title=n; w.appendChild(a); }); return w; }
   function findOpen(){ if(!open) return null; var parts=open.split(":"); if(parts[1]&&parts[1].indexOf("leg")===0){ var lj=legJobs().filter(function(x){return x.id===open;})[0]; return lj?{job:lj,part:lj,shop:false,leg:true}:null; } var j=JOBS.filter(function(x){return x.id===parts[0];})[0]; if(!j) return null; return parts[1]==="prep"?{job:j,part:j.prep,shop:true}:{job:j,part:j,shop:false}; }
 
-  function block(title,tipKey){ var d=el("div","blk"); var h=el("div","bh"); h.appendChild(el("span",null,title)); if(tipKey) h.appendChild(tip(tipKey)); d.appendChild(h); return d; }
+  // THE CARD BACK ORDER (Sam, 13 Sep 2026): blocks appear in the order you decide them. Anything at 20 or more folds under "More".
+  var BLOCK_ORDER={"This leg":0,"Standard for this job":1,"Standard for this production":1,"Operatives":2,"Production Dates":3,"Carried Out By":4,"Vehicle":5,"Travel Time, return":6,"Time Window":7,"Production Time per Operative":8,"Site Time per Operative":8,"Labour Time per Operative":8,"Production":20,"Van Load":21,"Legs":22};
+  function block(title,tipKey){ var d=el("div","blk"); d.dataset.order=BLOCK_ORDER[title]!=null?BLOCK_ORDER[title]:15; var h=el("div","bh"); h.appendChild(el("span",null,title)); if(tipKey) h.appendChild(tip(tipKey)); d.appendChild(h); return d; }
   function modal(){
     var o=findOpen(); if(!o) return null;
     var j=o.job, part=o.part;
@@ -781,6 +790,16 @@ var SNAP=null, DETAIL={};
     if(!contractorOnly){ var tb=block(o.shop?"Production Time per Operative":(j.site?"Site Time per Operative":"Labour Time per Operative"),"time");
       var q=el("div","seg"); QUICK.forEach(function(qq){ var b=el("button",part.mins===qq[0]?"on":"",qq[1]); b.onclick=function(){ setMins(qq[0]); render(); }; q.appendChild(b); }); tb.appendChild(q);
       var r3=el("div","row"); r3.appendChild(el("span","hint","or exactly")); r3.appendChild(hmBoxes(function(){return part.mins;},setMins,"Time")); tb.appendChild(r3); right.appendChild(tb); }
+    var blocks=Array.prototype.slice.call(right.children); blocks.sort(function(a,b){ return (+a.dataset.order||15)-(+b.dataset.order||15); });
+    right.innerHTML=""; var more=null; blocks.forEach(function(bk){ if((+bk.dataset.order||15)>=20){ if(!more){ more=el("details","more"); more.appendChild(el("summary",null,"More")); right.appendChild(more); } more.appendChild(bk); } else right.appendChild(bk); });
+    if(more){ var names=Array.prototype.slice.call(more.querySelectorAll(".bh")).map(function(h){return h.firstChild.textContent.replace(/\s*\(\d+\)$/,"").toLowerCase();}); more.querySelector("summary").textContent="More: "+names.join(", "); if(window.__moreOpen) more.open=true; more.ontoggle=function(){ window.__moreOpen=more.open; }; }
+    // the summary line: the plan in one sentence
+    var sumBits=[]; if(contractorOnly) sumBits.push(j.contractor); else sumBits.push(part.who.length?part.who.join(", "):"Unassigned");
+    if(!o.shop&&j.site&&!contractorOnly) sumBits.push(j.vehicle?(j.vehicle==="hire"?"Hire"+(j.hireBooked?" booked":" not booked"):j.vehicle):"No van");
+    if(!o.shop&&j.site&&!contractorOnly&&part.who.length){ var tls=dayTimeline(j.date,part.who[0]), sts=tls.stops.filter(function(x){return x.j===j;})[0]; if(sts&&!sts.noDrive) sumBits.push("leave 8:00, arrive "+hmStr(sts.arrive)+", back "+hmStr(tls.back)); else if(j.drive!=null) sumBits.push(fmt(j.drive)+" travel"); }
+    sumBits.push(part.mins!=null?fmt(part.mins)+(o.shop?" production":j.site?" on site":" labour")+(part.who.length>1?" each":""):"no time set");
+    if(!o.shop&&j.site&&cubeOf(j)!=null) sumBits.push(fmtM3(cubeOf(j)));
+    var sumEl=el("div","plan-sum"); sumBits.forEach(function(t,i){ var sp=el("span",/Unassigned|No van|not booked|no time set/.test(t)?"bad":"",t); sumEl.appendChild(sp); }); ht.appendChild(sumEl);
     cols.appendChild(left); cols.appendChild(right); m.appendChild(cols);
     var sv=el("div","save sticky"); var sb=el("button",null,"Done"); sb.onclick=function(){open=null;render();}; sv.appendChild(sb); m.appendChild(sv);
     veil.appendChild(m); return veil;
