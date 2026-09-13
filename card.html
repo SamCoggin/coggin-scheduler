@@ -101,7 +101,7 @@
   function availability(days,part){
     var box=el("div","avail"); if(!days.length){ box.appendChild(el("div","hint","Set the days to see who is available.")); return box; }
     days.slice(0,5).forEach(function(k){ var row=el("div","arow"); row.appendChild(el("b",null,niceShort(k))); var free=[], rest=[];
-      var load=loadOn(k); CREW.forEach(function(w){ if(part.who.indexOf(w)>=0) return; var l=load[w]; row.appendChild(el("span",l.c,w+": "+(l.c==="free"?"available":l.c==="off"?"on leave":l.c==="over"?"over capacity":fmt(l.mins)+" allocated"))); });
+      var load=loadOn(k); CREW.forEach(function(w){ if(part.who.indexOf(w)>=0) return; var l=load[w]; row.appendChild(el("span",l.c,w+": "+(l.c==="free"?fmt(DAY_MINS)+" available":l.c==="off"?"on leave":l.c==="over"?"over capacity":fmt(Math.max(0,DAY_MINS-l.mins))+" available"))); });
       if(row.children.length===1) row.appendChild(el("span","busy","everyone is on this job")); box.appendChild(row); });
     if(days.length>5) box.appendChild(el("div","hint","First 5 days shown."));
     return box;

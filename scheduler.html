@@ -377,7 +377,7 @@ var SNAP=null, DETAIL={};
       var mine=jobs.filter(function(j){return j.who.indexOf(w)>=0;}), myPreps=preps.filter(function(j){return j.prep.who.indexOf(w)>=0;}), myRound=rounds.filter(function(r){return r.who===w;})[0];
       var mins=mine.reduce(function(s,j){return s+(j.mins||0)+(j.site&&!j.onRound?(j.drive||0):0);},0)+(myRound&&myRound.drive?myRound.drive:0)+myPreps.reduce(function(s,j){return s+(j.prep.mins||0);},0);
       var n=mine.length+myPreps.length;
-      out[w]= !n ? {t:"available",c:"free"} : mins>DAY_H*60 ? {t:fmt(mins)+", over capacity",c:"over"} : !mins ? {t:n+(n===1?" job":" jobs")+", no time",c:"busy"} : {t:fmt(mins)+" allocated"+(n>1?", "+n+" jobs":""),c:"busy"};
+      out[w]= !n ? {t:fmt(DAY_MINS)+" available",c:"free"} : mins>DAY_H*60 ? {t:"over capacity by "+fmt(mins-DAY_MINS),c:"over"} : !mins ? {t:n+(n===1?" job":" jobs")+", no time set",c:"busy"} : {t:fmt(Math.max(0,DAY_MINS-mins))+" available"+(n>1?", "+n+" jobs":""),c:"busy"};
       out[w].mins=mins; out[w].rec=Math.max(0,DAY_MINS-mins);
     });
     return out;
