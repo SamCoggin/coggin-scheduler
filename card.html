@@ -26,7 +26,6 @@
   .p{border:2px solid var(--line);background:var(--card);border-radius:8px;padding:7px 12px;font-weight:700}
   .p.on{border-color:var(--blue);background:var(--blue);color:#fff}
   .p .drv{font-style:normal;font-weight:700;font-size:11px;margin-left:6px;border:1px solid currentColor;border-radius:4px;padding:1px 5px;opacity:.9}
-  .banner{padding:10px 14px;background:var(--red);color:#fff;font-weight:800;font-size:14px;border-bottom:1px solid var(--line)}
   .row{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
   .row+.row{margin-top:8px}
   input[type=number],input[type=date],input[type=text]{border:2px solid var(--line);border-radius:6px;padding:7px 8px;font-weight:600}
@@ -43,6 +42,20 @@
   .arow .free{color:var(--green);background:var(--green-bg);border-color:var(--green-bg)} .arow .over{color:var(--red);background:var(--red-bg);border-color:var(--red-bg)} .arow .off{color:var(--amber);background:var(--amber-bg);border-color:var(--amber-bg)}
   .warn{margin-top:8px;padding:8px 10px;border-radius:6px;background:var(--red-bg);color:var(--red);font-weight:700;font-size:14px}
   .status{font-size:13px;color:var(--muted);text-align:right}
+  .srow{border-bottom:1px solid var(--line)}
+  .srow:last-child{border-bottom:0}
+  .stop2{display:grid;grid-template-columns:120px 1fr auto;gap:10px;align-items:center;padding:12px 14px}
+  .stop2 .sl{font-size:13px;font-weight:800;text-transform:uppercase;letter-spacing:.03em;color:var(--muted)}
+  .stop2 .sv{font-size:16px;font-weight:700}
+  .srow.bad .sv{color:var(--red)} .srow.todo .sv{color:var(--amber)}
+  .chg{border:2px solid var(--line);background:var(--card);border-radius:8px;padding:6px 12px;font-weight:700;font-size:14px}
+  .sed{padding:0 14px 14px;background:var(--list);border-top:1px solid var(--line)}
+  .sed .lbl{margin-top:12px}
+  .sed .people{margin-top:4px}
+  .stdbox{margin-top:12px;padding:10px 12px;border-radius:8px;background:var(--card);border:1px solid var(--line)}
+  .stdbox b{display:block;font-size:14px}
+  .banner{padding:10px 14px;background:var(--red);color:#fff;font-weight:800;font-size:14px;border-bottom:1px solid var(--line)}
+  .who{font-size:15px}
   .vtot{padding:10px 12px;border-radius:8px;background:var(--list);margin-bottom:10px}
   .vtot .big{font-size:18px;font-weight:800}
   .vtot .sub{font-size:13px;color:var(--muted);margin-top:4px}
@@ -151,109 +164,100 @@
     return w;
   }
   function section(kind,name,when){ var s=el("div","sec "+kind); var h=el("div","sec-h"); h.appendChild(el("span","name",name)); if(when) h.appendChild(el("span","when",when)); s.appendChild(h); return s; }
+  var OPEN={};   // which editor rows are open, kept across redraws
+  function rowEl(key,label,value,editor,cls){
+    var r=el("div","srow"+(cls?" "+cls:"")); var top=el("div","stop2"); top.appendChild(el("span","sl",label)); var v=el("span","sv"); if(typeof value==="string") v.textContent=value; else v.appendChild(value); top.appendChild(v);
+    var bt=el("button","chg",OPEN[key]?"Done":"Change"); bt.onclick=function(){ OPEN[key]=!OPEN[key]; render(); }; top.appendChild(bt); r.appendChild(top);
+    if(OPEN[key]){ var ed=el("div","sed"); editor(ed); r.appendChild(ed); }
+    return r;
+  }
+  function banner(text){ return el("div","banner",text); }
+  function checksOf(){ var cc=[]; (card.checklists||[]).forEach(function(cl){ (cl.checkItems||[]).forEach(function(it){ cc.push({n:it.name||""}); }); }); return cc; }
+  function loadNow(){ var auto=itemsOf(card.desc,checksOf()), manual=d.items||[]; var L; var src="card"; if(!auto.length&&d.load&&d.load.rows&&!manual.length){ L=d.load; src="scheduler"; } else L=loadOf(auto.concat(manual)); L.src=src; L.manualN=src==="card"?manual.length:0; return L; }
   function render(){
     var app=document.getElementById("app"); app.innerHTML="";
     var due=(card.due||"").slice(0,10);
     var contractorOnly=!!d.contractor && !d.who.length;
 
-    // Production: the workshop part, shown first because it happens first.
+    // ── PRODUCTION (workshop stage) ──
     if(workshop){
       var prodDue=d.prodDue||defaultDue;
       var ps=section("production","Production",prodDue?"Due "+niceShort(prodDue):"");
-      var pdet=d.prep.date?(d.prep.start&&d.prep.start!==d.prep.date?niceShort(d.prep.start)+" to "+niceShort(d.prep.date):niceShort(d.prep.date)):"";
-      ps.appendChild(whoLine(d.prep,pdet,""));
-      var pf=fld("Operatives on production"); pf.appendChild(people(d.prep)); pf.appendChild(availability(d.prep.date?workDays(d.prep.start||d.prep.date,d.prep.date):[],d.prep)); ps.appendChild(pf);
-      var df=fld("Production days"); var pr=el("div","row");
-      var d1=el("input"); d1.type="date"; d1.value=d.prep.start||""; var d2=el("input"); d2.type="date"; d2.value=d.prep.date||"";
-      d1.onchange=function(){ d.prep.start=d1.value||null; if(d.prep.start&&(!d.prep.date||d.prep.date<d.prep.start)) d.prep.date=d.prep.start; if(!d.prep.start) d.prep.date=null; save(); render(); };
-      d2.onchange=function(){ d.prep.date=d2.value||null; if(d.prep.date&&(!d.prep.start||d.prep.start>d.prep.date)) d.prep.start=d.prep.date; if(!d.prep.date) d.prep.start=null; save(); render(); };
-      pr.appendChild(el("span",null,"From")); pr.appendChild(d1); pr.appendChild(el("span",null,"to")); pr.appendChild(d2); var clr=el("button","p","Clear"); clr.onclick=function(){ d.prep.start=null; d.prep.date=null; save(); render(); }; pr.appendChild(clr); df.appendChild(pr);
-      if(!d.prep.date) df.appendChild(el("div","hint","Not scheduled yet. Set the days and it appears under Production in the Scheduler."));
-      if(prodDue&&d.prep.date&&d.prep.date>prodDue) df.appendChild(el("div","warn","Finishes after the production due date."));
-      ps.appendChild(df);
-      ps.appendChild(timeField(d.prep,"Production time per operative"));
-      var duef=fld("Production due date"); var pdr=el("div","row"); var pdi=el("input"); pdi.type="date"; pdi.value=prodDue||""; pdi.onchange=function(){ d.prodDue=pdi.value||null; save(); render(); }; pdr.appendChild(pdi);
-      if(d.prodDue){ var rs=el("button","p","Reset"); rs.onclick=function(){ d.prodDue=null; save(); render(); }; pdr.appendChild(rs); }
-      duef.appendChild(pdr); duef.appendChild(el("div","hint",d.prodDue?"Set by you.":PRODUCTION_BUFFER_DAYS+" working days before delivery.")); ps.appendChild(duef);
+      if(!d.prep.who.length) ps.appendChild(banner("Unassigned. Choose who is on production."));
+      else if(!d.prep.date) ps.appendChild(banner("No production days set."));
+      if(prodDue&&d.prep.date&&d.prep.date>prodDue) ps.appendChild(banner("Finishes "+niceShort(d.prep.date)+", after the production due date."));
+      if(!d.prep.who.length) OPEN.pwho=OPEN.pwho===undefined?true:OPEN.pwho;
+      ps.appendChild(rowEl("pwho","Operatives",d.prep.who.length?d.prep.who.join(", "):"Unassigned",function(ed){ ed.appendChild(people(d.prep)); ed.appendChild(availability(d.prep.date?workDays(d.prep.start||d.prep.date,d.prep.date):[],d.prep)); },d.prep.who.length?"":"bad"));
+      var daysTxt=d.prep.date?(d.prep.start&&d.prep.start!==d.prep.date?niceShort(d.prep.start)+" to "+niceShort(d.prep.date):niceShort(d.prep.date)):"Not set";
+      ps.appendChild(rowEl("pdays","Production days",daysTxt,function(ed){ var pr=el("div","row");
+        var d1=el("input"); d1.type="date"; d1.value=d.prep.start||""; var d2=el("input"); d2.type="date"; d2.value=d.prep.date||"";
+        d1.onchange=function(){ d.prep.start=d1.value||null; if(d.prep.start&&(!d.prep.date||d.prep.date<d.prep.start)) d.prep.date=d.prep.start; if(!d.prep.start) d.prep.date=null; save(); render(); };
+        d2.onchange=function(){ d.prep.date=d2.value||null; if(d.prep.date&&(!d.prep.start||d.prep.start>d.prep.date)) d.prep.start=d.prep.date; if(!d.prep.date) d.prep.start=null; save(); render(); };
+        pr.appendChild(el("span",null,"From")); pr.appendChild(d1); pr.appendChild(el("span",null,"to")); pr.appendChild(d2); var clr=el("button","p","Clear"); clr.onclick=function(){ d.prep.start=null; d.prep.date=null; save(); render(); }; pr.appendChild(clr); ed.appendChild(pr);
+        ed.appendChild(el("div","hint","Set the days and it appears under Production in the Scheduler.")); },d.prep.date?"":"todo"));
+      ps.appendChild(rowEl("ptime","Time per operative",d.prep.mins!=null?fmt(d.prep.mins):"Not set",function(ed){ ed.appendChild(timeField(d.prep,"")); },d.prep.mins!=null?"":"todo"));
+      ps.appendChild(rowEl("pdue","Production due",(prodDue?niceShort(prodDue):"Not set")+(d.prodDue?"":", 2 working days before delivery"),function(ed){ var pdr=el("div","row"); var pdi=el("input"); pdi.type="date"; pdi.value=prodDue||""; pdi.onchange=function(){ d.prodDue=pdi.value||null; save(); render(); }; pdr.appendChild(pdi);
+        if(d.prodDue){ var rs=el("button","p","Reset"); rs.onclick=function(){ d.prodDue=null; save(); render(); }; pdr.appendChild(rs); } ed.appendChild(pdr); ed.appendChild(el("div","hint","The day production must be finished and checked. "+PRODUCTION_BUFFER_DAYS+" working days before delivery unless you set it.")); }));
       app.appendChild(ps);
     }
 
-    // Transport (site jobs) or Labour (yard and workshop-only jobs): the part on the card's date.
-    function vanField(){ var f=fld("Van load");
-      var checks=[]; (card.checklists||[]).forEach(function(cl){ (cl.checkItems||[]).forEach(function(it){ checks.push({n:it.name||""}); }); });
-      var auto=itemsOf(card.desc,checks), manual=d.items||[], L, src="card";
-      if(!auto.length && d.load && d.load.rows && !manual.length){ L=d.load; src="scheduler"; } else { L=loadOf(auto.concat(manual)); }
-      var m3=d.cube!=null?d.cube:(L.complete?L.m3:null), kg=L.complete||d.cube!=null?L.kg:0;
-      // the total, big, with a bar against one van
-      var tot=el("div","vtot"); var big=el("div","big",m3==null?"No load estimate yet":fmtM3(m3)+" of "+VAN_M3+" m\u00b3"); tot.appendChild(big);
-      if(m3!=null){ var bar=el("div","vbar"); var fill=el("i"); var pc=Math.min(100,m3/VAN_M3*100); fill.style.width=pc+"%"; fill.className=m3>VAN_M3||kg>VAN_KG?"over":(pc>85?"near":""); bar.appendChild(fill); tot.appendChild(bar);
-        tot.appendChild(el("div","sub",(kg?Math.round(kg)+" kg of "+VAN_KG+" kg payload":"")+(m3>VAN_M3?". Over one van.":kg>VAN_KG?". Over the payload.":""))); }
-      f.appendChild(tot);
-      if(m3!=null) f.appendChild(el("div","hint",d.cube!=null?"Load set by you.":"Worked out from the items"+(src==="scheduler"?" the Scheduler read on this card.":" on the card.")));
-      // what else goes out the same day, from the plans the Scheduler saved on those cards
-      if(due){ var others=OTHERS.filter(function(o){ return o.site && o.due===due && !(o.plan.contractor&&!(o.plan.who||[]).length); }); var known=0, om3=0, okg=0, names=[], missing=[];
-        others.forEach(function(o){ if(o.cube==null){ missing.push((o.name||"another job")+" ("+o.why+")"); return; } known++; om3+=o.cube; okg+=o.kg; names.push((o.name||"another job")+" "+fmtM3(o.cube)); });
-        if(others.length){ var dayTot=(m3||0)+om3, dk=el("div","vday"); dk.appendChild(el("b",null,"Everything going out "+niceShort(due)+": "+fmtM3(dayTot)+" of "+VAN_M3+" m\u00b3"+(okg||kg?", "+Math.round((kg||0)+okg)+" kg":"")));
-          var dbar=el("div","vbar"); var dfill=el("i"); var dpc=Math.min(100,dayTot/VAN_M3*100); dfill.style.width=dpc+"%"; dfill.className=dayTot>VAN_M3?"over":(dpc>85?"near":""); dbar.appendChild(dfill); dk.appendChild(dbar);
-          dk.appendChild(el("div","sub","This job plus "+others.length+(others.length===1?" other transport job":" other transport jobs")+(names.length?": "+names.join(", "):"")+"."+(dayTot>VAN_M3?" More than one van: two rounds or the second van.":"")));
-          if(missing.length) dk.appendChild(el("div","sub bad","Not in the total, no load yet: "+missing.join(", ")+". Open those cards and add their items."));
-          f.appendChild(dk); } }
-      // one list of items, each saying where it came from
-      var autoN=L.rows.length-(src==="card"?manual.length:0);
-      if(L.rows.length||(L.unmatched&&L.unmatched.length)){ var tb=el("div","vlist");
-        L.rows.forEach(function(r,i){ var row=el("div","vrow"); row.appendChild(el("b",null,r.n+" x "+r.type+(r.built?" (built)":""))); row.appendChild(el("span","m",fmtM3(r.m3)+", "+r.kg+" kg"+(r.est?", estimate":"")));
-          var fromManual=src==="card"&&i>=autoN; var tag=el("span","tag",fromManual?"added":"on card"); row.appendChild(tag);
-          if(fromManual){ var x=el("button","rm","Remove"); var mi=i-autoN; x.onclick=function(){ d.items.splice(mi,1); save(); render(); }; row.appendChild(x); } else row.appendChild(el("span"));
-          tb.appendChild(row); });
-        (L.unmatched||[]).forEach(function(u){ var row=el("div","vrow bad"); row.appendChild(el("b",null,u)); row.appendChild(el("span","m","not in the table")); row.appendChild(el("span","tag","on card")); row.appendChild(el("span")); tb.appendChild(row); });
-        f.appendChild(tb); }
-      if(L.unmatched&&L.unmatched.length) f.appendChild(el("div","warn","No estimate: "+L.unmatched.length+(L.unmatched.length===1?" item":" items")+" could not be matched, so nothing has been added up. Add the missing items below as the right type, or set the load."));
-      if(!L.rows.length&&!(L.unmatched&&L.unmatched.length)) f.appendChild(el("div","hint","No items found on the card. Add them below."));
-      // add an item
-      var add=el("div","vadd"); add.appendChild(el("div","lbl","Add an item not on the card")); var ar=el("div","row"); var qn=el("input"); qn.type="number"; qn.min="1"; qn.value=""; qn.placeholder="Qty"; qn.style.width="64px"; qn.setAttribute("aria-label","Quantity"); var ts=el("select"); ts.style.width="auto"; ts.style.flex="1"; var o0=el("option",null,"Choose a product type"); o0.value=""; ts.appendChild(o0); LOAD.forEach(function(r){ var o2=el("option",null,r.t); o2.value=r.t; ts.appendChild(o2); }); var ab=el("button","p","Add"); ab.disabled=true; ab.style.opacity=".5"; var chk=function(){ var ok=!!ts.value&&parseInt(qn.value,10)>0; ab.disabled=!ok; ab.style.opacity=ok?"1":".5"; }; ts.onchange=chk; qn.oninput=chk; ab.onclick=function(){ if(ab.disabled) return; var n=parseInt(qn.value,10)||1; d.items=d.items||[]; d.items.push(n+" x "+ts.value); save(); render(); }; ar.appendChild(qn); ar.appendChild(el("span",null,"x")); ar.appendChild(ts); ar.appendChild(ab); add.appendChild(ar); f.appendChild(add);
-      // or set it
-      var set=el("div","vadd"); set.appendChild(el("div","lbl","Or set the load yourself")); var r=el("div","row"); var n=el("input"); n.type="number"; n.min="0"; n.step="0.5"; n.value=d.cube==null?"":String(d.cube); n.placeholder=L.complete?String(L.m3):"0"; n.setAttribute("aria-label","Cubic metres"); n.onchange=function(){ d.cube=n.value===""?null:Math.max(0,parseFloat(n.value)||0); delete d.van; delete d.spaces; save(); render(); }; r.appendChild(n); r.appendChild(el("span",null,"cubic metres"));
-      if(d.cube!=null){ var rs=el("button","p","Use the estimate"); rs.onclick=function(){ d.cube=null; save(); render(); }; r.appendChild(rs); } set.appendChild(r);
-      set.appendChild(el("div","hint","A Luton box is about "+VAN_M3+" cubic metres, payload about "+VAN_KG+" kg. Desks count flat unless the item says built. Chair figures assume double stacking.")); f.appendChild(set);
-      return f; }
-    if(workshop){ var vs=section("transport","Transport",due?niceShort(due):""); var note=el("div","who"); note.textContent="Assigned once in Ready for Delivery / Collection"; note.appendChild(el("small",null,"The van load below comes from the items, so the Scheduler can plan the round now.")); vs.appendChild(note); if(site) vs.appendChild(vanField()); app.appendChild(vs); }
-    else {
+    // ── TRANSPORT, LOADING or LABOUR ──
+    var L=loadNow(), m3=d.cube!=null?d.cube:(L.complete?L.m3:null), kg=(L.complete||d.cube!=null)?L.kg:0;
+    var lbl=(card.labels||[]).map(function(l){return l.name;}).join(" ");
+    var Lstd=L.rows.length?L:(d.load||L), std=(!workshop&&!contractorOnly)?standardFor(lbl,Lstd):null, over=std?aboveStandard(std,d.who,d.mins):null;
     var kind=site?"transport":"labour", name=site?"Transport":(loading?"Loading":"Labour");
     var ts=section(kind,name,due?niceShort(due):"");
-    var tdet=[]; if(site&&!contractorOnly&&d.drive!=null) tdet.push("travel "+fmt(d.drive)+" return");
-    ts.appendChild(whoLine(d,tdet.join(", "),site?d.contractor:""));
-    if(!contractorOnly){ var lbl0=(card.labels||[]).map(function(l){return l.name;}).join(" "); var chk0=[]; (card.checklists||[]).forEach(function(cl){ (cl.checkItems||[]).forEach(function(it){ chk0.push({n:it.name||""}); }); }); var L0=loadOf(itemsOf(card.desc,chk0).concat(d.items||[])); if(!L0.rows.length&&d.load) L0=d.load; var std0=standardFor(lbl0,L0), over0=aboveStandard(std0,d.who,d.mins); if(over0) ts.appendChild(el("div","banner","Above standard: "+over0+". Standard is "+std0.crew+(std0.crew===1?" operative":" operatives")+(std0.mins!=null?", "+fmt(std0.mins)+" each":"")+".")); }
-    if(site){
-      var cf=fld("Carried out by"); var sel=el("select");
-      [["","Our operatives"]].concat(CONTRACTORS.map(function(c){return [c,c];})).forEach(function(o){ var op=el("option",null,o[1]); op.value=o[0]; if((d.contractor||"")===o[0]) op.selected=true; sel.appendChild(op); });
-      sel.onchange=function(){ d.contractor=sel.value; save(); render(); }; cf.appendChild(sel);
-      var addr=el("div","row"); addr.style.marginTop="8px"; var ai=el("input"); ai.type="text"; ai.placeholder="Add a subcontractor"; ai.style.minWidth="180px";
-      var ab=el("button","p","Add"); ab.onclick=function(){ var n=ai.value.trim(); if(!n) return; if(CONTRACTORS.indexOf(n)<0) CONTRACTORS.splice(CONTRACTORS.length-1,0,n); d.contractor=n;
-        var extra=CONTRACTORS.filter(function(c){return ["MAK Installations","Courier","Other contractor"].indexOf(c)<0;}); boardData.contractors=extra; t.set("board","shared","sched",boardData); save(); render(); };
-      addr.appendChild(ai); addr.appendChild(ab); cf.appendChild(addr);
-      if(contractorOnly) cf.appendChild(el("div","hint","No travel or site time for our operatives. Tick an operative below if one of ours goes too."));
-      ts.appendChild(cf);
-    } else { d.contractor=""; }
-    var of=fld(site?"Operatives on the transport":"Operatives"); of.appendChild(people(d,site)); of.appendChild(availability(due?[due]:[],d));
-    if(site&&d.who.length&&!d.who.some(function(w){return DRIVERS.indexOf(w)>=0;})) of.appendChild(el("div","warn","No driver on this job. Rob, Jack or Bart must be on it to drive the van."));
-    ts.appendChild(of);
-    if(site && !contractorOnly) ts.appendChild(vanField());
-    if(site && !contractorOnly){
-      var tf=fld("Travel time, return"); tf.appendChild(hm(function(){return d.drive;},function(v){d.drive=v;},"Travel"));
-      tf.appendChild(el("div","hint","There and back. The Scheduler works this out from the postcode. Set it here if you know it."));
-      if(d.drive!=null&&d.drive>360) tf.appendChild(el("div","warn","More than a day's travel with the job in between. Consider a courier or subcontractor."));
-      ts.appendChild(tf);
+    if(workshop){ ts.appendChild(el("div","who","Assigned once in Ready for Delivery / Collection")); }
+    else {
+      if(contractorOnly) ts.appendChild(el("div","who",d.contractor+" is carrying out this work"));
+      else if(!d.who.length){ ts.appendChild(banner("Unassigned. Choose who is on it.")); OPEN.who=OPEN.who===undefined?true:OPEN.who; }
+      else if(site&&!d.who.some(function(w){return DRIVERS.indexOf(w)>=0;})) ts.appendChild(banner("No driver on this job. Rob, Jack or Bart must be on it."));
+      if(over) ts.appendChild(banner("Above standard: "+over+". Standard is "+std.crew+(std.crew===1?" operative":" operatives")+(std.mins!=null?", "+fmt(std.mins)+" each":"")+"."));
+      // who
+      var whoTxt=contractorOnly?d.contractor:(d.who.length?d.who.join(", ")+(d.contractor?" with "+d.contractor:""):"Unassigned");
+      ts.appendChild(rowEl("who","Operatives",whoTxt,function(ed){
+        if(site){ ed.appendChild(el("div","lbl","Carried out by")); var sel=el("select"); [["","Our operatives"]].concat(CONTRACTORS.map(function(c){return [c,c];})).forEach(function(o){ var op=el("option",null,o[1]); op.value=o[0]; if((d.contractor||"")===o[0]) op.selected=true; sel.appendChild(op); }); sel.onchange=function(){ d.contractor=sel.value; save(); render(); }; ed.appendChild(sel);
+          var addr=el("div","row"); addr.style.margin="8px 0 12px"; var ai=el("input"); ai.type="text"; ai.placeholder="Add a subcontractor"; ai.style.minWidth="180px"; var ab=el("button","p","Add"); ab.onclick=function(){ var n=ai.value.trim(); if(!n) return; if(CONTRACTORS.indexOf(n)<0) CONTRACTORS.splice(CONTRACTORS.length-1,0,n); d.contractor=n; var extra=CONTRACTORS.filter(function(c){return ["MAK Installations","Courier","Other contractor"].indexOf(c)<0;}); boardData.contractors=extra; t.set("board","shared","sched",boardData); save(); render(); }; addr.appendChild(ai); addr.appendChild(ab); ed.appendChild(addr);
+          ed.appendChild(el("div","lbl",d.contractor?"Our operatives going too":"Our operatives")); }
+        ed.appendChild(people(d,site)); ed.appendChild(availability(due?[due]:[],d)); },contractorOnly?"":(d.who.length?"":"bad")));
+      if(!contractorOnly){
+        // time
+        var timeTxt=(d.mins!=null?fmt(d.mins)+" each on site":"No site time")+(site?(d.drive!=null?", travel "+fmt(d.drive)+" return":", no travel time"):"");
+        ts.appendChild(rowEl("time",site?"Time":"Time",timeTxt,function(ed){
+          if(std){ var sb=el("div","stdbox"); sb.appendChild(el("b",null,"Standard: "+std.crew+(std.crew===1?" operative":" operatives")+(std.mins!=null?", "+fmt(std.mins)+" each":""))); sb.appendChild(el("div","hint",/[.]$/.test(std.why)?std.why:std.why+".")); if(std.mins!=null&&d.mins!==std.mins){ var ub=el("button","p","Use standard time"); ub.style.marginTop="6px"; ub.onclick=function(){ d.mins=std.mins; save(); render(); }; sb.appendChild(ub); } ed.appendChild(sb); }
+          ed.appendChild(el("div","lbl",site?"Site time per operative":(loading?"Loading time per operative":"Labour time per operative"))); ed.appendChild(timeField(d,""));
+          if(site){ ed.appendChild(el("div","lbl","Travel time, return")); ed.appendChild(hm(function(){return d.drive;},function(v){d.drive=v;},"Travel")); ed.appendChild(el("div","hint","There and back. The Scheduler works this out from the postcode. Set it here if you know it.")); if(d.drive!=null&&d.drive>360) ed.appendChild(el("div","warn","More than a day's travel with the job in between. Consider a courier or subcontractor.")); }
+        },(d.mins==null||(site&&d.drive==null))?"todo":""));
+      }
     }
-    if(!contractorOnly){ var lbl=(card.labels||[]).map(function(l){return l.name;}).join(" "); var Lstd=loadOf(itemsOf(card.desc,(function(){ var cc=[]; (card.checklists||[]).forEach(function(cl){ (cl.checkItems||[]).forEach(function(it){ cc.push({n:it.name||""}); }); }); return cc; })()).concat(d.items||[])); if(!Lstd.rows.length&&d.load) Lstd=d.load;
-      var std=standardFor(lbl,Lstd); if(std){ var sf=fld("Standard for this job"); sf.appendChild(el("div",null,std.crew+(std.crew===1?" operative":" operatives")+(std.mins!=null?", "+fmt(std.mins)+" each on site":", time needs the items on the card"))); sf.appendChild(el("div","hint",std.why+"."));
-        if(std.mins!=null&&d.mins!==std.mins){ var ub=el("button","p","Use standard time"); ub.style.marginTop="8px"; ub.onclick=function(){ d.mins=std.mins; save(); render(); }; sf.appendChild(ub); }
-        ts.appendChild(sf); } }
-    if(!contractorOnly) ts.appendChild(timeField(d,site?"Site time per operative":(loading?"Loading time per operative":"Labour time per operative")));
+    // van load, for any site job including workshop stage
+    if(site&&!contractorOnly){
+      var dayTot=null, others=[], missing=[], names=[];
+      if(due){ others=OTHERS.filter(function(o){ return o.site && o.due===due && !(o.plan.contractor&&!(o.plan.who||[]).length); }); var om3=0, okg=0; others.forEach(function(o){ if(o.cube==null){ missing.push((o.name||"another job")+" ("+o.why+")"); return; } om3+=o.cube; okg+=o.kg; names.push((o.name||"another job")+" "+fmtM3(o.cube)); }); if(others.length) dayTot={m3:(m3||0)+om3,kg:(kg||0)+okg}; }
+      var vanTxt=m3==null?"No estimate yet":fmtM3(m3)+" of "+VAN_M3+(dayTot?", day total "+fmtM3(dayTot.m3):"");
+      var vanCls=m3==null||L.unmatched.length||(dayTot&&dayTot.m3>VAN_M3)?"todo":"";
+      if(L.unmatched.length) ts.appendChild(banner("Van load not worked out: "+L.unmatched.length+(L.unmatched.length===1?" item":" items")+" not in the table ("+L.unmatched.join("; ")+")."));
+      if(dayTot&&dayTot.m3>VAN_M3) ts.appendChild(banner("More than one van going out "+niceShort(due)+": "+fmtM3(dayTot.m3)+". Two rounds or the second van."));
+      ts.appendChild(rowEl("van","Van load",vanTxt,function(ed){
+        var tot=el("div","vtot"); tot.appendChild(el("div","big",m3==null?"No load estimate yet":fmtM3(m3)+" of "+VAN_M3+" m³"));
+        if(m3!=null){ var bar=el("div","vbar"); var fill=el("i"); var pc=Math.min(100,m3/VAN_M3*100); fill.style.width=pc+"%"; fill.className=m3>VAN_M3||kg>VAN_KG?"over":(pc>85?"near":""); bar.appendChild(fill); tot.appendChild(bar); tot.appendChild(el("div","sub",(kg?Math.round(kg)+" kg of "+VAN_KG+" kg payload":"")+(m3>VAN_M3?". Over one van.":kg>VAN_KG?". Over the payload.":""))); }
+        ed.appendChild(tot);
+        if(dayTot){ var dk=el("div","vday"); dk.appendChild(el("b",null,"Everything going out "+niceShort(due)+": "+fmtM3(dayTot.m3)+" of "+VAN_M3+" m³"+(dayTot.kg?", "+Math.round(dayTot.kg)+" kg":""))); var dbar=el("div","vbar"); var dfill=el("i"); var dpc=Math.min(100,dayTot.m3/VAN_M3*100); dfill.style.width=dpc+"%"; dfill.className=dayTot.m3>VAN_M3?"over":(dpc>85?"near":""); dbar.appendChild(dfill); dk.appendChild(dbar);
+          dk.appendChild(el("div","sub","This job plus "+others.length+(others.length===1?" other transport job":" other transport jobs")+(names.length?": "+names.join(", "):"")+".")); if(missing.length) dk.appendChild(el("div","sub bad","Not in the total, no load yet: "+missing.join(", ")+". Open those cards and add their items.")); ed.appendChild(dk); }
+        var autoN=L.rows.length-L.manualN;
+        if(L.rows.length||L.unmatched.length){ var tb=el("div","vlist");
+          L.rows.forEach(function(r,i){ var row=el("div","vrow"); row.appendChild(el("b",null,r.n+" x "+r.type+(r.built?" (built)":""))); row.appendChild(el("span","m",fmtM3(r.m3)+", "+r.kg+" kg"+(r.est?", estimate":""))); var fromManual=L.src==="card"&&i>=autoN; row.appendChild(el("span","tag",fromManual?"added":"on card"));
+            if(fromManual){ var x=el("button","rm","Remove"); var mi=i-autoN; x.onclick=function(){ d.items.splice(mi,1); save(); render(); }; row.appendChild(x); } else row.appendChild(el("span")); tb.appendChild(row); });
+          L.unmatched.forEach(function(u){ var row=el("div","vrow bad"); row.appendChild(el("b",null,u)); row.appendChild(el("span","m","not in the table")); row.appendChild(el("span","tag","on card")); row.appendChild(el("span")); tb.appendChild(row); }); ed.appendChild(tb); }
+        if(!L.rows.length&&!L.unmatched.length) ed.appendChild(el("div","hint","No items found on the card. Add them below."));
+        var add=el("div","vadd"); add.appendChild(el("div","lbl","Add an item not on the card")); var ar=el("div","row"); var qn=el("input"); qn.type="number"; qn.min="1"; qn.value=""; qn.placeholder="Qty"; qn.style.width="64px"; qn.setAttribute("aria-label","Quantity"); var tsel=el("select"); tsel.style.width="auto"; tsel.style.flex="1"; var o0=el("option",null,"Choose a product type"); o0.value=""; tsel.appendChild(o0); LOAD.forEach(function(r){ var o2=el("option",null,r.t); o2.value=r.t; tsel.appendChild(o2); }); var ab2=el("button","p","Add"); ab2.disabled=true; ab2.style.opacity=".5"; var chk=function(){ var ok=!!tsel.value&&parseInt(qn.value,10)>0; ab2.disabled=!ok; ab2.style.opacity=ok?"1":".5"; }; tsel.onchange=chk; qn.oninput=chk; ab2.onclick=function(){ if(ab2.disabled) return; var n=parseInt(qn.value,10)||1; d.items=d.items||[]; d.items.push(n+" x "+tsel.value); save(); render(); }; ar.appendChild(qn); ar.appendChild(el("span",null,"x")); ar.appendChild(tsel); ar.appendChild(ab2); add.appendChild(ar); ed.appendChild(add);
+        var set=el("div","vadd"); set.appendChild(el("div","lbl","Or set the load yourself")); var r=el("div","row"); var n=el("input"); n.type="number"; n.min="0"; n.step="0.5"; n.value=d.cube==null?"":String(d.cube); n.placeholder=L.complete?String(L.m3):"0"; n.setAttribute("aria-label","Cubic metres"); n.onchange=function(){ d.cube=n.value===""?null:Math.max(0,parseFloat(n.value)||0); delete d.van; delete d.spaces; save(); render(); }; r.appendChild(n); r.appendChild(el("span",null,"cubic metres")); if(d.cube!=null){ var rs=el("button","p","Use the estimate"); rs.onclick=function(){ d.cube=null; save(); render(); }; r.appendChild(rs); } set.appendChild(r);
+        set.appendChild(el("div","hint","A Luton box is about "+VAN_M3+" cubic metres, payload about "+VAN_KG+" kg. Desks count flat unless the item says built. Chair figures assume double stacking. Small parts ride in the cab.")); ed.appendChild(set);
+      },vanCls));
+    }
     app.appendChild(ts);
-    }
 
-    if(d.legs&&d.legs.length){ var ls=section("labour","Legs",""); var lf=fld(""); d.legs.forEach(function(L){ lf.appendChild(el("div",null,L.type.replace("_"," ")+(L.where?": "+L.where:"")+", "+(L.date?niceShort(L.date):"no date")+(L.who&&L.who.length?", "+L.who.join(", "):", unassigned")+(L.mins!=null?", "+fmt(L.mins):""))); }); lf.appendChild(el("div","hint","Legs are added and edited in the Scheduler.")); ls.appendChild(lf); app.appendChild(ls); }
-    if(!workshop){ var b=badgeText(d,site); app.appendChild(el("div","status",b.text)); }
+    if(d.legs&&d.legs.length){ var ls=section("labour","Legs",""); var lf=fld(""); d.legs.forEach(function(Lg){ lf.appendChild(el("div",null,Lg.type.replace("_"," ")+(Lg.where?": "+Lg.where:"")+", "+(Lg.date?niceShort(Lg.date):"no date")+(Lg.who&&Lg.who.length?", "+Lg.who.join(", "):", unassigned")+(Lg.mins!=null?", "+fmt(Lg.mins):""))); }); lf.appendChild(el("div","hint","Legs are added and edited in the Scheduler.")); ls.appendChild(lf); app.appendChild(ls); }
     fit();
   }
   function fit(){ requestAnimationFrame(function(){ var h=document.getElementById("app").getBoundingClientRect().height+16; t.sizeTo(Math.ceil(h)).catch(function(){}); }); }

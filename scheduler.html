@@ -556,7 +556,7 @@ var SNAP=null, DETAIL={};
       var ar=el("div","row"); var ts=el("select"); LEG_TYPES.forEach(function(t){ var o3=el("option",null,t[1]); o3.value=t[0]; ts.appendChild(o3); }); var ad=el("input"); ad.type="date"; ad.value=j.date; var ab=el("button","close","Add leg"); ab.onclick=function(){ if(!ad.value) return; LEGS.push({parent:j.id,type:ts.value,date:ad.value,who:[],mins:null,drive:null,where:""}); open=j.id+":leg"+(LEGS.length-1); render(); }; ar.appendChild(ts); ar.appendChild(ad); ar.appendChild(ab); lb2.appendChild(ar); right.appendChild(lb2); }
     if(!o.shop && !j.isLeg && !contractorOnly){ var std=standardFor(j.label,j.load); if(std){ var sb=block("Standard for this job","standard");
       sb.appendChild(el("div",null,std.crew+(std.crew===1?" operative":" operatives")+(std.mins!=null?", "+fmt(std.mins)+" each on site":", time needs the items on the card")));
-      sb.appendChild(el("div","hint",std.why+"."));
+      sb.appendChild(el("div","hint",/[.]$/.test(std.why)?std.why:std.why+"."));
       if(std.mins!=null&&part.mins!==std.mins){ var ub=el("button","close","Use standard time"); ub.onclick=function(){ setMins(std.mins); render(); }; sb.appendChild(ub); }
       right.appendChild(sb); } }
     if(!contractorOnly){ var tb=block(o.shop?"Production Time per Operative":(j.site?"Site Time per Operative":"Labour Time per Operative"),"time");
