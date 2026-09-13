@@ -100,7 +100,7 @@
         var cc=[]; (x.checklists||[]).forEach(function(cl){ (cl.checkItems||[]).forEach(function(it){ cc.push({n:it.name||""}); }); });
         var L=loadOf(itemsOf(x.desc||"",cc).concat((p&&p.items)||[])); if(!L.any&&p&&p.load) L=p.load;
         var cube=p&&p.cube!=null?p.cube:(L.complete?L.m3:null);
-        return {id:x.id,name:nameOf[x.id],due:x.due.slice(0,10),start:x.start?x.start.slice(0,10):null,site:(x.labels||[]).some(function(l){return SITE_LABELS.test(l.name);}),plan:p||{who:[]},cube:cube,kg:L.complete?L.kg:0,why:cube!=null?"":(L.unmatched&&L.unmatched.length?"items not matched":"no items on the card")}; }); }));
+        return {id:x.id,name:nameOf[x.id],due:x.due.slice(0,10),start:x.start?x.start.slice(0,10):null,site:isSiteLabels(x.labels),plan:p||{who:[]},cube:cube,kg:L.complete?L.kg:0,why:cube!=null?"":(L.unmatched&&L.unmatched.length?"items not matched":"no items on the card")}; }); }));
     }).then(function(list){ OTHERS=list; }).catch(function(){ OTHERS=[]; });
   }
   function todayIso(){ var t=new Date(); t.setHours(12,0,0,0); return t.toISOString().slice(0,10); }
@@ -131,8 +131,7 @@
     return Promise.all([t.card("id","name","labels","idList","due","desc"), t.lists("all"), t.get("card","shared","sched",null), t.get("board","shared","sched",{})]).then(function(r){
       boardData=r[3]||{}; (boardData.contractors||[]).forEach(function(c){ if(CONTRACTORS.indexOf(c)<0) CONTRACTORS.splice(CONTRACTORS.length-1,0,c); });
       card=r[0]; var list=r[1].filter(function(l){return l.id===card.idList;})[0]; workshop=!!(list&&WORKSHOP_LISTS.test(list.name)); card.listName=list?list.name:"";
-      site=(card.labels||[]).some(function(l){return SITE_LABELS.test(l.name);});
-      loading=!site&&(card.labels||[]).some(function(l){return /collecting/i.test(l.name);});
+      site=isSiteLabels(card.labels); loading=!site&&isCollectLabels(card.labels);
       defaultDue=productionDue("",(card.due||"").slice(0,10));
       d=r[2]||{who:[],mins:null,drive:null,contractor:"",prep:null,legs:[]}; if(!d.who) d.who=[]; if(workshop&&!d.prep) d.prep={who:[],mins:null,start:null,date:null};
       render();
@@ -221,9 +220,9 @@
 
     // ── TRANSPORT, LOADING or LABOUR ──
     var L=loadNow(), m3=d.cube!=null?d.cube:(L.complete?L.m3:null), kg=(L.complete||d.cube!=null)?L.kg:0;
-    var lbl=(card.labels||[]).map(function(l){return l.name;}).join(" ");
+    var lbl=movementOf(card.labels)||(card.labels||[]).map(function(l){return l.name;}).join(" ");
     var Lstd=L.rows.length?L:(d.load||L), std=(!workshop&&!contractorOnly)?standardFor(lbl,Lstd):null, over=std?aboveStandard(std,d.who,d.mins):null;
-    var jobName=/collect & return/i.test(lbl)?"Collection":/warranty|job issue/i.test(lbl)?"Site Visit":/removal/i.test(lbl)?"Removal":"Delivery";
+    var mvName=movementOf(card.labels), jobName=mvName==="Collect and Return"?"Collect and Return":mvName==="Site Visit"?"Site Visit":mvName==="Collection"?"Collection":"Delivery";
     var kind=site?"transport":"labour", name=site?jobName:(loading?"Loading":"Labour");
     var ts=section(kind,name,due?niceShort(due):"");
     {

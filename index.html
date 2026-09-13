@@ -7,7 +7,7 @@
   // the Power-Up connector: a Scheduler button on the board, a badge on the
   // front of each card, a Scheduling section and a button on the back
   var ICON="https://samcoggin.github.io/coggin-scheduler/icon.png";
-  function isSite(card){ return (card.labels||[]).some(function(l){return SITE_LABELS.test(l.name);}); }
+  function isSite(card){ return isSiteLabels(card.labels); }
   TrelloPowerUp.initialize({
     "board-buttons": function(t){
       return [{ text: "Scheduler", icon: ICON, callback: function(t){ return t.modal({ url: "./scheduler.html?v="+Math.floor(Date.now()/60000), fullscreen: true, title: "Scheduler" }); } }];

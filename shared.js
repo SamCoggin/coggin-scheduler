@@ -110,7 +110,26 @@ var WORKSHOP_LISTS=/Workshop Jobs - (Not Started|In-progress)/;
 var READY_LIST=/Workshop Jobs - Ready/;
 // QC evidence is the card checklist (photos, labels): all items ticked
 function qcDone(badges){ return !!(badges&&badges.checkItems>0&&badges.checkItemsChecked>=badges.checkItems); }
-var SITE_LABELS=/delivery\/installation|collect & return|warranty|removal|donation/i;
+// ── two labels on every card (Sam, 13 Sep 2026) ──
+// WORK says what the job is: Resale, Refurb, Clearance, Recycling, Buyback, Donation, Warranty.
+// MOVEMENT says which way the furniture travels: Delivery, Collection, Collect and Return, Customer Delivers,
+// Customer Collects, Customer Delivers and Collects, Site Visit, Yard. Who carries it out is the Carried Out By
+// choice on the card, never a label. The old single labels are still understood so nothing breaks mid-switch.
+var WORK_LABELS=["Resale","Refurb","Clearance","Recycling","Buyback","Donation","Warranty"];
+var MOVEMENT_LABELS=["Delivery","Collection","Collect and Return","Customer Delivers","Customer Collects","Customer Delivers and Collects","Site Visit","Yard"];
+var OLD_MOVEMENT={"delivery/installation":"Delivery","removal job":"Collection","collect & return":"Collect and Return","customer collecting":"Customer Collects","courier collecting":"Customer Collects","courier collects":"Customer Collects","recycling delivery":"Customer Delivers","new stock delivery":"Customer Delivers","stock delivery":"Customer Delivers","plastic delivery":"Customer Delivers","plastic collection":"Collection","skip exchange":"Yard","warranty/job issue":"Site Visit","donations":"Delivery","charity donation":"Delivery"};
+var OLD_WORK={"delivery/installation":"Resale","removal job":"Clearance","collect & return":"Refurb","recycling delivery":"Recycling","new stock delivery":"Buyback","stock delivery":"Buyback","plastic delivery":"Recycling","plastic collection":"Recycling","skip exchange":"Recycling","warranty/job issue":"Warranty","donations":"Donation","charity donation":"Donation"};
+function labelNames(labels){ return (labels||[]).map(function(l){return typeof l==="string"?l:(l&&l.name)||"";}).filter(Boolean); }
+function movementOf(labels){ var n=labelNames(labels); for(var i=0;i<n.length;i++){ if(MOVEMENT_LABELS.indexOf(n[i])>=0) return n[i]; } for(var k=0;k<n.length;k++){ var m=OLD_MOVEMENT[n[k].toLowerCase()]; if(m) return m; } return ""; }
+function workOf(labels){ var n=labelNames(labels); for(var i=0;i<n.length;i++){ if(WORK_LABELS.indexOf(n[i])>=0) return n[i]; } for(var k=0;k<n.length;k++){ var w=OLD_WORK[n[k].toLowerCase()]; if(w) return w; } return ""; }
+// our van goes out: the transport movements
+function isSiteMove(mv){ return mv==="Delivery"||mv==="Collection"||mv==="Collect and Return"||mv==="Site Visit"; }
+// they come to Forton: loading only, no van of ours
+function isCollectMove(mv){ return mv==="Customer Collects"||mv==="Customer Delivers and Collects"; }
+function isSiteLabels(labels){ return isSiteMove(movementOf(labels)); }
+function isCollectLabels(labels){ return isCollectMove(movementOf(labels)); }
+// kept for the old callers
+var SITE_LABELS={ test:function(name){ return isSiteMove(movementOf([name])); } };
 function fmt(m){ if(m==null) return ""; if(m<60) return m+" min"; var h=Math.floor(m/60), r=m%60; return h+"h"+(r?" "+r+"m":""); }
 // what the front of the card says, from the saved plan
 function badgeText(d,site){
@@ -160,20 +179,22 @@ function todayIso(){ var d=new Date(); return d.getFullYear()+"-"+String(d.getMo
 // site time per operative = (base + handling minutes for the items) / crew. fixed jobs have mins instead.
 var STANDARD=[
   {re:/skip exchange/i,            crew:1, mins:20},
-  {re:/recycling delivery/i,       crew:2, mins:60},
-  {re:/new stock delivery/i,       crew:2, mins:60},
-  {re:/warranty|job issue/i,       crew:1, mins:45},
-  {re:/customer collecting|courier collecting/i, crew:1, base:10},
-  {re:/delivery\/installation/i,   crew:2, base:20},
-  {re:/collect & return/i,         crew:2, base:20},
-  {re:/donation/i,                 crew:2, base:20},
-  {re:/removal/i,                  crew:2, base:30}
+  {re:/^yard$/i,                   crew:2, mins:60},
+  {re:/customer delivers$/i,       crew:2, mins:60},
+  {re:/site visit/i,               crew:1, mins:45},
+  {re:/customer collects|customer delivers and collects/i, crew:1, base:10},
+  {re:/^delivery$/i,               crew:2, base:20},
+  {re:/collect and return/i,       crew:2, base:20},
+  {re:/^collection$/i,             crew:2, base:30}
 ];
 // label + the job's load -> {crew, mins per operative, why}. null when there is no standard for that label
 function standardFor(label,load){
-  var st=null; for(var i=0;i<STANDARD.length;i++){ if(STANDARD[i].re.test(label||"")){ st=STANDARD[i]; break; } }
+  // label may be a movement, an old board label, or a list of labels
+  var mv=Array.isArray(label)?movementOf(label):(MOVEMENT_LABELS.indexOf(label)>=0?label:(movementOf([label])||label));
+  if(/skip exchange/i.test(String(label))) mv="Skip Exchange";
+  var st=null; for(var i=0;i<STANDARD.length;i++){ if(STANDARD[i].re.test(mv||"")){ st=STANDARD[i]; break; } }
   if(!st) return null;
-  if(st.mins!=null) return {crew:st.crew,mins:st.mins,why:"A "+label.toLowerCase()+" is a set "+fmt(st.mins)+" for "+st.crew+(st.crew===1?" operative":" operatives")+", whatever is on the card"};
+  if(st.mins!=null) return {crew:st.crew,mins:st.mins,why:"A "+String(mv).toLowerCase()+" is a set "+fmt(st.mins)+" for "+st.crew+(st.crew===1?" operative":" operatives")+", whatever is on the card"};
   if(!load||!load.complete) return {crew:st.crew,mins:null,why:"The time comes from the items on the card, so add them first"};
   var crew=st.crew, big=load.m3>12||load.rows.some(function(r){return r.type==="Booth"||r.type==="Pod";});
   var twoHanded=load.rows.some(function(r){return r.two;}), small=load.m3<3&&!twoHanded;
