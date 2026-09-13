@@ -339,7 +339,8 @@
   .seg+.row{margin-top:10px}
   .modal.wide .save{padding:0 24px 20px;margin-top:0}
   @media (max-width:800px){.cols{grid-template-columns:1fr}.colL{border-right:0;border-bottom:1px solid var(--line)}}
-  .save{margin-top:22px;display:flex;justify-content:flex-end}
+  .save{margin-top:22px;display:flex;justify-content:flex-end;gap:8px;flex-wrap:wrap}
+  .save button.alt{background:var(--list);color:var(--text);border:1px solid var(--line)}
   .save button{border:0;background:var(--blue);color:#fff;border-radius:8px;padding:10px 20px;font-weight:700}
 </style>
 
@@ -801,7 +802,10 @@ var SNAP=null, DETAIL={};
     if(!o.shop&&j.site&&cubeOf(j)!=null) sumBits.push(fmtM3(cubeOf(j)));
     var sumEl=el("div","plan-sum"); sumBits.forEach(function(t,i){ var sp=el("span",/Unassigned|No van|not booked|no time set/.test(t)?"bad":"",t); sumEl.appendChild(sp); }); ht.appendChild(sumEl);
     cols.appendChild(left); cols.appendChild(right); m.appendChild(cols);
-    var sv=el("div","save sticky"); var sb=el("button",null,"Done"); sb.onclick=function(){open=null;render();}; sv.appendChild(sb); m.appendChild(sv);
+    var sv=el("div","save sticky");
+    if(!o.leg){ var wsb=el("button","alt","Download worksheet"); wsb.onclick=function(){ try{ worksheetPdf(j,!!o.shop); }catch(e){ alert("The worksheet could not be built: "+(e&&e.message||e)); } }; sv.appendChild(wsb); }
+    if(!o.shop&&!o.leg&&j.site&&!contractorOnly&&!j.isHold){ var lsb=el("button","alt","Download loading sheet"); lsb.onclick=function(){ try{ var w=part.who[0]||"Unassigned", dj=allJobs().filter(function(x){return onDay(x,j.date);}), rr=roundsOn(j.date,dj).filter(function(r){return r.who===w;})[0]; loadingPdf(j.date,w,rr?rr.stops:[j]); }catch(e){ alert("The loading sheet could not be built: "+(e&&e.message||e)); } }; sv.appendChild(lsb); }
+    var sb=el("button",null,"Done"); sb.onclick=function(){open=null;render();}; sv.appendChild(sb); m.appendChild(sv);
     veil.appendChild(m); return veil;
   }
   function roundModal(){
@@ -815,7 +819,7 @@ var SNAP=null, DETAIL={};
     var dv=el("div","sec"); dv.appendChild(el("div","k","Travel Time for the round")); var row=el("div","row");
     row.appendChild(hmBoxes(function(){return r.drive;},function(v){ ROUND_DRIVE[r.key]=v; },"Round drive"));
     row.appendChild(el("span","hint",ROUND_DRIVE[r.key]!=null?"You set this.":(r.def!=null?"Longest single journey plus 20 minutes per stop. Change it if you know better.":"No postcodes found. Type it in."))); dv.appendChild(row); m.appendChild(dv);
-    var sv=el("div","save"); var sb=el("button",null,"Done"); sb.onclick=function(){openRound=null;render();}; sv.appendChild(sb); m.appendChild(sv);
+    var sv=el("div","save"); var lsb2=el("button","alt","Download loading sheet"); lsb2.onclick=function(){ try{ loadingPdf(k,w,r.stops); }catch(e){ alert("The loading sheet could not be built: "+(e&&e.message||e)); } }; sv.appendChild(lsb2); var sb=el("button",null,"Done"); sb.onclick=function(){openRound=null;render();}; sv.appendChild(sb); m.appendChild(sv);
     veil.appendChild(m); return veil;
   }
   var shortDay=function(k){ var d=new Date(k+"T12:00"); return DAYS[d.getDay()]+" "+d.getDate(); };
@@ -1332,7 +1336,85 @@ var SNAP=null, DETAIL={};
   }
   // SITE FACTS FOR THE DRIVER (Sam, 13 Sep 2026): the contact and access lines from the card, on the routes sheet under each stop
   function siteFacts(j){ var dd=DETAIL[j.id]; if(!dd||!dd.desc) return {contact:[],access:[]}; var g=parseDesc(dd.desc); return {contact:g.contact.slice(0,3),access:g.access.slice(0,4)}; }
+  function pcOf(j){ if(j.pc&&j.pc.indexOf("area:")!==0) return j.pc; var dd=DETAIL[j.id]; var m=dd&&dd.desc?/\b([A-Z]{1,2}\d[A-Z\d]?\s*\d[A-Z]{2})\b/i.exec(dd.desc):null; return m?m[1].toUpperCase().replace(/\s+/,"").replace(/(\d[A-Z]{2})$/," $1"):""; }
   function siteFactsLine(j){ var f=siteFacts(j), bits=[]; if(f.contact.length) bits.push("Contact: "+f.contact.join(", ")); if(f.access.length) bits.push("Access: "+f.access.join(". ")); return bits.join("   "); }
+  // WORKSHEET AND LOADING SHEET (Sam, 13 Sep 2026). Two portrait PDFs the crew take with them.
+  // The worksheet is one job: the facts, the items to tick off, the times and the customer's sign-off.
+  // The loading sheet is one van on one day: every stop's items in loading order, van checks, and who loaded and checked it.
+  function pdfPortrait(title,sub){
+    var J=window.jspdf&&window.jspdf.jsPDF; if(!J) return null;
+    var doc=new J({orientation:"portrait",unit:"mm",format:"a4"});
+    doc.setFont("helvetica","bold"); doc.setFontSize(18); doc.setTextColor(17,17,17); doc.text(title,12,16);
+    doc.setFont("helvetica","normal"); doc.setFontSize(9); doc.setTextColor(PDF_GREY[0],PDF_GREY[1],PDF_GREY[2]); doc.text(doc.splitTextToSize(sub,186),12,22);
+    return doc;
+  }
+  function pdfPortraitFooter(doc,left){
+    var pn=doc.getNumberOfPages(); for(var p=1;p<=pn;p++){ doc.setPage(p); doc.setFontSize(8); doc.setTextColor(120,120,120); doc.text(left,12,290); doc.text("Coggin SOS, page "+p+" of "+pn,198,290,{align:"right"}); }
+  }
+  function pdfLines(doc,y,label,n){ doc.setFontSize(10); doc.setTextColor(17,17,17); doc.setFont("helvetica","bold"); doc.text(label,12,y); doc.setDrawColor(150,150,150); doc.setLineWidth(.3); for(var i=0;i<n;i++){ doc.line(12,y+5+i*8,198,y+5+i*8); } return y+5+n*8+4; }
+  function pdfBand(doc,y,text){ if(y>265){ doc.addPage(); y=14; } doc.setFillColor(PDF_NAVY[0],PDF_NAVY[1],PDF_NAVY[2]); doc.roundedRect(12,y,186,8,1.5,1.5,"F"); doc.setTextColor(255,255,255); doc.setFont("helvetica","bold"); doc.setFontSize(11); doc.text(text,15,y+5.7); doc.setTextColor(17,17,17); return y+11; }
+  function itemLines(j){ var raw=(j.items||[]).concat(j.manual||[]); return raw.length?raw:(j.load&&j.load.rows?j.load.rows.map(function(r){return r.n+" x "+r.type;}):[]); }
+  function worksheetPdf(j,isPrep){
+    var part=isPrep?j.prep:j, kind=isPrep?"Production":(j.site?(j.movement||j.label||"Transport"):"Yard Operations");
+    var when=isPrep?(part.date?niceDay(part.date)+(part.start&&part.start<part.date?" from "+niceDay(part.start):""):"not scheduled"):niceDay(j.date);
+    var doc=pdfPortrait(j.title,kind+", "+when+". Tick each item as it is done. Write the actual times and anything that was different from the plan."); if(!doc) return;
+    var y=30, f=siteFacts(j), dd=DETAIL[j.id], g=dd?parseDesc(dd.desc):{contact:[],where:[],access:[],notes:[]};
+    y=pdfBand(doc,y,"The plan");
+    var plan=[["Operatives",part.who.length?part.who.join(", "):BLANK],["Time each",part.mins!=null?fmt(part.mins):"____ h ____ m"]];
+    if(!isPrep&&j.site){ plan.push(["Van",j.vehicle?(j.vehicle==="hire"?"Hire"+(j.hireRef?", "+j.hireRef:""):j.vehicle):BLANK]); plan.push(["Travel",j.drive!=null?fmt(j.drive)+" return":BLANK]); if(j.from||j.by) plan.push(["Window",windowText(j).slice(2)]); if(cubeOf(j)!=null) plan.push(["Van load",fmtM3(cubeOf(j))+(kgOf(j)?", "+Math.round(kgOf(j))+" kg":"")]); }
+    if(isPrep) plan.push(["Required for",niceDay(j.date)]);
+    doc.autoTable({startY:y,margin:{left:12,right:12},body:plan,theme:"plain",styles:{font:"helvetica",fontSize:10,cellPadding:1.4,textColor:[17,17,17]},columnStyles:{0:{cellWidth:36,fontStyle:"bold",textColor:PDF_GREY},1:{cellWidth:150}},didParseCell:function(d){ if(d.column.index===1&&/^_+$|____ h/.test(String(d.cell.raw))){ d.cell.styles.textColor=PDF_RED; d.cell.styles.fontStyle="bold"; } }});
+    y=doc.lastAutoTable.finalY+6;
+    if(!isPrep){ y=pdfBand(doc,y,"The site");
+      var site=[["Where",g.where.length?g.where.join(", "):BLANK],["Contact",f.contact.length?f.contact.join(", "):BLANK],["Access",g.access.length?g.access.join(". "):BLANK]]; if(g.notes.length) site.push(["Notes",g.notes.slice(0,6).join(". ")]);
+      doc.autoTable({startY:y,margin:{left:12,right:12},body:site,theme:"plain",styles:{font:"helvetica",fontSize:10,cellPadding:1.4,textColor:[17,17,17],overflow:"linebreak"},columnStyles:{0:{cellWidth:36,fontStyle:"bold",textColor:PDF_GREY},1:{cellWidth:150}},didParseCell:function(d){ if(d.column.index===1&&/^_+$/.test(String(d.cell.raw))){ d.cell.styles.textColor=PDF_RED; d.cell.styles.fontStyle="bold"; } }});
+      y=doc.lastAutoTable.finalY+6; }
+    var items=itemLines(j); y=pdfBand(doc,y,isPrep?"Items to prepare ("+items.length+")":"Items ("+items.length+")");
+    var rows=items.map(function(l){ return ["",l,"",""]; }); if(!rows.length) rows=[["","No items on the card. Write them in.","",""],["","","",""],["","","",""],["","","",""]];
+    doc.autoTable({startY:y,margin:{left:12,right:12},head:[["",isPrep?"Item":"Item",isPrep?"Done":"Loaded",isPrep?"QC":"Delivered"]],body:rows,styles:{font:"helvetica",fontSize:10,cellPadding:2.2,textColor:[17,17,17],lineColor:[207,212,218],lineWidth:.2,minCellHeight:9},headStyles:{fillColor:[232,235,239],textColor:[51,51,51],fontStyle:"bold",fontSize:8},columnStyles:{0:{cellWidth:8},1:{cellWidth:130},2:{cellWidth:24,halign:"center"},3:{cellWidth:24,halign:"center"}},
+      didDrawCell:function(d){ if(d.section!=="body") return; if(d.column.index===2||d.column.index===3){ doc.setDrawColor(90,90,90); doc.setLineWidth(.4); doc.rect(d.cell.x+d.cell.width/2-2.5,d.cell.y+d.cell.height/2-2.5,5,5); } }});
+    y=doc.lastAutoTable.finalY+8;
+    if(y>200){ doc.addPage(); y=14; }
+    y=pdfBand(doc,y,"On the day");
+    doc.setFont("helvetica","normal"); doc.setFontSize(10); doc.setTextColor(17,17,17);
+    var tl=[["Left the yard","Arrived on site","Finished on site","Back at the yard"]]; doc.autoTable({startY:y,margin:{left:12,right:12},head:tl,body:[["__ : __","__ : __","__ : __","__ : __"]],styles:{font:"helvetica",fontSize:12,cellPadding:3,halign:"center",textColor:PDF_RED,fontStyle:"bold",lineColor:[207,212,218],lineWidth:.2},headStyles:{fillColor:[232,235,239],textColor:[51,51,51],fontStyle:"bold",fontSize:8,halign:"center"}});
+    y=doc.lastAutoTable.finalY+8;
+    y=pdfLines(doc,y,"What was different from the plan, damage, anything to tell the office",4);
+    if(!isPrep){ y=pdfLines(doc,y,"Customer sign-off: name, signature, date",2); }
+    else { y=pdfLines(doc,y,"QC checked by, date",1); }
+    pdfPortraitFooter(doc,"Worksheet, "+j.title+", printed "+new Date().toLocaleDateString("en-GB"));
+    doc.save("worksheet-"+(isPrep?"production-":"")+j.title.replace(/[^\w]+/g,"-").slice(0,40)+".pdf");
+  }
+  function loadingPdf(k,who,stopsIn){
+    var dj=allJobs().filter(function(j){return onDay(j,k);}), rs=roundsOn(k,dj);
+    var stops=stopsIn.slice(); if(stops.length>1){ var placed=stops.filter(function(j){return j.pt;}); if(placed.length===stops.length){ stops=orderStops(placed.map(function(j){return {j:j,pt:j.pt};})).map(function(x){return x.j;}); } else stops=windowOrder(stops); }
+    var veh=[]; stops.forEach(function(j){ var vt=vehicleText(j); if(vt&&vt!=="No van"&&veh.indexOf(vt)<0) veh.push(vt); });
+    var m3=stops.reduce(function(t,j){return t+(cubeOf(j)||0);},0), kg=stops.reduce(function(t,j){return t+kgOf(j);},0), unknown=stops.filter(function(j){return cubeOf(j)==null;}).length;
+    var doc=pdfPortrait("Loading sheet, "+who+", "+niceDay(k),(veh.length?veh.join(", ")+". ":"No van chosen yet. ")+stops.length+(stops.length===1?" stop. ":" stops. ")+"Load the last stop first so the first stop comes off first. Tick On as it goes on the van and Off at the site."); if(!doc) return;
+    var y=30;
+    doc.setFont("helvetica","bold"); doc.setFontSize(11); doc.setTextColor(m3>VAN_M3||kg>VAN_KG?PDF_RED[0]:17,m3>VAN_M3||kg>VAN_KG?PDF_RED[1]:17,m3>VAN_M3||kg>VAN_KG?PDF_RED[2]:17);
+    doc.text("Whole load: "+(m3?fmtM3(m3)+" of "+VAN_M3+(kg?", "+Math.round(kg)+" kg of "+VAN_KG:""):"nothing to add up")+(unknown?" ("+unknown+(unknown===1?" stop":" stops")+" with no items listed)":""),12,y); y+=7;
+    var order=stops.slice().reverse();
+    order.forEach(function(j,i){
+      var stopNo=stops.indexOf(j)+1, f=siteFacts(j);
+      y=pdfBand(doc,y,"Load "+(i+1)+" of "+order.length+": stop "+stopNo+", "+j.title+(j.movement?" ("+j.movement+")":""));
+      doc.setFont("helvetica","normal"); doc.setFontSize(9); doc.setTextColor(PDF_GREY[0],PDF_GREY[1],PDF_GREY[2]);
+      var meta=[pcOf(j)||"postcode not on card",cubeOf(j)!=null?fmtM3(cubeOf(j))+(kgOf(j)?", "+Math.round(kgOf(j))+" kg":""):"load not worked out",(j.from||j.by)?windowText(j).slice(2):"",f.access.length?"Access: "+f.access.join(". "):""].filter(Boolean).join("   ");
+      doc.text(doc.splitTextToSize(meta,186),12,y+1); y+=Math.ceil(doc.getTextWidth(meta)/186)*4.5+3;
+      var items=itemLines(j), rows=items.map(function(l){ return ["",l,"",""]; }); if(!rows.length) rows=[["","No items on the card. Write them in.","",""],["","","",""],["","","",""]];
+      doc.autoTable({startY:y,margin:{left:12,right:12},head:[["","Item","On","Off"]],body:rows,styles:{font:"helvetica",fontSize:10,cellPadding:2,textColor:[17,17,17],lineColor:[207,212,218],lineWidth:.2,minCellHeight:8.5},headStyles:{fillColor:[232,235,239],textColor:[51,51,51],fontStyle:"bold",fontSize:8},columnStyles:{0:{cellWidth:8},1:{cellWidth:146},2:{cellWidth:16,halign:"center"},3:{cellWidth:16,halign:"center"}},
+        didDrawCell:function(d){ if(d.section!=="body") return; if(d.column.index===2||d.column.index===3){ doc.setDrawColor(90,90,90); doc.setLineWidth(.4); doc.rect(d.cell.x+d.cell.width/2-2.5,d.cell.y+d.cell.height/2-2.5,5,5); } }});
+      y=doc.lastAutoTable.finalY+7;
+    });
+    if(y>215){ doc.addPage(); y=14; }
+    y=pdfBand(doc,y,"Before the van leaves");
+    var checks=["Straps and blankets on","Trolley or sack truck on","Load secured, nothing loose in the cab","Walk-round check done, lights and tyres","Fuel or charge enough for "+(function(){ var t=0; stops.forEach(function(j){ t+=(j.drive||0); }); var r=rs.filter(function(x){return x.who===who;})[0]; return r&&r.drive?fmt(r.drive):(t?fmt(t):"the round"); })()+" driving","Waste transfer notes for any collection","Site contact numbers on the worksheet"];
+    doc.autoTable({startY:y,margin:{left:12,right:12},body:checks.map(function(c){return ["",c];}),theme:"plain",styles:{font:"helvetica",fontSize:10,cellPadding:1.8,textColor:[17,17,17],minCellHeight:8},columnStyles:{0:{cellWidth:10},1:{cellWidth:176}},didDrawCell:function(d){ if(d.column.index===0){ doc.setDrawColor(90,90,90); doc.setLineWidth(.4); doc.rect(d.cell.x+2,d.cell.y+d.cell.height/2-2.5,5,5); } }});
+    y=doc.lastAutoTable.finalY+8;
+    y=pdfLines(doc,y,"Loaded by, checked by, time the van left",1);
+    pdfPortraitFooter(doc,"Loading sheet, "+who+", "+niceDay(k)+", printed "+new Date().toLocaleDateString("en-GB"));
+    doc.save("loading-"+k+"-"+who.toLowerCase()+".pdf");
+  }
   function routesPdf(){
     var mon=addDays(monday(TODAY),week*7), days=[]; for(var i=0;i<5;i++) days.push(iso(addDays(mon,i)));
     var doc=pdfDoc("Routes, "+niceDay(days[0])+" to "+niceDay(days[4])+" "+mon.getFullYear(),"Printed "+new Date().toLocaleString("en-GB",{day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"})+". One colour per day, stops numbered in driving order from the yard. Miles are road estimates."); if(!doc) return;
