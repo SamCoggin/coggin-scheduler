@@ -166,6 +166,27 @@
   .card.hold .ttl{color:#6e5dc6}
   .for.hold{color:#6e5dc6;font-weight:700}
   .daywarn{flex-shrink:0;margin:0 8px 6px;padding:8px 10px;border-radius:8px;background:var(--red);color:#fff;font-weight:800;font-size:13px}
+  .printsheet{display:none}
+  @media print{
+    @page{size:A4 landscape;margin:12mm}
+    body{background:#fff;color:#111;display:block;height:auto;overflow:visible}
+    .hdr,.board,.veil{display:none!important}
+    .printsheet{display:block!important;font-size:11pt;color:#111}
+    .printsheet h1{font-size:20pt;margin:0 0 2mm}
+    .printsheet .sub{color:#444;margin:0 0 5mm;font-size:10pt}
+    .printsheet .pday{break-inside:avoid;border:1.5px solid #333;border-radius:3mm;margin:0 0 5mm;padding:3mm 4mm}
+    .printsheet .pday h2{font-size:14pt;margin:0 0 2mm;display:flex;justify-content:space-between}
+    .printsheet .pday h2 span{font-size:10pt;font-weight:600;color:#444}
+    .printsheet .psec{font-size:9.5pt;font-weight:800;text-transform:uppercase;letter-spacing:.04em;margin:2.5mm 0 1mm;color:#333}
+    .printsheet .prow{display:grid;grid-template-columns:1.6fr 1fr 1fr 1fr;gap:3mm;padding:1.2mm 0;border-top:1px solid #ccc;break-inside:avoid}
+    .printsheet .prow b{display:block;font-size:11pt}
+    .printsheet .prow small{display:block;color:#444;font-size:9pt}
+    .printsheet .prow.hold b{color:#5a4bb5}
+    .printsheet .pwarn{color:#b42318;font-weight:800;margin:1mm 0}
+    .printsheet .pops{display:flex;flex-wrap:wrap;gap:2mm 6mm;margin-top:2mm;padding-top:1.5mm;border-top:1px solid #333;font-size:9.5pt}
+    .printsheet .pops span b{font-weight:800}
+    .printsheet .pfoot{margin-top:3mm;font-size:9pt;color:#555}
+  }
   .leave{flex-shrink:0;background:var(--amber-bg);color:var(--amber);font-weight:600;border-radius:8px;padding:8px 12px;font-size:13px}
 
   .tot{border-top:2px solid #3d4451;background:var(--card);border-radius:0 0 10px 10px;padding:10px 14px 12px;font-size:14px;display:flex;flex-direction:column;gap:4px}
@@ -267,9 +288,10 @@
   <h1>Scheduler</h1>
   <span class="src" id="src"></span>
   <span class="views"><button id="vday">Day</button><button id="vweek" class="on">Week</button><button id="vmonth">Month</button><button id="vroutes">Routes</button><button id="vmanager">Manager</button></span>
-  <button id="prev">Back</button><span class="t" id="title"></span><button id="next">Next</button>
+  <button id="prev">Back</button><span class="t" id="title"></span><button id="next">Next</button><button id="print" title="Print or save as PDF">Print / PDF</button>
 </div>
 <div class="board" id="board"></div>
+<div id="printsheet" class="printsheet"></div>
 
 <script>
 var SNAP=null, DETAIL={};
@@ -945,8 +967,35 @@ var SNAP=null, DETAIL={};
       box.appendChild(row); });
     $("#prev").onclick=function(){}; $("#next").onclick=function(){};
   }
+  // ── Print / PDF: the week (or the day in Day view) as one clean sheet ──
+  function buildPrintSheet(){
+    var box=$("#printsheet"); box.innerHTML="";
+    var days=[]; if(view==="day"){ days=[dayCur]; } else { var mon=addDays(monday(TODAY),week*7); for(var i=0;i<5;i++) days.push(iso(addDays(mon,i))); }
+    var first=new Date(days[0]+"T12:00"), last=new Date(days[days.length-1]+"T12:00");
+    box.appendChild(el("h1",null,"Operations schedule, "+(days.length===1?niceDay(days[0])+" "+first.getFullYear():niceDay(days[0])+" to "+niceDay(days[days.length-1])+" "+last.getFullYear())));
+    box.appendChild(el("p","sub","Coggin SOS. Printed "+new Date().toLocaleString("en-GB",{day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"})+". Working day 7h 45m. Dashed purple items are dates held for sales, not booked."));
+    days.forEach(function(k){
+      var jobs=allJobs().filter(function(j){return onDay(j,k);}), preps=JOBS.filter(function(j){return j.prep&&j.prep.date&&daysOf(j.prep).indexOf(k)>=0;});
+      var lv=LEAVE.filter(function(l){return l.date===k;});
+      var d=el("div","pday"); var h=el("h2"); h.appendChild(document.createTextNode(niceDay(k))); h.appendChild(el("span",null,(jobs.length+preps.length)?(jobs.length+preps.length)+" items":"Nothing planned")); d.appendChild(h);
+      var cap=dayCapacity(k,jobs,preps); if(cap.overTime||cap.overVans) d.appendChild(el("div","pwarn",(cap.overTime?"Over capacity if every hold lands: "+fmt(cap.need)+" needed, "+fmt(cap.avail)+" available. ":"")+(cap.overVans?cap.trips+" van trips, "+cap.vans+" vans on the road.":"")));
+      if(lv.length) d.appendChild(el("div","psec","Annual leave: "+lv.map(function(l){return l.text;}).join(", ")));
+      var row=function(j,isPrep){ var part=isPrep?j.prep:j; var r=el("div","prow"+(j.isHold?" hold":""));
+        var c1=el("span"); c1.appendChild(el("b",null,(j.work?j.work+", ":"")+j.title)); c1.appendChild(el("small",null,isPrep?"Production, required for "+niceDay(j.date):(j.movement||j.label||"")+(j.isHold?", held for sales until "+niceShort(j.holdUntil||j.date):"")+(j.stageLabel&&!j.isHold?", "+j.stageLabel:""))); r.appendChild(c1);
+        var c2=el("span"); c2.appendChild(el("b",null,j.isHold?"Not yet named":(j.contractor&&!part.who.length?j.contractor:(part.who.length?part.who.join(", "):"Unassigned")))); c2.appendChild(el("small",null,j.isHold?j.holdCrew+" operatives at standard":"Operatives")); r.appendChild(c2);
+        var c3=el("span"); c3.appendChild(el("b",null,part.mins!=null?fmt(part.mins)+(part.who.length>1||j.isHold?" each":""):"No time set")); c3.appendChild(el("small",null,(j.site&&!isPrep&&j.drive!=null?"Travel "+fmt(j.drive)+" return":isPrep?"Production time":"On site"))); r.appendChild(c3);
+        var c4=el("span"); var cube=(!isPrep&&j.site)?cubeOf(j):null; c4.appendChild(el("b",null,cube!=null?fmtM3(cube):(j.load&&j.load.rows.length?fmtM3(j.load.m3):"\u2014"))); c4.appendChild(el("small",null,j.load&&j.load.rows.length?j.load.rows.slice(0,3).map(function(x){return x.n+" x "+x.type;}).join(", ")+(j.load.rows.length>3?"...":""):"Van load")); r.appendChild(c4);
+        return r; };
+      var groups=[["Production",preps.map(function(j){return [j,true];})],["Transport",jobs.filter(function(j){return j.site;}).map(function(j){return [j,false];})],["Yard operations",jobs.filter(function(j){return !j.site&&!(j.isLeg&&j.leg.type==="production");}).map(function(j){return [j,false];})]];
+      groups.forEach(function(g){ if(!g[1].length) return; d.appendChild(el("div","psec",g[0])); g[1].forEach(function(x){ d.appendChild(row(x[0],x[1])); }); });
+      var load=loadOn(k), ops=el("div","pops"); TEAM.forEach(function(w){ var sp=el("span"); sp.appendChild(el("b",null,w+": ")); sp.appendChild(document.createTextNode(load[w].c==="off"?"annual leave":load[w].c==="free"?"recycling all day":fmt(load[w].mins)+" on jobs, "+fmt(load[w].rec)+" recycling")); ops.appendChild(sp); }); d.appendChild(ops);
+      box.appendChild(d);
+    });
+    box.appendChild(el("p","pfoot","Times are allocated time per operative. Van loads are estimated from the items on each card. Anything without a time or an operative is still to plan."));
+  }
   function render(){
     persist();
+    $("#print").onclick=function(){ buildPrintSheet(); window.print(); };
     document.body.onclick=function(){ if(tipOpen){ tipOpen=null; render(); } };
     $("#vday").className=view==="day"?"on":""; $("#vweek").className=view==="week"?"on":""; $("#vmonth").className=view==="month"?"on":""; $("#vroutes").className=view==="routes"?"on":""; $("#vroutes").onclick=function(){view="routes";render();}; $("#vmanager").className=view==="manager"?"on":""; $("#vmanager").onclick=function(){view="manager";render();};
     $("#vday").onclick=function(){view="day";render();}; $("#vweek").onclick=function(){view="week";render();}; $("#vmonth").onclick=function(){view="month";render();};
