@@ -71,6 +71,8 @@ Fix: a simple week summary at the top: hours planned against hours available, va
 
 - 13 Sep 2026: gaps 6, 7 and 8 built. Contact and access under each stop on the routes sheet; loading sheet per van with deliveries in reverse loading order, collections after, and the load on board after every stop; deliveries before collections in the stop order; two-person items (or anything over 25 kg) with one operative count in To plan, badge the card, warn in the rail and on the card back.
 
+- 13 Sep 2026: gap 9 built. Off today per operative in the day view with a reason, saved on the board; bank holidays for England and Wales built in through 2027; both flow into hours, capacity, crew picking and the rail.
+
 ## Suggested order
 1. Time windows on transport jobs (gap 1), then the driver day check (gap 2).
 2. Vehicle on the job and rounds vs vans (gap 3), then hire booked tick (gap 4).
