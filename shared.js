@@ -193,16 +193,20 @@ function aboveStandard(std,who,mins){
 }
 
 // ── production standard: how long the workshop should take on the items ──
+var PICK_BASE=15, PICK_EACH=2;   // minutes: pull the picking sheet and set up, then per item to find it and bring it to the bench
 // the work is the total of the items. more operatives divide it, plus 10 percent handover when they share.
 // crew: one operative up to 2 hours of work, two up to 12 hours, three beyond (refurb never needs more than three).
 function prodStandardFor(load,crewNow){
   if(!load||!load.complete) return null;
-  var work=load.prod; if(!work) return null;
+  if(!load.prod) return null;
+  // picking: pull the picking sheet and set up, then find and bring each item to the bench
+  var items=load.rows.filter(function(r){return r.type!=="Small part";}).reduce(function(t,r){return t+r.n;},0);
+  var pick=PICK_BASE+PICK_EACH*items, work=load.prod+pick;
   var crew=crewNow&&crewNow>0?crewNow:(work<=120?1:work<=720?2:3);
   var each=Math.ceil(work/crew*(crew>1?1.1:1)/5)*5, days=Math.max(1,Math.ceil(each/DAY_MINS));
   var what=load.rows.filter(function(r){return r.prod;}).map(function(r){return r.n+" "+r.type.toLowerCase()+(r.n>1?"s":"")+(r.cleanOnly?" (clean only)":"")+" at "+(r.prod/r.n)+" min";}).join(", ");
-  var why=fmt(work)+" of work in total: "+what+"."+(crew>1?" Split between "+crew+" operatives with 10 percent for handover, that is "+fmt(each)+" each":" One operative, "+fmt(each))+(days>1?", so "+days+" days.":".");
-  return {work:work,crew:crew,mins:each,days:days,why:why};
+  var why=fmt(work)+" of work in total. Picking "+fmt(pick)+" ("+PICK_BASE+" min for the picking sheet and set up, "+PICK_EACH+" min an item for "+items+" items). Then "+what+"."+(crew>1?" Split between "+crew+" operatives with 10 percent for handover, that is "+fmt(each)+" each":" One operative, "+fmt(each))+(days>1?", so "+days+" days.":".");
+  return {work:work,pick:pick,crew:crew,mins:each,days:days,why:why};
 }
 function aboveProdStandard(std,who,mins,start,end){
   if(!std||!who||!who.length||mins==null) return null; var out=[];
