@@ -89,7 +89,7 @@ function parseDesc(txt){
     if(/:$/.test(l)) return;                                              // a sub-heading with nothing on it
     if(/^(service|mode|method|collection date|ref):/i.test(l)) return;
     if(/sign-off|click here|attach photos|photo evidence|link this order|remove when created|^delivered|^collected|^tracking/i.test(l)) return;
-    if(/^[^:]*:\s*(n\/a|none|-)\s*$/i.test(l)) return;
+    if(/^([^:]*:)?\s*(n\/a|none|-)\s*$/i.test(l)) return;
     var line=/^(name|phone|mobile number|site contact name|email|number):/i.test(l)?"contact":/^(address|postcode|delivery\/collection address|collection address|delivery address):/i.test(l)?"where":/^(access|floor|parking|stairs|lift|loading|distance|working hours|known hazards|security|rams|ppe|time restrictions|vehicle size|parking permits):/i.test(l)?"access":null;
     groups[line||cur].push(l.replace(/^(address|postcode|collection address|delivery address|delivery\/collection address|site contact name|name|mobile number|phone|number):\s*/i,""));
   });
