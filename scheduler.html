@@ -625,7 +625,7 @@ var SNAP=null, DETAIL={};
     var drivers={}; jobs.forEach(function(j){ if(j.vehicle==="hire") return; j.who.forEach(function(w){ if(DRIVERS.indexOf(w)>=0) drivers[w]=1; }); });
     var need=Object.keys(drivers).length; if(need>vansOnRoad()) out.push({text:need+" drivers out on our vans with "+vansOnRoad()+(vansOnRoad()===1?" van":" vans")+" on the road. Put one on a hire or move a job.",who:"Vans"});
     jobs.forEach(function(j){ if(hireDue(j)) out.push({j:j,text:short(j)+": hire not booked, "+(function(){var d=workDaysBetween(iso(TODAY),j.date)-1; return d<=0?"it is today":d===1?"it is tomorrow":d+" working days away";})()+". Book it and tick it on the job."}); });
-    var dayM3=jobs.reduce(function(t,j){return t+(cubeOf(j)||0);},0), dayKg=jobs.reduce(function(t,j){return t+kgOf(j);},0), adv=dayM3?vehicleAdvice(dayM3,dayKg,vansOnRoad()):null;
+    var dayM3=jobs.reduce(function(t,j){return t+(cubeOn(j)||0);},0), dayKg=jobs.reduce(function(t,j){return t+kgOn(j);},0), adv=dayM3?vehicleAdvice(dayM3,dayKg,vansOnRoad()):null;
     if(adv&&!adv.fitsOurs&&!jobs.some(function(j){return j.vehicle==="hire";})) out.push({who:"Vans",text:"The day needs "+adv.text.charAt(0).toLowerCase()+adv.text.slice(1)+" No hire is on any job yet."});
     return out;
   }
@@ -757,8 +757,8 @@ var SNAP=null, DETAIL={};
       VEHICLES.concat([{reg:"hire",name:"Hire"}]).forEach(function(v){ var off=VANS_OFF.indexOf(v.reg)>=0; var b=el("button",(j.vehicle===v.reg?"on":"")+(off?" off":""),v.reg==="hire"?"Hire":v.reg+(off?" (off road)":"")); b.onclick=function(){ j.vehicle=j.vehicle===v.reg?null:v.reg; persist(); render(); }; vseg.appendChild(b); });
       vb.appendChild(vseg);
       var same=allJobs().filter(function(x){return x!==j&&ourJob(x)&&onDay(x,j.date)&&x.vehicle&&x.vehicle!=="hire";}); var used={}; same.forEach(function(x){ used[x.vehicle]=(used[x.vehicle]||[]).concat([x.who.join(", ")||"unassigned"]); });
-      var adv=cubeOf(j)!=null?vehicleAdvice(cubeOf(j),kgOf(j),vansOnRoad()):null;
-      vb.appendChild(el("div","hint",(adv?"This job needs "+adv.text.charAt(0).toLowerCase()+adv.text.slice(1)+" ":"")+(Object.keys(used).length?"Also out that day: "+Object.keys(used).map(function(v){return v+" with "+used[v].join(" and ");}).join("; ")+".":"Nothing else booked on our vans that day.")));
+      var adv=cubeOn(j)!=null?vehicleAdvice(cubeOn(j),kgOn(j),vansOnRoad()):null;
+      vb.appendChild(el("div","hint",(adv?(daysN(j)>1?"Each day of this job needs ":"This job needs ")+adv.text.charAt(0).toLowerCase()+adv.text.slice(1)+" ":"")+(Object.keys(used).length?"Also out that day: "+Object.keys(used).map(function(v){return v+" with "+used[v].join(" and ");}).join("; ")+".":"Nothing else booked on our vans that day.")));
       if(j.vehicle==="hire"){ var hr=el("div","row"); var hi=el("input"); hi.type="text"; hi.placeholder="Supplier, vehicle and reference"; hi.value=j.hireRef||""; hi.setAttribute("aria-label","Hire supplier and reference"); hi.onchange=function(){ j.hireRef=hi.value.trim(); persist(); render(); }; hr.appendChild(hi);
         var ck=el("label","ck"); var cb2=el("input"); cb2.type="checkbox"; cb2.checked=!!j.hireBooked; cb2.onchange=function(){ j.hireBooked=cb2.checked; persist(); render(); }; ck.appendChild(cb2); ck.appendChild(document.createTextNode("Booked")); hr.appendChild(ck); vb.appendChild(hr);
         vb.appendChild(el("div","hint"+(hireDue(j)?" far":""),j.hireBooked?"Booked. The reference prints on the routes sheet.":hireDue(j)?"Not booked and the job is within "+HIRE_WARN_DAYS+" working days. Book it now.":"Tick Booked once the hire company has confirmed.")); }
@@ -861,7 +861,7 @@ var SNAP=null, DETAIL={};
     if(!o.shop&&j.site&&!contractorOnly) sumBits.push(j.vehicle?(j.vehicle==="hire"?"Hire"+(j.hireBooked?" booked":" not booked"):j.vehicle):"No van");
     if(!o.shop&&j.site&&!contractorOnly&&part.who.length){ var tls=dayTimeline(j.date,part.who[0]), sts=tls.stops.filter(function(x){return x.j===j;})[0]; if(sts&&!sts.noDrive) sumBits.push("leave 8:00, arrive "+hmStr(sts.arrive)+", back "+hmStr(tls.back)); else if(j.drive!=null) sumBits.push(fmt(j.drive)+" travel"); }
     sumBits.push(part.mins!=null?fmt(part.mins)+(o.shop?" production":j.site?" on site":" labour")+(part.who.length>1?" each":""):"no time set");
-    if(!o.shop&&j.site&&cubeOf(j)!=null) sumBits.push(fmtM3(cubeOf(j)));
+    if(!o.shop&&j.site&&cubeOf(j)!=null) sumBits.push(fmtM3(cubeOf(j))+(daysN(j)>1?", about "+fmtM3(cubeOn(j))+" a day over "+daysN(j)+" days":""));
     var sumEl=el("div","plan-sum"); sumBits.forEach(function(t,i){ var sp=el("span",/Unassigned|No van|not booked|no time set/.test(t)?"bad":"",t); sumEl.appendChild(sp); }); ht.appendChild(sumEl);
     cols.appendChild(left); cols.appendChild(right); m.appendChild(cols);
     var sv=el("div","save sticky");
@@ -1073,6 +1073,10 @@ var SNAP=null, DETAIL={};
   // ── Routes: where the week's transport jobs are, as rounds from the yard ──
   // the load a job puts on the van: the estimate from its items, unless overtyped
   function cubeOf(j){ if(j.cubeSet!=null) return j.cubeSet; return j.load&&j.load.complete?j.load.m3:null; }
+  // MULTI-DAY LOADS (Sam, 13 Sep 2026): a job spread over several days moves its load a day at a time, so each day carries an equal share, not the whole lot.
+  function daysN(j){ return j.start&&j.start<j.date?daysOf(j).length:1; }
+  function cubeOn(j){ var c=cubeOf(j); return c==null?null:c/daysN(j); }
+  function kgOn(j){ return kgOf(j)/daysN(j); }
   function kgOf(j){ return j.load&&j.load.complete?j.load.kg:0; }
   var BASE={lat:53.940279,lng:-2.775468,name:"Coggin yard, Forton"};
   var DAYCOL=["#0c66e4","#1f845a","#ae4787","#e56910","#626f86"];
@@ -1132,7 +1136,7 @@ var SNAP=null, DETAIL={};
       var sugs=[], today=iso(TODAY_REAL);
       weekJobs.forEach(function(A){ if(!A.pt) return; var k=A.date; var i=days.indexOf(k); if(i<0||k<today) return;
         var mates=weekJobs.filter(function(x){return x!==A && onDay(x,k) && x.who.some(function(w){return A.who.indexOf(w)>=0;});});
-        var group=[A].concat(mates), vanQ=group.reduce(function(t,j){return t+(cubeOf(j)||0);},0), kgQ=group.reduce(function(t,j){return t+kgOf(j);},0), room=VAN_M3-vanQ, kgRoom=VAN_KG-kgQ;
+        var group=[A].concat(mates), vanQ=group.reduce(function(t,j){return t+(cubeOn(j)||0);},0), kgQ=group.reduce(function(t,j){return t+kgOn(j);},0), room=VAN_M3-vanQ, kgRoom=VAN_KG-kgQ;
         all.forEach(function(B){ if(!B.pt||B===A||group.indexOf(B)>=0) return; if(B.date<=k||B.date>horizon) return;
           var apart=roadMiles(miles(A.pt,B.pt)); if(apart>25) return;
           var alone=2*roadMiles(miles(BASE,B.pt)), detour=apart+roadMiles(miles(B.pt,BASE))-roadMiles(miles(A.pt,BASE)); var saved=alone-Math.max(detour,0); if(saved<15) return;
@@ -1156,9 +1160,9 @@ var SNAP=null, DETAIL={};
         var day=el("div","rday"); var h=el("h3"); h.style.background=col; h.appendChild(document.createTextNode(niceDay(k))); h.appendChild(el("span",null,jobs.length+(jobs.length===1?" transport job":" transport jobs"))); day.appendChild(h);
         var load=loadOn(k), crew=el("div","crew"); TEAM.forEach(function(w){ var st=load[w]; var sp=el("span",st.c,w+": "+st.t); if(DRIVERS.indexOf(w)>=0) sp.appendChild(el("i",null,"driver")); crew.appendChild(sp); }); day.appendChild(crew);
         // one group per operative (a round), plus the jobs nobody is on yet
-        var groups=[]; TEAM.forEach(function(w){ var mine=jobs.filter(function(j){return j.who.indexOf(w)>=0;}); if(mine.length) groups.push({name:w,jobs:mine}); });
+        var groups=[], seenG={}; TEAM.forEach(function(w){ var mine=jobs.filter(function(j){return j.who.indexOf(w)>=0;}); if(!mine.length) return; var gk=mine.map(function(j){return j.id;}).sort().join("|"); if(seenG[gk]){ seenG[gk].names.push(w); if(DRIVERS.indexOf(seenG[gk].name)<0&&DRIVERS.indexOf(w)>=0) seenG[gk].name=w; return; } var g0={name:w,names:[w],jobs:mine}; seenG[gk]=g0; groups.push(g0); });
         var none=jobs.filter(function(j){return !j.who.length;}); if(none.length) groups.push({name:"Unassigned",jobs:none,unassigned:true});
-        var dayM3=jobs.reduce(function(t,j){return t+(cubeOf(j)||0);},0), dayKg=jobs.reduce(function(t,j){return t+kgOf(j);},0), advD=vehicleAdvice(dayM3,dayKg,vansOnRoad());
+        var dayM3=jobs.reduce(function(t,j){return t+(cubeOn(j)||0);},0), dayKg=jobs.reduce(function(t,j){return t+kgOn(j);},0), advD=vehicleAdvice(dayM3,dayKg,vansOnRoad());
         if(advD&&dayM3){ day.appendChild(el("div",advD.fitsOurs?"rnote":"rwarn","Whole day: "+fmtM3(dayM3)+(dayKg?", "+Math.round(dayKg)+" kg":"")+". Needs "+advD.text)); }
         var driving=groups.filter(function(g){return !g.unassigned && DRIVERS.indexOf(g.name)>=0;}).length;
         dayWarnings(k).forEach(function(tx){ day.appendChild(el("div","rwarn",tx)); });
@@ -1166,8 +1170,8 @@ var SNAP=null, DETAIL={};
           var placed=g.jobs.filter(function(j){return j.pt;}), lost=g.jobs.filter(function(j){return !j.pt;});
           var stops=orderStops(placed.map(function(j){ return {j:j,pt:j.pt}; }));
           var total=stops.reduce(function(s,x){return s+x.legMiles;},0)+(stops.length?stops[stops.length-1].backMiles:0);
-          var vanQ=g.jobs.reduce(function(s,j){return s+(cubeOf(j)||0);},0), kgQ=g.jobs.reduce(function(s,j){return s+kgOf(j);},0), vanUnknown=g.jobs.filter(function(j){return cubeOf(j)==null;}).length;
-          var grp=el("div","rgrp"); var kk=el("div","k"); kk.appendChild(el("span",null,g.unassigned?"Unassigned":g.name+(g.jobs.length>1?", delivery round":"")));
+          var vanQ=g.jobs.reduce(function(s,j){return s+(cubeOn(j)||0);},0), kgQ=g.jobs.reduce(function(s,j){return s+kgOn(j);},0), vanUnknown=g.jobs.filter(function(j){return cubeOf(j)==null;}).length;
+          var grp=el("div","rgrp"); var kk=el("div","k"); kk.appendChild(el("span",null,g.unassigned?"Unassigned":(g.names||[g.name]).join(", ")+(g.jobs.length>1?", delivery round":"")));
           if(total) kk.appendChild(el("span",null,total+" miles round trip")); if(!g.unassigned){ var vs=[]; g.jobs.forEach(function(x){ var vt=vehicleText(x); if(vt&&vs.indexOf(vt)<0) vs.push(vt); }); if(vs.length) kk.appendChild(el("span",vs.some(function(v){return /No van|not booked/.test(v);})?"bad":"",vs.join(", "))); } grp.appendChild(kk);
           stops.forEach(function(x,n){ var st=el("div","stop"); var num=el("span","n",String(n+1)); num.style.background=col; st.appendChild(num); var tx=el("span"); tx.appendChild(el("b",null,x.j.title)); tx.appendChild(el("small","facts",siteFactsLine(x.j)||"No contact or access on the card")); tx.appendChild(el("small",null,(x.j.pc&&x.j.pc.indexOf("area:")!==0?x.j.pc:"postcode area only")+(x.j.mins!=null?", "+fmt(x.j.mins)+" on site":", no site time")+(cubeOf(x.j)!=null?", "+fmtM3(cubeOf(x.j)):""))); st.appendChild(tx); st.appendChild(el("span","mi",x.legMiles+" mi"+(x.backMiles!=null?", "+x.backMiles+" mi back":""))); grp.appendChild(st);
             if(MAP){ L.circleMarker([x.pt.lat,x.pt.lng],{radius:8,color:"#fff",fillColor:col,fillOpacity:1,weight:2}).addTo(MAP).bindTooltip(x.j.title+", "+niceDay(k)+(g.unassigned?"":", "+g.name)); bounds.push([x.pt.lat,x.pt.lng]); } });
@@ -1269,7 +1273,7 @@ var SNAP=null, DETAIL={};
         var c2=td(tr,"nowrap"); if(j.isHold) c2.textContent="Not yet named"; else if(contractorOnly){ c2.appendChild(el("b",null,j.contractor)); c2.appendChild(el("small",null,"Subcontractor")); } else if(part.who.length) c2.appendChild(el("b",null,part.who.join(", "))); else { c2.className+=" need"; c2.appendChild(blank(30)); missing++; }
         var c3=td(tr,"nowrap"); if(j.isHold) c3.textContent=fmt(part.mins)+" at standard"; else if(contractorOnly) c3.textContent="\u2014"; else if(part.mins) c3.appendChild(el("b",null,fmt(part.mins))); else { c3.className+=" need"; c3.appendChild(blank(9)); c3.appendChild(document.createTextNode(" h ")); c3.appendChild(blank(9)); c3.appendChild(document.createTextNode(" m")); missing++; }
         var c4=td(tr,"nowrap"); if(isPrep||!j.site||contractorOnly||j.isHold) c4.textContent=isPrep||!j.site?"\u2014":(j.isHold&&j.drive!=null?fmt(j.drive):"\u2014"); else if(j.drive!=null) c4.textContent=fmt(j.drive)+" return"; else { c4.className+=" need"; c4.appendChild(blank(18)); missing++; }
-        var c5=td(tr,"nowrap"); var cube=(!isPrep&&j.site&&!contractorOnly)?cubeOf(j):null;
+        var c5=td(tr,"nowrap"); var cube=(!isPrep&&j.site&&!contractorOnly)?cubeOn(j):null;
         if(!isPrep&&j.site&&!contractorOnly&&!j.isHold){ if(cube!=null) c5.appendChild(el("b",null,fmtM3(cube))); else { c5.className+=" need"; c5.appendChild(blank(14)); c5.appendChild(document.createTextNode(" m\u00b3")); missing++; } }
         else c5.textContent=j.load&&j.load.rows.length?fmtM3(j.load.m3):"\u2014";
         var c6=td(tr,"items"); c6.textContent=j.load&&j.load.rows.length?j.load.rows.slice(0,3).map(function(x){return qty(x.n,x.type);}).join(", ")+(j.load.rows.length>3?"...":""):(j.load&&j.load.unmatched.length?"Not matched: "+j.load.unmatched.slice(0,2).join("; "):"");
@@ -1323,20 +1327,20 @@ var SNAP=null, DETAIL={};
     days.forEach(function(k,i){
       var jobs=all.filter(function(j){return onDay(j,k);}); if(!jobs.length) return;
       var h=el("div","pdayh"); var dot=el("span"); dot.textContent="● "; dot.style.color=DAYCOL[i]; var hl=el("span"); hl.appendChild(dot); hl.appendChild(document.createTextNode(niceDay(k))); h.appendChild(hl); h.appendChild(el("span","sub2",jobs.length+(jobs.length===1?" transport job":" transport jobs"))); box.appendChild(h);
-      var dayM3=jobs.reduce(function(t,j){return t+(cubeOf(j)||0);},0), dayKg=jobs.reduce(function(t,j){return t+kgOf(j);},0), advD=vehicleAdvice(dayM3,dayKg,vansOnRoad());
+      var dayM3=jobs.reduce(function(t,j){return t+(cubeOn(j)||0);},0), dayKg=jobs.reduce(function(t,j){return t+kgOn(j);},0), advD=vehicleAdvice(dayM3,dayKg,vansOnRoad());
       if(advD&&dayM3) box.appendChild(el("div",advD.fitsOurs?"rsum":"pwarn","Whole day: "+fmtM3(dayM3)+(dayKg?", "+Math.round(dayKg)+" kg":"")+". Needs "+advD.text.charAt(0).toLowerCase()+advD.text.slice(1)));
       var tab=el("table","ptab routes"); var thead=el("thead"); var thr=el("tr"); ["#","Stop","Postcode","Time on site","Van load","Miles"].forEach(function(t){ thr.appendChild(el("th",null,t)); }); thead.appendChild(thr); tab.appendChild(thead); var tb=el("tbody"); tab.appendChild(tb);
-      var groups=[]; TEAM.forEach(function(w){ var mine=jobs.filter(function(j){return j.who.indexOf(w)>=0;}); if(mine.length) groups.push({name:w,jobs:mine}); });
+      var groups=[], seenG={}; TEAM.forEach(function(w){ var mine=jobs.filter(function(j){return j.who.indexOf(w)>=0;}); if(!mine.length) return; var gk=mine.map(function(j){return j.id;}).sort().join("|"); if(seenG[gk]){ seenG[gk].names.push(w); if(DRIVERS.indexOf(seenG[gk].name)<0&&DRIVERS.indexOf(w)>=0) seenG[gk].name=w; return; } var g0={name:w,names:[w],jobs:mine}; seenG[gk]=g0; groups.push(g0); });
       var none=jobs.filter(function(j){return !j.who.length;}); if(none.length) groups.push({name:"Unassigned",jobs:none,unassigned:true});
       groups.forEach(function(g){
         var placed=g.jobs.filter(function(j){return j.pt;}), lost=g.jobs.filter(function(j){return !j.pt;});
         var stops=orderStops(placed.map(function(j){return {j:j,pt:j.pt};}));
         var total=stops.reduce(function(t,x){return t+x.legMiles;},0)+(stops.length?stops[stops.length-1].backMiles:0);
-        var vanQ=g.jobs.reduce(function(t,j){return t+(cubeOf(j)||0);},0), kgQ=g.jobs.reduce(function(t,j){return t+kgOf(j);},0);
-        var sr=el("tr","psecrow"); var sc=el("td",null,(g.unassigned?g.name:g.name+(g.jobs.length>1?", delivery round":""))+(total?". "+total+" miles round trip":"")+(vanQ?". Van load "+fmtLoad(vanQ,kgQ):"")); sc.colSpan=6; sr.appendChild(sc); tb.appendChild(sr);
+        var vanQ=g.jobs.reduce(function(t,j){return t+(cubeOn(j)||0);},0), kgQ=g.jobs.reduce(function(t,j){return t+kgOn(j);},0);
+        var sr=el("tr","psecrow"); var sc=el("td",null,(g.unassigned?g.name:(g.names||[g.name]).join(", ")+(g.jobs.length>1?", delivery round":""))+(total?". "+total+" miles round trip":"")+(vanQ?". Van load "+fmtLoad(vanQ,kgQ):"")); sc.colSpan=6; sr.appendChild(sc); tb.appendChild(sr);
         stops.forEach(function(x,n){ var tr=el("tr"); td(tr,"num",String(n+1)); var c=td(tr); c.appendChild(el("b",null,x.j.title)); c.appendChild(el("small",null,(x.j.work?x.j.work+", ":"")+(x.j.movement||x.j.label||"")));
           td(tr,"nowrap",x.j.pc&&x.j.pc.indexOf("area:")!==0?x.j.pc:"area only"); td(tr,"nowrap",x.j.mins!=null?fmt(x.j.mins):"not set");
-          var l=td(tr); l.appendChild(el("b",null,cubeOf(x.j)!=null?fmtM3(cubeOf(x.j)):"—")); if(x.j.load&&x.j.load.rows.length) l.appendChild(el("small",null,x.j.load.rows.slice(0,2).map(function(y){return qty(y.n,y.type);}).join(", ")));
+          var l=td(tr); l.appendChild(el("b",null,cubeOn(x.j)!=null?fmtM3(cubeOn(x.j))+(daysN(x.j)>1?" a day":""):"—")); if(x.j.load&&x.j.load.rows.length) l.appendChild(el("small",null,x.j.load.rows.slice(0,2).map(function(y){return qty(y.n,y.type);}).join(", ")));
           td(tr,"nowrap",x.legMiles+" mi"+(x.backMiles!=null?", "+x.backMiles+" back":"")); tb.appendChild(tr); });
         lost.forEach(function(j){ var tr=el("tr"); td(tr,"num","?"); var c=td(tr); c.appendChild(el("b",null,j.title)); c.appendChild(el("small",null,"Not on the plan: no postcode on the card")); var pc=td(tr,"need"); pc.appendChild(el("span","blank")); td(tr,"nowrap",j.mins!=null?fmt(j.mins):"not set"); td(tr,null,cubeOf(j)!=null?fmtM3(cubeOf(j)):"—"); td(tr,null,""); tb.appendChild(tr); });
         if(vanQ>VAN_M3||kgQ>VAN_KG){ var wr=el("tr"); var advW=vehicleAdvice(vanQ,kgQ,vansOnRoad()).text; var wc=el("td","need",(vanQ>VAN_M3?"Over one van by volume":"Over the payload by weight")+". Needs "+advW.charAt(0).toLowerCase()+advW.slice(1)); wc.colSpan=6; wr.appendChild(wc); tb.appendChild(wr); }
@@ -1384,7 +1388,7 @@ var SNAP=null, DETAIL={};
         if(j.isHold) r.push("Not yet named"); else if(contractorOnly) r.push({t:j.contractor,s:"Subcontractor"}); else if(part.who.length) r.push(part.who.join(", ")); else { r.push(BLANK); flags[1]=1; missing++; }
         if(j.isHold) r.push(fmt(part.mins)+" at standard"); else if(contractorOnly) r.push("-"); else if(part.mins) r.push(fmt(part.mins)); else { r.push("____ h ____ m"); flags[2]=1; missing++; }
         if(isPrep||!j.site) r.push("-"); else if(contractorOnly||j.isHold) r.push(j.isHold&&j.drive!=null?fmt(j.drive):"-"); else if(j.drive!=null) r.push(fmt(j.drive)+" return"); else { r.push(BLANK); flags[3]=1; missing++; }
-        var cube=(!isPrep&&j.site&&!contractorOnly)?cubeOf(j):null;
+        var cube=(!isPrep&&j.site&&!contractorOnly)?cubeOn(j):null;
         if(!isPrep&&j.site&&!contractorOnly&&!j.isHold){ if(cube!=null) r.push(fmtM3(cube)); else { r.push("______ m3"); flags[4]=1; missing++; } } else r.push(j.load&&j.load.rows.length?fmtM3(j.load.m3):"-");
         r.push(j.load&&j.load.rows.length?j.load.rows.slice(0,3).map(function(x){return qty(x.n,x.type);}).join(", ")+(j.load.rows.length>3?"...":""):(j.load&&j.load.unmatched.length?"Not matched: "+j.load.unmatched.slice(0,2).join("; "):""));
         styles[rows.length]={flags:flags,hold:!!j.isHold}; rows.push(r); };
@@ -1442,7 +1446,7 @@ var SNAP=null, DETAIL={};
     var stops=stopsIn.slice(); if(stops.length>1){ var placed=stops.filter(function(j){return j.pt;}); if(placed.length===stops.length){ stops=orderStops(placed.map(function(j){return {j:j,pt:j.pt};})).map(function(x){return x.j;}); } else { stops=windowOrder(stops.filter(function(j){return !takesOn(j);})).concat(windowOrder(stops.filter(function(j){return takesOn(j);}))); } }
     var veh=[]; stops.forEach(function(j){ var vt=vehicleText(j); if(vt&&vt!=="No van"&&veh.indexOf(vt)<0) veh.push(vt); });
     var dels=stops.filter(function(j){return !takesOn(j);}), cols=stops.filter(function(j){return takesOn(j);});
-    var m3of=function(j){ return cubeOf(j)||0; }, kgof=function(j){ return kgOf(j)||0; };
+    var m3of=function(j){ return cubeOn(j)||0; }, kgof=function(j){ return kgOn(j)||0; };
     // the load on board leaving the yard is every delivery; it drops at each delivery and rises at each collection
     var onM3=dels.reduce(function(t,j){return t+m3of(j);},0), onKg=dels.reduce(function(t,j){return t+kgof(j);},0), peakM3=onM3, peakKg=onKg, run=[["Leaving the yard",fmtM3(onM3)+(onKg?", "+Math.round(onKg)+" kg":"")]];
     stops.forEach(function(j,i){ if(takesOn(j)){ onM3+=m3of(j); onKg+=kgof(j); } else { onM3-=m3of(j); onKg-=kgof(j); } peakM3=Math.max(peakM3,onM3); peakKg=Math.max(peakKg,onKg); run.push(["After stop "+(i+1)+", "+short(j)+(takesOn(j)?" (on)":" (off)"),fmtM3(Math.max(0,onM3))+(onKg>0?", "+Math.round(onKg)+" kg":"")]); });
@@ -1457,7 +1461,7 @@ var SNAP=null, DETAIL={};
       var stopNo=stops.indexOf(j)+1, f=siteFacts(j);
       y=pdfBand(doc,y,"Load "+(i+1)+" of "+order.length+": "+j.title+", comes off at stop "+stopNo+" of "+stops.length);
       doc.setFont("helvetica","normal"); doc.setFontSize(9); doc.setTextColor(PDF_GREY[0],PDF_GREY[1],PDF_GREY[2]);
-      var meta=["Position: "+posOf(i,order.length),pcOf(j)||"postcode not on card",cubeOf(j)!=null?fmtM3(cubeOf(j))+(kgOf(j)?", "+Math.round(kgOf(j))+" kg":""):"load not worked out",(j.from||j.by)?windowText(j).slice(2):"",f.access.length?"Access: "+f.access.join(". "):""].filter(Boolean).join("   ");
+      var meta=["Position: "+posOf(i,order.length),pcOf(j)||"postcode not on card",cubeOn(j)!=null?fmtM3(cubeOn(j))+(kgOn(j)?", "+Math.round(kgOn(j))+" kg":"")+(daysN(j)>1?" today, of "+fmtM3(cubeOf(j))+" over "+daysN(j)+" days":""):"load not worked out",(j.from||j.by)?windowText(j).slice(2):"",f.access.length?"Access: "+f.access.join(". "):""].filter(Boolean).join("   ");
       var ml=doc.splitTextToSize(meta,186); doc.text(ml,12,y+1); y+=ml.length*4.5+3;
       var items=itemLines(j), rows=items.map(function(l){ return ["",l,"",""]; }); if(!rows.length) rows=[["","No items on the card. Write them in.","",""],["","","",""],["","","",""]];
       doc.autoTable({startY:y,margin:{left:12,right:12},head:[["","Item","On","Off"]],body:rows,styles:{font:"helvetica",fontSize:10,cellPadding:2,textColor:[17,17,17],lineColor:[207,212,218],lineWidth:.2,minCellHeight:8.5},headStyles:{fillColor:[232,235,239],textColor:[51,51,51],fontStyle:"bold",fontSize:8},columnStyles:{0:{cellWidth:8},1:{cellWidth:146},2:{cellWidth:16,halign:"center"},3:{cellWidth:16,halign:"center"}},
@@ -1468,7 +1472,7 @@ var SNAP=null, DETAIL={};
       var stopNo=stops.indexOf(j)+1, f=siteFacts(j);
       y=pdfBand(doc,y,"Collect at stop "+stopNo+" of "+stops.length+": "+j.title);
       doc.setFont("helvetica","normal"); doc.setFontSize(9); doc.setTextColor(PDF_GREY[0],PDF_GREY[1],PDF_GREY[2]);
-      var meta2=["Goes on after the deliveries are off",pcOf(j)||"postcode not on card",cubeOf(j)!=null?"needs "+fmtM3(cubeOf(j))+(kgOf(j)?", "+Math.round(kgOf(j))+" kg":""):"load not worked out",(j.from||j.by)?windowText(j).slice(2):"",f.access.length?"Access: "+f.access.join(". "):""].filter(Boolean).join("   ");
+      var meta2=["Goes on after the deliveries are off",pcOf(j)||"postcode not on card",cubeOn(j)!=null?"needs "+fmtM3(cubeOn(j))+(kgOn(j)?", "+Math.round(kgOn(j))+" kg":"")+(daysN(j)>1?" today, of "+fmtM3(cubeOf(j))+" over "+daysN(j)+" days":""):"load not worked out",(j.from||j.by)?windowText(j).slice(2):"",f.access.length?"Access: "+f.access.join(". "):""].filter(Boolean).join("   ");
       var ml2=doc.splitTextToSize(meta2,186); doc.text(ml2,12,y+1); y+=ml2.length*4.5+3;
       var items2=itemLines(j), rows2=items2.map(function(l){ return ["",l,"",""]; }); if(!rows2.length) rows2=[["","No items on the card. Write them in.","",""],["","","",""],["","","",""]];
       doc.autoTable({startY:y,margin:{left:12,right:12},head:[["","Item expected","On","Off at yard"]],body:rows2,styles:{font:"helvetica",fontSize:10,cellPadding:2,textColor:[17,17,17],lineColor:[207,212,218],lineWidth:.2,minCellHeight:8.5},headStyles:{fillColor:[232,235,239],textColor:[51,51,51],fontStyle:"bold",fontSize:8},columnStyles:{0:{cellWidth:8},1:{cellWidth:142},2:{cellWidth:16,halign:"center"},3:{cellWidth:20,halign:"center"}},
@@ -1549,16 +1553,16 @@ var SNAP=null, DETAIL={};
     var y=y0+H+9;
     days.forEach(function(k,i){
       var jobs=all.filter(function(j){return onDay(j,k);}); if(!jobs.length) return;
-      var dayM3=jobs.reduce(function(t,j){return t+(cubeOf(j)||0);},0), dayKg=jobs.reduce(function(t,j){return t+kgOf(j);},0), advD=vehicleAdvice(dayM3,dayKg,vansOnRoad());
+      var dayM3=jobs.reduce(function(t,j){return t+(cubeOn(j)||0);},0), dayKg=jobs.reduce(function(t,j){return t+kgOn(j);},0), advD=vehicleAdvice(dayM3,dayKg,vansOnRoad());
       y=pdfDayBand(doc,y,niceDay(k),jobs.length+(jobs.length===1?" transport job":" transport jobs"));
       if(advD&&dayM3){ doc.setFontSize(9); doc.setFont("helvetica",advD.fitsOurs?"normal":"bold"); doc.setTextColor.apply(doc,advD.fitsOurs?[51,51,51]:PDF_RED); doc.text(doc.splitTextToSize("Whole day: "+fmtM3(dayM3)+(dayKg?", "+Math.round(dayKg)+" kg":"")+". Needs "+advD.text.charAt(0).toLowerCase()+advD.text.slice(1),273),12,y+2); y+=6; }
       var rows=[], styles={};
-      var groups=[]; TEAM.forEach(function(w){ var mine=jobs.filter(function(j){return j.who.indexOf(w)>=0;}); if(mine.length) groups.push({name:w,jobs:mine}); });
+      var groups=[], seenG={}; TEAM.forEach(function(w){ var mine=jobs.filter(function(j){return j.who.indexOf(w)>=0;}); if(!mine.length) return; var gk=mine.map(function(j){return j.id;}).sort().join("|"); if(seenG[gk]){ seenG[gk].names.push(w); if(DRIVERS.indexOf(seenG[gk].name)<0&&DRIVERS.indexOf(w)>=0) seenG[gk].name=w; return; } var g0={name:w,names:[w],jobs:mine}; seenG[gk]=g0; groups.push(g0); });
       var none=jobs.filter(function(j){return !j.who.length;}); if(none.length) groups.push({name:"Unassigned",jobs:none,unassigned:true});
       groups.forEach(function(g){ var placed=g.jobs.filter(function(j){return j.pt;}), lost=g.jobs.filter(function(j){return !j.pt;}); var stops=orderStops(placed.map(function(j){return {j:j,pt:j.pt};}));
-        var total=stops.reduce(function(t,x){return t+x.legMiles;},0)+(stops.length?stops[stops.length-1].backMiles:0), vanQ=g.jobs.reduce(function(t,j){return t+(cubeOf(j)||0);},0), kgQ=g.jobs.reduce(function(t,j){return t+kgOf(j);},0);
-        styles[rows.length]={section:true}; rows.push([(g.unassigned?g.name:g.name+(g.jobs.length>1?", delivery round":""))+(total?". "+total+" miles round trip":"")+(vanQ?". Van load "+fmtLoad(vanQ,kgQ):"")+(g.unassigned?"":(function(){ var vs=[]; g.jobs.forEach(function(x){ var vt=vehicleText(x); if(vt&&vs.indexOf(vt)<0) vs.push(vt); }); return vs.length?". "+vs.join(", "):""; })()),"","","","",""]);
-        stops.forEach(function(x,n){ rows.push([String(n+1),x.j.title+"\n"+(x.j.work?x.j.work+", ":"")+(x.j.movement||x.j.label||""),x.j.pc&&x.j.pc.indexOf("area:")!==0?x.j.pc:"area only",(x.j.mins!=null?fmt(x.j.mins):"not set")+(x.j.from?"\nafter "+x.j.from:"")+(x.j.by?"\nby "+x.j.by:""),(cubeOf(x.j)!=null?fmtM3(cubeOf(x.j)):"-")+(x.j.load&&x.j.load.rows.length?"\n"+x.j.load.rows.slice(0,2).map(function(y2){return qty(y2.n,y2.type);}).join(", "):""),x.legMiles+" mi"+(x.backMiles!=null?", "+x.backMiles+" back":"")]);
+        var total=stops.reduce(function(t,x){return t+x.legMiles;},0)+(stops.length?stops[stops.length-1].backMiles:0), vanQ=g.jobs.reduce(function(t,j){return t+(cubeOn(j)||0);},0), kgQ=g.jobs.reduce(function(t,j){return t+kgOn(j);},0);
+        styles[rows.length]={section:true}; rows.push([(g.unassigned?g.name:(g.names||[g.name]).join(", ")+(g.jobs.length>1?", delivery round":""))+(total?". "+total+" miles round trip":"")+(vanQ?". Van load "+fmtLoad(vanQ,kgQ):"")+(g.unassigned?"":(function(){ var vs=[]; g.jobs.forEach(function(x){ var vt=vehicleText(x); if(vt&&vs.indexOf(vt)<0) vs.push(vt); }); return vs.length?". "+vs.join(", "):""; })()),"","","","",""]);
+        stops.forEach(function(x,n){ rows.push([String(n+1),x.j.title+"\n"+(x.j.work?x.j.work+", ":"")+(x.j.movement||x.j.label||""),x.j.pc&&x.j.pc.indexOf("area:")!==0?x.j.pc:"area only",(x.j.mins!=null?fmt(x.j.mins):"not set")+(x.j.from?"\nafter "+x.j.from:"")+(x.j.by?"\nby "+x.j.by:""),(cubeOn(x.j)!=null?fmtM3(cubeOn(x.j))+(daysN(x.j)>1?" a day":""):"-")+(x.j.load&&x.j.load.rows.length?"\n"+x.j.load.rows.slice(0,2).map(function(y2){return qty(y2.n,y2.type);}).join(", "):""),x.legMiles+" mi"+(x.backMiles!=null?", "+x.backMiles+" back":"")]);
           var fl=siteFactsLine(x.j); styles[rows.length]={facts:true,blank:!fl}; rows.push([fl||"Contact: "+BLANK+"    Access: "+BLANK+"   (nothing on the card; fill in before the van leaves)","","","","",""]); });
         lost.forEach(function(j){ styles[rows.length]={need:true}; rows.push(["?",j.title+"\nNot on the plan: no postcode on the card",BLANK,j.mins!=null?fmt(j.mins):"not set",cubeOf(j)!=null?fmtM3(cubeOf(j)):"-",""]); });
         if(vanQ>VAN_M3||kgQ>VAN_KG){ var advW=vehicleAdvice(vanQ,kgQ,vansOnRoad()).text; styles[rows.length]={warn:true}; rows.push([(vanQ>VAN_M3?"Over one van by volume":"Over the payload by weight")+". Needs "+advW.charAt(0).toLowerCase()+advW.slice(1),"","","","",""]); }
