@@ -1,0 +1,217 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Scheduler guide</title>
+<style>
+  :root{ --bg:#f4f5f7; --card:#fff; --text:#172b4d; --muted:#5e6c84; --line:#c9d1dc; --blue:#0c66e4; --blue-bg:#e9f2ff; --red:#c9372c; --red-bg:#ffeceb; --green:#1f845a; --green-bg:#e3fcef; --amber:#974f0c; --amber-bg:#fff4e5; --navy:#1d3058; --purple:#6e5dc6 }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{margin:0;background:var(--bg);color:var(--text);font:17px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif}
+  a{color:var(--blue)}
+  .top{position:sticky;top:0;z-index:5;background:var(--card);border-bottom:1px solid var(--line);padding:12px 20px;display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+  .top h1{font-size:20px;margin:0;font-weight:800}
+  .top nav{display:flex;gap:6px;flex-wrap:wrap;margin-left:auto}
+  .top nav a{text-decoration:none;color:var(--text);background:var(--bg);border-radius:6px;padding:5px 10px;font-size:14px;font-weight:600}
+  .top nav a:hover{background:var(--blue-bg);color:var(--blue)}
+  .top .back{text-decoration:none;color:var(--blue);font-weight:700;font-size:14px}
+  main{max-width:900px;margin:0 auto;padding:28px 20px 80px}
+  section{margin:0 0 56px}
+  h2{font-size:30px;line-height:1.2;margin:0 0 6px;font-weight:800}
+  h2 small{display:block;font-size:15px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px}
+  h3{font-size:20px;margin:26px 0 8px;font-weight:800}
+  p{margin:0 0 14px;max-width:68ch}
+  .lead{font-size:20px;color:var(--text);max-width:60ch}
+  ul{padding-left:22px;max-width:68ch} li{margin:0 0 8px}
+  .box{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:18px 20px;margin:14px 0}
+  .box.tip{border-left:6px solid var(--blue)} .box.warn{border-left:6px solid var(--red)}
+  .box b.k{display:block;font-size:13px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);margin-bottom:6px}
+  .steps{counter-reset:s;display:grid;gap:12px;margin:14px 0}
+  .step{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px 18px 16px 70px;position:relative;min-height:70px}
+  .step::before{counter-increment:s;content:counter(s);position:absolute;left:16px;top:14px;width:40px;height:40px;border-radius:50%;background:var(--navy);color:#fff;font-weight:800;font-size:20px;display:flex;align-items:center;justify-content:center}
+  .step b{display:block;font-size:18px;margin-bottom:4px}
+  .step p{margin:0}
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:12px;margin:14px 0}
+  .kind{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px 18px;border-left:8px solid var(--blue)}
+  .kind b{display:block;font-size:19px;margin-bottom:4px}
+  .kind p{margin:0;font-size:15px;color:var(--muted)}
+  .mock{background:var(--card);border:1px solid var(--line);border-radius:8px;box-shadow:0 1px 2px rgba(9,30,66,.2);max-width:340px;margin:12px 0}
+  .mock .mid{padding:10px 12px 8px} .mock .ttl{font-weight:700;font-size:16px;display:block} .mock .for{display:block;font-size:13px;color:var(--muted);margin-top:3px;font-weight:500} .mock .ctx{color:var(--text);font-weight:600}
+  .mock .foot{padding:6px 12px 8px;border-top:1px solid var(--line);background:rgba(9,30,66,.04);display:flex;gap:6px;flex-wrap:wrap}
+  .bdg{font-size:12px;font-weight:600;border-radius:4px;padding:2px 8px;background:#eef0f3;color:var(--muted)}
+  .bdg.todo{background:var(--amber-bg);color:var(--amber)} .bdg.now{background:var(--red-bg);color:var(--red)}
+  .callout{display:grid;grid-template-columns:auto 1fr;gap:10px 14px;align-items:start;margin:8px 0}
+  .callout .n{width:28px;height:28px;border-radius:50%;background:var(--blue);color:#fff;font-weight:800;display:flex;align-items:center;justify-content:center;font-size:14px}
+  .callout p{margin:0 0 4px}
+  table{border-collapse:collapse;width:100%;background:var(--card);border:1px solid var(--line);border-radius:12px;overflow:hidden;font-size:16px}
+  th,td{text-align:left;padding:12px 14px;border-bottom:1px solid var(--line);vertical-align:top}
+  th{background:#eef0f3;font-size:13px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted)}
+  tr:last-child td{border-bottom:0}
+  td:first-child{white-space:nowrap;font-weight:700}
+  .strip{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:12px 0}
+  .strip div{background:var(--card);border:2px solid #3d4451;border-radius:10px;padding:8px 12px} .strip small{display:block;font-size:12px;color:var(--muted);font-weight:700} .strip b{font-size:22px;font-weight:800} .strip b.bad{color:var(--red)}
+  .rail{background:var(--card);border-left:5px solid var(--red);border-radius:6px;padding:8px 10px;font-size:13px;max-width:320px;margin:10px 0;box-shadow:0 1px 3px rgba(9,30,66,.15)}
+  .rail.amber{border-left-color:#e08a00} .rail b{display:block} .rail span{color:var(--muted)}
+  .words dt{font-weight:800;font-size:18px;margin-top:16px} .words dd{margin:2px 0 0;max-width:68ch}
+  .kbd{display:inline-block;border:1px solid var(--line);border-radius:6px;padding:1px 8px;background:var(--card);font-weight:700;font-size:15px}
+  @media (max-width:700px){ .strip{grid-template-columns:repeat(2,1fr)} h2{font-size:26px} body{font-size:16px} }
+  @media print{ .top{position:static} body{background:#fff} section{break-inside:avoid} }
+</style>
+</head>
+<body>
+<div class="top">
+  <h1>Scheduler guide</h1>
+  <nav>
+    <a href="#what">What it is</a><a href="#kinds">Three kinds of work</a><a href="#morning">Your morning</a><a href="#job">Planning a job</a><a href="#words">What the words mean</a><a href="#rules">The rules it checks</a><a href="#views">The other views</a><a href="#trello">Cards and Trello</a><a href="#help">If you see</a>
+  </nav>
+  <a class="back" href="javascript:history.back()">Back to the Scheduler</a>
+</div>
+<main>
+
+<section id="what">
+  <h2><small>Start here</small>What the Scheduler is</h2>
+  <p class="lead">The Scheduler is the one place that shows who is doing what, on which day, in which van. It reads the jobs from the Trello board and you add the plan: the operatives, the time and the van.</p>
+  <p>Nothing you do here changes the Trello card itself. The plan is saved on the card in the background, so anyone who opens the Scheduler sees the same plan.</p>
+  <div class="box tip"><b class="k">The one rule</b>A job is planned when it has operatives, a time, and, for transport, travel time and a van. Until then it is red or amber and the Scheduler keeps showing it to you.</div>
+</section>
+
+<section id="kinds">
+  <h2><small>The board</small>Three kinds of work</h2>
+  <p>Every day is split into three columns. A job can appear in more than one, because a delivery is prepared in the workshop first.</p>
+  <div class="grid">
+    <div class="kind" style="border-left-color:#0055cc"><b>Production</b><p>Work in the workshop before a job goes out. Cleaning, refurbishing, building. It has its own dates and its own operatives.</p></div>
+    <div class="kind" style="border-left-color:#1f845a"><b>Transport</b><p>Anything with a van: deliveries, collections, site visits, clearances. It needs a driver, travel time and a van.</p></div>
+    <div class="kind" style="border-left-color:#44546f"><b>Yard Operations</b><p>Work at our yard: recycling loads in, skips, stock in, a customer collecting. It needs operatives and a time, no van.</p></div>
+  </div>
+  <h3>A job card</h3>
+  <div class="mock" style="border-left:6px solid #1f845a">
+    <div class="mid"><span class="ttl">Skipton - Example Solicitors</span><span class="for ctx">Resale, Delivery · Bart · FX75</span><span class="for">Arrive after 10:00, finish by 15:00</span></div>
+    <div class="foot"><span class="bdg">2h 55m travel + 1h</span></div>
+  </div>
+  <div class="callout"><span class="n">1</span><p>The coloured edge is the type of work. Green is Resale, olive is Clearance, blue is Production, teal is Recycling.</p></div>
+  <div class="callout"><span class="n">2</span><p>The bold line under the title says what it is, who is on it and which van.</p></div>
+  <div class="callout"><span class="n">3</span><p>The strip at the bottom is the status. Grey means planned. Amber means something is missing. Red means a rule is broken.</p></div>
+  <div class="mock" style="border-left:6px solid #1f845a">
+    <div class="mid"><span class="ttl">Blackpool - Example Co</span><span class="for ctx">Clearance, Collection</span></div>
+    <div class="foot"><span class="bdg todo">Unassigned</span></div>
+  </div>
+  <p>This one has nobody on it yet. Press the card to plan it.</p>
+</section>
+
+<section id="morning">
+  <h2><small>The routine</small>Your morning in five steps</h2>
+  <div class="steps">
+    <div class="step"><b>Open the week</b><p>The Scheduler opens on the current week. Today is outlined in blue.</p></div>
+    <div class="step"><b>Read the four numbers at the top</b><p>To plan, Warnings, Vans on the road, Hours planned. If To plan is red there is work to do.</p></div>
+    <div class="step"><b>Work down the right-hand column</b><p>"Needs a decision" lists every warning and every unplanned job for the week, in day order. Press one and the job opens.</p></div>
+    <div class="step"><b>Plan the job</b><p>Operatives, van, travel, time window, time. Press Plan it to let the Scheduler fill it in from the items on the card, then change what you know better.</p></div>
+    <div class="step"><b>Press Done</b><p>The plan is saved on the card. The column shrinks. When the right-hand column says "Nothing needs a decision this week", the week is planned.</p></div>
+  </div>
+  <div class="strip">
+    <div><small>To plan this week</small><b class="bad">7</b></div><div><small>Warnings this week</small><b>2</b></div><div><small>Vans on the road</small><b>1 of 2</b></div><div><small>Hours planned</small><b>112h of 194h</b></div>
+  </div>
+  <p>Press To plan to hide everything already planned, so only the gaps show. Press it again to see the full week.</p>
+  <div class="rail"><b>Mon 14 · Manchester</b><span>Manchester finishes about 15:00, after the 12:00 cut-off. Move it earlier in the day or to another day.</span></div>
+  <div class="rail amber"><b>Tue 15 · Skipton</b><span>Delivery, no operatives, no site time, no van.</span></div>
+  <p>Red is a rule broken. Amber is something still to do.</p>
+</section>
+
+<section id="job">
+  <h2><small>The card back</small>Planning a job</h2>
+  <p>Press any card and it opens. The left side is the facts from Trello: where, the items, the contact. The right side is the plan. Work down it in order.</p>
+  <h3>Operatives</h3>
+  <p>Press a name to put them on the job. Under each name is what they already have that day. "Driver" marks Rob, Jack and Bart. Every transport job needs one of them.</p>
+  <h3>Plan it</h3>
+  <p>The Scheduler works out the standard crew and time from the items on the card: 30 minutes a swivel chair start to finish, 45 for a desk, and so on. Press Plan it and it picks the fewest operatives who can finish in time and sets the time. You can change anything after.</p>
+  <h3>Carried Out By</h3>
+  <p>Transport only. Our operatives by default. Choose a subcontractor or courier when they do the job with their own vehicle. Then the job needs no van or driver from us.</p>
+  <h3>Vehicle</h3>
+  <p>FX75 BKG, FX73 CWF, or Hire. A van marked off the road is struck through. If the load needs more than a Luton the box says so. Choose Hire, type the supplier and reference, and tick Booked once they confirm. It nags from five working days out until you do.</p>
+  <h3>Travel Time</h3>
+  <p>Return travel, worked out from the postcode plus a fifth for traffic. Overtype it if you know better.</p>
+  <h3>Time Window</h3>
+  <p>When the site can take us. "Arrive after" is the earliest they will let us in. "Finish by" is when the loading bay or building shuts. Leave both blank when any time in the day is fine. The Scheduler then shows the plan in words: leave the yard 8:00, arrive 10:40, back at the yard 14:40.</p>
+  <h3>Van Load</h3>
+  <p>The items on the card added up in cubic metres and kilos against the van. If an item on the card cannot be matched, the load says so and gives no estimate rather than a wrong one. Remove wrong lines with the cross, or add items by hand.</p>
+  <h3>Time</h3>
+  <p>Time per operative on site or in the workshop. Use a quick button or type hours and minutes. "Above standard" appears when the time or crew is more than the items justify. It is not wrong, it should be a decision.</p>
+  <div class="box tip"><b class="k">Two dates on a delivery</b>A delivery has a production due date as well as its delivery date. The Scheduler sets it two working days before delivery. Production days are set on the Production card, not the delivery card.</div>
+</section>
+
+<section id="words">
+  <h2><small>Glossary</small>What the words mean</h2>
+  <dl class="words">
+    <dt>Unassigned</dt><dd>Nobody is on the job yet.</dd>
+    <dt>No site time, No production time, No travel time, No van</dt><dd>What is still missing. The job stays in To plan until each one is set.</dd>
+    <dt>Not QC'd</dt><dd>The workshop has not passed the job for delivery. It shows on the delivery card so you do not send a van for something that is not ready.</dd>
+    <dt>Above standard</dt><dd>More people or more time than the items on the card need. Check it is deliberate.</dd>
+    <dt>Delivery Round</dt><dd>Two or more transport jobs by one operative on the same day, in one trip. One travel time for the round, then each job's site time. Press the round card to change the travel.</dd>
+    <dt>Held for sales</dt><dd>A striped card. Sales have asked to hold a date but the customer has not confirmed. It counts against the day so you do not overbook, and it drops off on the date shown if not confirmed. You cannot plan it.</dd>
+    <dt>Hire not booked</dt><dd>The job needs a hired vehicle and nobody has ticked Booked yet.</dd>
+    <dt>Recycling</dt><dd>Every hour of a working day not allocated to a job. The Scheduler shows it per operative per day and for the week. It is planned work, not spare time.</dd>
+    <dt>Standard</dt><dd>The crew and time the items justify. Production: 30 minutes a swivel chair, 10 clean only, 15 storage, 45 a desk. Picking: 15 minutes plus 2 an item.</dd>
+    <dt>Working day</dt><dd>8:00 to 4:30 with half an hour for lunch. 7 hours 45 minutes a day, 38 hours 45 minutes a week.</dd>
+  </dl>
+</section>
+
+<section id="rules">
+  <h2><small>Guardrails</small>The rules it checks for you</h2>
+  <table>
+    <tr><th>Rule</th><th>What you see</th></tr>
+    <tr><td>Drivers</td><td>Only Rob, Jack and Bart drive. A transport job with none of them on it gets a warning.</td></tr>
+    <tr><td>One van, one driver</td><td>The same van on two drivers' jobs on one day is flagged. So is a van that is off the road but still on a job.</td></tr>
+    <tr><td>Van load</td><td>A day or a round over 18.7 cubic metres or 1,000 kg says what vehicle it needs instead, up to a 26 tonne. Never an artic to a site.</td></tr>
+    <tr><td>City centres</td><td>Manchester, Leeds, Liverpool and the like cap at 18 tonne and need a parking suspension. The vehicle advice says so.</td></tr>
+    <tr><td>Time windows</td><td>A job that cannot finish by its cut-off, or an operative arriving early and waiting, is flagged with the times.</td></tr>
+    <tr><td>Driver hours</td><td>Over 4 hours 30 minutes driving in a day needs a 45 minute break. A driver's day over 11 hours from 8:00 is flagged.</td></tr>
+    <tr><td>Over capacity</td><td>An operative with more than 7 hours 45 minutes on a day shows red in Operative Hours.</td></tr>
+    <tr><td>If every hold lands</td><td>A day that would be over if the held dates all confirm is flagged so sales can be warned before they promise it.</td></tr>
+    <tr><td>Hire lead time</td><td>An unbooked hire within five working days is flagged every day until ticked.</td></tr>
+  </table>
+</section>
+
+<section id="views">
+  <h2><small>Around the Scheduler</small>The other views</h2>
+  <h3>Day</h3>
+  <p>One day in full: the three columns and every operative's day with what they are on and when a driver is back at the yard.</p>
+  <h3>Month</h3>
+  <p>A pill per day: how many production, transport and yard jobs, leave, and "Over if holds land". Press a day to open it. With To plan on, it shows only the days with gaps.</p>
+  <h3>Routes</h3>
+  <p>The week's transport on a map, one colour per day, drawn as rounds from the yard. Below it, each day's rounds with miles, van load and the vehicle advice. Mark a van off the road here. Combine Trips finds jobs booked for later near a stop already going out this week.</p>
+  <h3>Manager</h3>
+  <p>Behind a PIN. Every job with time allocated against its standard, so you can see where time is going.</p>
+  <h3>Download schedule and Download routes</h3>
+  <p>The download button builds a PDF. On the day, week or month views it is the schedule as a fill-in form: red blanks for anything missing, to be filled in and brought back. On the Routes view it is the map on page one and the stops per day after it, for the driver to take.</p>
+</section>
+
+<section id="trello">
+  <h2><small>Where the jobs come from</small>Cards and Trello</h2>
+  <ul>
+    <li>Every card on the Jobs Planning Board with a due date is a job. The due date is the day it happens.</li>
+    <li>The labels say what kind of work it is: one for the service (Resale, Clearance, Recycling, Buyback, Donation, Warranty) and one for the movement (Delivery, Collection, Site Visit, Customer Collects, Yard, and so on).</li>
+    <li>The items list on the card is what the van load and the standards are worked out from. "10 x Mesh Swivel Chair" is read. "Some chairs" is not.</li>
+    <li>A time in the card title, such as "After 13:00 - Example Upholstery", is read into the time window and removed from the name.</li>
+    <li>Annual leave and bank holidays come from the Holidays and Leave list.</li>
+    <li>Moving a card to a workshop list changes its stage here: Not Started, In progress, Ready.</li>
+  </ul>
+  <div class="box warn"><b class="k">What the Scheduler does not do</b>It does not move cards, change due dates or write labels. Do that on Trello. It does not know about sickness on the day: move the jobs by hand and the hours follow.</div>
+</section>
+
+<section id="help">
+  <h2><small>Quick answers</small>If you see...</h2>
+  <table>
+    <tr><th>You see</th><th>What to do</th></tr>
+    <tr><td>A job is missing</td><td>Check the card has a due date and is on the Jobs Planning Board. Cards without a date do not show.</td></tr>
+    <tr><td>No van load</td><td>The card has no items list, or a line could not be matched. Open the job, look at Van Load, remove the wrong line or add the items by hand.</td></tr>
+    <tr><td>No travel time</td><td>No postcode was found on the card. Type the return time in.</td></tr>
+    <tr><td>Nobody is free</td><td>Under each name in Operatives is their day. Look at the Operative Hours block for who has room, or move the job to another day.</td></tr>
+    <tr><td>Needs a 7.5 tonne</td><td>Choose Hire on the job, book it, put the reference in and tick Booked.</td></tr>
+    <tr><td>A striped card</td><td>A date held for sales. Nothing to plan. It confirms on the deal in the CRM, and then it becomes a normal card.</td></tr>
+    <tr><td>The Scheduler looks old</td><td>Close it and open it again. Updates take about ten minutes to reach it.</td></tr>
+  </table>
+</section>
+
+</main>
+</body>
+</html>

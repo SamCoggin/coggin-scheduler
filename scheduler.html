@@ -337,7 +337,7 @@
   <h1>Scheduler</h1>
   <span class="src" id="src"></span>
   <span class="views"><button id="vday">Day</button><button id="vweek" class="on">Week</button><button id="vmonth">Month</button><button id="vroutes">Routes</button><button id="vmanager">Manager</button></span>
-  <button id="need" title="Show only the jobs still missing operatives, time or travel">To plan</button><button id="prev">Back</button><span class="t" id="title"></span><button id="next">Next</button><button id="pdf" title="Download as a PDF file">Download PDF</button><button id="print" title="Print">Print</button>
+  <button id="need" title="Show only the jobs still missing operatives, time or travel">To plan</button><button id="prev">Back</button><span class="t" id="title"></span><button id="next">Next</button><button id="pdf" title="Download as a PDF file">Download schedule</button><button id="guide" title="How to use the Scheduler">Guide</button>
 </div>
 <div class="strip" id="strip" hidden></div>
 <div class="board" id="board"></div>
@@ -1394,7 +1394,7 @@ var SNAP=null, DETAIL={};
   function render(){
     persist();
     $("#pdf").onclick=function(){ try{ if(view==="routes") routesPdf(); else schedulePdf(); }catch(e){ alert("The PDF could not be built: "+(e&&e.message||e)); } };
-    $("#print").onclick=function(){ if(view==="routes") buildRoutesSheet(); else buildPrintSheet(); window.print(); };
+    $("#pdf").textContent=view==="routes"?"Download routes":"Download schedule"; $("#guide").onclick=function(){ location.href="./guide.html"; };
     $("#need").hidden=(view==="week"); $("#need").className=NEED?"on":""; var nTP=toPlanCount(); $("#need").textContent=(NEED?"To plan: on":"To plan")+(nTP?" ("+nTP+")":""); $("#need").title=nTP?nTP+(nTP===1?" job still needs":" jobs still need")+" operatives, time, travel or a van on the "+(view==="day"?"day":view==="month"?"month":"week")+" in view":"Everything in view is planned"; $("#need").onclick=function(){ NEED=!NEED; try{ localStorage.setItem("cg-need",NEED?"1":"0"); }catch(e){} render(); };
     document.body.onclick=function(){ if(tipOpen){ tipOpen=null; render(); } };
     $("#vday").className=view==="day"?"on":""; $("#vweek").className=view==="week"?"on":""; $("#vmonth").className=view==="month"?"on":""; $("#vroutes").className=view==="routes"?"on":""; $("#vroutes").onclick=function(){view="routes";render();}; $("#vmanager").className=view==="manager"?"on":""; $("#vmanager").onclick=function(){view="manager";render();};
