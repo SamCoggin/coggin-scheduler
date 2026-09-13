@@ -232,3 +232,27 @@ function pickCrew(n,loadByName,needDriver,exclude){
   names.forEach(function(w){ if(out.length<n && out.indexOf(w)<0) out.push(w); });
   return out;
 }
+
+// ── vehicle classes, for advising what a load needs. box volume and typical payload, UK hire trade figures ──
+// licence: B = car licence (up to 3.5t), C1 = 7.5t (only drivers who passed before 1997 have it), C = rigid HGV, CE = artic
+var VEHICLE_CLASSES=[
+  {t:"SWB panel van",    m3:8,  kg:1000,  licence:"B",  note:"small drop, no tail lift"},
+  {t:"LWB panel van",    m3:13, kg:1000,  licence:"B",  note:"no tail lift"},
+  {t:"3.5 tonne Luton",  m3:VAN_M3, kg:VAN_KG, licence:"B", note:"our vans"},
+  {t:"7.5 tonne box",    m3:32, kg:2600,  licence:"C1", note:"tail lift; hire with a driver unless someone holds C1"},
+  {t:"12 tonne box",     m3:40, kg:6000,  licence:"C",  note:"haulier with driver; check site access and parking"},
+  {t:"18 tonne box",     m3:55, kg:9500,  licence:"C",  note:"haulier with driver; needs a proper loading bay or wide access"},
+  {t:"26 tonne box",     m3:65, kg:15000, licence:"C",  note:"haulier with driver; large site access only"},
+  {t:"Artic, 13.6 m",    m3:85, kg:26000, licence:"CE", note:"haulier; dock or yard access, not for most offices"}
+];
+// what a load needs: our Lutons first, then the smallest hired class that takes it in one
+function vehicleAdvice(m3,kg,lutonsOnRoad){
+  if(m3==null) return null; kg=kg||0;
+  var lutons=Math.max(Math.ceil(m3/VAN_M3),Math.ceil(kg/VAN_KG),1), on=lutonsOnRoad==null?2:lutonsOnRoad;
+  var hire=VEHICLE_CLASSES.filter(function(v){return v.licence!=="B"&&v.m3>=m3&&v.kg>=kg;})[0];
+  var out={lutons:lutons,fitsOurs:lutons<=on,hire:hire};
+  if(lutons===1) out.text="One Luton.";
+  else if(lutons<=on) out.text=lutons+" Lutons"+(hire?", or one "+hire.t+" ("+hire.note+")":"")+".";
+  else out.text=lutons+" Luton trips"+(on<lutons?" with "+on+" on the road":"")+(hire?", or one "+hire.t+" ("+hire.note+")":"")+".";
+  return out;
+}
