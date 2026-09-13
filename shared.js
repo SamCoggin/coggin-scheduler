@@ -18,22 +18,23 @@ var LOAD=[
   {t:"Meeting chair, stacking", min:1, re:/stack/i, m3:0.10, kg:8},
   {t:"Meeting chair", min:2,    re:/meeting chair|tub chair|cantilever|visitor chair|conference chair|dining chair|breakout chair/i, m3:0.40, kg:10},
   {t:"Stool", min:2,            re:/stool/i, m3:0.15, kg:6},
-  {t:"Sit-stand desk", min:20,   re:/sit.?stand|height adjust|electric desk|rise/i, m3:0.30, kg:60, built:1.10, est:true},
-  {t:"Bench desk position", min:20, re:/bench/i, m3:0.30, kg:30, est:true},
-  {t:"Desk", min:15,             re:/desk(?!\s*(screen|divider|mounted|pedestal|drawer))|workstation/i, m3:0.25, kg:35, built:0.90, w:1600},
-  {t:"Meeting table", min:15,    re:/meeting table|boardroom|conference table|table \d{4}/i, m3:1.20, kg:50, w:1800},
+  {t:"Sit-stand desk", two:true, min:20,   re:/sit.?stand|height adjust|electric desk|rise/i, m3:0.30, kg:60, built:1.10, est:true},
+  {t:"Bench desk position", two:true, min:20, re:/bench/i, m3:0.30, kg:30, est:true},
+  {t:"Desk", two:true, min:15,             re:/desk(?!\s*(screen|divider|mounted|pedestal|drawer))|workstation/i, m3:0.25, kg:35, built:0.90, w:1600},
+  {t:"Meeting table", two:true, min:15,    re:/meeting table|boardroom|conference table|table \d{4}/i, m3:1.20, kg:50, w:1800},
   {t:"Folding table", min:4,    re:/folding|flip.?top/i, m3:0.15, kg:20},
   {t:"Coffee table", min:4,     re:/coffee table|side table|occasional/i, m3:0.30, kg:15},
   {t:"Pedestal", min:3,         re:/pedestal|desk drawer|drawer unit|mobile drawer/i, m3:0.25, kg:20},
-  {t:"Filing cabinet", min:5,   re:/filing cab|filer/i, m3:0.50, kg:35},
-  {t:"Cupboard or tambour", min:8, re:/cupboard|tambour|wardrobe|storage unit|bookcase|shelving/i, m3:0.80, kg:60},
-  {t:"Locker", min:5,           re:/locker/i, m3:0.60, kg:40, est:true},
+  {t:"Filing cabinet", two:true, min:5,   re:/filing cab|filer/i, m3:0.50, kg:35},
+  {t:"Cupboard or tambour", two:true, min:8, re:/cupboard|tambour|wardrobe|storage unit|bookcase|shelving/i, m3:0.80, kg:60},
+  {t:"Locker", two:true, min:5,           re:/locker/i, m3:0.60, kg:40, est:true},
   {t:"Screen divider", min:4,   re:/screen|divider|partition/i, m3:0.05, kg:5},
   {t:"Armchair", min:4,         re:/armchair|arm chair|lounge chair|easy chair/i, m3:0.60, kg:20, est:true},
-  {t:"Sofa", min:8,             re:/sofa|settee|couch|modular/i, m3:1.80, kg:45, est:true},
-  {t:"Booth", min:30,            re:/booth|high.?back/i, m3:3.00, kg:90, est:true},
-  {t:"Pod", min:240,              re:/\bpod\b/i, m3:17, kg:400, est:true}
+  {t:"Sofa", two:true, min:8,             re:/sofa|settee|couch|modular/i, m3:1.80, kg:45, est:true},
+  {t:"Booth", two:true, min:30,            re:/booth|high.?back/i, m3:3.00, kg:90, est:true},
+  {t:"Pod", two:true, min:240,              re:/\bpod\b/i, m3:17, kg:400, est:true}
 ];
+// two = needs two operatives to carry safely
 // min = handling minutes per item on site for a two person crew (carry in, place, assemble a flat desk); built desks carry in only
 // "4 x Desk 1600 (built)" -> {n:4, type, m3, kg}
 function matchLoad(line){
@@ -44,7 +45,7 @@ function matchLoad(line){
   var built=/\bbuilt\b|assembled|made up/i.test(name), each=row.built&&built?row.built:row.m3;
   if(row.w){ var wm=/\b(\d{3,4})\s*(?:x|mm|\b)/i.exec(name); if(wm){ var w=parseInt(wm[1],10); if(w>=600&&w<=4000) each=each*w/row.w; } }
   var hm=row.min||0; if(row.t==="Desk"&&built) hm=6; if(row.t==="Sit-stand desk"&&built) hm=8;
-  return {n:n,name:name,type:row.t,built:built,m3:Math.round(each*n*100)/100,kg:row.kg*n,min:hm*n,est:!!row.est};
+  return {n:n,name:name,type:row.t,two:!!row.two,built:built,m3:Math.round(each*n*100)/100,kg:row.kg*n,min:hm*n,est:!!row.est};
 }
 function loadOf(items){
   var out={m3:0,kg:0,rows:[],unmatched:[]};
@@ -169,10 +170,14 @@ function standardFor(label,load){
   if(!st) return null;
   if(st.mins!=null) return {crew:st.crew,mins:st.mins,why:"A "+label.toLowerCase()+" is a set "+fmt(st.mins)+" for "+st.crew+(st.crew===1?" operative":" operatives")+", whatever is on the card"};
   if(!load||!load.complete) return {crew:st.crew,mins:null,why:"The time comes from the items on the card, so add them first"};
-  var crew=st.crew, big=load.m3>12||load.rows.some(function(r){return r.type==="Booth"||r.type==="Pod";}); if(big) crew+=1;
+  var crew=st.crew, big=load.m3>12||load.rows.some(function(r){return r.type==="Booth"||r.type==="Pod";});
+  var twoHanded=load.rows.some(function(r){return r.two;}), small=load.m3<3&&!twoHanded;
+  if(small) crew=1; if(big) crew+=1;
   var total=st.base+load.min, each=Math.ceil(total/crew/5)*5;
   var what=load.rows.map(function(r){return r.n+" "+r.type.toLowerCase()+(r.n>1?"s":"");}).join(", ");
-  return {crew:crew,mins:Math.max(15,each),why:st.base+" minutes for parking, the contact and the sign off, plus "+load.min+" minutes to carry in and place "+what+". Shared between "+crew+" operatives that is "+Math.max(15,each)+" minutes each"+(big?". One extra operative because the load is big":"")};
+  var why=st.base+" minutes for parking, the contact and the sign off, plus "+load.min+" minutes to carry in and place "+what+".";
+  why+=crew===1?" One operative can manage that alone, so "+Math.max(15,each)+" minutes.":" Shared between "+crew+" operatives that is "+Math.max(15,each)+" minutes each"+(big?". One extra operative because the load is big":(twoHanded?". Two because some items need two to carry":""))+".";
+  return {crew:crew,mins:Math.max(15,each),why:why};
 }
 // allocated against standard: an amber flag when the crew or the time is well over
 function aboveStandard(std,who,mins){
