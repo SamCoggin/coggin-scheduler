@@ -845,7 +845,7 @@ var SNAP=null, DETAIL={};
     van:"The load worked out from the items on the card, in cubic metres and kilos, against a "+VAN_M3+" cubic metre Luton and its payload. Overtype it if the yard knows better. Two Lutons on the fleet; a van off the road is marked in the Routes view and extra vans are hired in.",
     routes:"Combine Trips finds jobs booked for later that are near a stop already going out this week, and says what it takes to put them on the same van. Below it, where the week's transport jobs are. Each round is drawn from the yard in its day's colour. Nearby jobs on other days could join a round if there is room in the van and production is done.",
     vehicle:"Which van goes. Our two Lutons, or a hire when the load needs more than a Luton or both vans are out. A hire is a job in itself: put the supplier and reference on it and tick Booked, and it nags from five working days out until you do.",
-    window:"When the site can take us. Arrive after is the earliest they will let us in; finish by is when the loading bay, lift or building shuts. The day is worked out from an 8:00 start, and a job that misses its window is flagged in red.",
+    window:"When the site can take us. Arrive after is the earliest they will let us in. Finish by is when the loading bay, lift or building shuts. The day is worked out from an 8:00 start, and a job that misses its window is flagged in red.",
     drive:"Return travel time, calculated from the site postcode plus 20 percent for traffic. Overtype if you know better.",
     time:"Labour time per operative. Use the quick options or enter hours and minutes."
   };
@@ -853,9 +853,8 @@ var SNAP=null, DETAIL={};
   function tip(key,inst){
     var id=key+(inst?"|"+inst:"");
     var b=el("button","tip","?"); b.setAttribute("aria-label","What is this"); b.title=TIPS[key];
-    b.onclick=function(e){ e.stopPropagation(); tipOpen=tipOpen===id?null:id; render(); };
+    b.onclick=function(e){ e.stopPropagation(); };   // hover shows the tip; a press does nothing
     var w=el("span","tipw"); w.appendChild(b);
-    if(tipOpen===id){ var pop=el("span","tipp",TIPS[key]); w.appendChild(pop); }
     return w;
   }
   function cardEl(j,k,isPrep,isToday){
