@@ -198,6 +198,7 @@
   .tw label{display:flex;flex-direction:column;gap:4px;font-weight:600;font-size:13px}
   .tw input{font:inherit;padding:6px 8px;border:1px solid var(--line);border-radius:6px}
   .offbtn{margin-left:8px;border:1px solid var(--line);background:var(--card);border-radius:6px;padding:2px 8px;font-size:12px;font-weight:700;color:var(--muted)}
+  .offwhy{margin-left:8px;font-size:12px;font-weight:700;color:var(--red)}
   .offbtn.on{background:var(--red-bg);color:var(--red);border-color:var(--red)}
   .prow li.warn{color:var(--red);font-weight:700}
   .daywarn{flex-shrink:0;margin:0 8px 6px;padding:8px 10px;border-radius:8px;background:var(--red);color:#fff;font-weight:800;font-size:13px}
@@ -896,7 +897,7 @@ var SNAP=null, DETAIL={};
     shop:"Production work: jobs being prepared in the workshop. Select a job to assign operatives, set production dates and allocate time per day.",
     road:"Transport: deliveries, installations, collections and site visits. Select a job for operatives, return travel time and site time. Two or more transport jobs for one operative on the same day form a delivery round.",
     yard:"Yard operations: inbound recycling loads, skip exchanges, stock deliveries and other on-site work. Select a job for operatives and time.",
-    leave:"Annual leave from the Holidays / Leave list on the board, bank holidays for England and Wales, and anyone marked Off today in the day view. Off today is for sickness, a course or a breakdown on the day: press it on the operative, say why, and their jobs are flagged to reassign.",
+    leave:"Annual leave from the Holidays / Leave list on the board, bank holidays for England and Wales, and anyone marked as off in the day view. Mark as off is for sickness, a course or a breakdown on the day: press it on the operative, say why, and their jobs are flagged to reassign.",
     people:"Each operative's allocation for the day. Green is available, red is over capacity.",
     tot:"Each operative's allocated hours for the day, against a 7 hour 45 minute working day (38 hours 45 minutes a week, Monday to Friday). Amber means a job has no time allocated yet. Red means over the day.",
     round:"A delivery round: several transport jobs by one operative in one trip. The travel is the real road time yard to each stop and back, from OpenStreetMap routing, plus 20 percent for traffic, once it has been looked up. Then each job's site time.",
@@ -1025,7 +1026,8 @@ var SNAP=null, DETAIL={};
     TEAM.forEach(function(w){
       var row=el("div","prow"); row.appendChild(el("span","av",ini(w))); var tx=el("div"); var nmb=el("b",null,w);
       var isOff=(OFF[k]||[]).indexOf(w)>=0, onLeaveCard=LEAVE.some(function(l){return l.date===k&&!l.off&&l.text.split(" ")[0]===w;});
-      if(!onLeaveCard){ var ob=el("button","offbtn"+(isOff?" on":""),isOff?"Back in":"Off today"); ob.onclick=function(){ if(isOff){ toggleOff(k,w); return; } var why=prompt(w+" is off on "+niceDay(k)+". Why? (sick, course, van breakdown)","sick"); if(why===null) return; toggleOff(k,w,why.trim()); }; nmb.appendChild(ob); }
+      if(!onLeaveCard){ var ob=el("button","offbtn"+(isOff?" on":""),isOff?"Back in":"Mark as off"); ob.title=isOff?"Put "+w+" back on the day":"Mark "+w+" as off for this day: sick, a course, a breakdown. It asks why.";
+      if(isOff&&OFF_WHY[k+"|"+w]) nmb.appendChild(el("span","offwhy","off, "+OFF_WHY[k+"|"+w])); ob.onclick=function(){ if(isOff){ toggleOff(k,w); return; } var why=prompt(w+" is off on "+niceDay(k)+". Why? (sick, course, van breakdown)","sick"); if(why===null) return; toggleOff(k,w,why.trim()); }; nmb.appendChild(ob); }
       tx.appendChild(nmb); tx.appendChild(el("span","ld "+load[w].c,load[w].t));
       var ul=el("ul");
       preps.filter(function(j){return j.prep.who.indexOf(w)>=0;}).forEach(function(j){ ul.appendChild(el("li",null,"Production: "+j.title+(j.prep.mins!=null?", "+fmt(j.prep.mins):""))); });
