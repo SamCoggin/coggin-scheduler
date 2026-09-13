@@ -493,7 +493,7 @@ var SNAP=null, DETAIL={};
     LEAVE=SNAP.cards.filter(function(c){return c.role==="leave"&&c.due;}).map(function(c){ return {date:c.due,text:c.name.replace(/\s*\(.*$/,"").replace(/BANK HOLIDAY\s*-\s*/i,"")+(/BANK HOLIDAY/i.test(c.name)?" (bank holiday)":" on leave")}; });
     // what was saved on the cards last time
     SNAP.cards.forEach(function(c){ var d=c.saved; if(!d) return; var j=JOBS.filter(function(x){return x.id===c.id;})[0]; if(!j) return;
-      if(d.who) j.who=d.who.slice(); if(d.cube!=null) j.cubeSet=d.cube; if(d.ignore&&d.ignore.length){ j.ignore=d.ignore.slice(); j.items=j.allItems.filter(function(l){return j.ignore.indexOf(l)<0;}); } if(d.items&&d.items.length){ j.manual=d.items.slice(); } j.load=loadOf(j.items.concat(j.manual)); if(d.mins!=null) j.mins=d.mins; if(d.drive!=null) j.drive=d.drive; if(d.contractor) j.contractor=d.contractor; if(d.from) j.from=d.from; if(d.by) j.by=d.by; if(d.vehicle) j.vehicle=d.vehicle; if(d.soloOk) j.soloOk=d.soloOk; if(d.qc&&d.qc.by) j.qc=d.qc; if(d.done&&d.done.status) j.done=(d.done.status==="no"&&d.date&&d.date!==j.date)?null:d.done;   // a did-not-go record clears once the card has a new date
+      if(d.who) j.who=d.who.slice(); if(d.cube!=null) j.cubeSet=d.cube; if(d.ignore&&d.ignore.length){ j.ignore=d.ignore.slice(); j.items=j.allItems.filter(function(l){return j.ignore.indexOf(l)<0;}); } if(d.items&&d.items.length){ j.manual=d.items.slice(); } j.load=loadOf(j.items.concat(j.manual)); if(d.mins!=null) j.mins=d.mins; if(d.drive!=null) j.drive=d.drive; if(d.driveAuto) j.driveAuto=true; if(d.contractor) j.contractor=d.contractor; if(d.from) j.from=d.from; if(d.by) j.by=d.by; if(d.vehicle) j.vehicle=d.vehicle; if(d.soloOk) j.soloOk=d.soloOk; if(d.qc&&d.qc.by) j.qc=d.qc; if(d.done&&d.done.status) j.done=(d.done.status==="no"&&d.date&&d.date!==j.date)?null:d.done;   // a did-not-go record clears once the card has a new date
       // DATE MOVED (Sam, 13 Sep 2026): the plan remembers the date it was made for. If sales move the card, the plan flags itself until someone presses Replanned.
       if(d.date&&d.date!==j.date&&((d.who&&d.who.length)||d.mins!=null||d.vehicle)) j.moved={from:d.date}; if(d.hireRef) j.hireRef=d.hireRef; if(d.hireBooked) j.hireBooked=true;
       if(d.prep&&j.prep){ j.prep.who=d.prep.who||[]; j.prep.mins=d.prep.mins; j.prep.start=d.prep.start||null; j.prep.date=d.prep.date||null; if(d.prep.done&&d.prep.done.status) j.prep.done=d.prep.done; }
@@ -548,7 +548,7 @@ var SNAP=null, DETAIL={};
   function persist(){
     if(!t) return;
     JOBS.forEach(function(j){
-      var d={date:j.moved?j.moved.from:j.date,who:j.who,mins:j.mins,drive:j.drive,cube:j.cubeSet,ignore:j.ignore&&j.ignore.length?j.ignore:undefined,items:j.manual&&j.manual.length?j.manual:undefined,load:j.load&&j.load.any?{m3:j.load.m3,kg:j.load.kg,complete:j.load.complete,rows:j.load.rows.map(function(r){return {n:r.n,type:r.type,m3:r.m3,kg:r.kg,built:r.built,est:r.est};}),unmatched:j.load.unmatched}:undefined,contractor:j.contractor||"",from:j.from||null,by:j.by||null,vehicle:j.vehicle||null,soloOk:j.soloOk||"",qc:j.qc||null,done:j.done||null,hireRef:j.hireRef||"",hireBooked:!!j.hireBooked,prodDue:j.prodDueSet?j.prodDue:null,prep:j.prep?{who:j.prep.who,mins:j.prep.mins,start:j.prep.start,date:j.prep.date,done:j.prep.done||null}:null,
+      var d={date:j.moved?j.moved.from:j.date,who:j.who,mins:j.mins,drive:j.drive,driveAuto:!!j.driveAuto,cube:j.cubeSet,ignore:j.ignore&&j.ignore.length?j.ignore:undefined,items:j.manual&&j.manual.length?j.manual:undefined,load:j.load&&j.load.any?{m3:j.load.m3,kg:j.load.kg,complete:j.load.complete,rows:j.load.rows.map(function(r){return {n:r.n,type:r.type,m3:r.m3,kg:r.kg,built:r.built,est:r.est};}),unmatched:j.load.unmatched}:undefined,contractor:j.contractor||"",from:j.from||null,by:j.by||null,vehicle:j.vehicle||null,soloOk:j.soloOk||"",qc:j.qc||null,done:j.done||null,hireRef:j.hireRef||"",hireBooked:!!j.hireBooked,prodDue:j.prodDueSet?j.prodDue:null,prep:j.prep?{who:j.prep.who,mins:j.prep.mins,start:j.prep.start,date:j.prep.date,done:j.prep.done||null}:null,
         legs:LEGS.filter(function(L){return L.parent===j.id;}).map(function(L){return {type:L.type,date:L.date,who:L.who,mins:L.mins,drive:L.drive,where:L.where};})};
       var js=JSON.stringify(d); if(lastSaved[j.id]===js) return; lastSaved[j.id]=js; t.set(j.id,"shared","sched",d);
     });
@@ -718,7 +718,7 @@ var SNAP=null, DETAIL={};
     TEAM.forEach(function(w){ var on=part.who.indexOf(w)>=0; var row=el("button","prow2"+(on?" on":"")+(load[w].c==="off"?" off":"")); row.setAttribute("aria-pressed",on?"true":"false");
       row.appendChild(el("span","av",ini(w))); var nm=el("span","nm",w); if(!o.shop&&j.site&&DRIVERS.indexOf(w)>=0) nm.appendChild(el("i","drv","driver")); row.appendChild(nm); row.appendChild(el("span","ld "+load[w].c,load[w].t)); row.appendChild(el("span","tick",on?"Assigned":"Assign"));
       row.onclick=function(){ var i=part.who.indexOf(w); if(i<0) part.who.push(w); else part.who.splice(i,1); render(); }; pl.appendChild(row); });
-    var setMins=function(v){ part.mins=v; if(part.leg) part.leg.mins=v; }, setDrive=function(v){ part.drive=v; if(part.leg) part.leg.drive=v; };
+    var setMins=function(v){ part.mins=v; if(part.leg) part.leg.mins=v; }, setDrive=function(v){ part.drive=v; part.driveAuto=false; if(part.leg) part.leg.drive=v; };
     wb.appendChild(pl);
     var freeOnes=TEAM.filter(function(w){return load[w].c==="free"&&part.who.indexOf(w)<0;});
     wb.appendChild(el("div","hint",freeOnes.length?"Available "+shortDay(dayK)+": "+freeOnes.join(", ")+".":"No operatives available on "+shortDay(dayK)+"."));
@@ -773,7 +773,7 @@ var SNAP=null, DETAIL={};
         var qrow=el("div","row"); var qname=el("select"); TEAM.concat(["Sam","Ash"]).forEach(function(w){ var op=el("option",null,w); op.value=w; qname.appendChild(op); }); qname.setAttribute("aria-label","Who checked it"); var qbtn=el("button","close","Pass QC"); qbtn.onclick=function(){ j.qc={by:qname.value,at:iso(new Date())}; persist(); render(); }; var qna=el("button","close","Not applicable"); qna.onclick=function(){ j.qc={by:qname.value,at:iso(new Date()),na:true}; persist(); render(); }; qrow.appendChild(el("span","hint","Checked by")); qrow.appendChild(qname); qrow.appendChild(qbtn); qrow.appendChild(qna); qb.appendChild(qrow); qb.appendChild(el("div","hint","Not applicable is for jobs with nothing to check, such as a site visit or a straight collection.")); }
       right.appendChild(qb); }
     if(!o.shop && j.site && !contractorOnly){ var drb=block("Travel Time, return","drive"); var r2=el("div","row"); r2.appendChild(hmBoxes(function(){return j.drive;},setDrive,"Drive")); drb.appendChild(r2);
-      drb.appendChild(el("div","hint",j.drive!=null?"Calculated from the postcode, plus 20 percent for traffic. Change it if you know better.":"No postcode found. Type it in."));
+      drb.appendChild(el("div","hint",j.drive!=null?(j.driveAuto?"Road time from OpenStreetMap routing"+(j.roadMiles?", "+j.roadMiles+" miles each way":"")+", plus 20 percent for traffic. Change it if you know better.":"Estimated from the postcode area, plus 20 percent for traffic. Change it if you know better."):"No postcode found. Type it in."));
       if(j.drive!=null && j.drive>6*60) drb.appendChild(el("div","hint far","More than a day's travel with the job in between. Consider a courier or subcontractor."));
       right.appendChild(drb);
       var twb=block("Time Window","window"); var twr=el("div","row tw");
@@ -914,7 +914,7 @@ var SNAP=null, DETAIL={};
     happened:"Filled in after the day. Actual time, who went and a note, or Did not go and why. The Manager view compares actual time with the standard, so the standards can be corrected from real jobs.",
     slot:"A customer or courier collecting from the yard. Customer arrives after is the earliest they said they will come. Loaded and ready by is when it must be picked, checked and by the door. Someone has to be in the yard for it, so it takes operatives and time like any other yard job.",
     window:"When the site can take us. Arrive after is the earliest they will let us in. Finish by is when the loading bay, lift or building shuts. The day is worked out from an 8:00 start, and a job that misses its window is flagged in red.",
-    drive:"Return travel time, calculated from the site postcode plus 20 percent for traffic. Overtype if you know better.",
+    drive:"Return travel time. Real road time from the yard to the postcode, from OpenStreetMap routing, plus 20 percent for traffic. Before that arrives, or when the routing service is down, an estimate from the postcode area. Overtype if you know better, and it stays as you typed it.",
     time:"Labour time per operative. Use the quick options or enter hours and minutes."
   };
   var tipOpen=null;
@@ -1099,6 +1099,21 @@ var SNAP=null, DETAIL={};
     if(fulls.length) jobs.push(fetch("https://api.postcodes.io/postcodes",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({postcodes:fulls})}).then(function(r){return r.json();}).then(function(x){ (x.result||[]).forEach(function(r){ if(r.result) GEO[r.query.toUpperCase()]={lat:r.result.latitude,lng:r.result.longitude}; else GEO[r.query.toUpperCase()]=false; }); }).catch(function(){}));
     outs.forEach(function(o){ jobs.push(fetch("https://api.postcodes.io/outcodes/"+encodeURIComponent(o)).then(function(r){return r.json();}).then(function(x){ GEO[o]=x.result?{lat:x.result.latitude,lng:x.result.longitude}:false; }).catch(function(){})); });
     return Promise.all(jobs).then(function(){ try{ localStorage.setItem("cg-geo",JSON.stringify(GEO)); }catch(e){} });
+  }
+  // REAL DRIVE TIMES (Sam, 13 Sep 2026): road time from the yard to the postcode, from OpenStreetMap routing (OSRM, no key).
+  // Cached for 30 days. Only replaces a travel time nobody has typed over. The postcode-area estimate stays as the fallback.
+  var ROAD={}; try{ ROAD=JSON.parse(localStorage.getItem("cg-road")||"{}"); }catch(e){ ROAD={}; }
+  function roadTime(pc){
+    var hit=ROAD[pc]; if(hit&&hit.at>Date.now()-30*864e5) return Promise.resolve(hit.ok?hit:null);
+    return geocode([pc]).then(function(){ var pt=GEO[pc]; if(!pt){ ROAD[pc]={ok:false,at:Date.now()}; return null; }
+      return fetch("https://router.project-osrm.org/route/v1/driving/"+BASE.lng+","+BASE.lat+";"+pt.lng+","+pt.lat+"?overview=false").then(function(r){return r.json();}).then(function(x){ var r0=x.routes&&x.routes[0]; if(!r0) return null; ROAD[pc]={ok:true,mins:r0.duration/60,miles:r0.distance/1609.34,at:Date.now()}; try{ localStorage.setItem("cg-road",JSON.stringify(ROAD)); }catch(e){} return ROAD[pc]; }).catch(function(){ return null; }); });
+  }
+  function refreshDrive(){
+    var todo=JOBS.filter(function(j){ return j.site&&!j.isHold&&!(j.contractor&&!j.who.length)&&j.date>=iso(addDays(TODAY,-7))&&(j.drive==null||j.driveAuto||j.drive===driveMins(j.title)); });
+    var changed=false, i=0;
+    function next(){ if(i>=todo.length){ if(changed){ persist(); render(); } return; } var j=todo[i++]; var pc=pcOf(j); if(!pc||pc.indexOf("area:")===0){ next(); return; }
+      roadTime(pc).then(function(r){ if(r){ var m=Math.max(5,Math.round(r.mins*2*TRAFFIC/5)*5); j.roadMiles=Math.round(r.miles); if(m!==j.drive||!j.driveAuto){ j.drive=m; j.driveAuto=true; changed=true; } } setTimeout(next,ROAD[pc]&&ROAD[pc].at>Date.now()-2000?250:0); }); }
+    next();
   }
   function miles(a,b){ var R=3958.8, dLat=(b.lat-a.lat)*Math.PI/180, dLng=(b.lng-a.lng)*Math.PI/180, la=a.lat*Math.PI/180, lb=b.lat*Math.PI/180;
     var h=Math.sin(dLat/2)*Math.sin(dLat/2)+Math.cos(la)*Math.cos(lb)*Math.sin(dLng/2)*Math.sin(dLng/2); return 2*R*Math.asin(Math.sqrt(h)); }
@@ -1689,7 +1704,7 @@ var SNAP=null, DETAIL={};
   }
   if(t){
     $("#src").textContent="Reading the board...";
-    loadBoard().then(function(snap){ buildFromSnap(snap); lastSaved={}; JOBS.forEach(function(j){}); render(); }).catch(function(e){ $("#src").textContent="Could not read the board: "+(e&&e.message||e); });
+    loadBoard().then(function(snap){ buildFromSnap(snap); lastSaved={}; render(); refreshDrive(); }).catch(function(e){ $("#src").textContent="Could not read the board: "+(e&&e.message||e); });
   } else { $("#src").textContent="Open this from the Scheduler button on the Trello board."; }
 })();
 </script>
