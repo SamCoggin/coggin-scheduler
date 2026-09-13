@@ -162,6 +162,9 @@
   .bdg.todo{background:var(--amber-bg);color:var(--amber)}
   .bdg.sub{background:#6e5dc6;color:#fff}
   .bdg.now{background:var(--red-bg);color:var(--red)}
+  .card.hold{border:2px dashed #6e5dc6;background:repeating-linear-gradient(135deg,var(--card),var(--card) 8px,rgba(110,93,198,.08) 8px,rgba(110,93,198,.08) 16px);cursor:default}
+  .card.hold .ttl{color:#6e5dc6}
+  .for.hold{color:#6e5dc6;font-weight:700}
   .leave{flex-shrink:0;background:var(--amber-bg);color:var(--amber);font-weight:600;border-radius:8px;padding:8px 12px;font-size:13px}
 
   .tot{border-top:2px solid #3d4451;background:var(--card);border-radius:0 0 10px 10px;padding:10px 14px 12px;font-size:14px;display:flex;flex-direction:column;gap:4px}
@@ -288,6 +291,7 @@ var SNAP=null, DETAIL={};
     var cardsP=t.cards("id","name","desc","due","start","idList","labels","members","customFieldItems","checklists","badges").catch(function(){ return t.cards("all"); });
     return Promise.all([t.lists("all"),cardsP,t.board("name","members"),t.get("board","shared","sched",{})]).then(function(r){
       var lists=r[0], cards=r[1], board=r[2], boardData=r[3];
+      CRM_KEY=(boardData&&boardData.crmKey)||"";
       var lm={}; lists.forEach(function(l){ lm[l.id]=l; });
       var out=[];
       cards.forEach(function(c){
@@ -301,7 +305,10 @@ var SNAP=null, DETAIL={};
       });
       return Promise.all(out.map(function(c){ return t.get(c.id,"shared","sched",null).then(function(d){ c.saved=d; return c; }); })).then(function(cs){
         cs.forEach(function(c){ DETAIL[c.id]={desc:c.desc,checks:c.checks||[]}; });
-        return {board:board.name,crew:CREW,cards:cs,boardData:boardData};
+        var snap={board:board.name,crew:CREW,cards:cs,boardData:boardData};
+        // date holds from the CRM: ghost cards, counted but never booked here
+        if(!CRM_KEY) return snap;
+        return fetch(CRM_HOLDS_URL,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({key:CRM_KEY})}).then(function(x){return x.json();}).then(function(h){ snap.holds=(h&&h.ok&&h.holds)||[]; return snap; }).catch(function(){ snap.holds=[]; return snap; });
       });
     });
   }
@@ -345,7 +352,7 @@ var SNAP=null, DETAIL={};
       var j={id:L.parent+":leg"+i,leg:L,parentJob:parent,title:parent.title,label:parent.label,stageLabel:tdef[1]+(L.where?": "+L.where:""),date:L.date,start:null,who:L.who,contractor:"",mins:L.mins,site:tdef[2],drive:L.drive,isLeg:true};
       return j; }).filter(Boolean);
   }
-  function allJobs(){ return JOBS.concat(legJobs()); }
+  function allJobs(){ return JOBS.concat(legJobs()).concat(HOLDS); }
   var prevWork=function(k){ var d=new Date(k+"T12:00"); do{ d.setDate(d.getDate()-1); }while(d.getDay()===0||d.getDay()===6); return iso(d); };
   // the list a card sits in says what it is:
   //   Not Started / In-progress   workshop work, one card, on the day it is being done
@@ -389,6 +396,13 @@ var SNAP=null, DETAIL={};
         LEGS.push({parent:j.id,type:L.type,date:L.date,who:[],mins:null,drive:area&&DRIVE[area]?Math.round(DRIVE[area].h*2*60*TRAFFIC/5)*5:null,where:L.where+(L.what?", "+L.what:"")}); }); });
     if(SNAP.boardData&&SNAP.boardData.roundDrive){ for(var k in SNAP.boardData.roundDrive) ROUND_DRIVE[k]=SNAP.boardData.roundDrive[k]; }
     if(SNAP.boardData&&SNAP.boardData.vansOff){ VANS_OFF=SNAP.boardData.vansOff.slice(); }
+    // HELD DATES FROM THE CRM (Sam, 13 Sep 2026): a request sales are waiting on. Ghost cards: they sit on
+    // their day, count the standard crew and time and the van load, and vanish when the hold lapses.
+    HOLDS=(SNAP.holds||[]).map(function(h){ var mv=h.movement||"Delivery", load=loadOf(h.items||[]), std=standardFor(mv,load);
+      var j={id:"hold:"+h.id,title:h.title||h.ref,label:mv,movement:mv,work:h.service==="Office Clearance"?"Clearance":h.service==="Refurbishing"?"Refurb":h.service||"",labels:[],who:[],contractor:"",mins:std&&std.mins!=null?std.mins:120,out:h.date,date:h.date,start:null,site:isSiteMove(mv),collect:isCollectMove(mv),
+        stageLabel:"Held until "+niceShort(h.until||h.date),isHold:true,holdUntil:h.until,holdCrew:std?std.crew:2,load:load,cubeSet:null,items:h.items||[],manual:[],ignore:[],allItems:h.items||[],prep:null};
+      if(j.site&&h.postcode){ var area=h.postcode.replace(/\d.*$/,"").toUpperCase(); j.drive=DRIVE[area]?Math.round(DRIVE[area].h*2*60*TRAFFIC/5)*5:null; }
+      return j; });
     if(SNAP.boardData&&SNAP.boardData.contractors){ SNAP.boardData.contractors.forEach(function(c){ if(CONTRACTORS.indexOf(c)<0) CONTRACTORS.splice(CONTRACTORS.length-1,0,c); }); }
   }
   function daysOf(j){ if(!j.start||j.start>=j.date) return [j.date]; var out=[]; for(var d=new Date(j.start+"T12:00");iso(d)<=j.date;d.setDate(d.getDate()+1)){ if(d.getDay()!==0&&d.getDay()!==6) out.push(iso(d)); } return out; }
@@ -417,7 +431,7 @@ var SNAP=null, DETAIL={};
       var js=JSON.stringify(d); if(lastSaved[j.id]===js) return; lastSaved[j.id]=js; t.set(j.id,"shared","sched",d);
     });
     var extra=CONTRACTORS.filter(function(c){return ["MAK Installations","Courier","Other contractor"].indexOf(c)<0;});
-    var bd=JSON.stringify({roundDrive:ROUND_DRIVE,contractors:extra,vansOff:VANS_OFF}); if(lastSaved.__board!==bd){ lastSaved.__board=bd; t.set("board","shared","sched",{roundDrive:ROUND_DRIVE,contractors:extra,vansOff:VANS_OFF}); }
+    var bd=JSON.stringify({roundDrive:ROUND_DRIVE,contractors:extra,vansOff:VANS_OFF,crmKey:CRM_KEY}); if(lastSaved.__board!==bd){ lastSaved.__board=bd; t.set("board","shared","sched",{roundDrive:ROUND_DRIVE,contractors:extra,vansOff:VANS_OFF,crmKey:CRM_KEY}); }
   }
 
   // the bit that opens under a card: who, quick times, minutes, and one extra row
@@ -433,6 +447,8 @@ var SNAP=null, DETAIL={};
   }
   // a round: one person, one day, two or more site jobs. one drive for the lot.
   var ROUND_DRIVE={};   // "date|person" -> minutes, when you have changed it
+  var CRM_KEY="", HOLDS=[];   // the shared key for the CRM's opsHolds function, saved on the board from the Manager view
+  var CRM_HOLDS_URL="https://coggin-sos-os.base44.app/api/apps/69c930a6240fba922f369aa2/functions/opsHolds";
   var VANS_OFF=[];      // registrations currently off the road
   function vansOnRoad(){ return VEHICLES.filter(function(v){return VANS_OFF.indexOf(v.reg)<0;}).length; }
   function roundsOn(k,jobs){
@@ -666,11 +682,13 @@ var SNAP=null, DETAIL={};
     if(!isPrep&&j.prodDue) mid.appendChild(el("span","for"+(j.prep&&j.prep.date&&j.prep.date>j.prodDue?" late":""),"Production due "+niceDay(j.prodDue)+(j.collect?", customer collecting":"")));
     else if(!isPrep&&j.collect) mid.appendChild(el("span","for","Customer collecting"));
     c.appendChild(mid);
+    if(j.isHold){ mid.appendChild(el("span","for hold","Held for sales until "+niceDay(j.holdUntil||j.date)+". Counts "+j.holdCrew+(j.holdCrew===1?" operative":" operatives")+", "+fmt(j.mins)+" each. Confirm on the deal.")); }
     var partX=isPrep?j.prep:j;
     var ft=el("div","foot"); ft.appendChild(avatars(partX.who));
     if(!isPrep&&!j.isLeg&&!(j.contractor&&!j.who.length)){ var stdX=standardFor(j.movement||j.label,j.load); if(aboveStandard(stdX,j.who,j.mins)) ft.appendChild(el("span","bdg now","Above standard")); }
     if(isPrep){ var pstdX=prodStandardFor(j.load,j.prep.who.length); if(aboveProdStandard(pstdX,j.prep.who,j.prep.mins,j.prep.start,j.prep.date)) ft.appendChild(el("span","bdg now","Above standard")); }
     ft.appendChild(badge(partX,isToday)); c.appendChild(ft);
+    if(j.isHold){ c.className+=" hold"; c.onclick=function(){}; return c; }
     c.onclick=function(){ open=isPrep?j.id+":prep":j.id; render(); };
     return c;
   }
@@ -885,6 +903,7 @@ var SNAP=null, DETAIL={};
       $("#prev").onclick=function(){}; $("#next").onclick=function(){}; return; }
     var head=el("div"); head.style.display="flex"; head.style.justifyContent="space-between"; head.style.alignItems="baseline"; head.appendChild(el("h2",null,"Allocated time against the standard")); var lock=el("button","close","Lock"); lock.onclick=function(){ mgrOpen=false; try{ sessionStorage.removeItem("cg-mgr"); }catch(e){} render(); }; head.appendChild(lock); box.appendChild(head);
     box.appendChild(el("div","sub","Every job with time allocated, from four weeks back to six weeks ahead. Work is the time per operative times the operatives on it. The standard comes from the items on the card."));
+    var kb=el("div","pin"); kb.appendChild(el("span","sub","CRM link for held dates:")); var ki=el("input"); ki.type="password"; ki.value=CRM_KEY; ki.placeholder="paste the key"; ki.style.letterSpacing="0"; ki.style.width="260px"; ki.setAttribute("aria-label","CRM key"); var ks=el("button",null,"Save"); ks.onclick=function(){ CRM_KEY=ki.value.trim(); persist(); t.get("board","shared","sched",{}).then(function(){ location.reload(); }); }; kb.appendChild(ki); kb.appendChild(ks); kb.appendChild(el("span","sub",CRM_KEY?"Linked: held dates show as ghost cards.":"Not linked. The same key goes in Base44 secrets as OPS_HOLDS_KEY.")); box.appendChild(kb);
     var from=iso(addDays(TODAY,-28)), to=iso(addDays(TODAY,42)), rows=[], perOp={};
     TEAM.forEach(function(w){ perOp[w]={alloc:0,std:0,jobs:0}; });
     JOBS.forEach(function(j){
@@ -952,6 +971,8 @@ var SNAP=null, DETAIL={};
       });
       list.appendChild(cards);
       var tot=el("div","tot"); var th=el("div"); var thl=el("span","n","Operative Hours"); thl.appendChild(tip("tot")); th.appendChild(thl); tot.appendChild(th); var off=LEAVE.filter(function(l){return l.date===k;}).map(function(l){return l.text.split(" ")[0];});
+      var heldMins=jobs.filter(function(j){return j.isHold;}).reduce(function(t,j){return t+(j.mins||0)*(j.holdCrew||2)+(j.site?(j.drive||0)*(j.holdCrew||2):0);},0);
+      if(heldMins){ var hr=el("div"); hr.appendChild(el("span","n","Held for sales")); hr.appendChild(el("span","todo",fmt(heldMins)+" of operative time not yet named")); tot.appendChild(hr); }
       TEAM.forEach(function(w){
         var mine=jobs.filter(function(j){return j.who.indexOf(w)>=0;}), myPreps=preps.filter(function(j){return j.prep.who.indexOf(w)>=0;});
         var myRound=rounds.filter(function(r){return r.who===w;})[0];
