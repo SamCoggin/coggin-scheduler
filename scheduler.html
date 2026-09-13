@@ -170,7 +170,17 @@
   @media print{
     @page{size:A4 landscape;margin:12mm}
     body{background:#fff;color:#111;display:block;height:auto;overflow:visible}
-    .hdr,.board,.veil{display:none!important}
+    .hdr,.veil{display:none!important}
+    .board{display:none!important}
+    body.print-routes .board.routes{display:block!important;zoom:1;padding:0;overflow:visible;height:auto}
+    body.print-routes .board.routes .rpanel{display:none!important}
+    body.print-routes .mapwrap{height:118mm;border:1.5px solid #333;border-radius:3mm;margin:0 0 4mm;break-inside:avoid}
+    body.print-routes .mapwrap .legend{background:#fff;color:#111}
+    body.print-routes .fleet{display:none}
+    body.print-routes #map{min-height:0;height:100mm}
+    .printsheet .stopline{display:grid;grid-template-columns:8mm 1.5fr 1fr 1fr 22mm;gap:3mm;padding:1.2mm 0;border-top:1px solid #ccc;break-inside:avoid;align-items:baseline}
+    .printsheet .stopline .num{font-weight:800}
+    .printsheet .rsum{font-size:10pt;color:#333;margin:1mm 0 2mm}
     .printsheet{display:block!important;font-size:11pt;color:#111}
     .printsheet h1{font-size:20pt;margin:0 0 2mm}
     .printsheet .sub{color:#444;margin:0 0 5mm;font-size:10pt}
@@ -1016,9 +1026,41 @@ var SNAP=null, DETAIL={};
     var so=el("div","signoff"); [["Filled in by",40],["Date",24],["Notes",60]].forEach(function(f){ var sp=el("span"); sp.appendChild(document.createTextNode(f[0]+": ")); var b=el("span","blank"); b.style.minWidth=f[1]+"mm"; sp.appendChild(b); so.appendChild(sp); }); box.appendChild(so);
     box.appendChild(el("p","pfoot","Times are allocated time per operative. Van loads are estimated from the items on each card. Red lines are blanks to fill in and bring back so the Scheduler can be updated."));
   }
+  function buildRoutesSheet(){
+    var box=$("#printsheet"); box.innerHTML="";
+    var mon=addDays(monday(TODAY),week*7), days=[]; for(var i=0;i<5;i++) days.push(iso(addDays(mon,i)));
+    box.appendChild(el("h1",null,"Routes, "+niceDay(days[0])+" to "+niceDay(days[4])+" "+mon.getFullYear()));
+    box.appendChild(el("p","sub","Coggin SOS. Printed "+new Date().toLocaleString("en-GB",{day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"})+". Map above: yard in black, one colour per day, each round drawn from the yard and back. Miles are road estimates."));
+    var all=allJobs().filter(function(j){return j.site && !(j.contractor&&!j.who.length);});
+    days.forEach(function(k,i){
+      var jobs=all.filter(function(j){return onDay(j,k);}); if(!jobs.length) return;
+      var d=el("div","pday"); var h=el("h2"); var dot=el("span"); dot.textContent="\u25CF "; dot.style.color=DAYCOL[i]; h.appendChild(dot); h.appendChild(document.createTextNode(niceDay(k))); h.appendChild(el("span",null,jobs.length+(jobs.length===1?" transport job":" transport jobs"))); d.appendChild(h);
+      var groups=[]; TEAM.forEach(function(w){ var mine=jobs.filter(function(j){return j.who.indexOf(w)>=0;}); if(mine.length) groups.push({name:w,jobs:mine}); });
+      var none=jobs.filter(function(j){return !j.who.length;}); if(none.length) groups.push({name:"Nobody assigned yet",jobs:none,unassigned:true});
+      var dayM3=jobs.reduce(function(t,j){return t+(cubeOf(j)||0);},0), dayKg=jobs.reduce(function(t,j){return t+kgOf(j);},0), advD=vehicleAdvice(dayM3,dayKg,vansOnRoad());
+      if(advD&&dayM3) d.appendChild(el("div",advD.fitsOurs?"rsum":"pwarn","Whole day: "+fmtM3(dayM3)+(dayKg?", "+Math.round(dayKg)+" kg":"")+". Needs "+advD.text));
+      groups.forEach(function(g){
+        var placed=g.jobs.filter(function(j){return j.pt;}), lost=g.jobs.filter(function(j){return !j.pt;});
+        var stops=orderStops(placed.map(function(j){return {j:j,pt:j.pt};}));
+        var total=stops.reduce(function(t,x){return t+x.legMiles;},0)+(stops.length?stops[stops.length-1].backMiles:0);
+        var vanQ=g.jobs.reduce(function(t,j){return t+(cubeOf(j)||0);},0), kgQ=g.jobs.reduce(function(t,j){return t+kgOf(j);},0);
+        d.appendChild(el("div","psec",(g.unassigned?g.name:g.name+(g.jobs.length>1?", delivery round":""))+(total?", "+total+" miles round trip":"")+(vanQ?", van load "+fmtLoad(vanQ,kgQ):"")));
+        stops.forEach(function(x,n){ var r=el("div","stopline"); r.appendChild(el("span","num",String(n+1))); var c=el("span"); c.appendChild(el("b",null,x.j.title)); c.appendChild(el("small",null,x.j.pc&&x.j.pc.indexOf("area:")!==0?x.j.pc:"postcode area only")); r.appendChild(c);
+          var t2=el("span"); t2.appendChild(el("b",null,x.j.mins!=null?fmt(x.j.mins)+" on site":"No site time")); t2.appendChild(el("small",null,x.j.movement||x.j.label||"")); r.appendChild(t2);
+          var l2=el("span"); l2.appendChild(el("b",null,cubeOf(x.j)!=null?fmtM3(cubeOf(x.j)):"\u2014")); l2.appendChild(el("small",null,x.j.load&&x.j.load.rows.length?x.j.load.rows.slice(0,2).map(function(y){return y.n+" x "+y.type;}).join(", "):"")); r.appendChild(l2);
+          r.appendChild(el("span",null,x.legMiles+" mi"+(x.backMiles!=null?", "+x.backMiles+" back":""))); d.appendChild(r); });
+        lost.forEach(function(j){ var r=el("div","stopline"); r.appendChild(el("span","num","?")); var c=el("span"); c.appendChild(el("b",null,j.title)); c.appendChild(el("small","need","No postcode on the card. Write it in: ")); c.appendChild(el("span","blank")); r.appendChild(c); r.appendChild(el("span")); r.appendChild(el("span")); r.appendChild(el("span")); d.appendChild(r); });
+        if(vanQ>VAN_M3||kgQ>VAN_KG) d.appendChild(el("div","pwarn",(vanQ>VAN_M3?"Over one van by volume":"Over the payload by weight")+". "+vehicleAdvice(vanQ,kgQ,vansOnRoad()).text));
+        if(!g.unassigned&&DRIVERS.indexOf(g.name)<0&&!g.jobs.every(function(j){return j.who.some(function(w){return DRIVERS.indexOf(w)>=0;});})) d.appendChild(el("div","pwarn",g.name+" cannot drive. Add Rob, Jack or Bart."));
+      });
+      var load=loadOn(k), crew=el("div","pops"); TEAM.forEach(function(w){ var sp=el("span"); sp.appendChild(el("b",null,w+(DRIVERS.indexOf(w)>=0?" (driver)":"")+": ")); sp.appendChild(document.createTextNode(load[w].c==="off"?"annual leave":load[w].c==="free"?"available all day":fmt(load[w].rec)+" available")); crew.appendChild(sp); }); d.appendChild(crew);
+      box.appendChild(d);
+    });
+    var so=el("div","signoff"); [["Checked by",40],["Date",24],["Notes",60]].forEach(function(f){ var sp=el("span"); sp.appendChild(document.createTextNode(f[0]+": ")); var b=el("span","blank"); b.style.minWidth=f[1]+"mm"; sp.appendChild(b); so.appendChild(sp); }); box.appendChild(so);
+  }
   function render(){
     persist();
-    $("#print").onclick=function(){ buildPrintSheet(); window.print(); };
+    $("#print").onclick=function(){ if(view==="routes"){ buildRoutesSheet(); document.body.classList.add("print-routes"); if(MAP){ try{ MAP.invalidateSize(); }catch(e){} } window.onafterprint=function(){ document.body.classList.remove("print-routes"); if(MAP){ try{ MAP.invalidateSize(); }catch(e){} } }; setTimeout(function(){ window.print(); },300); } else { buildPrintSheet(); window.print(); } };
     document.body.onclick=function(){ if(tipOpen){ tipOpen=null; render(); } };
     $("#vday").className=view==="day"?"on":""; $("#vweek").className=view==="week"?"on":""; $("#vmonth").className=view==="month"?"on":""; $("#vroutes").className=view==="routes"?"on":""; $("#vroutes").onclick=function(){view="routes";render();}; $("#vmanager").className=view==="manager"?"on":""; $("#vmanager").onclick=function(){view="manager";render();};
     $("#vday").onclick=function(){view="day";render();}; $("#vweek").onclick=function(){view="week";render();}; $("#vmonth").onclick=function(){view="month";render();};
