@@ -77,6 +77,8 @@ Fix: a simple week summary at the top: hours planned against hours available, va
 
 - 13 Sep 2026: gap 11 built. What happened block after the day: Done with actual time, travel, who went and notes, or Did not go with a reason; to record in the rail; did not go stays red until the card has a new date; Manager view shows actual against standard.
 
+- 13 Sep 2026: gap 12 built. A day over its operative hours or short of vans gets an amber Heavy day note in the rail naming the lighter days this week and next and the jobs with no fixed window that could move. All twelve gaps from this review are now built.
+
 ## Suggested order
 1. Time windows on transport jobs (gap 1), then the driver day check (gap 2).
 2. Vehicle on the job and rounds vs vans (gap 3), then hire booked tick (gap 4).
