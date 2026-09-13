@@ -62,6 +62,9 @@ Fix: a simple week summary at the top: hours planned against hours available, va
 - Travel time is straight line times 1.25 plus 20 percent. Fine for planning, wrong for the Lake District and central Manchester. A postcode-pair cache of real drive times from one lookup would fix most of it.
 - The Manager PIN is client-side. Fine for keeping £ off the yard screen, not a control.
 
+## Done
+- 13 Sep 2026: gaps 1 and 2 built. Time windows (arrive after, finish by) on transport jobs, day walked from 8:00, cut-off misses and waits flagged, driver break over 4h 30m driving and day over 11 hours flagged.
+
 ## Suggested order
 1. Time windows on transport jobs (gap 1), then the driver day check (gap 2).
 2. Vehicle on the job and rounds vs vans (gap 3), then hire booked tick (gap 4).
