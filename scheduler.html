@@ -323,6 +323,7 @@
   .blk select{width:100%;border:2px solid var(--line);border-radius:8px;padding:8px 10px;background:var(--card);font-weight:600}
   .blk .row{margin-top:0}
   .blk .hint{margin-top:8px}
+  .hint.ok{color:var(--green);font-weight:700}
   .plan-sum{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
   .plan-sum span{background:var(--list);border-radius:6px;padding:3px 9px;font-size:14px;font-weight:700}
   .plan-sum span.bad{background:var(--red-bg);color:var(--red)}
@@ -464,7 +465,7 @@ var SNAP=null, DETAIL={};
       if(!j.site) j.contractor="";
       if(j.site) j.drive=driveMins(title);
     }
-    j.vehicle=null; j.hireRef=""; j.hireBooked=false; j.soloOk=""; // soloOk: the reason one operative is enough despite two-person items   // the van on the job: a registration, "hire", or nothing yet
+    j.vehicle=null; j.hireRef=""; j.hireBooked=false; j.qc=null; j.soloOk=""; // qc: {by,at} when QC was signed off here; soloOk: the reason one operative is enough despite two-person items   // the van on the job: a registration, "hire", or nothing yet
     j.from=null; j.by=null;   // time window on a transport job: arrive after, finish by (HH:MM)
     var tw=/^(after|from|not before|before|by)\s*(\d{1,2})(?:[:.](\d{2}))?\s*(am|pm)?\s*[-,:]?\s*/i.exec(title||""); if(tw){ var hh=parseInt(tw[2],10); if(/pm/i.test(tw[4]||"")&&hh<12) hh+=12; var hm=(hh<10?"0":"")+hh+":"+(tw[3]||"00"); if(/before|by/i.test(tw[1])) j.by=hm; else j.from=hm; if(title.length>tw[0].length+2){ title=title.slice(tw[0].length); j.title=title; } }
     j.start=c.start&&c.start<c.due?c.start:null;
@@ -474,7 +475,7 @@ var SNAP=null, DETAIL={};
     LEAVE=SNAP.cards.filter(function(c){return c.role==="leave"&&c.due;}).map(function(c){ return {date:c.due,text:c.name.replace(/\s*\(.*$/,"").replace(/BANK HOLIDAY\s*-\s*/i,"")+(/BANK HOLIDAY/i.test(c.name)?" (bank holiday)":" on leave")}; });
     // what was saved on the cards last time
     SNAP.cards.forEach(function(c){ var d=c.saved; if(!d) return; var j=JOBS.filter(function(x){return x.id===c.id;})[0]; if(!j) return;
-      if(d.who) j.who=d.who.slice(); if(d.cube!=null) j.cubeSet=d.cube; if(d.ignore&&d.ignore.length){ j.ignore=d.ignore.slice(); j.items=j.allItems.filter(function(l){return j.ignore.indexOf(l)<0;}); } if(d.items&&d.items.length){ j.manual=d.items.slice(); } j.load=loadOf(j.items.concat(j.manual)); if(d.mins!=null) j.mins=d.mins; if(d.drive!=null) j.drive=d.drive; if(d.contractor) j.contractor=d.contractor; if(d.from) j.from=d.from; if(d.by) j.by=d.by; if(d.vehicle) j.vehicle=d.vehicle; if(d.soloOk) j.soloOk=d.soloOk; if(d.hireRef) j.hireRef=d.hireRef; if(d.hireBooked) j.hireBooked=true;
+      if(d.who) j.who=d.who.slice(); if(d.cube!=null) j.cubeSet=d.cube; if(d.ignore&&d.ignore.length){ j.ignore=d.ignore.slice(); j.items=j.allItems.filter(function(l){return j.ignore.indexOf(l)<0;}); } if(d.items&&d.items.length){ j.manual=d.items.slice(); } j.load=loadOf(j.items.concat(j.manual)); if(d.mins!=null) j.mins=d.mins; if(d.drive!=null) j.drive=d.drive; if(d.contractor) j.contractor=d.contractor; if(d.from) j.from=d.from; if(d.by) j.by=d.by; if(d.vehicle) j.vehicle=d.vehicle; if(d.soloOk) j.soloOk=d.soloOk; if(d.qc&&d.qc.by) j.qc=d.qc; if(d.hireRef) j.hireRef=d.hireRef; if(d.hireBooked) j.hireBooked=true;
       if(d.prep&&j.prep){ j.prep.who=d.prep.who||[]; j.prep.mins=d.prep.mins; j.prep.start=d.prep.start||null; j.prep.date=d.prep.date||null; }
       if(d.prodDue&&j.prep){ j.prodDue=d.prodDue; j.prodDueSet=true; }
       (d.legs||[]).forEach(function(L){ LEGS.push({parent:j.id,type:L.type,date:L.date,who:L.who||[],mins:L.mins,drive:L.drive,where:L.where||""}); });
@@ -526,7 +527,7 @@ var SNAP=null, DETAIL={};
   function persist(){
     if(!t) return;
     JOBS.forEach(function(j){
-      var d={who:j.who,mins:j.mins,drive:j.drive,cube:j.cubeSet,ignore:j.ignore&&j.ignore.length?j.ignore:undefined,items:j.manual&&j.manual.length?j.manual:undefined,load:j.load&&j.load.any?{m3:j.load.m3,kg:j.load.kg,complete:j.load.complete,rows:j.load.rows.map(function(r){return {n:r.n,type:r.type,m3:r.m3,kg:r.kg,built:r.built,est:r.est};}),unmatched:j.load.unmatched}:undefined,contractor:j.contractor||"",from:j.from||null,by:j.by||null,vehicle:j.vehicle||null,soloOk:j.soloOk||"",hireRef:j.hireRef||"",hireBooked:!!j.hireBooked,prodDue:j.prodDueSet?j.prodDue:null,prep:j.prep?{who:j.prep.who,mins:j.prep.mins,start:j.prep.start,date:j.prep.date}:null,
+      var d={who:j.who,mins:j.mins,drive:j.drive,cube:j.cubeSet,ignore:j.ignore&&j.ignore.length?j.ignore:undefined,items:j.manual&&j.manual.length?j.manual:undefined,load:j.load&&j.load.any?{m3:j.load.m3,kg:j.load.kg,complete:j.load.complete,rows:j.load.rows.map(function(r){return {n:r.n,type:r.type,m3:r.m3,kg:r.kg,built:r.built,est:r.est};}),unmatched:j.load.unmatched}:undefined,contractor:j.contractor||"",from:j.from||null,by:j.by||null,vehicle:j.vehicle||null,soloOk:j.soloOk||"",qc:j.qc||null,hireRef:j.hireRef||"",hireBooked:!!j.hireBooked,prodDue:j.prodDueSet?j.prodDue:null,prep:j.prep?{who:j.prep.who,mins:j.prep.mins,start:j.prep.start,date:j.prep.date}:null,
         legs:LEGS.filter(function(L){return L.parent===j.id;}).map(function(L){return {type:L.type,date:L.date,who:L.who,mins:L.mins,drive:L.drive,where:L.where};})};
       var js=JSON.stringify(d); if(lastSaved[j.id]===js) return; lastSaved[j.id]=js; t.set(j.id,"shared","sched",d);
     });
@@ -651,7 +652,7 @@ var SNAP=null, DETAIL={};
   function findOpen(){ if(!open) return null; var parts=open.split(":"); if(parts[1]&&parts[1].indexOf("leg")===0){ var lj=legJobs().filter(function(x){return x.id===open;})[0]; return lj?{job:lj,part:lj,shop:false,leg:true}:null; } var j=JOBS.filter(function(x){return x.id===parts[0];})[0]; if(!j) return null; return parts[1]==="prep"?{job:j,part:j.prep,shop:true}:{job:j,part:j,shop:false}; }
 
   // THE CARD BACK ORDER (Sam, 13 Sep 2026): blocks appear in the order you decide them. Anything at 20 or more folds under "More".
-  var BLOCK_ORDER={"This leg":0,"Standard for this job":1,"Standard for this production":1,"Operatives":2,"Production Dates":3,"Transported By":4,"Vehicle":5,"Travel Time, return":6,"Time Window":7,"Production Time per Operative":8,"Site Time per Operative":8,"Labour Time per Operative":8,"Production":20,"Van Load":21,"Legs":22};
+  var BLOCK_ORDER={"This leg":0,"Standard for this job":1,"Standard for this production":1,"Operatives":2,"Production Dates":3,"Transported By":4,"Vehicle":5,"Travel Time, return":6,"Time Window":7,"QC":7.5,"Production Time per Operative":8,"Site Time per Operative":8,"Labour Time per Operative":8,"Production":20,"Van Load":21,"Legs":22};
   function block(title,tipKey){ var d=el("div","blk"); d.dataset.order=BLOCK_ORDER[title]!=null?BLOCK_ORDER[title]:15; var h=el("div","bh"); h.appendChild(el("span",null,title)); if(tipKey) h.appendChild(tip(tipKey)); d.appendChild(h); return d; }
   function modal(){
     var o=findOpen(); if(!o) return null;
@@ -734,6 +735,11 @@ var SNAP=null, DETAIL={};
         var ck=el("label","ck"); var cb2=el("input"); cb2.type="checkbox"; cb2.checked=!!j.hireBooked; cb2.onchange=function(){ j.hireBooked=cb2.checked; persist(); render(); }; ck.appendChild(cb2); ck.appendChild(document.createTextNode("Booked")); hr.appendChild(ck); vb.appendChild(hr);
         vb.appendChild(el("div","hint"+(hireDue(j)?" far":""),j.hireBooked?"Booked. The reference prints on the routes sheet.":hireDue(j)?"Not booked and the job is within "+HIRE_WARN_DAYS+" working days. Book it now.":"Tick Booked once the hire company has confirmed.")); }
       right.appendChild(vb); }
+    if(!o.leg && (j.prep||j.notQc||j.qc||/Workshop/.test(j.stageLabel||""))){ var qb=block("QC","qc");
+      if(j.qc){ qb.appendChild(el("div","hint ok","QC passed by "+j.qc.by+" on "+niceDay(j.qc.at)+"."+(j.notQc?" The checklist on the card is not all ticked, but this sign-off counts.":""))); var qundo=el("button","close","Undo"); qundo.onclick=function(){ j.qc=null; persist(); render(); }; qb.appendChild(qundo); }
+      else { qb.appendChild(el("div","hint"+(j.notQc?" far":""),j.notQc?"Not QC'd. The checklist on the card is not all ticked.":(/Ready/.test(j.stageLabel||"")?"The checklist on the card is complete.":"Sign off when the workshop has checked it.")));
+        var qrow=el("div","row"); var qname=el("select"); TEAM.concat(["Sam","Ash"]).forEach(function(w){ var op=el("option",null,w); op.value=w; qname.appendChild(op); }); qname.setAttribute("aria-label","Who checked it"); var qbtn=el("button","close","Pass QC"); qbtn.onclick=function(){ j.qc={by:qname.value,at:iso(new Date())}; persist(); render(); }; qrow.appendChild(el("span","hint","Checked by")); qrow.appendChild(qname); qrow.appendChild(qbtn); qb.appendChild(qrow); }
+      right.appendChild(qb); }
     if(!o.shop && j.site && !contractorOnly){ var drb=block("Travel Time, return","drive"); var r2=el("div","row"); r2.appendChild(hmBoxes(function(){return j.drive;},setDrive,"Drive")); drb.appendChild(r2);
       drb.appendChild(el("div","hint",j.drive!=null?"Calculated from the postcode, plus 20 percent for traffic. Change it if you know better.":"No postcode found. Type it in."));
       if(j.drive!=null && j.drive>6*60) drb.appendChild(el("div","hint far","More than a day's travel with the job in between. Consider a courier or subcontractor."));
@@ -852,6 +858,7 @@ var SNAP=null, DETAIL={};
     van:"The load worked out from the items on the card, in cubic metres and kilos, against a "+VAN_M3+" cubic metre Luton and its payload. Overtype it if the yard knows better. Two Lutons on the fleet; a van off the road is marked in the Routes view and extra vans are hired in.",
     routes:"Combine Trips finds jobs booked for later that are near a stop already going out this week, and says what it takes to put them on the same van. Below it, where the week's transport jobs are. Each round is drawn from the yard in its day's colour. Nearby jobs on other days could join a round if there is room in the van and production is done.",
     vehicle:"Which van goes. Our two Lutons, or a hire when the load needs more than a Luton or both vans are out. A hire is a job in itself: put the supplier and reference on it and tick Booked, and it nags from five working days out until you do.",
+    qc:"Quality check before a job goes out. Trello ticks it when the checklist on the card is complete. Sign it off here when the workshop has checked the job, with who checked it. It clears Not QC'd on the card and in To plan.",
     window:"When the site can take us. Arrive after is the earliest they will let us in. Finish by is when the loading bay, lift or building shuts. The day is worked out from an 8:00 start, and a job that misses its window is flagged in red.",
     drive:"Return travel time, calculated from the site postcode plus 20 percent for traffic. Overtype if you know better.",
     time:"Labour time per operative. Use the quick options or enter hours and minutes."
@@ -907,7 +914,7 @@ var SNAP=null, DETAIL={};
   function notReady(j){
     if(!j.site||j.isHold||j.isLeg||j.collect) return null;
     if(j.prep){ if(!j.prep.date) return "Production not scheduled"; if(!j.prep.who.length) return "Production has no operatives"; if(j.prep.date>=j.date) return "Production ends "+niceDay(j.prep.date)+", delivery is "+niceDay(j.date); if(j.prodDue&&j.prep.date>j.prodDue) return "Production ends "+niceDay(j.prep.date)+", after the "+niceDay(j.prodDue)+" due date"; }
-    if(j.notQc) return "Not QC'd";
+    if(j.notQc&&!j.qc) return "Not QC'd";
     return null;
   }
   // TWO-PERSON ITEMS (Sam, 13 Sep 2026): a desk, a cabinet, a sofa, or anything over 25 kg needs two people to carry.
