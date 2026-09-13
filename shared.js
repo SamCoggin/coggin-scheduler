@@ -15,27 +15,28 @@ var VEHICLES=[{reg:"FX75 BKG",name:"Renault Master Luton FX75 BKG (2025)"},{reg:
 // chairs are DOUBLE STACKED figures: 0.40 per swivel chair is Sam's "40 in a Luton", which only works stacked two high;
 // loose meeting chairs (tub, cantilever) at 0.40 (about 45 a van, Sam corrected 0.20) and stacking chairs at 0.10 (stacks of five or six) assume the same.
 var LOAD=[
-  {t:"Small part",        min:1, re:/arm ?pads?|armrest|castors?|gas ?lift|seat pad|back pad|lumbar|headrest|spare|component|bracket|fixing|cable|key|lock|spanner|screws?|bolts?|monitor arm|cpu holder|small part|parcel|box of/i, m3:0.01, kg:1},
-  {t:"Swivel chair", min:3,     re:/swivel|task chair|operator|mesh chair|office chair|executive chair|ergonomic/i, m3:0.40, kg:12},
-  {t:"Meeting chair, stacking", min:1, re:/stack/i, m3:0.10, kg:8},
-  {t:"Meeting chair", min:2,    re:/meeting chair|tub chair|cantilever|visitor chair|conference chair|dining chair|breakout chair/i, m3:0.40, kg:10},
-  {t:"Stool", min:2,            re:/stool/i, m3:0.15, kg:6},
-  {t:"Sit-stand desk", two:true, min:20,   re:/sit.?stand|height adjust|electric desk|rise/i, m3:0.30, kg:60, built:1.10, est:true},
-  {t:"Bench desk position", two:true, min:20, re:/bench/i, m3:0.30, kg:30, est:true},
-  {t:"Desk", two:true, min:15,             re:/desk(?!\s*(screen|divider|mounted|pedestal|drawer))|workstation/i, m3:0.25, kg:35, built:0.90, w:1600},
-  {t:"Meeting table", two:true, min:15,    re:/meeting table|boardroom|conference table|table \d{4}/i, m3:1.20, kg:50, w:1800},
-  {t:"Folding table", min:4,    re:/folding|flip.?top/i, m3:0.15, kg:20},
-  {t:"Coffee table", min:4,     re:/coffee table|side table|occasional/i, m3:0.30, kg:15},
-  {t:"Pedestal", min:3,         re:/pedestal|desk drawer|drawer unit|mobile drawer/i, m3:0.25, kg:20},
-  {t:"Filing cabinet", two:true, min:5,   re:/filing cab|filer/i, m3:0.50, kg:35},
-  {t:"Cupboard or tambour", two:true, min:8, re:/cupboard|tambour|wardrobe|storage unit|bookcase|shelving/i, m3:0.80, kg:60},
-  {t:"Locker", two:true, min:5,           re:/locker/i, m3:0.60, kg:40, est:true},
-  {t:"Screen divider", min:4,   re:/screen|divider|partition/i, m3:0.05, kg:5},
-  {t:"Armchair", min:4,         re:/armchair|arm chair|lounge chair|easy chair/i, m3:0.60, kg:20, est:true},
-  {t:"Sofa", two:true, min:8,             re:/sofa|settee|couch|modular/i, m3:1.80, kg:45, est:true},
-  {t:"Booth", two:true, min:30,            re:/booth|high.?back/i, m3:3.00, kg:90, est:true},
-  {t:"Pod", two:true, min:240,              re:/\bpod\b/i, m3:17, kg:400, est:true}
+  {t:"Small part", prod:0,        min:1, re:/arm ?pads?|armrest|castors?|gas ?lift|seat pad|back pad|lumbar|headrest|spare|component|bracket|fixing|cable|key|lock|spanner|screws?|bolts?|monitor arm|cpu holder|small part|parcel|box of/i, m3:0.01, kg:1},
+  {t:"Swivel chair", prod:30, clean:10, min:3,     re:/swivel|task chair|operator|mesh chair|office chair|executive chair|ergonomic/i, m3:0.40, kg:12},
+  {t:"Meeting chair, stacking", prod:10, min:1, re:/stack/i, m3:0.10, kg:8},
+  {t:"Meeting chair", prod:10, clean:10, min:2,    re:/meeting chair|tub chair|cantilever|visitor chair|conference chair|dining chair|breakout chair/i, m3:0.40, kg:10},
+  {t:"Stool", prod:10, min:2,            re:/stool/i, m3:0.15, kg:6},
+  {t:"Sit-stand desk", prod:60, two:true, min:20,   re:/sit.?stand|height adjust|electric desk|rise/i, m3:0.30, kg:60, built:1.10, est:true},
+  {t:"Bench desk position", prod:45, two:true, min:20, re:/bench/i, m3:0.30, kg:30, est:true},
+  {t:"Desk", prod:45, two:true, min:15,             re:/desk(?!\s*(screen|divider|mounted|pedestal|drawer))|workstation/i, m3:0.25, kg:35, built:0.90, w:1600},
+  {t:"Meeting table", prod:20, two:true, min:15,    re:/meeting table|boardroom|conference table|table \d{4}/i, m3:1.20, kg:50, w:1800},
+  {t:"Folding table", prod:10, min:4,    re:/folding|flip.?top/i, m3:0.15, kg:20},
+  {t:"Coffee table", prod:15, min:4,     re:/coffee table|side table|occasional/i, m3:0.30, kg:15},
+  {t:"Pedestal", prod:15, min:3,         re:/pedestal|desk drawer|drawer unit|mobile drawer/i, m3:0.25, kg:20},
+  {t:"Filing cabinet", prod:15, two:true, min:5,   re:/filing cab|filer/i, m3:0.50, kg:35},
+  {t:"Cupboard or tambour", prod:15, two:true, min:8, re:/cupboard|tambour|wardrobe|storage unit|bookcase|shelving/i, m3:0.80, kg:60},
+  {t:"Locker", prod:15, two:true, min:5,           re:/locker/i, m3:0.60, kg:40, est:true},
+  {t:"Screen divider", prod:10, min:4,   re:/screen|divider|partition/i, m3:0.05, kg:5},
+  {t:"Armchair", prod:30, clean:15, min:4,         re:/armchair|arm chair|lounge chair|easy chair/i, m3:0.60, kg:20, est:true},
+  {t:"Sofa", prod:60, clean:30, two:true, min:8,             re:/sofa|settee|couch|modular/i, m3:1.80, kg:45, est:true},
+  {t:"Booth", prod:60, two:true, min:30,            re:/booth|high.?back/i, m3:3.00, kg:90, est:true},
+  {t:"Pod", prod:240, two:true, min:240,              re:/\bpod\b/i, m3:17, kg:400, est:true}
 ];
+// prod = production minutes per item start to finish (pick, strip, clean, prep, upholster, assemble); clean = deep clean only, original fabric
 // two = needs two operatives to carry safely
 // min = handling minutes per item on site for a two person crew (carry in, place, assemble a flat desk); built desks carry in only
 // "4 x Desk 1600 (built)" -> {n:4, type, m3, kg}
@@ -47,12 +48,14 @@ function matchLoad(line){
   var built=/\bbuilt\b|assembled|made up/i.test(name), each=row.built&&built?row.built:row.m3;
   if(row.w){ var wm=/\b(\d{3,4})\s*(?:x|mm|\b)/i.exec(name); if(wm){ var w=parseInt(wm[1],10); if(w>=600&&w<=4000) each=each*w/row.w; } }
   var hm=row.min||0; if(row.t==="Desk"&&built) hm=6; if(row.t==="Sit-stand desk"&&built) hm=8;
-  return {n:n,name:name,type:row.t,two:!!row.two,built:built,m3:Math.round(each*n*100)/100,kg:row.kg*n,min:hm*n,est:!!row.est};
+  var cleanOnly=row.clean!=null&&/original fabric|clean only|deep clean|as is|wipe/i.test(name), refurb=/refurb|re-?upholster|new fabric|recover/i.test(name);
+  var pm=cleanOnly&&!refurb?row.clean:(row.prod||0);
+  return {n:n,name:name,type:row.t,two:!!row.two,built:built,prod:pm*n,cleanOnly:cleanOnly&&!refurb,m3:Math.round(each*n*100)/100,kg:row.kg*n,min:hm*n,est:!!row.est};
 }
 function loadOf(items){
   var out={m3:0,kg:0,rows:[],unmatched:[]};
-  out.min=0;
-  (items||[]).forEach(function(l){ var r=matchLoad(l); if(!r) return; if(!r.type){ out.unmatched.push(l); return; } out.rows.push(r); out.m3+=r.m3; out.kg+=r.kg; out.min+=r.min||0; });
+  out.min=0; out.prod=0;
+  (items||[]).forEach(function(l){ var r=matchLoad(l); if(!r) return; if(!r.type){ out.unmatched.push(l); return; } out.rows.push(r); out.m3+=r.m3; out.kg+=r.kg; out.min+=r.min||0; out.prod+=r.prod||0; });
   out.m3=Math.round(out.m3*10)/10; out.any=out.rows.length>0||out.unmatched.length>0;
   // guardrail: if any line could not be matched there is no estimate at all. a partial total would mislead.
   out.complete=out.rows.length>0&&out.unmatched.length===0; return out;
@@ -186,5 +189,26 @@ function aboveStandard(std,who,mins){
   if(!std) return null; var out=[];
   if(who&&who.length>std.crew) out.push((who.length)+" operatives, standard is "+std.crew);
   if(std.mins!=null&&mins!=null&&mins>std.mins*1.5) out.push(fmt(mins)+" each, standard is "+fmt(std.mins));
+  return out.length?out.join("; "):null;
+}
+
+// ── production standard: how long the workshop should take on the items ──
+// the work is the total of the items. more operatives divide it, plus 10 percent handover when they share.
+// crew: one operative up to 2 hours of work, two up to 12 hours, three beyond (refurb never needs more than three).
+function prodStandardFor(load,crewNow){
+  if(!load||!load.complete) return null;
+  var work=load.prod; if(!work) return null;
+  var crew=crewNow&&crewNow>0?crewNow:(work<=120?1:work<=720?2:3);
+  var each=Math.ceil(work/crew*(crew>1?1.1:1)/5)*5, days=Math.max(1,Math.ceil(each/DAY_MINS));
+  var what=load.rows.filter(function(r){return r.prod;}).map(function(r){return r.n+" "+r.type.toLowerCase()+(r.n>1?"s":"")+(r.cleanOnly?" (clean only)":"")+" at "+(r.prod/r.n)+" min";}).join(", ");
+  var why=fmt(work)+" of work in total: "+what+"."+(crew>1?" Split between "+crew+" operatives with 10 percent for handover, that is "+fmt(each)+" each":" One operative, "+fmt(each))+(days>1?", so "+days+" days.":".");
+  return {work:work,crew:crew,mins:each,days:days,why:why};
+}
+function aboveProdStandard(std,who,mins,start,end){
+  if(!std||!who||!who.length||mins==null) return null; var out=[];
+  var allocated=mins*who.length, allowed=std.work*(who.length>1?1.1:1);
+  if(allocated>allowed*1.5) out.push(fmt(mins)+" each for "+who.length+" is "+fmt(allocated)+" of work, standard is "+fmt(std.work));
+  if(who.length>3) out.push(who.length+" operatives, never more than three on one job");
+  if(start&&end){ var days=0; for(var x=new Date(start+"T12:00"); x.toISOString().slice(0,10)<=end; x.setDate(x.getDate()+1)){ if(x.getDay()!==0&&x.getDay()!==6) days++; } var need=Math.max(1,Math.ceil(mins/DAY_MINS)); if(days>need+1) out.push(days+" days scheduled, "+need+(need===1?" day":" days")+" of work"); }
   return out.length?out.join("; "):null;
 }
