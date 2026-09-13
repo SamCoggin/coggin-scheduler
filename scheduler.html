@@ -64,6 +64,22 @@
   .weektot span.low{background:var(--amber-bg);color:var(--amber)}
   .weektot span.team{background:var(--list);color:var(--text)}
   .prow li.rec{color:var(--green);font-weight:700}
+  .vtot{padding:10px 12px;border-radius:8px;background:var(--list);margin-bottom:10px}
+  .vtot .big{font-size:18px;font-weight:800}
+  .vtot .sub,.vday .sub{font-size:13px;color:var(--muted);margin-top:4px}
+  .vbar{height:10px;border-radius:5px;background:var(--line);margin-top:8px;overflow:hidden}
+  .vbar i{display:block;height:100%;background:var(--green)} .vbar i.near{background:var(--amber)} .vbar i.over{background:var(--red)}
+  .vday{padding:10px 12px;border-radius:8px;background:var(--blue-bg);margin-bottom:10px;font-size:13px}
+  .vday b{display:block;font-size:14px}
+  .vlist{display:flex;flex-direction:column;border:1px solid var(--line);border-radius:8px;overflow:hidden;margin-bottom:10px}
+  .vrow{display:grid;grid-template-columns:1fr auto auto auto;gap:10px;align-items:center;padding:8px 10px;border-top:1px solid var(--line);font-size:14px}
+  .vrow:first-child{border-top:0}
+  .vrow b{font-size:14px} .vrow .m{color:var(--muted);font-weight:600;font-size:13px;white-space:nowrap}
+  .vrow .tag{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.03em;color:var(--muted);border:1px solid var(--line);border-radius:4px;padding:2px 6px}
+  .vrow.bad{background:var(--red-bg)} .vrow.bad b,.vrow.bad .m{color:var(--red)}
+  .vrow .rm{border:1px solid var(--line);background:var(--card);border-radius:6px;padding:3px 8px;font-size:13px;font-weight:700}
+  .vadd{margin-top:10px} .vadd .lbl{font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.03em;margin-bottom:6px}
+  .vadd select{border:1px solid var(--line);border-radius:6px;padding:6px 8px;background:var(--card);font-weight:600;flex:1}
   .rwarn{margin:6px 14px 0;padding:8px 10px;border-radius:8px;background:var(--red-bg);color:var(--red);font-weight:700;font-size:13px}
   .rnote{color:var(--muted);font-size:13px;padding:6px 14px}
   .prow2 .drv{font-style:normal;font-weight:600;font-size:11px;color:var(--muted);margin-left:6px;border:1px solid var(--line);border-radius:4px;padding:1px 5px}
@@ -507,15 +523,33 @@ var SNAP=null, DETAIL={};
       if(j.drive!=null && j.drive>6*60) drb.appendChild(el("div","hint far","More than a day's travel with the job in between. Consider a courier or subcontractor."));
       right.appendChild(drb); }
     if(!o.shop && j.site && !contractorOnly && !j.isLeg){ var vb=block("Van Load","van"); var L=j.load||loadOf([]);
-      if(L.rows.length){ var lu=el("ul","items plain"); L.rows.forEach(function(r){ lu.appendChild(el("li",null,r.n+" x "+r.type+(r.built?", built":"")+": "+fmtM3(r.m3)+", "+r.kg+" kg"+(r.est?" (estimate)":""))); }); vb.appendChild(lu); }
-      if(L.unmatched.length) vb.appendChild(el("div","hint far","No estimate: "+L.unmatched.length+(L.unmatched.length===1?" item":" items")+" could not be matched, so nothing has been added up. Unmatched: "+L.unmatched.join("; ")+". Add the missing items below or set the load."));
-      if(j.manual&&j.manual.length){ var ml=el("ul","items plain"); j.manual.forEach(function(m,i){ var li=el("li",null,m+" (added here) "); var x=el("button","close","Remove"); x.onclick=function(){ j.manual.splice(i,1); j.load=loadOf(j.items.concat(j.manual)); render(); }; li.appendChild(x); ml.appendChild(li); }); vb.appendChild(ml); }
-      var ar=el("div","row"); var qn=el("input"); qn.type="number"; qn.min="1"; qn.value="1"; qn.style.width="60px"; qn.setAttribute("aria-label","Quantity"); var ts=el("select"); LOAD.forEach(function(r){ var o2=el("option",null,r.t); o2.value=r.t; ts.appendChild(o2); }); var ab=el("button","close","Add item"); ab.onclick=function(){ var n=parseInt(qn.value,10)||1; j.manual.push(n+" x "+ts.value); j.load=loadOf(j.items.concat(j.manual)); render(); }; ar.appendChild(qn); ar.appendChild(el("span",null,"x")); ar.appendChild(ts); ar.appendChild(ab); vb.appendChild(ar);
-      if(!L.rows.length&&!L.unmatched.length) vb.appendChild(el("div","hint","No items listed on the card, so nothing to add up. Type the load below."));
-      var tot=el("div","hint"); tot.style.fontWeight="700"; tot.textContent="Estimated: "+(L.complete?fmtLoad(L.m3,L.kg):"not set"); vb.appendChild(tot);
-      var vr=el("div","row"); vr.appendChild(el("span","hint","or set the load to")); var vn=el("input"); vn.type="number"; vn.min="0"; vn.step="0.5"; vn.value=j.cubeSet==null?"":String(j.cubeSet); vn.placeholder=L.complete?String(L.m3):"0"; vn.setAttribute("aria-label","Cubic metres"); vn.onchange=function(){ j.cubeSet=vn.value===""?null:Math.max(0,parseFloat(vn.value)||0); render(); }; vr.appendChild(vn); vr.appendChild(el("span",null,"cubic metres"));
-      if(j.cubeSet!=null){ var rs2=el("button","close","Use the estimate"); rs2.onclick=function(){ j.cubeSet=null; render(); }; vr.appendChild(rs2); } vb.appendChild(vr);
-      vb.appendChild(el("div","hint","A Luton box is about "+VAN_M3+" cubic metres. Desks count flat unless the item says built. Chair figures assume double stacking.")); right.appendChild(vb); }
+      var m3=j.cubeSet!=null?j.cubeSet:(L.complete?L.m3:null), kg=L.complete||j.cubeSet!=null?L.kg:0;
+      var vt=el("div","vtot"); vt.appendChild(el("div","big",m3==null?"No load estimate yet":fmtM3(m3)+" of "+VAN_M3+" m\u00b3"));
+      if(m3!=null){ var vbar=el("div","vbar"); var vf=el("i"); var vpc=Math.min(100,m3/VAN_M3*100); vf.style.width=vpc+"%"; vf.className=m3>VAN_M3||kg>VAN_KG?"over":(vpc>85?"near":""); vbar.appendChild(vf); vt.appendChild(vbar);
+        vt.appendChild(el("div","sub",(kg?Math.round(kg)+" kg of "+VAN_KG+" kg payload. ":"")+(j.cubeSet!=null?"Set by you.":"Worked out from the items on the card.")+(m3>VAN_M3?" Over one van.":kg>VAN_KG?" Over the payload.":""))); }
+      vb.appendChild(vt);
+      // everything else going out that day
+      var same=allJobs().filter(function(x){return x!==j && x.site && !x.isLeg && !(x.contractor&&!x.who.length) && onDay(x,j.date);});
+      if(same.length){ var known=0, om3=0, okg=0, names=[]; same.forEach(function(x){ var c2=cubeOf(x); if(c2==null) return; known++; om3+=c2; okg+=kgOf(x); names.push(x.title+" "+fmtM3(c2)); });
+        var dayTot=(m3||0)+om3, dk=el("div","vday"); dk.appendChild(el("b",null,"Everything going out "+niceDay(j.date)+": "+fmtM3(dayTot)+" of "+VAN_M3+" m\u00b3"+((kg||okg)?", "+Math.round((kg||0)+okg)+" kg":"")));
+        var dbar=el("div","vbar"); var df=el("i"); var dpc=Math.min(100,dayTot/VAN_M3*100); df.style.width=dpc+"%"; df.className=dayTot>VAN_M3?"over":(dpc>85?"near":""); dbar.appendChild(df); dk.appendChild(dbar);
+        dk.appendChild(el("div","sub","This job plus "+same.length+(same.length===1?" other transport job":" other transport jobs")+(known<same.length?" ("+(same.length-known)+" with no load worked out yet)":"")+": "+names.join(", ")+"."+(dayTot>VAN_M3?" More than one van: two rounds or the second van.":""))); vb.appendChild(dk); }
+      // one list of items with where each came from
+      var autoN=L.rows.length-(j.manual||[]).length;
+      if(L.rows.length||L.unmatched.length){ var vl=el("div","vlist");
+        L.rows.forEach(function(r,i){ var row=el("div","vrow"); row.appendChild(el("b",null,r.n+" x "+r.type+(r.built?" (built)":""))); row.appendChild(el("span","m",fmtM3(r.m3)+", "+r.kg+" kg"+(r.est?", estimate":"")));
+          var fromManual=i>=autoN; row.appendChild(el("span","tag",fromManual?"added":"on card"));
+          if(fromManual){ var x=el("button","rm","Remove"); var mi=i-autoN; x.onclick=function(){ j.manual.splice(mi,1); j.load=loadOf(j.items.concat(j.manual)); render(); }; row.appendChild(x); } else row.appendChild(el("span"));
+          vl.appendChild(row); });
+        L.unmatched.forEach(function(u){ var row=el("div","vrow bad"); row.appendChild(el("b",null,u)); row.appendChild(el("span","m","not in the table")); row.appendChild(el("span","tag","on card")); row.appendChild(el("span")); vl.appendChild(row); });
+        vb.appendChild(vl); }
+      if(L.unmatched.length) vb.appendChild(el("div","hint far","No estimate: "+L.unmatched.length+(L.unmatched.length===1?" item":" items")+" could not be matched, so nothing has been added up. Add the missing items below as the right type, or set the load."));
+      if(!L.rows.length&&!L.unmatched.length) vb.appendChild(el("div","hint","No items found on the card. Add them below."));
+      var add=el("div","vadd"); add.appendChild(el("div","lbl","Add an item not on the card")); var ar=el("div","row"); var qn=el("input"); qn.type="number"; qn.min="1"; qn.value=""; qn.placeholder="Qty"; qn.style.width="64px"; qn.setAttribute("aria-label","Quantity"); var ts=el("select"); var o0=el("option",null,"Choose a product type"); o0.value=""; ts.appendChild(o0); LOAD.forEach(function(r){ var o2=el("option",null,r.t); o2.value=r.t; ts.appendChild(o2); }); var ab=el("button","close","Add"); ab.disabled=true; ab.style.opacity=".5"; var chk=function(){ var ok=!!ts.value&&parseInt(qn.value,10)>0; ab.disabled=!ok; ab.style.opacity=ok?"1":".5"; }; ts.onchange=chk; qn.oninput=chk; ab.onclick=function(){ if(ab.disabled) return; var n=parseInt(qn.value,10)||1; j.manual=j.manual||[]; j.manual.push(n+" x "+ts.value); j.load=loadOf(j.items.concat(j.manual)); render(); }; ar.appendChild(qn); ar.appendChild(el("span",null,"x")); ar.appendChild(ts); ar.appendChild(ab); add.appendChild(ar); vb.appendChild(add);
+      var set=el("div","vadd"); set.appendChild(el("div","lbl","Or set the load yourself")); var vr=el("div","row"); var vn=el("input"); vn.type="number"; vn.min="0"; vn.step="0.5"; vn.value=j.cubeSet==null?"":String(j.cubeSet); vn.placeholder=L.complete?String(L.m3):"0"; vn.setAttribute("aria-label","Cubic metres"); vn.onchange=function(){ j.cubeSet=vn.value===""?null:Math.max(0,parseFloat(vn.value)||0); render(); }; vr.appendChild(vn); vr.appendChild(el("span",null,"cubic metres"));
+      if(j.cubeSet!=null){ var rs2=el("button","close","Use the estimate"); rs2.onclick=function(){ j.cubeSet=null; render(); }; vr.appendChild(rs2); } set.appendChild(vr);
+      set.appendChild(el("div","hint","A Luton box is about "+VAN_M3+" cubic metres, payload about "+VAN_KG+" kg. Desks count flat unless the item says built. Chair figures assume double stacking.")); vb.appendChild(set);
+      right.appendChild(vb); }
     if(!o.shop && !j.isLeg && !contractorOnly){ var std=standardFor(j.label,j.load); if(std){ var sb=block("Standard for this job","standard");
       sb.appendChild(el("div",null,std.crew+(std.crew===1?" operative":" operatives")+(std.mins!=null?", "+fmt(std.mins)+" each on site":", time needs the items on the card")));
       sb.appendChild(el("div","hint",std.why+"."));
