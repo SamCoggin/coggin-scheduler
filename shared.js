@@ -260,10 +260,11 @@ function vehicleAdvice(m3,kg,lutonsOnRoad,opts){
   common.forEach(function(a){ common.forEach(function(b){ if(a.m3+b.m3>=m3&&a.kg+b.kg>=kg){ if(!pair||a.m3+b.m3<pair.m3) pair=a.m3>=b.m3?{a:a,b:b,m3:a.m3+b.m3}:{a:b,b:a,m3:a.m3+b.m3}; } }); });
   var out={lutons:lutons,fitsOurs:lutons<=on,city:city,hire:single,pair:pair};
   var cityNote=city?" City centre: nothing bigger than an 18 tonne, and book a parking suspension for the bays.":"";
+  // fewest vehicles first (Sam, 13 Sep 2026: running several vehicles is expensive)
   if(lutons===1) out.text="One Luton."+cityNote;
-  else if(lutons<=on) out.text=lutons+" Lutons"+(single?", or one "+single.t+" ("+single.note+")":"")+"."+cityNote;
-  else if(single) out.text="One "+single.t+" ("+single.note+")"+(lutons<=3?", or "+lutons+" Luton trips"+(on<lutons?" with "+on+" on the road":""):"")+"."+cityNote;
-  else if(pair) out.text=(pair.a.t===pair.b.t?"Two "+pair.a.t.replace(/box$/,"boxes"):"One "+pair.a.t+" and one "+pair.b.t)+" (haulier with drivers; check site access), or tranship: a big wagon to the edge and Lutons to the door."+cityNote;
-  else out.text="More than two wagons: split the collection over days, or tranship from a depot."+cityNote;
+  else if(single) out.text="One "+single.t+" ("+single.note+")."+(lutons<=on?" Or our "+lutons+" Lutons in one trip each.":"")+cityNote;
+  else if(lutons<=on) out.text="Our "+lutons+" Lutons, one trip each."+cityNote;
+  else if(pair) out.text=(pair.a.t===pair.b.t?"Two "+pair.a.t.replace(/box$/,"boxes"):"One "+pair.a.t+" and one "+pair.b.t)+" (haulier with drivers; check site access)."+cityNote;
+  else out.text="Nothing takes this in two vehicles: split the collection over days, or tranship from a depot."+cityNote;
   return out;
 }
