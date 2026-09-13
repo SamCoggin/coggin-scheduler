@@ -464,7 +464,7 @@ var SNAP=null, DETAIL={};
       if(!j.site) j.contractor="";
       if(j.site) j.drive=driveMins(title);
     }
-    j.vehicle=null; j.hireRef=""; j.hireBooked=false;   // the van on the job: a registration, "hire", or nothing yet
+    j.vehicle=null; j.hireRef=""; j.hireBooked=false; j.soloOk=""; // soloOk: the reason one operative is enough despite two-person items   // the van on the job: a registration, "hire", or nothing yet
     j.from=null; j.by=null;   // time window on a transport job: arrive after, finish by (HH:MM)
     var tw=/^(after|from|not before|before|by)\s*(\d{1,2})(?:[:.](\d{2}))?\s*(am|pm)?\s*[-,:]?\s*/i.exec(title||""); if(tw){ var hh=parseInt(tw[2],10); if(/pm/i.test(tw[4]||"")&&hh<12) hh+=12; var hm=(hh<10?"0":"")+hh+":"+(tw[3]||"00"); if(/before|by/i.test(tw[1])) j.by=hm; else j.from=hm; if(title.length>tw[0].length+2){ title=title.slice(tw[0].length); j.title=title; } }
     j.start=c.start&&c.start<c.due?c.start:null;
@@ -474,7 +474,7 @@ var SNAP=null, DETAIL={};
     LEAVE=SNAP.cards.filter(function(c){return c.role==="leave"&&c.due;}).map(function(c){ return {date:c.due,text:c.name.replace(/\s*\(.*$/,"").replace(/BANK HOLIDAY\s*-\s*/i,"")+(/BANK HOLIDAY/i.test(c.name)?" (bank holiday)":" on leave")}; });
     // what was saved on the cards last time
     SNAP.cards.forEach(function(c){ var d=c.saved; if(!d) return; var j=JOBS.filter(function(x){return x.id===c.id;})[0]; if(!j) return;
-      if(d.who) j.who=d.who.slice(); if(d.cube!=null) j.cubeSet=d.cube; if(d.ignore&&d.ignore.length){ j.ignore=d.ignore.slice(); j.items=j.allItems.filter(function(l){return j.ignore.indexOf(l)<0;}); } if(d.items&&d.items.length){ j.manual=d.items.slice(); } j.load=loadOf(j.items.concat(j.manual)); if(d.mins!=null) j.mins=d.mins; if(d.drive!=null) j.drive=d.drive; if(d.contractor) j.contractor=d.contractor; if(d.from) j.from=d.from; if(d.by) j.by=d.by; if(d.vehicle) j.vehicle=d.vehicle; if(d.hireRef) j.hireRef=d.hireRef; if(d.hireBooked) j.hireBooked=true;
+      if(d.who) j.who=d.who.slice(); if(d.cube!=null) j.cubeSet=d.cube; if(d.ignore&&d.ignore.length){ j.ignore=d.ignore.slice(); j.items=j.allItems.filter(function(l){return j.ignore.indexOf(l)<0;}); } if(d.items&&d.items.length){ j.manual=d.items.slice(); } j.load=loadOf(j.items.concat(j.manual)); if(d.mins!=null) j.mins=d.mins; if(d.drive!=null) j.drive=d.drive; if(d.contractor) j.contractor=d.contractor; if(d.from) j.from=d.from; if(d.by) j.by=d.by; if(d.vehicle) j.vehicle=d.vehicle; if(d.soloOk) j.soloOk=d.soloOk; if(d.hireRef) j.hireRef=d.hireRef; if(d.hireBooked) j.hireBooked=true;
       if(d.prep&&j.prep){ j.prep.who=d.prep.who||[]; j.prep.mins=d.prep.mins; j.prep.start=d.prep.start||null; j.prep.date=d.prep.date||null; }
       if(d.prodDue&&j.prep){ j.prodDue=d.prodDue; j.prodDueSet=true; }
       (d.legs||[]).forEach(function(L){ LEGS.push({parent:j.id,type:L.type,date:L.date,who:L.who||[],mins:L.mins,drive:L.drive,where:L.where||""}); });
@@ -526,7 +526,7 @@ var SNAP=null, DETAIL={};
   function persist(){
     if(!t) return;
     JOBS.forEach(function(j){
-      var d={who:j.who,mins:j.mins,drive:j.drive,cube:j.cubeSet,ignore:j.ignore&&j.ignore.length?j.ignore:undefined,items:j.manual&&j.manual.length?j.manual:undefined,load:j.load&&j.load.any?{m3:j.load.m3,kg:j.load.kg,complete:j.load.complete,rows:j.load.rows.map(function(r){return {n:r.n,type:r.type,m3:r.m3,kg:r.kg,built:r.built,est:r.est};}),unmatched:j.load.unmatched}:undefined,contractor:j.contractor||"",from:j.from||null,by:j.by||null,vehicle:j.vehicle||null,hireRef:j.hireRef||"",hireBooked:!!j.hireBooked,prodDue:j.prodDueSet?j.prodDue:null,prep:j.prep?{who:j.prep.who,mins:j.prep.mins,start:j.prep.start,date:j.prep.date}:null,
+      var d={who:j.who,mins:j.mins,drive:j.drive,cube:j.cubeSet,ignore:j.ignore&&j.ignore.length?j.ignore:undefined,items:j.manual&&j.manual.length?j.manual:undefined,load:j.load&&j.load.any?{m3:j.load.m3,kg:j.load.kg,complete:j.load.complete,rows:j.load.rows.map(function(r){return {n:r.n,type:r.type,m3:r.m3,kg:r.kg,built:r.built,est:r.est};}),unmatched:j.load.unmatched}:undefined,contractor:j.contractor||"",from:j.from||null,by:j.by||null,vehicle:j.vehicle||null,soloOk:j.soloOk||"",hireRef:j.hireRef||"",hireBooked:!!j.hireBooked,prodDue:j.prodDueSet?j.prodDue:null,prep:j.prep?{who:j.prep.who,mins:j.prep.mins,start:j.prep.start,date:j.prep.date}:null,
         legs:LEGS.filter(function(L){return L.parent===j.id;}).map(function(L){return {type:L.type,date:L.date,who:L.who,mins:L.mins,drive:L.drive,where:L.where};})};
       var js=JSON.stringify(d); if(lastSaved[j.id]===js) return; lastSaved[j.id]=js; t.set(j.id,"shared","sched",d);
     });
@@ -692,7 +692,11 @@ var SNAP=null, DETAIL={};
     var freeOnes=TEAM.filter(function(w){return load[w].c==="free"&&part.who.indexOf(w)<0;});
     wb.appendChild(el("div","hint",freeOnes.length?"Available "+shortDay(dayK)+": "+freeOnes.join(", ")+".":"No operatives available on "+shortDay(dayK)+"."));
     if(!o.shop&&j.site&&!contractorOnly&&part.who.length&&!part.who.some(function(w){return DRIVERS.indexOf(w)>=0;})) wb.appendChild(el("div","hint far","No driver on this job. Rob, Jack or Bart must be on it to drive the van."));
-    if(!o.shop&&!contractorOnly){ var tpi=twoPersonItems(j); if(tpi.length) wb.appendChild(el("div","hint"+(part.who.length<2?" far":""),(part.who.length<2?"Two operatives needed: ":"Two-person items on this job: ")+tpi.slice(0,4).join(", ")+(tpi.length>4?" and more":"")+". "+(part.who.length<2?"One person cannot carry these safely.":"Two are on it."))); }
+    if(!o.shop&&!contractorOnly){ var tpi=twoPersonItems(j); if(tpi.length){
+      if(j.soloOk){ var okr=el("div","hint"); okr.textContent="One operative agreed for the two-person items: "+j.soloOk+" "; var undo=el("button","close","Needs two after all"); undo.onclick=function(){ j.soloOk=""; persist(); render(); }; okr.appendChild(undo); wb.appendChild(okr); }
+      else if(part.who.length<2){ wb.appendChild(el("div","hint far","Two operatives needed: "+tpi.slice(0,4).join(", ")+(tpi.length>4?" and more":"")+". One person cannot carry these safely."));
+        var okrow=el("div","row"); var why=el("input"); why.type="text"; why.placeholder="Why one is enough, e.g. ground floor, sack truck"; why.style.minWidth="260px"; why.setAttribute("aria-label","Why one operative is enough"); var okb=el("button","close","One operative is fine"); okb.onclick=function(){ var r=why.value.trim(); if(!r){ why.focus(); why.placeholder="Give the reason first"; return; } j.soloOk=r; persist(); render(); }; okrow.appendChild(why); okrow.appendChild(okb); wb.appendChild(okrow); }
+      else wb.appendChild(el("div","hint","Two-person items on this job: "+tpi.slice(0,4).join(", ")+(tpi.length>4?" and more":"")+". Two are on it.")); } }
     right.appendChild(wb);
     if(o.leg){ var lgb=block("This leg"); var lr=el("div","row"); var ld=el("input"); ld.type="date"; ld.value=j.leg.date; ld.onchange=function(){ if(ld.value){ j.leg.date=ld.value; render(); } }; lr.appendChild(el("span",null,"Date")); lr.appendChild(ld); lgb.appendChild(lr);
       var wr=el("div","row"); var wi=el("input"); wi.type="text"; wi.value=j.leg.where||""; wi.placeholder="Subcontractor or site, with postcode"; wi.style.minWidth="260px"; wi.onchange=function(){ j.leg.where=wi.value; var pc=/\b([A-Z]{1,2})\d/i.exec(wi.value); j.leg.drive=pc&&DRIVE[pc[1].toUpperCase()]?Math.round(DRIVE[pc[1].toUpperCase()].h*2*60*TRAFFIC/5)*5:j.leg.drive; render(); }; wr.appendChild(el("span",null,"Where")); wr.appendChild(wi); lgb.appendChild(wr);
@@ -909,7 +913,7 @@ var SNAP=null, DETAIL={};
   // TWO-PERSON ITEMS (Sam, 13 Sep 2026): a desk, a cabinet, a sofa, or anything over 25 kg needs two people to carry.
   // One operative on a transport job with any of those is not a plan.
   function twoPersonItems(j){ if(!j.site||j.isHold||j.isLeg||(j.contractor&&!j.who.length)||!j.load||!j.load.rows) return []; return j.load.rows.filter(function(r){ return r.two||(r.n&&r.kg/r.n>=25); }).map(function(r){ return qty(r.n,r.type); }); }
-  function shortCrew(j){ var items=twoPersonItems(j); return items.length&&j.who.length===1?items:null; }
+  function shortCrew(j){ if(j.soloOk) return null; var items=twoPersonItems(j); return items.length&&j.who.length===1?items:null; }
   function needsPlan(j,isPrep){
     if(j.isHold) return false; if(j.isLeg) return !j.who.length||j.mins==null;
     var part=isPrep?j.prep:j; if(!isPrep&&j.contractor&&!j.who.length) return false;
