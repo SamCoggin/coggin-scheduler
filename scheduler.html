@@ -452,6 +452,7 @@ var SNAP=null, DETAIL={};
     }
     j.vehicle=null; j.hireRef=""; j.hireBooked=false;   // the van on the job: a registration, "hire", or nothing yet
     j.from=null; j.by=null;   // time window on a transport job: arrive after, finish by (HH:MM)
+    var tw=/^(after|from|not before|before|by)\s*(\d{1,2})(?:[:.](\d{2}))?\s*(am|pm)?\s*[-,:]?\s*/i.exec(title||""); if(tw){ var hh=parseInt(tw[2],10); if(/pm/i.test(tw[4]||"")&&hh<12) hh+=12; var hm=(hh<10?"0":"")+hh+":"+(tw[3]||"00"); if(/before|by/i.test(tw[1])) j.by=hm; else j.from=hm; }
     j.start=c.start&&c.start<c.due?c.start:null;
     var dd=DETAIL[c.id]; j.allItems=itemsOf(dd?dd.desc:c.desc,dd?dd.checks:c.checks); j.ignore=[]; j.items=j.allItems.slice(); j.manual=[]; j.load=loadOf(j.items); j.cubeSet=null;
     return j; });
@@ -1456,12 +1457,12 @@ var SNAP=null, DETAIL={};
     var rail=el("div","list rail"); var rh=el("h2"); rh.appendChild(el("span",null,"Needs a decision")); rh.appendChild(el("span",null,(ISSUES.length+TOPLAN.length)?String(ISSUES.length+TOPLAN.length):"none")); rail.appendChild(rh);
     var rc=el("div","cards"); if(!ISSUES.length&&!TOPLAN.length) rc.appendChild(el("div","hint","Nothing needs a decision this week."));
     if(ISSUES.length&&TOPLAN.length) rc.appendChild(el("div","sec-h","Warnings"));
-    var railItems=ISSUES.slice(); if(TOPLAN.length){ railItems.push({sep:TOPLAN.length+" to plan"}); railItems=railItems.concat(TOPLAN); }
+    var railItems=ISSUES.slice(); if(TOPLAN.length){ railItems.push({sep:TOPLAN.length+" to plan this week"}); railItems=railItems.concat(TOPLAN); }
     railItems.forEach(function(x){ if(x.sep){ rc.appendChild(el("div","sec-h",x.sep)); return; } var it=el("button","iss"+(x.amber?" amber":"")); it.appendChild(el("b",null,shortDay(x.k)+" \u00b7 "+x.title)); it.appendChild(el("span",null,x.text)); if(x.j&&!x.j.isHold){ it.onclick=function(){ open=x.j.id; render(); }; } else { it.onclick=function(){ dayCur=x.k; view="day"; render(); }; } rc.appendChild(it); });
     rail.appendChild(rc); b.appendChild(rail);
     var strip=$("#strip"); strip.hidden=false; strip.innerHTML="";
     var tile=function(lbl,val,cls,onclick){ var bt=el("button",null); bt.appendChild(el("small",null,lbl)); bt.appendChild(el("b",cls||"",val)); if(onclick) bt.onclick=onclick; strip.appendChild(bt); return bt; };
-    var nTP=toPlanCount(); var tp=tile("To plan",String(nTP),nTP?"bad":"",function(){ NEED=!NEED; try{ localStorage.setItem("cg-need",NEED?"1":"0"); }catch(e){} render(); }); if(NEED) tp.className="on";
+    var nTP=toPlanCount(); var tp=tile("To plan, all dates",String(nTP),nTP?"bad":"",function(){ NEED=!NEED; try{ localStorage.setItem("cg-need",NEED?"1":"0"); }catch(e){} render(); }); if(NEED) tp.className="on";
     var reds=ISSUES.filter(function(x){return !x.amber;}).length; tile("Warnings this week",ISSUES.length?String(ISSUES.length):"0",reds?"bad":(ISSUES.length?"warn":""));
     tile("Vans on the road",vansOnRoad()+" of "+VEHICLES.length,vansOnRoad()<VEHICLES.length?"warn":"",function(){ view="routes"; render(); });
     tile("Hours planned",fmt(HOURS.need)+" of "+fmt(HOURS.avail),HOURS.need>HOURS.avail?"bad":"");
