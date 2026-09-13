@@ -700,7 +700,7 @@ var SNAP=null, DETAIL={};
     if(!isPrep&&!j.isLeg&&!(j.contractor&&!j.who.length)){ var stdX=standardFor(j.movement||j.label,j.load); if(aboveStandard(stdX,j.who,j.mins)) ft.appendChild(el("span","bdg now","Above standard")); }
     if(isPrep){ var pstdX=prodStandardFor(j.load,j.prep.who.length); if(aboveProdStandard(pstdX,j.prep.who,j.prep.mins,j.prep.start,j.prep.date)) ft.appendChild(el("span","bdg now","Above standard")); }
     ft.appendChild(badge(partX,isToday)); c.appendChild(ft);
-    if(j.isHold){ c.className+=" hold"; c.onclick=function(){}; return c; }
+    if(j.isHold){ c.className+=" hold"; c.onclick=function(){}; var bx=ft.querySelector(".bdg"); if(bx) ft.removeChild(bx); return c; }
     c.onclick=function(){ open=isPrep?j.id+":prep":j.id; render(); };
     return c;
   }
