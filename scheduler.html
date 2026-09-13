@@ -625,6 +625,7 @@ var SNAP=null, DETAIL={};
     contractor:"Transport jobs only. Coggin operatives by default; select a subcontractor or courier when they carry out the job. Workshop and yard work is always our own operatives.",
     days:"The dates production takes place. Set a later end date to spread it over several days.",
     recycling:"Every hour of a working day that is not allocated to a job is recycling. This is each operative's recycling time for the week. A low figure means the week is full of jobs; check the jobs are not carrying more people or time than their standard.",
+    vehicles:"What each class carries: SWB van 8 m3 and 1,000 kg; LWB van 13 m3; our Lutons 18.7 m3 and 1,000 kg; 7.5 tonne box 32 m3 and 2,600 kg (C1 licence, so hire with a driver); 12 tonne 40 m3 and 6,000 kg; 18 tonne 55 m3 and 9,500 kg; 26 tonne 65 m3 and 15,000 kg; artic 85 m3 and 26 tonnes. Anything over 7.5 tonnes is a haulier with a driver, and the bigger it is the more site access matters.",
     manager:"Managers only. Every job with time allocated, against the standard worked out from its items. Amber is over by half, red is double.",
     pstandard:"How long the workshop should take on the items: 30 minutes a swivel chair start to finish, 10 for a clean-only chair, 15 for storage, 45 for a desk. More operatives divide the work, with 10 percent for handover. Use standard sets the time per operative.",
     standard:"The standard crew and time for this job type, worked out from the items on the card. Above it is not wrong, but it should be a decision. Use standard sets the time to it.",
@@ -778,7 +779,7 @@ var SNAP=null, DETAIL={};
     var wrap=el("div","mapwrap"); var lg=el("div","legend"); days.forEach(function(k,i){ var sp=el("span"); var dot=el("i"); dot.style.background=DAYCOL[i]; sp.appendChild(dot); sp.appendChild(document.createTextNode(niceDay(k))); lg.appendChild(sp); });
     var sp0=el("span"); var d0=el("i"); d0.style.background="#172b4d"; sp0.appendChild(d0); sp0.appendChild(document.createTextNode("Yard")); lg.appendChild(sp0); lg.appendChild(tip("routes")); wrap.appendChild(lg);
     var fleet=el("div","fleet"); fleet.appendChild(el("b",null,"Vans")); VEHICLES.forEach(function(v){ var off=VANS_OFF.indexOf(v.reg)>=0; var bt=el("button",off?"off":"on",v.name+": "+(off?"off the road":"on the road")); bt.title="Select to change"; bt.onclick=function(){ if(off) VANS_OFF=VANS_OFF.filter(function(r){return r!==v.reg;}); else VANS_OFF.push(v.reg); render(); }; fleet.appendChild(bt); });
-    fleet.appendChild(el("span","hint",vansOnRoad()+" of "+VEHICLES.length+" on the road. More than that on one day means hiring a van in.")); wrap.appendChild(fleet);
+    var vt=el("span","hint",vansOnRoad()+" of "+VEHICLES.length+" on the road. More than that on one day means hiring in."); vt.appendChild(tip("vehicles")); fleet.appendChild(vt); wrap.appendChild(fleet);
     var mapDiv=el("div"); mapDiv.id="map"; wrap.appendChild(mapDiv); b.appendChild(wrap);
     var panel=el("div","rpanel"); b.appendChild(panel); panel.appendChild(el("div","rnote","Finding postcodes..."));
     var pcs=weekJobs.concat(pool).map(function(j){ j.pc=pcOf(j); return j.pc; });
@@ -820,6 +821,8 @@ var SNAP=null, DETAIL={};
         // one group per operative (a round), plus the jobs nobody is on yet
         var groups=[]; TEAM.forEach(function(w){ var mine=jobs.filter(function(j){return j.who.indexOf(w)>=0;}); if(mine.length) groups.push({name:w,jobs:mine}); });
         var none=jobs.filter(function(j){return !j.who.length;}); if(none.length) groups.push({name:"Unassigned",jobs:none,unassigned:true});
+        var dayM3=jobs.reduce(function(t,j){return t+(cubeOf(j)||0);},0), dayKg=jobs.reduce(function(t,j){return t+kgOf(j);},0), advD=vehicleAdvice(dayM3,dayKg,vansOnRoad());
+        if(advD&&dayM3){ day.appendChild(el("div",advD.fitsOurs?"rnote":"rwarn","Whole day: "+fmtM3(dayM3)+(dayKg?", "+Math.round(dayKg)+" kg":"")+". Needs "+advD.text)); }
         var driving=groups.filter(function(g){return !g.unassigned && DRIVERS.indexOf(g.name)>=0;}).length;
         if(driving>vansOnRoad()) day.appendChild(el("div","rwarn",driving+" drivers out with "+vansOnRoad()+(vansOnRoad()===1?" van":" vans")+" on the road. Hire a van in, combine rounds or move a job."));
         groups.forEach(function(g){
@@ -835,7 +838,7 @@ var SNAP=null, DETAIL={};
           if(MAP&&stops.length&&!g.unassigned){ var line=[[BASE.lat,BASE.lng]].concat(stops.map(function(x){return [x.pt.lat,x.pt.lng];})).concat([[BASE.lat,BASE.lng]]); L.polyline(line,{color:col,weight:4,opacity:.8}).addTo(MAP); }
           day.appendChild(grp);
           var vanLine=el("div","rnote","Van load: "+(vanQ?fmtLoad(vanQ,kgQ):"nothing to add up")+(vanUnknown?" ("+vanUnknown+(vanUnknown===1?" job":" jobs")+" with no items listed)":"")); day.appendChild(vanLine);
-          if(vanQ>VAN_M3||kgQ>VAN_KG) day.appendChild(el("div","rwarn",(vanQ>VAN_M3?"Over one van by volume":"Over the payload by weight")+". Split the round, or use "+(vansOnRoad()>1?"the second van":"a hired van")+"."));
+          if(vanQ>VAN_M3||kgQ>VAN_KG){ var advR=vehicleAdvice(vanQ,kgQ,vansOnRoad()); day.appendChild(el("div","rwarn",(vanQ>VAN_M3?"Over one van by volume":"Over the payload by weight")+". Needs "+advR.text+" Or split the round.")); }
           if(!g.unassigned && DRIVERS.indexOf(g.name)<0){ var withDriver=g.jobs.every(function(j){return j.who.some(function(w){return DRIVERS.indexOf(w)>=0;});}); if(!withDriver) day.appendChild(el("div","rwarn",g.name+" cannot drive transport. Add a driver: Rob, Jack or Bart.")); }
           // jobs on other days close to this round
           if(stops.length){
