@@ -242,6 +242,8 @@
     var vanApplies=!contractorOnly && (site || (workshop && !loading));
     var ls=section("loading","Loading",due?niceShort(due):"");
     if(workshop && loading) ls.appendChild(el("div","who","Customer or courier collecting, so nothing goes on our van"));
+    if(contractorOnly){ ls.appendChild(el("div","who",d.contractor+" is carrying out the delivery, so nothing goes on our van"));
+      ls.appendChild(rowEl("carried","Carried out by",d.contractor,function(ed){ var sel=el("select"); [["","Our operatives"]].concat(CONTRACTORS.map(function(x){return [x,x];})).forEach(function(o){ var op=el("option",null,o[1]); op.value=o[0]; if((d.contractor||"")===o[0]) op.selected=true; sel.appendChild(op); }); sel.onchange=function(){ d.contractor=sel.value; save(); render(); }; ed.appendChild(sel); ed.appendChild(el("div","hint","Choose Our operatives if this goes out on our van.")); })); }
     if(vanApplies){
       var dayTot=null, others=[], missing=[], names=[];
       if(due){ others=OTHERS.filter(function(o){ return o.site && o.due===due && !(o.plan.contractor&&!(o.plan.who||[]).length); }); var om3=0, okg=0; others.forEach(function(o){ if(o.cube==null){ missing.push((o.name||"another job")+" ("+o.why+")"); return; } om3+=o.cube; okg+=o.kg; names.push((o.name||"another job")+" "+fmtM3(o.cube)); }); if(others.length) dayTot={m3:(m3||0)+om3,kg:(kg||0)+okg}; }
@@ -266,7 +268,7 @@
         set.appendChild(el("div","hint","A Luton box is about "+VAN_M3+" cubic metres, payload about "+VAN_KG+" kg. Desks count flat unless the item says built. Chair figures assume double stacking. Small parts ride in the cab.")); ed.appendChild(set);
       },vanCls));
     }
-    if(vanApplies||(workshop&&loading)) app.appendChild(ls);
+    if(vanApplies||(workshop&&loading)||contractorOnly) app.appendChild(ls);
     if(!workshop) app.appendChild(ts);
 
     if(d.legs&&d.legs.length){ var ls=section("labour","Legs",""); var lf=fld(""); d.legs.forEach(function(Lg){ lf.appendChild(el("div",null,Lg.type.replace("_"," ")+(Lg.where?": "+Lg.where:"")+", "+(Lg.date?niceShort(Lg.date):"no date")+(Lg.who&&Lg.who.length?", "+Lg.who.join(", "):", unassigned")+(Lg.mins!=null?", "+fmt(Lg.mins):""))); }); lf.appendChild(el("div","hint","Legs are added and edited in the Scheduler.")); ls.appendChild(lf); app.appendChild(ls); }
