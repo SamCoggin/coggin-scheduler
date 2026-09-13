@@ -130,6 +130,19 @@
   .prow ul{margin:6px 0 0;padding-left:16px;font-size:13px;color:var(--muted)}
   .prow li{margin:2px 0}
 
+  .strip{zoom:.88;flex-shrink:0;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;padding:12px 16px 0}
+  .strip button{text-align:left;border:2px solid #3d4451;background:var(--card);border-radius:10px;padding:8px 12px;box-shadow:0 2px 6px rgba(9,30,66,.18)}
+  .strip button small{display:block;font-size:12px;color:var(--muted);font-weight:700}
+  .strip button b{font-size:22px;font-weight:800}
+  .strip button.on{outline:3px solid var(--blue)}
+  .strip button b.bad{color:var(--red)} .strip button b.warn{color:#b35c00}
+  .board.week{grid-template-columns:repeat(5,minmax(210px,1fr)) minmax(190px,.9fr)}
+  .rail .cards{gap:8px}
+  .rail .iss{text-align:left;width:100%;border:0;border-left:5px solid var(--red);border-radius:6px;background:var(--card);padding:8px 10px;font-size:13px;line-height:1.35;color:var(--text);box-shadow:0 1px 3px rgba(9,30,66,.15)}
+  .rail .iss.amber{border-left-color:#e08a00}
+  .rail .iss b{display:block;font-size:13px}
+  .rail .iss span{color:var(--muted)}
+  .rail .iss:hover{background:var(--blue-bg)}
   .board{zoom:.88;display:grid;grid-template-columns:repeat(5,minmax(230px,1fr));gap:12px;padding:12px 16px;flex:1;min-height:0;overflow-x:auto}
   .list{background:var(--list);border-radius:12px;display:flex;flex-direction:column;min-height:0;border:2px solid #3d4451;box-shadow:0 2px 6px rgba(9,30,66,.18)}
   .list.today{border-color:var(--blue)}
@@ -323,6 +336,7 @@
   <span class="views"><button id="vday">Day</button><button id="vweek" class="on">Week</button><button id="vmonth">Month</button><button id="vroutes">Routes</button><button id="vmanager">Manager</button></span>
   <button id="need" title="Show only the jobs still missing operatives, time or travel">To plan</button><button id="prev">Back</button><span class="t" id="title"></span><button id="next">Next</button><button id="pdf" title="Download as a PDF file">Download PDF</button><button id="print" title="Print">Print</button>
 </div>
+<div class="strip" id="strip" hidden></div>
 <div class="board" id="board"></div>
 <div id="printsheet" class="printsheet"></div>
 
@@ -570,25 +584,26 @@ var SNAP=null, DETAIL={};
   function vehicleWarnings(k){
     var out=[], jobs=allJobs().filter(function(j){return onDay(j,k)&&ourJob(j);});
     var byVan={}; jobs.forEach(function(j){ if(!j.vehicle||j.vehicle==="hire") return; var d=j.who.filter(function(w){return DRIVERS.indexOf(w)>=0;})[0]||j.who[0]||"unassigned"; (byVan[j.vehicle]=byVan[j.vehicle]||{}); byVan[j.vehicle][d]=1; });
-    Object.keys(byVan).forEach(function(v){ var ds=Object.keys(byVan[v]); if(ds.length>1) out.push(v+" is on "+ds.join(" and ")+"'s jobs. One van, "+ds.length+" drivers. Move one to the other van or a hire."); if(VANS_OFF.indexOf(v)>=0) out.push(v+" is off the road and still on a job. Swap the van."); });
+    Object.keys(byVan).forEach(function(v){ var ds=Object.keys(byVan[v]); if(ds.length>1) out.push({text:v+" is on "+ds.join(" and ")+"'s jobs. One van, "+ds.length+" drivers. Move one to the other van or a hire.",who:v}); if(VANS_OFF.indexOf(v)>=0) out.push({text:v+" is off the road and still on a job. Swap the van.",who:v}); });
     var drivers={}; jobs.forEach(function(j){ if(j.vehicle==="hire") return; j.who.forEach(function(w){ if(DRIVERS.indexOf(w)>=0) drivers[w]=1; }); });
-    var need=Object.keys(drivers).length; if(need>vansOnRoad()) out.push(need+" drivers out on our vans with "+vansOnRoad()+(vansOnRoad()===1?" van":" vans")+" on the road. Put one on a hire or move a job.");
-    jobs.forEach(function(j){ if(hireDue(j)) out.push(short(j)+": hire not booked, "+(function(){var d=workDaysBetween(iso(TODAY),j.date)-1; return d<=0?"it is today":d===1?"it is tomorrow":d+" working days away";})()+". Book it and tick it on the job."); });
+    var need=Object.keys(drivers).length; if(need>vansOnRoad()) out.push({text:need+" drivers out on our vans with "+vansOnRoad()+(vansOnRoad()===1?" van":" vans")+" on the road. Put one on a hire or move a job.",who:"Vans"});
+    jobs.forEach(function(j){ if(hireDue(j)) out.push({j:j,text:short(j)+": hire not booked, "+(function(){var d=workDaysBetween(iso(TODAY),j.date)-1; return d<=0?"it is today":d===1?"it is tomorrow":d+" working days away";})()+". Book it and tick it on the job."}); });
     var dayM3=jobs.reduce(function(t,j){return t+(cubeOf(j)||0);},0), dayKg=jobs.reduce(function(t,j){return t+kgOf(j);},0), adv=dayM3?vehicleAdvice(dayM3,dayKg,vansOnRoad()):null;
-    if(adv&&!adv.fitsOurs&&!jobs.some(function(j){return j.vehicle==="hire";})) out.push("The day needs "+adv.text.charAt(0).toLowerCase()+adv.text.slice(1)+" No hire is on any job yet.");
+    if(adv&&!adv.fitsOurs&&!jobs.some(function(j){return j.vehicle==="hire";})) out.push({who:"Vans",text:"The day needs "+adv.text.charAt(0).toLowerCase()+adv.text.slice(1)+" No hire is on any job yet."});
     return out;
   }
-  function dayWarnings(k){
-    var out=[], seen={};
+  function dayIssues(k){
+    var out=[], seen={}; var add=function(text,j,who){ out.push({k:k,text:text,j:j||null,title:j?short(j):(who||((/^(FX\d\d \w{3})/.exec(text)||[])[1])||"Day")}); };
     TEAM.forEach(function(w){ var tl=dayTimeline(k,w);
-      tl.stops.forEach(function(x){ if(seen[x.j.id]) return; if(x.late){ seen[x.j.id]=1; out.push(short(x.j)+" finishes about "+hmStr(x.end)+", after the "+x.j.by+" cut-off. Move it earlier in the day or to another day."); } else if(x.wait>=30){ seen[x.j.id]=1; out.push(short(x.j)+": "+w+" arrives about "+hmStr(x.arrive)+" and waits until "+x.j.from+". Put another stop first."); } });
-      if(tl.driveBreak) out.push(w+": "+fmt(tl.drive)+" driving. Over 4h 30m, so add a 45 minute break to the day.");
-      if(tl.longDay) out.push(w+": "+fmt(tl.end-DAY_START)+" day from 8:00, over 11 hours for a driver. Split it or move a job.");
+      tl.stops.forEach(function(x){ if(seen[x.j.id]) return; if(x.late){ seen[x.j.id]=1; add(short(x.j)+" finishes about "+hmStr(x.end)+", after the "+x.j.by+" cut-off. Move it earlier in the day or to another day.",x.j); } else if(x.wait>=30){ seen[x.j.id]=1; add(short(x.j)+": "+w+" arrives about "+hmStr(x.arrive)+" and waits until "+x.j.from+". Put another stop first.",x.j); } });
+      if(tl.driveBreak) add(w+": "+fmt(tl.drive)+" driving. Over 4h 30m, so add a 45 minute break to the day.",null,w);
+      if(tl.longDay) add(w+": "+fmt(tl.end-DAY_START)+" day from 8:00, over 11 hours for a driver. Split it or move a job.",null,w);
     });
-    vehicleWarnings(k).forEach(function(tx){ out.push(tx); });
-    allJobs().filter(function(j){return onDay(j,k)&&j.site&&!j.isHold&&!j.who.length&&j.by&&j.drive!=null;}).forEach(function(j){ var by=parseHM(j.by), end=DAY_START+j.drive/2+(j.mins||0); if(by!=null&&end>by) out.push(short(j)+" cannot be done by "+j.by+": leaving at 8:00 it finishes about "+hmStr(end)+"."); });
+    vehicleWarnings(k).forEach(function(v){ add(v.text,v.j,v.who); });
+    allJobs().filter(function(j){return onDay(j,k)&&j.site&&!j.isHold&&!j.who.length&&j.by&&j.drive!=null;}).forEach(function(j){ var by=parseHM(j.by), end=DAY_START+j.drive/2+(j.mins||0); if(by!=null&&end>by) add(short(j)+" cannot be done by "+j.by+": leaving at 8:00 it finishes about "+hmStr(end)+".",j); });
     return out;
   }
+  function dayWarnings(k){ return dayIssues(k).map(function(x){return x.text;}); }
   // turn the card text into fields, going by the headings the cards use.
   // a heading line sets the group; every line after it goes in that group
   // until the next heading. items are the "N x thing" lines.
@@ -1374,12 +1389,13 @@ var SNAP=null, DETAIL={};
     $("#vday").onclick=function(){view="day";render();}; $("#vweek").onclick=function(){view="week";render();}; $("#vmonth").onclick=function(){view="month";render();};
     var oldV=document.querySelector(".veil"), keepScroll=0; if(oldV){ keepScroll=oldV.scrollTop||0; oldV.parentNode.removeChild(oldV); }
     window.__keepScroll=keepScroll;
+    $("#strip").hidden=true;
     if(view==="day") return renderDay();
     if(view==="month") return renderMonth();
     if(view==="routes") return renderRoutes();
     if(view==="manager") return renderManager();
-    $("#board").className="board"; $("#board").style.gridTemplateRows="";
-    var mon=addDays(monday(TODAY),week*7);
+    $("#board").className="board week"; $("#board").style.gridTemplateRows="";
+    var mon=addDays(monday(TODAY),week*7); var ISSUES=[], HOURS={need:0,avail:0};
     $("#title").textContent="Week of "+mon.getDate()+" "+MON[mon.getMonth()]+" "+mon.getFullYear();
     $("#src").textContent=NEED?"Showing only jobs still missing operatives, time or travel. Press To plan again to see everything.":"Select a job to assign operatives and allocate time.";
     var old=document.querySelector(".veil"); if(old) old.parentNode.removeChild(old);
@@ -1393,8 +1409,9 @@ var SNAP=null, DETAIL={};
       var h=el("h2"); h.appendChild(el(isToday?"em":"span",null,DAYS[d.getDay()]+" "+d.getDate()+(isToday?"  Today":"")));
       var vb=el("button","viewday","View day"); vb.onclick=(function(kk){return function(){ dayCur=kk; view="day"; render(); };})(k); h.appendChild(vb);
       // IF EVERY HOLD LANDS (Sam, 13 Sep 2026): booked plus held time against the operatives on that day, and van trips against the vans.
-      var cap=dayCapacity(k,jobs,preps); if(cap.overTime||cap.overVans){ var warn=el("div","daywarn"); warn.textContent=(cap.overTime?"Over capacity if every hold lands: "+fmt(cap.need)+" needed, "+fmt(cap.avail)+" available.":"")+(cap.overVans?" "+cap.trips+" van trips, "+cap.vans+(cap.vans===1?" van":" vans")+" on the road.":""); list.appendChild(warn); }
-      dayWarnings(k).forEach(function(tx){ list.appendChild(el("div","daywarn",tx)); });
+      var cap=dayCapacity(k,jobs,preps); if(cap.overTime||cap.overVans){ ISSUES.push({k:k,title:"If every hold lands",amber:true,text:(cap.overTime?"Over capacity: "+fmt(cap.need)+" needed, "+fmt(cap.avail)+" available.":"")+(cap.overVans?" "+cap.trips+" van trips, "+cap.vans+(cap.vans===1?" van":" vans")+" on the road.":"")}); }
+      dayIssues(k).forEach(function(x){ x.amber=/hire not booked|waits until/.test(x.text); ISSUES.push(x); });
+      var ld=loadOn(k); TEAM.forEach(function(w){ if(ld[w].c!=="off"){ HOURS.avail+=DAY_MINS; HOURS.need+=ld[w].mins||0; } });
       h.appendChild(el("span",null,n?n+(NEED?" to plan":(n===1?" job":" jobs")):"")); list.appendChild(h);
       var cards=el("div","cards");
       var lv=LEAVE.filter(function(l){return l.date===k;}); if(lv.length){ var lh=el("div","sec-h"); var lhl=el("span",null,"Annual Leave"); lhl.appendChild(tip("leave")); lh.appendChild(lhl); cards.appendChild(lh); lv.forEach(function(l){ cards.appendChild(el("div","leave",l.text)); }); }
@@ -1433,6 +1450,17 @@ var SNAP=null, DETAIL={};
       list.appendChild(tot); b.appendChild(list);
     }
     // the week's recycling per operative: the hours nobody has allocated to a job are recycling, not spare
+    // the attention rail: every warning for the week in one place, newest day first is not the point, day order is
+    var rail=el("div","list rail"); var rh=el("h2"); rh.appendChild(el("span",null,"Needs a decision")); rh.appendChild(el("span",null,ISSUES.length?String(ISSUES.length):"none")); rail.appendChild(rh);
+    var rc=el("div","cards"); if(!ISSUES.length) rc.appendChild(el("div","hint","Nothing needs a decision this week."));
+    ISSUES.forEach(function(x){ var it=el("button","iss"+(x.amber?" amber":"")); it.appendChild(el("b",null,shortDay(x.k)+" \u00b7 "+x.title)); it.appendChild(el("span",null,x.text)); if(x.j&&!x.j.isHold){ it.onclick=function(){ open=x.j.id; render(); }; } else { it.onclick=function(){ dayCur=x.k; view="day"; render(); }; } rc.appendChild(it); });
+    rail.appendChild(rc); b.appendChild(rail);
+    var strip=$("#strip"); strip.hidden=false; strip.innerHTML="";
+    var tile=function(lbl,val,cls,onclick){ var bt=el("button",null); bt.appendChild(el("small",null,lbl)); bt.appendChild(el("b",cls||"",val)); if(onclick) bt.onclick=onclick; strip.appendChild(bt); return bt; };
+    var nTP=toPlanCount(); var tp=tile("To plan",String(nTP),nTP?"bad":"",function(){ NEED=!NEED; try{ localStorage.setItem("cg-need",NEED?"1":"0"); }catch(e){} render(); }); if(NEED) tp.className="on";
+    var reds=ISSUES.filter(function(x){return !x.amber;}).length; tile("Warnings this week",ISSUES.length?String(ISSUES.length):"0",reds?"bad":(ISSUES.length?"warn":""));
+    tile("Vans on the road",vansOnRoad()+" of "+VEHICLES.length,vansOnRoad()<VEHICLES.length?"warn":"",function(){ view="routes"; render(); });
+    tile("Hours planned",fmt(HOURS.need)+" of "+fmt(HOURS.avail),HOURS.need>HOURS.avail?"bad":"");
     var wk=el("div","weektot"); var wh=el("span","n","Recycling this week"); wh.appendChild(tip("recycling")); wk.appendChild(wh); var teamRec=0;
     TEAM.forEach(function(w){ var m=WEEK_REC[w]||0; teamRec+=m; wk.appendChild(el("span",m<DAY_MINS?"low":"",w+": "+fmt(m))); });
     wk.appendChild(el("span","team","Team: "+fmt(teamRec))); b.appendChild(wk);
