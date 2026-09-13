@@ -238,9 +238,11 @@
   }
   .leave{flex-shrink:0;background:var(--amber-bg);color:var(--amber);font-weight:600;border-radius:8px;padding:8px 12px;font-size:13px}
 
-  .tot{border-top:2px solid #3d4451;background:var(--card);border-radius:0 0 10px 10px;padding:10px 14px 12px;font-size:14px;display:flex;flex-direction:column;gap:4px}
-  .tot div{display:flex;justify-content:space-between;align-items:center}
-  .tot .n{font-weight:800}
+  .tot{border-top:2px solid #3d4451;background:var(--card);border-radius:0 0 10px 10px;padding:8px 10px;font-size:13px;display:flex;flex-wrap:wrap;gap:4px 6px;align-items:center}
+  .tot .n{font-weight:800;font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.03em;margin-right:2px}
+  .tot .chip{border-radius:6px;padding:2px 7px;background:var(--list);white-space:nowrap;font-weight:600}
+  .tot .chip b{font-weight:800}
+  .tot .chip.ok{background:var(--green-bg);color:var(--green)} .tot .chip.over{background:var(--red-bg);color:var(--red)} .tot .chip.todo{background:var(--amber-bg);color:var(--amber)} .tot .chip.free{color:var(--muted)}
   .tot .ok{color:var(--green);font-weight:600} .tot .over{color:var(--red);font-weight:700} .tot .free{color:var(--muted)} .tot .todo{color:var(--amber);font-weight:600}
   .bar{height:8px;border-radius:4px;background:var(--line);margin-top:4px;margin-bottom:4px;overflow:hidden}
   .bar i{display:block;height:100%;background:var(--green)}
@@ -1441,9 +1443,9 @@ var SNAP=null, DETAIL={};
       });
       if(NEED&&!jobs.length&&!preps.length) cards.appendChild(el("div","hint","Nothing to plan."));
       list.appendChild(cards); jobs=allJobsWeek; preps=allPrepsWeek;
-      var tot=el("div","tot"); var th=el("div"); var thl=el("span","n","Operative Hours"); thl.appendChild(tip("tot")); th.appendChild(thl); tot.appendChild(th); var off=LEAVE.filter(function(l){return l.date===k;}).map(function(l){return l.text.split(" ")[0];});
+      var tot=el("div","tot"); var thl=el("span","n","Hours"); thl.appendChild(tip("tot")); tot.appendChild(thl); var off=LEAVE.filter(function(l){return l.date===k;}).map(function(l){return l.text.split(" ")[0];});
       var heldMins=jobs.filter(function(j){return j.isHold;}).reduce(function(t,j){return t+(j.mins||0)*(j.holdCrew||2)+(j.site?(j.drive||0)*(j.holdCrew||2):0);},0);
-      if(heldMins){ var hr=el("div"); hr.appendChild(el("span","n","Held for sales")); hr.appendChild(el("span","todo",fmt(heldMins)+" of operative time not yet named")); tot.appendChild(hr); }
+      var heldChip=heldMins?el("span","chip todo","Held "+fmt(heldMins)):null;
       TEAM.forEach(function(w){
         var mine=jobs.filter(function(j){return j.who.indexOf(w)>=0;}), myPreps=preps.filter(function(j){return j.prep.who.indexOf(w)>=0;});
         var myRound=rounds.filter(function(r){return r.who===w;})[0];
@@ -1451,16 +1453,15 @@ var SNAP=null, DETAIL={};
         mins+=myPreps.reduce(function(s,j){return s+(j.prep.mins||0);},0);
         var unset=mine.filter(function(j){return j.mins==null;}).length+myPreps.filter(function(j){return j.prep.mins==null;}).length;
         mine=mine.concat(myPreps);
-        var row=el("div"); row.appendChild(el("span","n",w));
         var txt, cls;
-        if(off.indexOf(w)>=0){ txt="annual leave"; cls="free"; }
-        else if(!mine.length){ txt="Recycling "+fmt(DAY_MINS); cls="free"; }
-        else if(unset&&!mins){ txt=unset+(unset===1?" job, no time":" jobs, no time"); cls="todo"; }
-        else { var rec=Math.max(0,DAY_MINS-mins); txt=fmt(mins)+" on jobs"+(unset?" + "+unset+" no time":"")+(mins>DAY_H*60?", over capacity":(rec>=30?", "+fmt(rec)+" recycling":"")); cls=mins>DAY_H*60?"over":(unset?"todo":"ok"); }
+        if(off.indexOf(w)>=0){ txt="leave"; cls="free"; }
+        else if(!mine.length){ txt="free"; cls="free"; }
+        else if(unset&&!mins){ txt="no time"; cls="todo"; }
+        else { txt=fmt(mins)+(unset?" +?":"")+(mins>DAY_H*60?" over":""); cls=mins>DAY_H*60?"over":(unset?"todo":"ok"); }
         if(off.indexOf(w)<0){ WEEK_REC[w]=(WEEK_REC[w]||0)+(mine.length&&!(unset&&!mins)?Math.max(0,DAY_MINS-mins):(mine.length?0:DAY_MINS)); }
-        row.appendChild(el("span",cls,txt)); tot.appendChild(row);
-        if(mins){ var bar=el("div","bar"); var fill=el("i",mins>DAY_H*60?"over":""); fill.style.width=Math.min(100,mins/(DAY_H*60)*100)+"%"; bar.appendChild(fill); tot.appendChild(bar); }
+        var chip=el("span","chip "+cls); chip.appendChild(el("b",null,w)); chip.appendChild(document.createTextNode(" "+txt)); chip.title=w+": "+(off.indexOf(w)>=0?"annual leave":!mine.length?"no jobs, recycling all day":fmt(mins)+" on jobs"+(unset?", "+unset+" with no time set":"")+(mins>DAY_H*60?", over capacity":", "+fmt(Math.max(0,DAY_MINS-mins))+" recycling")); tot.appendChild(chip);
       });
+      if(heldChip) tot.appendChild(heldChip);
       list.appendChild(tot); b.appendChild(list);
     }
     // the week's recycling per operative: the hours nobody has allocated to a job are recycling, not spare
