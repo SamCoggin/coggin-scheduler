@@ -615,6 +615,7 @@ var SNAP=null, DETAIL={};
       if(tl.longDay) add(w+": "+fmt(tl.end-DAY_START)+" day from 8:00, over 11 hours for a driver. Split it or move a job.",null,w);
     });
     vehicleWarnings(k).forEach(function(v){ add(v.text,v.j,v.who); });
+    allJobs().filter(function(j){return onDay(j,k);}).forEach(function(j){ var sc=shortCrew(j); if(sc) add(short(j)+": "+j.who[0]+" alone with two-person items ("+sc.slice(0,3).join(", ")+(sc.length>3?"...":"")+"). Add a second operative.",j); });
     allJobs().filter(function(j){return onDay(j,k)&&j.site&&!j.isHold;}).forEach(function(j){ var r=notReady(j); if(r&&j.date>=iso(TODAY)&&workDaysBetween(iso(TODAY),j.date)<=2) add(short(j)+" goes out "+niceDay(j.date)+" and is not ready: "+r.charAt(0).toLowerCase()+r.slice(1)+".",j); });
     allJobs().filter(function(j){return onDay(j,k)&&j.site&&!j.isHold&&!j.who.length&&j.by&&j.drive!=null;}).forEach(function(j){ var by=parseHM(j.by), end=DAY_START+j.drive/2+(j.mins||0); if(by!=null&&end>by) add(short(j)+" cannot be done by "+j.by+": leaving at 8:00 it finishes about "+hmStr(end)+".",j); });
     return out;
@@ -641,6 +642,7 @@ var SNAP=null, DETAIL={};
     if(part.site&&!part.vehicle) missing.push("No van"); else if(part.site&&hireDue(part)) missing.push("Hire not booked");
     if(part.mins==null) missing.push(part.site?"No site time":"No labour time");
     var nr=notReady(part); if(nr) missing.push(nr);
+    if(shortCrew(part)) missing.push("Needs 2 operatives");
     if(missing.length) return el("span",cls,missing.join(", "));
     if(part.onRound) return el("span","bdg","On round, "+fmt(part.mins)+" on site");
     return el("span","bdg"+(part.site&&part.drive>6*60?" now":""),(part.site&&part.drive?fmt(part.drive)+" travel + ":"")+fmt(part.mins)+(part.who.length>1?" each":""));
@@ -690,6 +692,7 @@ var SNAP=null, DETAIL={};
     var freeOnes=TEAM.filter(function(w){return load[w].c==="free"&&part.who.indexOf(w)<0;});
     wb.appendChild(el("div","hint",freeOnes.length?"Available "+shortDay(dayK)+": "+freeOnes.join(", ")+".":"No operatives available on "+shortDay(dayK)+"."));
     if(!o.shop&&j.site&&!contractorOnly&&part.who.length&&!part.who.some(function(w){return DRIVERS.indexOf(w)>=0;})) wb.appendChild(el("div","hint far","No driver on this job. Rob, Jack or Bart must be on it to drive the van."));
+    if(!o.shop&&!contractorOnly){ var tpi=twoPersonItems(j); if(tpi.length) wb.appendChild(el("div","hint"+(part.who.length<2?" far":""),(part.who.length<2?"Two operatives needed: ":"Two-person items on this job: ")+tpi.slice(0,4).join(", ")+(tpi.length>4?" and more":"")+". "+(part.who.length<2?"One person cannot carry these safely.":"Two are on it."))); }
     right.appendChild(wb);
     if(o.leg){ var lgb=block("This leg"); var lr=el("div","row"); var ld=el("input"); ld.type="date"; ld.value=j.leg.date; ld.onchange=function(){ if(ld.value){ j.leg.date=ld.value; render(); } }; lr.appendChild(el("span",null,"Date")); lr.appendChild(ld); lgb.appendChild(lr);
       var wr=el("div","row"); var wi=el("input"); wi.type="text"; wi.value=j.leg.where||""; wi.placeholder="Subcontractor or site, with postcode"; wi.style.minWidth="260px"; wi.onchange=function(){ j.leg.where=wi.value; var pc=/\b([A-Z]{1,2})\d/i.exec(wi.value); j.leg.drive=pc&&DRIVE[pc[1].toUpperCase()]?Math.round(DRIVE[pc[1].toUpperCase()].h*2*60*TRAFFIC/5)*5:j.leg.drive; render(); }; wr.appendChild(el("span",null,"Where")); wr.appendChild(wi); lgb.appendChild(wr);
@@ -903,11 +906,15 @@ var SNAP=null, DETAIL={};
     if(j.notQc) return "Not QC'd";
     return null;
   }
+  // TWO-PERSON ITEMS (Sam, 13 Sep 2026): a desk, a cabinet, a sofa, or anything over 25 kg needs two people to carry.
+  // One operative on a transport job with any of those is not a plan.
+  function twoPersonItems(j){ if(!j.site||j.isHold||j.isLeg||(j.contractor&&!j.who.length)||!j.load||!j.load.rows) return []; return j.load.rows.filter(function(r){ return r.two||(r.n&&r.kg/r.n>=25); }).map(function(r){ return r.n+" x "+r.type; }); }
+  function shortCrew(j){ var items=twoPersonItems(j); return items.length&&j.who.length===1?items:null; }
   function needsPlan(j,isPrep){
     if(j.isHold) return false; if(j.isLeg) return !j.who.length||j.mins==null;
     var part=isPrep?j.prep:j; if(!isPrep&&j.contractor&&!j.who.length) return false;
     if(!part.who.length||part.mins==null) return true;
-    return !isPrep&&!!j.site&&((j.drive==null&&!j.onRound)||!j.vehicle||hireDue(j)||!!notReady(j));
+    return !isPrep&&!!j.site&&((j.drive==null&&!j.onRound)||!j.vehicle||hireDue(j)||!!notReady(j)||!!shortCrew(j));
   }
   // everything from today on that still needs planning, for the count on the button
   // what still needs planning on the days in view: the day, the week, or the month
@@ -1530,7 +1537,7 @@ var SNAP=null, DETAIL={};
       var cap=dayCapacity(k,jobs,preps); if(cap.overTime||cap.overVans){ ISSUES.push({k:k,title:"If every hold lands",amber:true,text:(cap.overTime?"Over capacity: "+fmt(cap.need)+" needed, "+fmt(cap.avail)+" available.":"")+(cap.overVans?" "+cap.trips+" van trips, "+cap.vans+(cap.vans===1?" van":" vans")+" on the road.":"")}); }
       dayIssues(k).forEach(function(x){ x.amber=/hire not booked|waits until/.test(x.text); ISSUES.push(x); });
       var pfr=planFilter(jobs,preps,true); pfr.preps.forEach(function(j){ var miss=[]; if(!j.prep.who.length) miss.push("no operatives"); if(j.prep.mins==null) miss.push("no production time"); TOPLAN.push({k:k,title:short(j),j:j,amber:true,text:"Production, "+miss.join(", ")+"."}); });
-      pfr.jobs.forEach(function(j){ if(j.isHold) return; var miss=[]; if(!j.who.length) miss.push("no operatives"); if(j.mins==null) miss.push(j.site?"no site time":"no time"); if(j.site&&j.drive==null&&!j.onRound) miss.push("no travel time"); if(j.site&&!j.vehicle&&!(j.contractor&&!j.who.length)) miss.push("no van"); else if(j.site&&hireDue(j)) miss.push("hire not booked"); var nrr=notReady(j); if(nrr) miss.push(nrr.charAt(0).toLowerCase()+nrr.slice(1)); TOPLAN.push({k:k,title:short(j),j:j,amber:true,text:(j.movement||j.label||"Job")+", "+miss.join(", ")+"."}); });
+      pfr.jobs.forEach(function(j){ if(j.isHold) return; var miss=[]; if(!j.who.length) miss.push("no operatives"); if(j.mins==null) miss.push(j.site?"no site time":"no time"); if(j.site&&j.drive==null&&!j.onRound) miss.push("no travel time"); if(j.site&&!j.vehicle&&!(j.contractor&&!j.who.length)) miss.push("no van"); else if(j.site&&hireDue(j)) miss.push("hire not booked"); var nrr=notReady(j); if(nrr) miss.push(nrr.charAt(0).toLowerCase()+nrr.slice(1)); if(shortCrew(j)) miss.push("one operative with two-person items"); TOPLAN.push({k:k,title:short(j),j:j,amber:true,text:(j.movement||j.label||"Job")+", "+miss.join(", ")+"."}); });
       var ld=loadOn(k); TEAM.forEach(function(w){ if(ld[w].c!=="off"){ HOURS.avail+=DAY_MINS; HOURS.need+=ld[w].mins||0; } });
       h.appendChild(el("span",null,n?n+(NEED?" to plan":(n===1?" job":" jobs")):"")); list.appendChild(h);
       var cards=el("div","cards");
