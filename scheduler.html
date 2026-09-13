@@ -1105,7 +1105,7 @@ var SNAP=null, DETAIL={};
     return doc;
   }
   function pdfDayBand(doc,y,left,right){
-    if(y>150){ doc.addPage(); y=14; }
+    if(y>135){ doc.addPage(); y=14; }
     doc.setFillColor(PDF_NAVY[0],PDF_NAVY[1],PDF_NAVY[2]); doc.roundedRect(12,y,273,9,1.5,1.5,"F");
     doc.setTextColor(255,255,255); doc.setFont("helvetica","bold"); doc.setFontSize(12); doc.text(left,15,y+6.3);
     doc.setFontSize(9); doc.setFont("helvetica","normal"); doc.text(right,283,y+6.3,{align:"right"}); doc.setTextColor(17,17,17);
@@ -1167,27 +1167,64 @@ var SNAP=null, DETAIL={};
   }
   function routesPdf(){
     var mon=addDays(monday(TODAY),week*7), days=[]; for(var i=0;i<5;i++) days.push(iso(addDays(mon,i)));
-    var doc=pdfDoc("Routes, "+niceDay(days[0])+" to "+niceDay(days[4])+" "+mon.getFullYear(),"Printed "+new Date().toLocaleString("en-GB",{day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"})+". The plan is drawn to scale from the yard, one colour per day, stops numbered in driving order. Miles are road estimates."); if(!doc) return;
+    var doc=pdfDoc("Routes, "+niceDay(days[0])+" to "+niceDay(days[4])+" "+mon.getFullYear(),"Printed "+new Date().toLocaleString("en-GB",{day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"})+". One colour per day, stops numbered in driving order from the yard. Miles are road estimates."); if(!doc) return;
     var all=allJobs().filter(function(j){return j.site && !(j.contractor&&!j.who.length);});
     var weekJobs=all.filter(function(j){return days.some(function(k){return onDay(j,k);});});
-    // the plan, drawn with lines and circles
+    // the plan: real map tiles when they load, otherwise a drawn plan
     var pts=[BASE].concat(weekJobs.filter(function(j){return j.pt;}).map(function(j){return j.pt;}));
-    var x0=12, y0=27, W=273, H=100, pad=10;
-    var lats=pts.map(function(p){return p.lat;}), lngs=pts.map(function(p){return p.lng;});
-    var minLat=Math.min.apply(null,lats), maxLat=Math.max.apply(null,lats), minLng=Math.min.apply(null,lngs), maxLng=Math.max.apply(null,lngs);
-    var kx=Math.cos((minLat+maxLat)/2*Math.PI/180), spanX=Math.max(0.05,(maxLng-minLng)*kx), spanY=Math.max(0.05,maxLat-minLat), scale=Math.min((W-2*pad)/spanX,(H-2*pad)/spanY);
-    var X=function(p){ return x0+pad+((p.lng-minLng)*kx)*scale+((W-2*pad)-spanX*scale)/2; }, Y=function(p){ return y0+H-pad-((p.lat-minLat)*scale)-((H-2*pad)-spanY*scale)/2; };
+    var x0=12, y0=27, W=273, H=158, pad=10;
     var hex=function(h){ return [parseInt(h.slice(1,3),16),parseInt(h.slice(3,5),16),parseInt(h.slice(5,7),16)]; };
-    doc.setDrawColor(51,51,51); doc.setLineWidth(.5); doc.roundedRect(x0,y0,W,H,2,2);
-    days.forEach(function(k,i){ var jobs=weekJobs.filter(function(j){return onDay(j,k)&&j.pt;}); if(!jobs.length) return; var col=hex(DAYCOL[i]);
+    var routesOf=function(){ var out=[]; days.forEach(function(k,i){ var jobs=weekJobs.filter(function(j){return onDay(j,k)&&j.pt;}); if(!jobs.length) return;
       TEAM.concat(["_"]).forEach(function(w){ var mine=w==="_"?jobs.filter(function(j){return !j.who.length;}):jobs.filter(function(j){return j.who.indexOf(w)>=0;}); if(!mine.length) return;
-        var stops=orderStops(mine.map(function(j){return {j:j,pt:j.pt};}));
-        if(w!=="_"){ doc.setDrawColor(col[0],col[1],col[2]); doc.setLineWidth(.8); var prev=BASE; stops.forEach(function(x){ doc.line(X(prev),Y(prev),X(x.pt),Y(x.pt)); prev=x.pt; }); doc.line(X(prev),Y(prev),X(BASE),Y(BASE)); }
-        stops.forEach(function(x,n){ doc.setFillColor(col[0],col[1],col[2]); doc.setDrawColor(255,255,255); doc.setLineWidth(.4); doc.circle(X(x.pt),Y(x.pt),3.2,"FD"); doc.setTextColor(255,255,255); doc.setFontSize(8); doc.setFont("helvetica","bold"); doc.text(String(n+1),X(x.pt),Y(x.pt)+1,{align:"center"}); doc.setTextColor(34,34,34); doc.setFont("helvetica","normal"); doc.setFontSize(8); doc.text(x.j.title.split(" - ")[0],X(x.pt)+4.5,Y(x.pt)+1); }); }); });
-    doc.setFillColor(23,43,77); doc.setDrawColor(255,255,255); doc.rect(X(BASE)-2.6,Y(BASE)-2.6,5.2,5.2,"FD"); doc.setTextColor(23,43,77); doc.setFont("helvetica","bold"); doc.setFontSize(8); doc.text("Yard",X(BASE)+4.5,Y(BASE)+1);
-    var barLen=(20/69.17)*scale; doc.setDrawColor(51,51,51); doc.setLineWidth(.8); doc.line(x0+6,y0+H-5,x0+6+barLen,y0+H-5); doc.setFontSize(8); doc.setFont("helvetica","normal"); doc.setTextColor(51,51,51); doc.text("20 miles",x0+8+barLen,y0+H-4);
-    var lx=x0+W-5*30; days.forEach(function(k,i){ var c=hex(DAYCOL[i]); doc.setFillColor(c[0],c[1],c[2]); doc.circle(lx+2,y0+H-5.5,1.8,"F"); doc.setTextColor(34,34,34); doc.text(niceShort(k),lx+5.5,y0+H-4); lx+=30; });
-    var y=y0+H+6;
+        out.push({col:DAYCOL[i],line:w!=="_",stops:orderStops(mine.map(function(j){return {j:j,pt:j.pt};}))}); }); }); return out; };
+    var routes=routesOf();
+    function drawVectorPlan(){
+      var lats=pts.map(function(p){return p.lat;}), lngs=pts.map(function(p){return p.lng;});
+      var minLat=Math.min.apply(null,lats), maxLat=Math.max.apply(null,lats), minLng=Math.min.apply(null,lngs), maxLng=Math.max.apply(null,lngs);
+      var kx=Math.cos((minLat+maxLat)/2*Math.PI/180), spanX=Math.max(0.05,(maxLng-minLng)*kx), spanY=Math.max(0.05,maxLat-minLat), scale=Math.min((W-2*pad)/spanX,(H-2*pad)/spanY);
+      var X=function(p){ return x0+pad+((p.lng-minLng)*kx)*scale+((W-2*pad)-spanX*scale)/2; }, Y=function(p){ return y0+H-pad-((p.lat-minLat)*scale)-((H-2*pad)-spanY*scale)/2; };
+      doc.setDrawColor(51,51,51); doc.setLineWidth(.5); doc.roundedRect(x0,y0,W,H,2,2);
+      routes.forEach(function(r){ var col=hex(r.col);
+        if(r.line){ doc.setDrawColor(col[0],col[1],col[2]); doc.setLineWidth(.8); var prev=BASE; r.stops.forEach(function(x){ doc.line(X(prev),Y(prev),X(x.pt),Y(x.pt)); prev=x.pt; }); doc.line(X(prev),Y(prev),X(BASE),Y(BASE)); }
+        r.stops.forEach(function(x,n){ doc.setFillColor(col[0],col[1],col[2]); doc.setDrawColor(255,255,255); doc.setLineWidth(.4); doc.circle(X(x.pt),Y(x.pt),3.2,"FD"); doc.setTextColor(255,255,255); doc.setFontSize(8); doc.setFont("helvetica","bold"); doc.text(String(n+1),X(x.pt),Y(x.pt)+1,{align:"center"}); doc.setTextColor(34,34,34); doc.setFont("helvetica","normal"); doc.setFontSize(8); doc.text(x.j.title.split(" - ")[0],X(x.pt)+4.5,Y(x.pt)+1); }); });
+      doc.setFillColor(23,43,77); doc.setDrawColor(255,255,255); doc.rect(X(BASE)-2.6,Y(BASE)-2.6,5.2,5.2,"FD"); doc.setTextColor(23,43,77); doc.setFont("helvetica","bold"); doc.setFontSize(8); doc.text("Yard",X(BASE)+4.5,Y(BASE)+1);
+      var barLen=(20/69.17)*scale; doc.setDrawColor(51,51,51); doc.setLineWidth(.8); doc.line(x0+6,y0+H-5,x0+6+barLen,y0+H-5); doc.setFontSize(8); doc.setFont("helvetica","normal"); doc.setTextColor(51,51,51); doc.text("20 miles",x0+8+barLen,y0+H-4);
+    }
+    function mapImage(){
+      // OpenStreetMap tiles drawn onto a canvas at 4 px per mm, then the routes on top
+      return new Promise(function(resolve){
+        try{
+          var S=4, wPx=W*S, hPx=H*S, TILE=256;
+          var lats=pts.map(function(p){return p.lat;}), lngs=pts.map(function(p){return p.lng;});
+          var minLat=Math.min.apply(null,lats), maxLat=Math.max.apply(null,lats), minLng=Math.min.apply(null,lngs), maxLng=Math.max.apply(null,lngs);
+          var proj=function(p,z){ var n=TILE*Math.pow(2,z), la=p.lat*Math.PI/180; return {x:(p.lng+180)/360*n, y:(1-Math.log(Math.tan(la)+1/Math.cos(la))/Math.PI)/2*n}; };
+          var z=13; while(z>4){ var a=proj({lat:maxLat,lng:minLng},z), b=proj({lat:minLat,lng:maxLng},z); if(b.x-a.x<=wPx-2*pad*S && b.y-a.y<=hPx-2*pad*S) break; z--; }
+          var tl0=proj({lat:maxLat,lng:minLng},z), br0=proj({lat:minLat,lng:maxLng},z);
+          var cx=(tl0.x+br0.x)/2, cy=(tl0.y+br0.y)/2, ox=cx-wPx/2, oy=cy-hPx/2;
+          var cv=document.createElement("canvas"); cv.width=wPx; cv.height=hPx; var g=cv.getContext("2d"); g.fillStyle="#e9eef2"; g.fillRect(0,0,wPx,hPx);
+          var tx0=Math.floor(ox/TILE), tx1=Math.floor((ox+wPx)/TILE), ty0=Math.floor(oy/TILE), ty1=Math.floor((oy+hPx)/TILE), max=Math.pow(2,z), loads=[];
+          for(var tx=tx0;tx<=tx1;tx++) for(var ty=ty0;ty<=ty1;ty++){ if(ty<0||ty>=max) continue; (function(tx,ty){ loads.push(new Promise(function(ok){ var im=new Image(); im.crossOrigin="anonymous"; var done=false; var fin=function(){ if(done) return; done=true; ok(im.complete&&im.naturalWidth?im:null); };
+            im.onload=fin; im.onerror=fin; setTimeout(fin,6000); im.src="https://tile.openstreetmap.org/"+z+"/"+(((tx%max)+max)%max)+"/"+ty+".png"; }).then(function(im){ if(im) g.drawImage(im,tx*TILE-ox,ty*TILE-oy); })); })(tx,ty); }
+          Promise.all(loads).then(function(){
+            var P=function(p){ var q=proj(p,z); return {x:q.x-ox,y:q.y-oy}; };
+            g.lineCap="round"; g.lineJoin="round";
+            routes.forEach(function(r){ if(!r.line) return; g.strokeStyle=r.col; g.lineWidth=1.2*S; g.beginPath(); var b0=P(BASE); g.moveTo(b0.x,b0.y); r.stops.forEach(function(x){ var q=P(x.pt); g.lineTo(q.x,q.y); }); g.lineTo(b0.x,b0.y); g.stroke(); });
+            var label=function(t,x,y,col){ g.font="bold "+(3.2*S)+"px Helvetica, Arial, sans-serif"; var w=g.measureText(t).width; g.fillStyle="rgba(255,255,255,.85)"; g.fillRect(x-S,y-3*S,w+2*S,4*S); g.fillStyle=col; g.fillText(t,x,y); };
+            routes.forEach(function(r){ r.stops.forEach(function(x,n){ var q=P(x.pt); g.fillStyle=r.col; g.strokeStyle="#fff"; g.lineWidth=1.5*S; g.beginPath(); g.arc(q.x,q.y,3*S,0,Math.PI*2); g.fill(); g.stroke(); g.fillStyle="#fff"; g.font="bold "+(2.8*S)+"px Helvetica, Arial, sans-serif"; g.textAlign="center"; g.fillText(String(n+1),q.x,q.y+S); g.textAlign="left"; label(x.j.title.split(" - ")[0],q.x+4.5*S,q.y+1.2*S,"#222"); }); });
+            var bq=P(BASE); g.fillStyle="#172b4d"; g.strokeStyle="#fff"; g.lineWidth=S; g.fillRect(bq.x-3*S,bq.y-3*S,6*S,6*S); g.strokeRect(bq.x-3*S,bq.y-3*S,6*S,6*S); label("Yard",bq.x+4.5*S,bq.y+1.2*S,"#172b4d");
+            // scale bar: metres per pixel at this zoom and latitude
+            var mpp=156543.03*Math.cos((minLat+maxLat)/2*Math.PI/180)/Math.pow(2,z), bar=20*1609.34/mpp; g.strokeStyle="#333"; g.lineWidth=.8*S; g.beginPath(); g.moveTo(4*S,hPx-4*S); g.lineTo(4*S+bar,hPx-4*S); g.stroke(); label("20 miles",6*S+bar,hPx-3*S,"#333");
+            g.fillStyle="rgba(255,255,255,.8)"; g.font=(2.4*S)+"px Helvetica, Arial, sans-serif"; var at="\u00a9 OpenStreetMap contributors"; var aw=g.measureText(at).width; g.fillRect(wPx-aw-3*S,hPx-4*S,aw+3*S,4*S); g.fillStyle="#444"; g.fillText(at,wPx-aw-1.5*S,hPx-1.2*S);
+            var url; try{ url=cv.toDataURL("image/jpeg",.88); }catch(e){ url=null; }
+            resolve(url);
+          });
+        }catch(e){ resolve(null); }
+      });
+    }
+    mapImage().then(function(img){
+    if(img){ doc.addImage(img,"JPEG",x0,y0,W,H); doc.setDrawColor(51,51,51); doc.setLineWidth(.5); doc.rect(x0,y0,W,H); } else drawVectorPlan();
+    var lx=x0+W-5*30; days.forEach(function(k,i){ var c=hex(DAYCOL[i]); doc.setFillColor(c[0],c[1],c[2]); doc.circle(lx+2,y0+H+4.5,1.8,"F"); doc.setTextColor(34,34,34); doc.setFontSize(8); doc.setFont("helvetica","normal"); doc.text(niceShort(k),lx+5.5,y0+H+5.8); lx+=30; });
+    var y=y0+H+9;
     days.forEach(function(k,i){
       var jobs=all.filter(function(j){return onDay(j,k);}); if(!jobs.length) return;
       var dayM3=jobs.reduce(function(t,j){return t+(cubeOf(j)||0);},0), dayKg=jobs.reduce(function(t,j){return t+kgOf(j);},0), advD=vehicleAdvice(dayM3,dayKg,vansOnRoad());
@@ -1215,6 +1252,7 @@ var SNAP=null, DETAIL={};
     });
     pdfFooter(doc,"Checked by",y);
     doc.save("routes-"+days[0]+"-to-"+days[4]+".pdf");
+    });
   }
   function render(){
     persist();
