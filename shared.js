@@ -15,7 +15,6 @@ var VEHICLES=[{reg:"FX75 BKG",name:"Renault Master Luton FX75 BKG (2025)"},{reg:
 // chairs are DOUBLE STACKED figures: 0.40 per swivel chair is Sam's "40 in a Luton", which only works stacked two high;
 // loose meeting chairs (tub, cantilever) at 0.40 (about 45 a van, Sam corrected 0.20) and stacking chairs at 0.10 (stacks of five or six) assume the same.
 var LOAD=[
-  {t:"Small part", prod:0,        min:1, re:/arm ?pads?|armrest|castors?|gas ?lift|seat pad|back pad|lumbar|headrest|spare|component|bracket|fixing|cable|key|lock|spanner|screws?|bolts?|monitor arm|cpu holder|small part|parcel|box of/i, m3:0.01, kg:1},
   {t:"Swivel chair", prod:30, clean:10, min:3,     re:/swivel|task chair|operator|mesh chair|office chair|executive chair|ergonomic/i, m3:0.40, kg:12},
   {t:"Meeting chair, stacking", prod:10, min:1, re:/stack/i, m3:0.10, kg:8},
   {t:"Meeting chair", prod:10, clean:10, min:2,    re:/meeting chair|tub chair|cantilever|visitor chair|conference chair|dining chair|breakout chair/i, m3:0.40, kg:10},
@@ -34,7 +33,8 @@ var LOAD=[
   {t:"Armchair", prod:30, clean:15, min:4,         re:/armchair|arm chair|lounge chair|easy chair/i, m3:0.60, kg:20, est:true},
   {t:"Sofa", prod:60, clean:30, two:true, min:8,             re:/sofa|settee|couch|modular/i, m3:1.80, kg:45, est:true},
   {t:"Booth", prod:60, two:true, min:30,            re:/booth|high.?back/i, m3:3.00, kg:90, est:true},
-  {t:"Pod", prod:240, two:true, min:240,              re:/\bpod\b/i, m3:17, kg:400, est:true}
+  {t:"Pod", prod:240, two:true, min:240,              re:/\bpod\b/i, m3:17, kg:400, est:true},
+  {t:"Small part", prod:0,        min:1, re:/arm ?pads?|armrest|castors?|gas ?lift|seat pad|back pad|lumbar|headrest|spare|component|bracket|fixing|cable|key|lock|spanner|screws?|bolts?|monitor arm|cpu holder|small part|parcel|box of/i, m3:0.01, kg:1}
 ];
 // prod = production minutes per item start to finish (pick, strip, clean, prep, upholster, assemble); clean = deep clean only, original fabric
 // two = needs two operatives to carry safely
