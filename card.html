@@ -57,6 +57,8 @@
   .stdbox{margin-top:12px;padding:10px 12px;border-radius:8px;background:var(--card);border:1px solid var(--line)}
   .stdbox b{display:block;font-size:14px}
   .banner{padding:10px 14px;background:var(--red);color:#fff;font-weight:800;font-size:14px;border-bottom:1px solid var(--line)}
+  .banner.plan{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+  .planbtn{border:0;background:#fff;color:var(--red);border-radius:8px;padding:8px 12px;font-weight:800;font-size:14px}
   .who{font-size:15px}
   .vtot{padding:10px 12px;border-radius:8px;background:var(--list);margin-bottom:10px}
   .vtot .big{font-size:18px;font-weight:800}
@@ -101,6 +103,10 @@
         return {id:x.id,name:nameOf[x.id],due:x.due.slice(0,10),start:x.start?x.start.slice(0,10):null,site:(x.labels||[]).some(function(l){return SITE_LABELS.test(l.name);}),plan:p||{who:[]},cube:cube,kg:L.complete?L.kg:0,why:cube!=null?"":(L.unmatched&&L.unmatched.length?"items not matched":"no items on the card")}; }); }));
     }).then(function(list){ OTHERS=list; }).catch(function(){ OTHERS=[]; });
   }
+  function todayIso(){ var t=new Date(); t.setHours(12,0,0,0); return t.toISOString().slice(0,10); }
+  function nextWorkDay(k){ var x=new Date(k+"T12:00"); while(x.getDay()===0||x.getDay()===6) x.setDate(x.getDate()+1); return x.toISOString().slice(0,10); }
+  function addWorkDays(k,n){ var x=new Date(k+"T12:00"); var left=n; while(left>0){ x.setDate(x.getDate()+1); if(x.getDay()!==0&&x.getDay()!==6) left--; } return x.toISOString().slice(0,10); }
+  function planBanner(text,btnText,onPlan){ var b=el("div","banner plan"); b.appendChild(el("span",null,text)); var bt=el("button","planbtn",btnText); bt.onclick=onPlan; b.appendChild(bt); return b; }
   function workDays(a,b){ var out=[]; if(!a) return out; for(var x=new Date(a+"T12:00"); ; x.setDate(x.getDate()+1)){ var k=x.toISOString().slice(0,10); if(k>(b||a)) break; if(x.getDay()!==0&&x.getDay()!==6) out.push(k); } return out; }
   function loadOn(k){
     var out={}; CREW.forEach(function(w){ out[w]={mins:0,n:0}; });
@@ -110,7 +116,7 @@
       if(p.prep&&p.prep.date&&workDays(p.prep.start||p.prep.date,p.prep.date).indexOf(k)>=0){ (p.prep.who||[]).forEach(function(w){ if(!out[w]) return; out[w].n++; out[w].mins+=(p.prep.mins||0); }); }
       (p.legs||[]).forEach(function(L){ if(L.date===k) (L.who||[]).forEach(function(w){ if(!out[w]) return; out[w].n++; out[w].mins+=(L.mins||0)+(L.drive||0); }); });
     });
-    CREW.forEach(function(w){ var x=out[w]; x.t=x.off?"on leave":!x.n?"available":x.mins>DAY_MINS?fmt(x.mins)+", over capacity":!x.mins?x.n+(x.n===1?" job, no time":" jobs, no time"):fmt(x.mins)+" allocated"; x.c=x.off?"off":!x.n?"free":x.mins>DAY_MINS?"over":"busy"; });
+    CREW.forEach(function(w){ var x=out[w]; x.avail=x.off?0:Math.max(0,DAY_MINS-x.mins); x.t=x.off?"on leave":!x.n?"available":x.mins>DAY_MINS?fmt(x.mins)+", over capacity":!x.mins?x.n+(x.n===1?" job, no time":" jobs, no time"):fmt(x.mins)+" allocated"; x.c=x.off?"off":!x.n?"free":x.mins>DAY_MINS?"over":"busy"; });
     return out;
   }
   function availability(days,part){
@@ -187,11 +193,13 @@
       var prodDue=d.prodDue||defaultDue;
       var ps=section("production","Production",prodDue?"Due "+niceShort(prodDue):"");
       if(!workshop) ps.appendChild(el("div","who",(card.listName&&/Ready/i.test(card.listName))?"In Ready for Delivery / Collection":"Not in the workshop yet"));
-      if(!d.prep.who.length) ps.appendChild(banner("Unassigned. Choose who is on production."));
+      if(!d.prep.who.length){ if(pauto) ps.appendChild(planBanner("Unassigned.","Plan it: "+pauto.crew+(pauto.crew===1?" operative":" operatives")+", "+fmt(pauto.mins)+(pauto.crew>1?" each":""),planProd)); else ps.appendChild(banner("Unassigned. Choose who is on production.")); }
       else if(!d.prep.date) ps.appendChild(banner("No production days set."));
       if(prodDue&&d.prep.date&&d.prep.date>prodDue) ps.appendChild(banner("Finishes "+niceShort(d.prep.date)+", after the production due date."));
-      var Lp=loadNow(), pstd=prodStandardFor(Lp,d.prep.who.length), overP=aboveProdStandard(pstd,d.prep.who,d.prep.mins,d.prep.start,d.prep.date);
+      var Lp=loadNow(), pstart=nextWorkDay(d.prep.start&&d.prep.start>todayIso()?d.prep.start:todayIso()), pdaysAvail=prodDue?Math.max(1,workDaysBetween(pstart,prodDue)):1;
+      var pstd=prodStandardFor(Lp,d.prep.who.length,pdaysAvail), pauto=prodStandardFor(Lp,0,pdaysAvail), overP=aboveProdStandard(pstd,d.prep.who,d.prep.mins,d.prep.start,d.prep.date);
       if(overP) ps.appendChild(banner("Above standard: "+overP+". Standard is "+fmt(pstd.work)+" of work."));
+      var planProd=function(){ var crew=pauto.crew, start=d.prep.start||pstart, end=d.prep.date||addWorkDays(start,pauto.days-1); var who=pickCrew(crew,loadOn(start),false,[]); d.prep.who=who; d.prep.mins=prodStandardFor(Lp,who.length,pdaysAvail).mins; if(!d.prep.start){ d.prep.start=start; d.prep.date=end; } OPEN.pwho=false; OPEN.ptime=false; OPEN.pdays=false; save(); render(); };
       if(!d.prep.who.length) OPEN.pwho=OPEN.pwho===undefined?true:OPEN.pwho;
       ps.appendChild(rowEl("pwho",d.prep.who.length===1?"Operative":"Operatives",d.prep.who.length?d.prep.who.join(", "):"Unassigned",function(ed){ ed.appendChild(people(d.prep)); ed.appendChild(availability(d.prep.date?workDays(d.prep.start||d.prep.date,d.prep.date):[],d.prep)); },d.prep.who.length?"":"bad"));
       var daysTxt=d.prep.date?(d.prep.start&&d.prep.start!==d.prep.date?niceShort(d.prep.start)+" to "+niceShort(d.prep.date):niceShort(d.prep.date)):"Not set";
@@ -202,7 +210,8 @@
         pr.appendChild(el("span",null,"From")); pr.appendChild(d1); pr.appendChild(el("span",null,"to")); pr.appendChild(d2); var clr=el("button","p","Clear"); clr.onclick=function(){ d.prep.start=null; d.prep.date=null; save(); render(); }; pr.appendChild(clr); ed.appendChild(pr);
         ed.appendChild(el("div","hint","Set the days and it appears under Production in the Scheduler.")); },d.prep.date?"":"todo"));
       ps.appendChild(rowEl("ptime",d.prep.who.length>1?"Time per operative":"Time",d.prep.mins!=null?fmt(d.prep.mins)+(d.prep.who.length>1?" each":""):(pstd?"Not set, standard "+fmt(pstd.mins):"Not set"),function(ed){
-        if(pstd){ var sb=el("div","stdbox"); sb.appendChild(el("b",null,"Standard: "+pstd.crew+(pstd.crew===1?" operative":" operatives")+", "+fmt(pstd.mins)+(pstd.crew>1?" each":"")+(pstd.days>1?", "+pstd.days+" days":""))); sb.appendChild(el("div","hint",pstd.why)); if(d.prep.mins!==pstd.mins){ var ub=el("button","p","Use standard time"); ub.style.marginTop="6px"; ub.onclick=function(){ d.prep.mins=pstd.mins; save(); render(); }; sb.appendChild(ub); } ed.appendChild(sb); }
+        if(pstd){ var sb=el("div","stdbox"); sb.appendChild(el("b",null,"Standard: "+pstd.crew+(pstd.crew===1?" operative":" operatives")+", "+fmt(pstd.mins)+(pstd.crew>1?" each":"")+(pstd.days>1?", "+pstd.days+" days":""))); sb.appendChild(el("div","hint",pstd.why));
+          var br=el("div","row"); br.style.marginTop="6px"; var pb=el("button","p","Plan it: "+pauto.crew+(pauto.crew===1?" operative":" operatives")+", "+fmt(pauto.mins)+(pauto.crew>1?" each":"")); pb.onclick=planProd; br.appendChild(pb); if(d.prep.who.length&&d.prep.mins!==pstd.mins){ var ub=el("button","p","Use standard time for the "+d.prep.who.length+" chosen"); ub.onclick=function(){ d.prep.mins=pstd.mins; save(); render(); }; br.appendChild(ub); } sb.appendChild(br); ed.appendChild(sb); }
         else ed.appendChild(el("div","hint","The standard comes from the items on the card. "+(Lp.unmatched.length?"Some items are not in the table: "+Lp.unmatched.join("; ")+".":Lp.rows.length?"":"No items found on the card.")));
         ed.appendChild(el("div","lbl","Production time per operative")); ed.appendChild(timeField(d.prep,"")); },d.prep.mins!=null?"":"todo"));
       ps.appendChild(rowEl("pdue","Production due",(prodDue?niceShort(prodDue):"Not set")+(d.prodDue?"":", 2 working days before delivery"),function(ed){ var pdr=el("div","row"); var pdi=el("input"); pdi.type="date"; pdi.value=prodDue||""; pdi.onchange=function(){ d.prodDue=pdi.value||null; save(); render(); }; pdr.appendChild(pdi);
@@ -219,7 +228,7 @@
     var ts=section(kind,name,due?niceShort(due):"");
     {
       if(contractorOnly) ts.appendChild(el("div","who",d.contractor+" is carrying out this work"));
-      else if(!d.who.length){ ts.appendChild(banner("Unassigned. Choose who is on it.")); OPEN.who=OPEN.who===undefined?true:OPEN.who; }
+      else if(!d.who.length){ if(std&&std.mins!=null&&due){ ts.appendChild(planBanner("Unassigned.","Plan it: "+std.crew+(std.crew===1?" operative":" operatives")+", "+fmt(std.mins)+(std.crew>1?" each":""),function(){ d.who=pickCrew(std.crew,loadOn(due),site,[]); d.mins=std.mins; OPEN.who=false; OPEN.time=false; save(); render(); })); } else { ts.appendChild(banner("Unassigned. Choose who is on it.")); OPEN.who=OPEN.who===undefined?true:OPEN.who; } }
       else if(site&&!d.who.some(function(w){return DRIVERS.indexOf(w)>=0;})) ts.appendChild(banner("No driver on this job. Rob, Jack or Bart must be on it."));
       if(over) ts.appendChild(banner("Above standard: "+over+". Standard is "+std.crew+(std.crew===1?" operative":" operatives")+(std.mins!=null?", "+fmt(std.mins)+(std.crew>1?" each":""):"")+"."));
       // who
@@ -233,7 +242,8 @@
         // time
         var timeTxt=(d.mins!=null?fmt(d.mins)+(d.who.length>1?" each":"")+" on site":"No site time")+(site?(d.drive!=null?", travel "+fmt(d.drive)+" return":", no travel time"):"");
         ts.appendChild(rowEl("time",site?"Time":"Time",timeTxt,function(ed){
-          if(std){ var sb=el("div","stdbox"); sb.appendChild(el("b",null,"Standard: "+std.crew+(std.crew===1?" operative":" operatives")+(std.mins!=null?", "+fmt(std.mins)+(std.crew>1?" each":""):""))); sb.appendChild(el("div","hint",/[.]$/.test(std.why)?std.why:std.why+".")); if(std.mins!=null&&d.mins!==std.mins){ var ub=el("button","p","Use standard time"); ub.style.marginTop="6px"; ub.onclick=function(){ d.mins=std.mins; save(); render(); }; sb.appendChild(ub); } ed.appendChild(sb); }
+          if(std){ var sb=el("div","stdbox"); sb.appendChild(el("b",null,"Standard: "+std.crew+(std.crew===1?" operative":" operatives")+(std.mins!=null?", "+fmt(std.mins)+(std.crew>1?" each":""):""))); sb.appendChild(el("div","hint",/[.]$/.test(std.why)?std.why:std.why+"."));
+            if(std.mins!=null){ var br=el("div","row"); br.style.marginTop="6px"; if(due){ var pb=el("button","p","Plan it: "+std.crew+(std.crew===1?" operative":" operatives")+", "+fmt(std.mins)+(std.crew>1?" each":"")); pb.onclick=function(){ d.who=pickCrew(std.crew,loadOn(due),site,[]); d.mins=std.mins; save(); render(); }; br.appendChild(pb); } if(d.mins!==std.mins){ var ub=el("button","p","Use standard time"); ub.onclick=function(){ d.mins=std.mins; save(); render(); }; br.appendChild(ub); } sb.appendChild(br); } ed.appendChild(sb); }
           ed.appendChild(el("div","lbl",site?"Site time per operative":(loading?"Loading time per operative":"Labour time per operative"))); ed.appendChild(timeField(d,""));
           if(site){ ed.appendChild(el("div","lbl","Travel time, return")); ed.appendChild(hm(function(){return d.drive;},function(v){d.drive=v;},"Travel")); ed.appendChild(el("div","hint","There and back. The Scheduler works this out from the postcode. Set it here if you know it.")); if(d.drive!=null&&d.drive>360) ed.appendChild(el("div","warn","More than a day's travel with the job in between. Consider a courier or subcontractor.")); }
         },(d.mins==null||(site&&d.drive==null))?"todo":""));

@@ -390,12 +390,12 @@ var SNAP=null, DETAIL={};
     var jobs=allJobs().filter(function(j){return onDay(j,k);}), preps=JOBS.filter(function(j){return j.prep&&j.prep.date&&daysOf(j.prep).indexOf(k)>=0;}), rounds=roundsOn(k,jobs), out={};
     var off=LEAVE.filter(function(l){return l.date===k;}).map(function(l){return l.text.split(" ")[0];});
     TEAM.forEach(function(w){
-      if(off.indexOf(w)>=0){ out[w]={t:"annual leave",c:"off"}; return; }
+      if(off.indexOf(w)>=0){ out[w]={t:"annual leave",c:"off",mins:0,rec:0,avail:0}; return; }
       var mine=jobs.filter(function(j){return j.who.indexOf(w)>=0;}), myPreps=preps.filter(function(j){return j.prep.who.indexOf(w)>=0;}), myRound=rounds.filter(function(r){return r.who===w;})[0];
       var mins=mine.reduce(function(s,j){return s+(j.mins||0)+(j.site&&!j.onRound?(j.drive||0):0);},0)+(myRound&&myRound.drive?myRound.drive:0)+myPreps.reduce(function(s,j){return s+(j.prep.mins||0);},0);
       var n=mine.length+myPreps.length;
       out[w]= !n ? {t:fmt(DAY_MINS)+" available",c:"free"} : mins>DAY_H*60 ? {t:"over capacity by "+fmt(mins-DAY_MINS),c:"over"} : !mins ? {t:n+(n===1?" job":" jobs")+", no time set",c:"busy"} : {t:fmt(Math.max(0,DAY_MINS-mins))+" available"+(n>1?", "+n+" jobs":""),c:"busy"};
-      out[w].mins=mins; out[w].rec=Math.max(0,DAY_MINS-mins);
+      out[w].mins=mins; out[w].rec=Math.max(0,DAY_MINS-mins); out[w].avail=out[w].rec;
     });
     return out;
   }
@@ -572,15 +572,18 @@ var SNAP=null, DETAIL={};
       if(mine.length){ var lul=el("ul","items plain"); mine.forEach(function(x){ var t2=LEG_TYPES.filter(function(t){return t[0]===x.L.type;})[0]; var li=el("li",null,t2[1]+(x.L.where?" ("+x.L.where+")":"")+", "+niceDay(x.L.date)+(x.L.who.length?", "+x.L.who.join(", "):", unassigned")+(x.L.mins!=null?", "+fmt(x.L.mins):"")); var eb2=el("button","close","Edit"); eb2.style.marginLeft="8px"; eb2.onclick=function(){ open=j.id+":leg"+x.i; render(); }; li.appendChild(eb2); lul.appendChild(li); }); lb2.appendChild(lul); }
       else lb2.appendChild(el("div","hint","No extra legs. Add one when part of the job goes to a subcontractor or needs another visit."));
       var ar=el("div","row"); var ts=el("select"); LEG_TYPES.forEach(function(t){ var o3=el("option",null,t[1]); o3.value=t[0]; ts.appendChild(o3); }); var ad=el("input"); ad.type="date"; ad.value=j.date; var ab=el("button","close","Add leg"); ab.onclick=function(){ if(!ad.value) return; LEGS.push({parent:j.id,type:ts.value,date:ad.value,who:[],mins:null,drive:null,where:""}); open=j.id+":leg"+(LEGS.length-1); render(); }; ar.appendChild(ts); ar.appendChild(ad); ar.appendChild(ab); lb2.appendChild(ar); right.appendChild(lb2); }
-    if(o.shop){ var pstd=prodStandardFor(j.load,part.who.length); if(pstd){ var psb=block("Standard for this production","pstandard");
-      psb.appendChild(el("div",null,pstd.crew+(pstd.crew===1?" operative":" operatives")+", "+fmt(pstd.mins)+" each"+(pstd.days>1?", "+pstd.days+" days":"")));
+    if(o.shop){ var pstart0=part.start&&part.start>iso(TODAY)?part.start:iso(TODAY); var pAvail=j.prodDue?Math.max(1,workDaysBetween(pstart0,j.prodDue)):1;
+      var pstd=prodStandardFor(j.load,part.who.length,pAvail), pauto=prodStandardFor(j.load,0,pAvail); if(pstd){ var psb=block("Standard for this production","pstandard");
+      psb.appendChild(el("div",null,pstd.crew+(pstd.crew===1?" operative":" operatives")+", "+fmt(pstd.mins)+(pstd.crew>1?" each":"")+(pstd.days>1?", "+pstd.days+" days":"")));
       psb.appendChild(el("div","hint",pstd.why));
-      if(part.mins!==pstd.mins){ var pub=el("button","close","Use standard time"); pub.onclick=function(){ setMins(pstd.mins); render(); }; psb.appendChild(pub); }
+      var prow=el("div","row"); var plan=el("button","close","Plan it: "+pauto.crew+(pauto.crew===1?" operative":" operatives")+", "+fmt(pauto.mins)+(pauto.crew>1?" each":"")); plan.onclick=function(){ var start=part.start||pstart0; var who=pickCrew(pauto.crew,loadOn(start),false,[]); part.who=who; setMins(prodStandardFor(j.load,who.length,pAvail).mins); if(!part.start){ part.start=start; var e=new Date(start+"T12:00"), left=pauto.days-1; while(left>0){ e.setDate(e.getDate()+1); if(e.getDay()!==0&&e.getDay()!==6) left--; } part.date=iso(e); } render(); }; prow.appendChild(plan);
+      if(part.who.length&&part.mins!==pstd.mins){ var pub=el("button","close","Use standard time for the "+part.who.length+" chosen"); pub.onclick=function(){ setMins(pstd.mins); render(); }; prow.appendChild(pub); } psb.appendChild(prow);
       right.appendChild(psb); } else if(j.load&&!j.load.complete){ var psb2=block("Standard for this production","pstandard"); psb2.appendChild(el("div","hint","The standard comes from the items on the card. "+(j.load.unmatched.length?"Some items are not in the table: "+j.load.unmatched.join("; ")+".":"No items found."))); right.appendChild(psb2); } }
     if(!o.shop && !j.isLeg && !contractorOnly){ var std=standardFor(j.label,j.load); if(std){ var sb=block("Standard for this job","standard");
       sb.appendChild(el("div",null,std.crew+(std.crew===1?" operative":" operatives")+(std.mins!=null?", "+fmt(std.mins)+" each on site":", time needs the items on the card")));
       sb.appendChild(el("div","hint",/[.]$/.test(std.why)?std.why:std.why+"."));
-      if(std.mins!=null&&part.mins!==std.mins){ var ub=el("button","close","Use standard time"); ub.onclick=function(){ setMins(std.mins); render(); }; sb.appendChild(ub); }
+      var srow=el("div","row"); if(std.mins!=null){ var splan=el("button","close","Plan it: "+std.crew+(std.crew===1?" operative":" operatives")+", "+fmt(std.mins)+(std.crew>1?" each":"")); splan.onclick=function(){ part.who=pickCrew(std.crew,loadOn(j.date),!!j.site,[]); setMins(std.mins); render(); }; srow.appendChild(splan); }
+      if(std.mins!=null&&part.mins!==std.mins){ var ub=el("button","close","Use standard time"); ub.onclick=function(){ setMins(std.mins); render(); }; srow.appendChild(ub); } sb.appendChild(srow);
       right.appendChild(sb); } }
     if(!contractorOnly){ var tb=block(o.shop?"Production Time per Operative":(j.site?"Site Time per Operative":"Labour Time per Operative"),"time");
       var q=el("div","seg"); QUICK.forEach(function(qq){ var b=el("button",part.mins===qq[0]?"on":"",qq[1]); b.onclick=function(){ setMins(qq[0]); render(); }; q.appendChild(b); }); tb.appendChild(q);

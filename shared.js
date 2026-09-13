@@ -196,16 +196,20 @@ function aboveStandard(std,who,mins){
 var PICK_BASE=15, PICK_EACH=2;   // minutes: pull the picking sheet and set up, then per item to find it and bring it to the bench
 // the work is the total of the items. more operatives divide it, plus 10 percent handover when they share.
 // crew: one operative up to 2 hours of work, two up to 12 hours, three beyond (refurb never needs more than three).
-function prodStandardFor(load,crewNow){
+// daysAvail: working days there are to do it in (to the production due date). the crew is the fewest that finish in time, never more than three.
+function prodStandardFor(load,crewNow,daysAvail){
   if(!load||!load.complete) return null;
   if(!load.prod) return null;
   // picking: pull the picking sheet and set up, then find and bring each item to the bench
   var items=load.rows.filter(function(r){return r.type!=="Small part";}).reduce(function(t,r){return t+r.n;},0);
   var pick=PICK_BASE+PICK_EACH*items, work=load.prod+pick;
-  var crew=crewNow&&crewNow>0?crewNow:(work<=120?1:work<=720?2:3);
-  var each=Math.ceil(work/crew*(crew>1?1.1:1)/5)*5, days=Math.max(1,Math.ceil(each/DAY_MINS));
+  var eachFor=function(n){ return Math.ceil(work/n*(n>1?1.1:1)/5)*5; };
+  var crew, rule;
+  if(crewNow&&crewNow>0){ crew=crewNow; rule="the "+crew+" you chose"; }
+  else { var avail=daysAvail&&daysAvail>0?daysAvail:1; crew=3; for(var n=1;n<=3;n++){ if(eachFor(n)<=avail*DAY_MINS){ crew=n; break; } } rule=avail+(avail===1?" working day":" working days")+" to do it in, so the fewest that finish in time is "+crew; }
+  var each=eachFor(crew), days=Math.max(1,Math.ceil(each/DAY_MINS));
   var what=load.rows.filter(function(r){return r.prod;}).map(function(r){return r.n+" "+r.type.toLowerCase()+(r.n>1?"s":"")+(r.cleanOnly?" (clean only)":"")+" at "+(r.prod/r.n)+" min";}).join(", ");
-  var why=fmt(work)+" of work in total. Picking "+fmt(pick)+" ("+PICK_BASE+" min for the picking sheet and set up, "+PICK_EACH+" min an item for "+items+" items). Then "+what+"."+(crew>1?" Split between "+crew+" operatives with 10 percent for handover, that is "+fmt(each)+" each":" One operative, "+fmt(each))+(days>1?", so "+days+" days.":".");
+  var why=fmt(work)+" of work in total. Picking "+fmt(pick)+" ("+PICK_BASE+" min for the picking sheet and set up, "+PICK_EACH+" min an item for "+items+" items). Then "+what+". "+rule.charAt(0).toUpperCase()+rule.slice(1)+"."+(crew>1?" Split with 10 percent for handover, that is "+fmt(each)+" each":" "+fmt(each))+(days>1?", so "+days+" days.":".");
   return {work:work,pick:pick,crew:crew,mins:each,days:days,why:why};
 }
 function aboveProdStandard(std,who,mins,start,end){
@@ -215,4 +219,16 @@ function aboveProdStandard(std,who,mins,start,end){
   if(who.length>3) out.push(who.length+" operatives, never more than three on one job");
   if(start&&end){ var days=0; for(var x=new Date(start+"T12:00"); x.toISOString().slice(0,10)<=end; x.setDate(x.getDate()+1)){ if(x.getDay()!==0&&x.getDay()!==6) days++; } var need=Math.max(1,Math.ceil(mins/DAY_MINS)); if(days>need+1) out.push(days+" days scheduled, "+need+(need===1?" day":" days")+" of work"); }
   return out.length?out.join("; "):null;
+}
+
+// working days from a to b inclusive, Monday to Friday
+function workDaysBetween(a,b){ if(!a||!b||b<a) return 0; var n=0; for(var x=new Date(a+"T12:00"); x.toISOString().slice(0,10)<=b; x.setDate(x.getDate()+1)){ if(x.getDay()!==0&&x.getDay()!==6) n++; } return n; }
+// choose n operatives from who is free: most hours available first, a driver first when the job needs one
+function pickCrew(n,loadByName,needDriver,exclude){
+  var names=CREW.filter(function(w){ var l=loadByName[w]; return l && l.c!=="off" && (exclude||[]).indexOf(w)<0; });
+  names.sort(function(a,b){ return (loadByName[b].avail||0)-(loadByName[a].avail||0); });
+  var out=[];
+  if(needDriver){ var drv=names.filter(function(w){return DRIVERS.indexOf(w)>=0;})[0]; if(drv) out.push(drv); }
+  names.forEach(function(w){ if(out.length<n && out.indexOf(w)<0) out.push(w); });
+  return out;
 }
