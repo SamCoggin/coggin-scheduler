@@ -73,7 +73,7 @@
   <h2><small>Start here</small>What the Scheduler is</h2>
   <p class="lead">The Scheduler is the one place that shows who is doing what, on which day, in which van. It reads the jobs from the Trello board and you add the plan: the operatives, the time and the van.</p>
   <p>Nothing you do here changes the Trello card itself. The plan is saved on the card in the background, so anyone who opens the Scheduler sees the same plan.</p>
-  <div class="box tip"><b class="k">The one rule</b>A job is planned when it has operatives, a time, and, for transport, travel time and a van. Until then it is red or amber and the Scheduler keeps showing it to you.</div>
+  <div class="box tip"><b class="k">The one rule</b>A job is planned when it has operatives, a time, and, for transport, travel time and a van. Travel fills itself in from the postcode. Until then it is red or amber and the Scheduler keeps showing it to you.</div>
 </section>
 
 <section id="kinds">
@@ -129,7 +129,23 @@
   <h3>Vehicle</h3>
   <p>FX75 BKG, FX73 CWF, or Hire. A van marked off the road is struck through. If the load needs more than a Luton the box says so. Choose Hire, type the supplier and reference, and tick Booked once they confirm. It nags from five working days out until you do.</p>
   <h3>Travel Time</h3>
-  <p>Return travel. Real road time from the yard to the postcode, from OpenStreetMap routing, plus a fifth for traffic. It arrives a few seconds after the board loads and shows the miles each way. Overtype it if you know better and it stays as you typed it.</p>
+  <p>Return travel, yard to the site and back. It comes from real road routing, not a straight line.</p>
+  <ul>
+    <li>A few seconds after the board loads, every transport job with a postcode gets its road time from OpenStreetMap routing, plus a fifth for traffic, rounded to five minutes. The block says "Road time from OpenStreetMap routing, 85 miles each way".</li>
+    <li>Until that arrives, or if the routing service is down, it uses an estimate from the postcode area. The block says "Estimated from the postcode area".</li>
+    <li>A time you type is kept for good. The lookup never overwrites it.</li>
+    <li>No postcode on the card means no lookup. Type the time in, or add the postcode to the card.</li>
+    <li>Results are remembered in the browser for 30 days, so each postcode is looked up once.</li>
+  </ul>
+  <h3>Rounds</h3>
+  <p>Two or more transport jobs by the same operative on the same day make a Delivery Round, one trip with one travel time.</p>
+  <ul>
+    <li>The stops are put in driving order: deliveries before collections, then any cut-off times, then nearest first.</li>
+    <li>The round is routed as one trip, yard to each stop to yard, and the travel is the sum of the real legs plus a fifth for traffic. The round card says "Road time yard to 3 stops and back".</li>
+    <li>Until it is looked up, the round uses the longest single journey plus 20 minutes a stop, and the card says so.</li>
+    <li>The day plan walks the real legs, so the arrival at each stop, any wait for a window, and the time back at the yard follow the road. The Routes view and the routes sheet show each leg's miles.</li>
+    <li>Press the round card to type a different travel time. Yours is kept.</li>
+  </ul>
   <h3>Time Window</h3>
   <p>When the site can take us. "Arrive after" is the earliest they will let us in. "Finish by" is when the loading bay or building shuts. Leave both blank when any time in the day is fine. The Scheduler then shows the plan in words: leave the yard 8:00, arrive 10:40, back at the yard 14:40.</p>
   <h3>Van Load</h3>
@@ -213,7 +229,8 @@
     <tr><th>You see</th><th>What to do</th></tr>
     <tr><td>A job is missing</td><td>Check the card has a due date and is on the Jobs Planning Board. Cards without a date do not show.</td></tr>
     <tr><td>No van load</td><td>The card has no items list, or a line could not be matched. Open the job, look at Van Load, remove the wrong line or add the items by hand.</td></tr>
-    <tr><td>No travel time</td><td>No postcode was found on the card. Type the return time in.</td></tr>
+    <tr><td>No travel time</td><td>No postcode was found on the card, so there was nothing to route. Add the postcode to the card, or type the return time in.</td></tr>
+    <tr><td>Travel looks wrong</td><td>Check the postcode on the card is right: a mistyped postcode routes to the wrong place or nowhere. Open the job, the Travel block says where the time came from. Overtype it if you know better.</td></tr>
     <tr><td>Nobody is free</td><td>Under each name in Operatives is their day. Look at the Operative Hours block for who has room, or move the job to another day.</td></tr>
     <tr><td>Needs a 7.5 tonne</td><td>Choose Hire on the job, book it, put the reference in and tick Booked.</td></tr>
     <tr><td>A striped card</td><td>A date held for sales. Nothing to plan. It confirms on the deal in the CRM, and then it becomes a normal card.</td></tr>
