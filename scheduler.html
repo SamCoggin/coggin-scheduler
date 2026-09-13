@@ -80,6 +80,23 @@
   .vrow .rm{border:1px solid var(--line);background:var(--card);border-radius:6px;padding:3px 8px;font-size:13px;font-weight:700}
   .vadd{margin-top:10px} .vadd .lbl{font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.03em;margin-bottom:6px}
   .vadd select{border:1px solid var(--line);border-radius:6px;padding:6px 8px;background:var(--card);font-weight:600;flex:1}
+  .board.manager{grid-template-columns:1fr;overflow:auto}
+  .mgr{background:var(--card);border:2px solid #3d4451;border-radius:12px;padding:16px 18px;display:flex;flex-direction:column;gap:14px;align-self:start}
+  .mgr h2{margin:0;font-size:20px;font-weight:800}
+  .mgr .sub{color:var(--muted);font-size:14px}
+  .pin{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+  .pin input{border:2px solid var(--line);border-radius:8px;padding:10px 12px;font-size:20px;font-weight:700;letter-spacing:.3em;width:140px;text-align:center}
+  .pin button{border:0;background:var(--blue);color:#fff;border-radius:8px;padding:10px 16px;font-weight:700}
+  .pin .bad{color:var(--red);font-weight:700}
+  .mrow{display:grid;grid-template-columns:minmax(220px,1.4fr) 110px 1fr 1fr 130px;gap:12px;align-items:start;padding:12px 14px;border:1px solid var(--line);border-radius:10px;background:var(--card)}
+  .mrow.head{background:var(--list);font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);border:0}
+  .mrow.amber{border-color:var(--amber);background:var(--amber-bg)} .mrow.red{border-color:var(--red);background:var(--red-bg)}
+  .mrow b{font-size:15px;display:block} .mrow small{display:block;color:var(--muted);font-size:12px;margin-top:2px}
+  .mrow .v{font-size:18px;font-weight:800} .mrow.amber .v{color:var(--amber)} .mrow.red .v{color:var(--red)} .mrow .v.ok{color:var(--green)}
+  .mrow ul{margin:4px 0 0;padding-left:16px;font-size:13px;color:var(--muted)} .mrow li{margin:1px 0}
+  .msum{display:flex;flex-wrap:wrap;gap:8px}
+  .msum span{border-radius:8px;padding:8px 12px;background:var(--list);font-weight:700;font-size:14px}
+  .msum span.amber{background:var(--amber-bg);color:var(--amber)} .msum span.red{background:var(--red-bg);color:var(--red)}
   .rwarn{margin:6px 14px 0;padding:8px 10px;border-radius:8px;background:var(--red-bg);color:var(--red);font-weight:700;font-size:13px}
   .rnote{color:var(--muted);font-size:13px;padding:6px 14px}
   .prow2 .drv{font-style:normal;font-weight:700;font-size:11px;color:var(--blue);margin-left:6px;border:1px solid var(--blue);border-radius:4px;padding:1px 5px}
@@ -245,7 +262,7 @@
 <div class="hdr">
   <h1>Scheduler</h1>
   <span class="src" id="src"></span>
-  <span class="views"><button id="vday">Day</button><button id="vweek" class="on">Week</button><button id="vmonth">Month</button><button id="vroutes">Routes</button></span>
+  <span class="views"><button id="vday">Day</button><button id="vweek" class="on">Week</button><button id="vmonth">Month</button><button id="vroutes">Routes</button><button id="vmanager">Manager</button></span>
   <button id="prev">Back</button><span class="t" id="title"></span><button id="next">Next</button>
 </div>
 <div class="board" id="board"></div>
@@ -602,6 +619,7 @@ var SNAP=null, DETAIL={};
     contractor:"Transport jobs only. Coggin operatives by default; select a subcontractor or courier when they carry out the job. Workshop and yard work is always our own operatives.",
     days:"The dates production takes place. Set a later end date to spread it over several days.",
     recycling:"Every hour of a working day that is not allocated to a job is recycling. This is each operative's recycling time for the week. A low figure means the week is full of jobs; check the jobs are not carrying more people or time than their standard.",
+    manager:"Managers only. Every job with time allocated, against the standard worked out from its items. Amber is over by half, red is double.",
     pstandard:"How long the workshop should take on the items: 30 minutes a swivel chair start to finish, 10 for a clean-only chair, 15 for storage, 45 for a desk. More operatives divide the work, with 10 percent for handover. Use standard sets the time per operative.",
     standard:"The standard crew and time for this job type, worked out from the items on the card. Above it is not wrong, but it should be a decision. Use standard sets the time to it.",
     drivers:"Rob, Jack and Bart drive the van. Jordan and Bradley go along as a second pair of hands, so every transport job needs one of the drivers on it.",
@@ -834,16 +852,60 @@ var SNAP=null, DETAIL={};
     });
     $("#prev").onclick=function(){week--;render();}; $("#next").onclick=function(){week++;render();};
   }
+
+  // ── Manager: allocated time against the standard, per job and per operative. behind a PIN ──
+  var MGR_HASH="16f9b9bf40239533b53ffcecb9c2c0ff619ec21772aa325fab40550e64de0c02", mgrOpen=false; try{ mgrOpen=sessionStorage.getItem("cg-mgr")==="1"; }catch(e){}
+  function sha256(str){ return crypto.subtle.digest("SHA-256",new TextEncoder().encode(str)).then(function(buf){ return Array.prototype.map.call(new Uint8Array(buf),function(b){return ("0"+b.toString(16)).slice(-2);}).join(""); }); }
+  function renderManager(){
+    $("#title").textContent="Manager"; $("#src").textContent=mgrOpen?"Allocated time against the standard. Amber is over by half, red is double.":"Managers only.";
+    var b=$("#board"); b.innerHTML=""; b.className="board manager"; b.style.gridTemplateRows="";
+    var box=el("div","mgr"); b.appendChild(box);
+    if(!mgrOpen){ box.appendChild(el("h2",null,"Manager view")); box.appendChild(el("div","sub","Enter the PIN to see allocated time against the standard for every job."));
+      var row=el("div","pin"); var inp=el("input"); inp.type="password"; inp.inputMode="numeric"; inp.maxLength=6; inp.setAttribute("aria-label","PIN"); var go=el("button",null,"Open"); var msg=el("span"); row.appendChild(inp); row.appendChild(go); row.appendChild(msg); box.appendChild(row);
+      var tryPin=function(){ sha256("coggin-manager-"+inp.value).then(function(h){ if(h===MGR_HASH){ mgrOpen=true; try{ sessionStorage.setItem("cg-mgr","1"); }catch(e){} render(); } else { msg.className="bad"; msg.textContent="Wrong PIN."; inp.value=""; inp.focus(); } }); };
+      go.onclick=tryPin; inp.onkeydown=function(e){ if(e.key==="Enter") tryPin(); }; setTimeout(function(){ inp.focus(); },50);
+      $("#prev").onclick=function(){}; $("#next").onclick=function(){}; return; }
+    var head=el("div"); head.style.display="flex"; head.style.justifyContent="space-between"; head.style.alignItems="baseline"; head.appendChild(el("h2",null,"Allocated time against the standard")); var lock=el("button","close","Lock"); lock.onclick=function(){ mgrOpen=false; try{ sessionStorage.removeItem("cg-mgr"); }catch(e){} render(); }; head.appendChild(lock); box.appendChild(head);
+    box.appendChild(el("div","sub","Every job with time allocated, from four weeks back to six weeks ahead. Work is the time per operative times the operatives on it. The standard comes from the items on the card."));
+    var from=iso(addDays(TODAY,-28)), to=iso(addDays(TODAY,42)), rows=[], perOp={};
+    TEAM.forEach(function(w){ perOp[w]={alloc:0,std:0,jobs:0}; });
+    JOBS.forEach(function(j){
+      // production part
+      if(j.prep&&j.prep.date&&j.prep.date>=from&&j.prep.date<=to&&j.prep.who.length&&j.prep.mins!=null){ var ps=prodStandardFor(j.load,j.prep.who.length); var alloc=j.prep.mins*j.prep.who.length; var std=ps?Math.round(ps.work*(j.prep.who.length>1?1.1:1)):null;
+        rows.push({kind:"Production",j:j,who:j.prep.who,each:j.prep.mins,alloc:alloc,std:std,date:j.prep.date,items:j.load&&j.load.rows.length?j.load.rows.map(function(r){return r.n+" x "+r.type+(r.prod?": "+r.prod+" min":"");}):[],note:ps?null:(j.load&&j.load.unmatched.length?"Items not matched: "+j.load.unmatched.join("; "):"No items on the card")});
+        j.prep.who.forEach(function(w){ if(perOp[w]){ perOp[w].alloc+=j.prep.mins; if(std!=null) perOp[w].std+=std/j.prep.who.length; perOp[w].jobs++; } }); }
+      // delivery or yard part
+      if(j.date>=from&&j.date<=to&&j.who.length&&j.mins!=null&&!(j.contractor&&!j.who.length)){ var st=standardFor(j.label,j.load); var alloc2=j.mins*j.who.length; var std2=st&&st.mins!=null?st.mins*st.crew:null;
+        rows.push({kind:j.site?"Delivery":"Yard",j:j,who:j.who,each:j.mins,alloc:alloc2,std:std2,date:j.date,items:j.load&&j.load.rows.length?j.load.rows.map(function(r){return r.n+" x "+r.type+(r.min?": "+r.min+" min to handle":"");}):[],note:st?(st.mins==null?"Needs the items to work out the standard":null):"No standard for this job type"});
+        j.who.forEach(function(w){ if(perOp[w]){ perOp[w].alloc+=j.mins; if(std2!=null) perOp[w].std+=std2/j.who.length; perOp[w].jobs++; } }); }
+    });
+    rows.forEach(function(r){ r.ratio=r.std?r.alloc/r.std:null; });
+    rows.sort(function(a,b){ return (b.ratio||0)-(a.ratio||0) || (a.date<b.date?-1:1); });
+    var sum=el("div","msum"); TEAM.forEach(function(w){ var o=perOp[w]; if(!o.jobs) return; var ratio=o.std?o.alloc/o.std:null; var sp=el("span",ratio==null?"":(ratio>2?"red":ratio>1.5?"amber":""),w+": "+fmt(Math.round(o.alloc))+" allocated"+(ratio!=null?", standard "+fmt(Math.round(o.std))+" ("+Math.round(ratio*100)+"%)":"")+", "+o.jobs+(o.jobs===1?" job":" jobs")); sum.appendChild(sp); });
+    box.appendChild(el("div","sub","By operative, all their jobs added up:")); box.appendChild(sum);
+    var hd=el("div","mrow head"); ["Job","Part","Operatives and time","Items and standard","Against standard"].forEach(function(t){ hd.appendChild(el("span",null,t)); }); box.appendChild(hd);
+    if(!rows.length) box.appendChild(el("div","sub","No jobs with time allocated in this window."));
+    rows.forEach(function(r){ var cls=r.ratio==null?"":(r.ratio>2?"red":r.ratio>1.5?"amber":""); var row=el("div","mrow"+(cls?" "+cls:""));
+      var c1=el("span"); c1.appendChild(el("b",null,r.j.title)); c1.appendChild(el("small",null,r.j.label+", "+niceDay(r.date))); row.appendChild(c1);
+      row.appendChild(el("span",null,r.kind));
+      var c3=el("span"); c3.appendChild(el("b",null,r.who.join(", "))); c3.appendChild(el("small",null,fmt(r.each)+(r.who.length>1?" each, "+fmt(r.alloc)+" of work":" of work"))); row.appendChild(c3);
+      var c4=el("span"); if(r.items.length){ var ul=el("ul"); r.items.forEach(function(x){ ul.appendChild(el("li",null,x)); }); c4.appendChild(ul); } if(r.note) c4.appendChild(el("small",null,r.note)); if(!r.items.length&&!r.note) c4.appendChild(el("small",null,"No items")); row.appendChild(c4);
+      var c5=el("span"); if(r.std!=null){ c5.appendChild(el("span","v"+(r.ratio<=1.2?" ok":""),Math.round(r.ratio*100)+"%")); c5.appendChild(el("small",null,"standard "+fmt(r.std)+(r.ratio>1?", "+fmt(Math.round(r.alloc-r.std))+" over":r.ratio<1?", "+fmt(Math.round(r.std-r.alloc))+" under":""))); } else c5.appendChild(el("small",null,"No standard")); row.appendChild(c5);
+      row.style.cursor="pointer"; row.onclick=function(){ open=r.kind==="Production"?r.j.id+":prep":r.j.id; view="week"; var d0=new Date(r.date+"T12:00"); week=Math.round((monday(d0)-monday(TODAY))/(7*864e5)); render(); };
+      box.appendChild(row); });
+    $("#prev").onclick=function(){}; $("#next").onclick=function(){};
+  }
   function render(){
     persist();
     document.body.onclick=function(){ if(tipOpen){ tipOpen=null; render(); } };
-    $("#vday").className=view==="day"?"on":""; $("#vweek").className=view==="week"?"on":""; $("#vmonth").className=view==="month"?"on":""; $("#vroutes").className=view==="routes"?"on":""; $("#vroutes").onclick=function(){view="routes";render();};
+    $("#vday").className=view==="day"?"on":""; $("#vweek").className=view==="week"?"on":""; $("#vmonth").className=view==="month"?"on":""; $("#vroutes").className=view==="routes"?"on":""; $("#vroutes").onclick=function(){view="routes";render();}; $("#vmanager").className=view==="manager"?"on":""; $("#vmanager").onclick=function(){view="manager";render();};
     $("#vday").onclick=function(){view="day";render();}; $("#vweek").onclick=function(){view="week";render();}; $("#vmonth").onclick=function(){view="month";render();};
     var oldV=document.querySelector(".veil"), keepScroll=0; if(oldV){ keepScroll=oldV.scrollTop||0; oldV.parentNode.removeChild(oldV); }
     window.__keepScroll=keepScroll;
     if(view==="day") return renderDay();
     if(view==="month") return renderMonth();
     if(view==="routes") return renderRoutes();
+    if(view==="manager") return renderManager();
     $("#board").className="board"; $("#board").style.gridTemplateRows="";
     var mon=addDays(monday(TODAY),week*7);
     $("#title").textContent="Week of "+mon.getDate()+" "+MON[mon.getMonth()]+" "+mon.getFullYear();
