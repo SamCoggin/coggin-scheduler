@@ -579,8 +579,9 @@ var SNAP=null, DETAIL={};
       var stops=jobs.filter(function(j){return j.site&&!j.shop&&j.who.indexOf(w)>=0;});
       if(stops.length<2) return;
       var key=k+"|"+w, longest=Math.max.apply(null,stops.map(function(j){return j.drive||0;}));
-      var def=longest?longest+20*(stops.length-1):null;
-      out.push({key:key,who:w,stops:stops,drive:ROUND_DRIVE[key]!=null?ROUND_DRIVE[key]:def,def:def});
+      var def=longest?longest+20*(stops.length-1):null, road=(typeof roundRoadCached==="function")?roundRoadCached(stops):null, legs=null;
+      if(road){ legs=road.legs.map(function(m){return m*TRAFFIC;}); def=Math.max(5,Math.round(legs.reduce(function(a,b){return a+b;},0)/5)*5); }
+      out.push({key:key,who:w,stops:stops,drive:ROUND_DRIVE[key]!=null?ROUND_DRIVE[key]:def,def:def,legs:legs,order:road?road.order:null,road:!!road});
     });
     return out;
   }
@@ -601,10 +602,11 @@ var SNAP=null, DETAIL={};
     var t=DAY_START, drive=0, stops=[];
     if(site.length){
       var rs=roundsOn(k,dj).filter(function(r){return r.who===w;})[0], ordered=windowOrder(site);
-      var total=rs&&rs.drive!=null?rs.drive:(site.length===1?site[0].drive:null), leg=total!=null?total/(ordered.length+1):null;
-      ordered.forEach(function(j){ if(leg!=null){ t+=leg; drive+=leg; } var arrive=t, f=parseHM(j.from), wait=0; if(f!=null&&arrive<f){ wait=f-arrive; t=f; } var st=t; t+=(j.mins||0); var by=parseHM(j.by);
+      if(rs&&rs.legs&&rs.order&&ROUND_DRIVE[rs.key]==null){ ordered=rs.order.map(function(id){ return site.filter(function(j){return j.id===id;})[0]; }).filter(Boolean); }
+      var total=rs&&rs.drive!=null?rs.drive:(site.length===1?site[0].drive:null), leg=total!=null?total/(ordered.length+1):null, realLegs=rs&&rs.legs&&rs.order&&ROUND_DRIVE[rs.key]==null?rs.legs:null, li=0;
+      ordered.forEach(function(j){ if(realLegs){ var lg=realLegs[li++]||0; t+=lg; drive+=lg; } else if(leg!=null){ t+=leg; drive+=leg; } var arrive=t, f=parseHM(j.from), wait=0; if(f!=null&&arrive<f){ wait=f-arrive; t=f; } var st=t; t+=(j.mins||0); var by=parseHM(j.by);
         stops.push({j:j,arrive:arrive,start:st,end:t,wait:wait,by:by,late:by!=null&&t>by,noDrive:leg==null}); });
-      if(leg!=null){ t+=leg; drive+=leg; }
+      if(realLegs){ var lgb=realLegs[li]||0; t+=lgb; drive+=lgb; } else if(leg!=null){ t+=leg; drive+=leg; }
     }
     var back=t; other.forEach(function(j){ t+=(j.mins||0); }); preps.forEach(function(j){ t+=(j.prep.mins||0); });
     var isDriver=DRIVERS.indexOf(w)>=0&&site.length>0;
@@ -882,7 +884,7 @@ var SNAP=null, DETAIL={};
     var st=el("div","sec"); st.appendChild(el("div","k","Stops")); var ul=el("ul","items"); r.stops.forEach(function(j){ var li=el("li"); li.appendChild(document.createTextNode(j.title+(j.mins!=null?", "+fmt(j.mins)+" on site":", time on site not set"))); ul.appendChild(li); }); st.appendChild(ul); m.appendChild(st);
     var dv=el("div","sec"); dv.appendChild(el("div","k","Travel Time for the round")); var row=el("div","row");
     row.appendChild(hmBoxes(function(){return r.drive;},function(v){ ROUND_DRIVE[r.key]=v; },"Round drive"));
-    row.appendChild(el("span","hint",ROUND_DRIVE[r.key]!=null?"You set this.":(r.def!=null?"Longest single journey plus 20 minutes per stop. Change it if you know better.":"No postcodes found. Type it in."))); dv.appendChild(row); m.appendChild(dv);
+    row.appendChild(el("span","hint",ROUND_DRIVE[r.key]!=null?"You set this.":(r.road?"Road time yard to "+r.stops.length+" stops and back, from OpenStreetMap routing, plus 20 percent for traffic. Change it if you know better.":(r.def!=null?"Longest single journey plus 20 minutes per stop, until the road time arrives. Change it if you know better.":"No postcodes found. Type it in.")))); dv.appendChild(row); m.appendChild(dv);
     var sv=el("div","save"); var lsb2=el("button","alt","Download loading sheet"); lsb2.onclick=function(){ try{ loadingPdf(k,w,r.stops); }catch(e){ alert("The loading sheet could not be built: "+(e&&e.message||e)); } }; sv.appendChild(lsb2); var sb=el("button",null,"Done"); sb.onclick=function(){openRound=null;render();}; sv.appendChild(sb); m.appendChild(sv);
     veil.appendChild(m); return veil;
   }
@@ -897,7 +899,7 @@ var SNAP=null, DETAIL={};
     leave:"Annual leave from the Holidays / Leave list on the board, bank holidays for England and Wales, and anyone marked Off today in the day view. Off today is for sickness, a course or a breakdown on the day: press it on the operative, say why, and their jobs are flagged to reassign.",
     people:"Each operative's allocation for the day. Green is available, red is over capacity.",
     tot:"Each operative's allocated hours for the day, against a 7 hour 45 minute working day (38 hours 45 minutes a week, Monday to Friday). Amber means a job has no time allocated yet. Red means over the day.",
-    round:"A delivery round: several transport jobs by one operative in one trip. One travel time for the round, then each job's site time.",
+    round:"A delivery round: several transport jobs by one operative in one trip. The travel is the real road time yard to each stop and back, from OpenStreetMap routing, plus 20 percent for traffic, once it has been looked up. Then each job's site time.",
     who:"Assign operatives. Under each name is their existing allocation for that day.",
     contractor:"Transport jobs only. Our operatives by default. Choose a subcontractor or courier when they carry the load. Leave operatives off and it is theirs entirely. Put an operative on as well and they are attending: keys, meeting the truck, the sign-off. Then the load is not on our van and no van is needed unless they go in ours.",
     days:"The dates production takes place. Set a later end date to spread it over several days.",
@@ -1108,6 +1110,21 @@ var SNAP=null, DETAIL={};
     return geocode([pc]).then(function(){ var pt=GEO[pc]; if(!pt){ ROAD[pc]={ok:false,at:Date.now()}; return null; }
       return fetch("https://router.project-osrm.org/route/v1/driving/"+BASE.lng+","+BASE.lat+";"+pt.lng+","+pt.lat+"?overview=false").then(function(r){return r.json();}).then(function(x){ var r0=x.routes&&x.routes[0]; if(!r0) return null; ROAD[pc]={ok:true,mins:r0.duration/60,miles:r0.distance/1609.34,at:Date.now()}; try{ localStorage.setItem("cg-road",JSON.stringify(ROAD)); }catch(e){} return ROAD[pc]; }).catch(function(){ return null; }); });
   }
+  // STOP-TO-STOP ROAD TIMES (Sam, 13 Sep 2026): a round is routed yard, stops in driving order, yard. Each leg's real minutes and miles are cached by the ordered postcodes.
+  var ROADR={}; try{ ROADR=JSON.parse(localStorage.getItem("cg-roadr")||"{}"); }catch(e){ ROADR={}; }
+  function roundKey(stops){ var pcs=stops.map(function(j){return pcOf(j);}); return pcs.every(Boolean)?pcs.join(">"):null; }
+  function roundOrdered(stops){ var placed=stops.filter(function(j){return j.pt||(j.pc&&GEO[j.pc]);}); if(placed.length!==stops.length) return null; stops.forEach(function(j){ if(!j.pt&&j.pc&&GEO[j.pc]) j.pt=GEO[j.pc]; }); return orderStops(stops.map(function(j){return {j:j,pt:j.pt};})).map(function(x){return x.j;}); }
+  function roundRoadCached(stops){ var o=roundOrdered(stops); if(!o) return null; var key=roundKey(o); var hit=key&&ROADR[key]; return hit&&hit.ok&&hit.at>Date.now()-30*864e5?{legs:hit.legs,miles:hit.miles,order:o.map(function(j){return j.id;})}:null; }
+  function roundRoadFetch(stops){ stops.forEach(function(j){ j.pc=j.pc||pcOf(j); }); var pcs=stops.map(function(j){return j.pc;}).filter(Boolean); if(pcs.length!==stops.length) return Promise.resolve(null);
+    return geocode(pcs).then(function(){ var o=roundOrdered(stops); if(!o) return null; var key=roundKey(o); if(ROADR[key]&&ROADR[key].at>Date.now()-30*864e5) return ROADR[key].ok?ROADR[key]:null;
+      var coords=[BASE].concat(o.map(function(j){return j.pt;})).concat([BASE]).map(function(p){return p.lng+","+p.lat;}).join(";");
+      return fetch("https://router.project-osrm.org/route/v1/driving/"+coords+"?overview=false").then(function(r){return r.json();}).then(function(x){ var r0=x.routes&&x.routes[0]; if(!r0||!r0.legs){ ROADR[key]={ok:false,at:Date.now()}; return null; } ROADR[key]={ok:true,legs:r0.legs.map(function(l){return l.duration/60;}),miles:r0.legs.map(function(l){return l.distance/1609.34;}),at:Date.now()}; try{ localStorage.setItem("cg-roadr",JSON.stringify(ROADR)); }catch(e){} return ROADR[key]; }).catch(function(){ return null; }); }); }
+  var RR_BUSY=false;
+  function refreshRounds(){ if(RR_BUSY) return; var days=viewDays(); if(view==="routes"){ days=[]; var mon2=addDays(monday(TODAY),week*7); for(var i2=0;i2<5;i2++) days.push(iso(addDays(mon2,i2))); }
+    var todo=[]; days.forEach(function(k){ var dj=allJobs().filter(function(j){return onDay(j,k)&&!j.isHold;}); roundsOn(k,dj).forEach(function(r){ if(!roundRoadCached(r.stops)) todo.push(r); }); });
+    if(!todo.length) return; RR_BUSY=true; var i=0, changed=false;
+    function next(){ if(i>=todo.length){ RR_BUSY=false; if(changed) render(); return; } var r=todo[i++]; roundRoadFetch(r.stops).then(function(x){ if(x) changed=true; setTimeout(next,300); }); }
+    next(); }
   function refreshDrive(){
     var todo=JOBS.filter(function(j){ return j.site&&!j.isHold&&!(j.contractor&&!j.who.length)&&j.date>=iso(addDays(TODAY,-7))&&(j.drive==null||j.driveAuto||j.drive===driveMins(j.title)); });
     var changed=false, i=0;
@@ -1122,7 +1139,9 @@ var SNAP=null, DETAIL={};
   // Within that, cut-offs first, then nearest neighbour.
   function takesOn(j){ return /Collection|Collect and Return/.test(j.movement||j.label||"")||/Clearance|Recycling|Buyback/.test(j.work||""); }
   function orderStops(stops){ var dels=windowOrder(stops.filter(function(x){return !takesOn(x.j||x);})), cols=windowOrder(stops.filter(function(x){return takesOn(x.j||x);})); var left=dels.concat(cols), out=[], at=BASE, phase=0; while(left.length){ if(left[0].j&&left[0].j.by){ var n0=left.shift(); n0.legMiles=roadMiles(miles(at,n0.pt)); out.push(n0); at=n0.pt; continue; }
-    if(phase===0&&!left.some(function(x){return !takesOn(x.j||x);})) phase=1; var pool=left.filter(function(x){return phase===0?!takesOn(x.j||x):true;}); pool.sort(function(a,b){return miles(at,a.pt)-miles(at,b.pt);}); var nx=pool[0]; left.splice(left.indexOf(nx),1); nx.legMiles=roadMiles(miles(at,nx.pt)); out.push(nx); at=nx.pt; continue; } if(out.length) out[out.length-1].backMiles=roadMiles(miles(at,BASE)); return out; }
+    if(phase===0&&!left.some(function(x){return !takesOn(x.j||x);})) phase=1; var pool=left.filter(function(x){return phase===0?!takesOn(x.j||x):true;}); pool.sort(function(a,b){return miles(at,a.pt)-miles(at,b.pt);}); var nx=pool[0]; left.splice(left.indexOf(nx),1); nx.legMiles=roadMiles(miles(at,nx.pt)); out.push(nx); at=nx.pt; continue; } if(out.length) out[out.length-1].backMiles=roadMiles(miles(at,BASE));
+    if(out.length&&out[0].j&&typeof ROADR!=="undefined"){ var rk=out.map(function(x){return pcOf(x.j);}); if(rk.every(Boolean)){ var hit=ROADR[rk.join(">")]; if(hit&&hit.ok&&hit.miles&&hit.miles.length===out.length+1){ out.forEach(function(x,i){ x.legMiles=Math.round(hit.miles[i]); }); out[out.length-1].backMiles=Math.round(hit.miles[out.length]); } } }
+    return out; }
   var MAP=null;
   function renderRoutes(){
     if(MAP){ try{ MAP.remove(); }catch(e){} MAP=null; }
@@ -1604,6 +1623,7 @@ var SNAP=null, DETAIL={};
     persist();
     $("#pdf").onclick=function(){ try{ if(view==="routes") routesPdf(); else schedulePdf(); }catch(e){ alert("The PDF could not be built: "+(e&&e.message||e)); } };
     $("#pdf").textContent=view==="routes"?"Download routes":"Download schedule"; $("#guide").onclick=function(){ location.href="./guide.html"; };
+    if(t&&view!=="manager"&&view!=="month") setTimeout(refreshRounds,0);
     $("#need").hidden=(view==="week"); $("#need").className=NEED?"on":""; var nTP=toPlanCount(); $("#need").textContent="Outstanding"+(nTP?" ("+nTP+")":""); $("#need").title=nTP?nTP+(nTP===1?" job still needs":" jobs still need")+" operatives, time, travel or a van on the "+(view==="day"?"day":view==="month"?"month":"week")+" in view":"Everything in view is planned"; $("#need").onclick=function(){ NEED=!NEED; try{ localStorage.setItem("cg-need",NEED?"1":"0"); }catch(e){} render(); };
     document.body.onclick=function(){ if(tipOpen){ tipOpen=null; render(); } };
     $("#vday").className=view==="day"?"on":""; $("#vweek").className=view==="week"?"on":""; $("#vmonth").className=view==="month"?"on":""; $("#vroutes").className=view==="routes"?"on":""; $("#vroutes").onclick=function(){view="routes";render();}; $("#vmanager").className=view==="manager"?"on":""; $("#vmanager").onclick=function(){view="manager";render();};
@@ -1704,7 +1724,7 @@ var SNAP=null, DETAIL={};
   }
   if(t){
     $("#src").textContent="Reading the board...";
-    loadBoard().then(function(snap){ buildFromSnap(snap); lastSaved={}; render(); refreshDrive(); }).catch(function(e){ $("#src").textContent="Could not read the board: "+(e&&e.message||e); });
+    loadBoard().then(function(snap){ buildFromSnap(snap); lastSaved={}; render(); refreshDrive(); setTimeout(refreshRounds,1500); }).catch(function(e){ $("#src").textContent="Could not read the board: "+(e&&e.message||e); });
   } else { $("#src").textContent="Open this from the Scheduler button on the Trello board."; }
 })();
 </script>
