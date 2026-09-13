@@ -20,6 +20,7 @@
         if(workshop&&card.due){ var pd=(d&&d.prodDue)||productionDue("",card.due.slice(0,10)); var late=!!(d&&d.prep&&d.prep.date&&d.prep.date>pd); out.push({ text:"Production due "+niceShort(pd), color:late?"red":(pd<todayIso()?"red":"blue") }); }
         if(workshop&&d){ var pb=prodBadgeText(d); out.push({ text:pb.text, color:pb.color }); }
         if(d&&!workshop){ frontBadges(d,isSite(card)).forEach(function(b){ out.push({ text:b.text, color:b.color }); }); }
+        if(d&&workshop&&d.contractor&&!(d.who||[]).length){ var cb=badgeText(d,true); out.push({ text:cb.text, color:cb.color }); }
         return out;
       });
     },
