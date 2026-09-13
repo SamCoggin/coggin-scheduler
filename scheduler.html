@@ -591,7 +591,7 @@ var SNAP=null, DETAIL={};
   var DAY_START=8*60, DAY_END=16*60+30, DRIVE_BREAK=270, DRIVER_DAY_MAX=11*60;
   function parseHM(t){ if(!t) return null; var m=/^(\d{1,2}):(\d{2})$/.exec(t); return m?parseInt(m[1],10)*60+parseInt(m[2],10):null; }
   function hmStr(m){ m=Math.round(m/5)*5; var h=Math.floor(m/60), mm=m%60; return h+":"+(mm<10?"0":"")+mm; }
-  function windowText(j){ if(!j||(!j.from&&!j.by)) return ""; return (j.from?", arrive after "+j.from:"")+(j.by?", finish by "+j.by:""); }
+  function windowText(j){ if(!j||(!j.from&&!j.by)) return ""; if(j.collect) return (j.from?", customer arrives after "+j.from:"")+(j.by?", ready by "+j.by:""); return (j.from?", arrive after "+j.from:"")+(j.by?", finish by "+j.by:""); }
   // stops with a cut-off go first, earliest cut-off first; the rest keep their order
   function windowOrder(list){ var jj=function(x){return x.j||x;}; var timed=list.filter(function(x){return jj(x).by;}).sort(function(a,b){return parseHM(jj(a).by)-parseHM(jj(b).by);}); return timed.concat(list.filter(function(x){return !jj(x).by;})); }
   function dayTimeline(k,w){
@@ -642,7 +642,8 @@ var SNAP=null, DETAIL={};
     if(isBankHoliday(k)){ var booked=allJobs().filter(function(j){return onDay(j,k)&&!j.isHold;}).concat(JOBS.filter(function(j){return j.prep&&j.prep.date&&daysOf(j.prep).indexOf(k)>=0;})); if(booked.length) add("Bank holiday, "+BANK_HOLIDAYS[k]+": "+booked.slice(0,3).map(short).join(", ")+(booked.length>3?" and more":"")+" booked. Move "+(booked.length===1?"it":"them")+".",booked[0]); }
     else offNames.forEach(function(w){ allJobs().filter(function(j){return onDay(j,k)&&!j.isHold&&j.who.indexOf(w)>=0;}).forEach(function(j){ add(w+" is off and is on "+short(j)+". Reassign it.",j,w); }); JOBS.filter(function(j){return j.prep&&j.prep.date&&daysOf(j.prep).indexOf(k)>=0&&j.prep.who.indexOf(w)>=0;}).forEach(function(j){ add(w+" is off and is on "+short(j)+" production. Reassign it.",j,w); }); });
     allJobs().filter(function(j){return onDay(j,k);}).forEach(function(j){ var sc=shortCrew(j); if(sc) add(short(j)+": "+j.who[0]+" alone with two-person items ("+sc.slice(0,3).join(", ")+(sc.length>3?"...":"")+"). Add a second operative.",j); });
-    allJobs().filter(function(j){return onDay(j,k)&&j.site&&!j.isHold;}).forEach(function(j){ var r=notReady(j); if(r&&j.date>=iso(TODAY)&&workDaysBetween(iso(TODAY),j.date)<=2) add(short(j)+" goes out "+niceDay(j.date)+" and is not ready: "+r.charAt(0).toLowerCase()+r.slice(1)+".",j); });
+    allJobs().filter(function(j){return onDay(j,k)&&j.collect&&!j.isHold&&!j.from&&!j.by&&j.date>=iso(TODAY)&&workDaysBetween(iso(TODAY),j.date)<=2;}).forEach(function(j){ add(short(j)+": customer collecting "+niceDay(j.date)+" with no time. Ask them when, so the yard is ready.",j); });
+    allJobs().filter(function(j){return onDay(j,k)&&(j.site||j.collect)&&!j.isHold;}).forEach(function(j){ var r=notReady(j); if(r&&j.date>=iso(TODAY)&&workDaysBetween(iso(TODAY),j.date)<=2) add(short(j)+(j.collect?" is collected ":" goes out ")+niceDay(j.date)+" and is not ready: "+r.charAt(0).toLowerCase()+r.slice(1)+".",j); });
     allJobs().filter(function(j){return onDay(j,k)&&j.site&&!j.isHold&&!j.who.length&&j.by&&j.drive!=null;}).forEach(function(j){ var by=parseHM(j.by), end=DAY_START+j.drive/2+(j.mins||0); if(by!=null&&end>by) add(short(j)+" cannot be done by "+j.by+": leaving at 8:00 it finishes about "+hmStr(end)+".",j); });
     return out;
   }
@@ -678,7 +679,7 @@ var SNAP=null, DETAIL={};
   function findOpen(){ if(!open) return null; var parts=open.split(":"); if(parts[1]&&parts[1].indexOf("leg")===0){ var lj=legJobs().filter(function(x){return x.id===open;})[0]; return lj?{job:lj,part:lj,shop:false,leg:true}:null; } var j=JOBS.filter(function(x){return x.id===parts[0];})[0]; if(!j) return null; return parts[1]==="prep"?{job:j,part:j.prep,shop:true}:{job:j,part:j,shop:false}; }
 
   // THE CARD BACK ORDER (Sam, 13 Sep 2026): blocks appear in the order you decide them. Anything at 20 or more folds under "More".
-  var BLOCK_ORDER={"This leg":0,"Standard for this job":1,"Standard for this production":1,"Operatives":2,"Production Dates":3,"Transported By":4,"Vehicle":5,"Travel Time, return":6,"Time Window":7,"QC":7.5,"What happened":0.5,"Production Time per Operative":8,"Site Time per Operative":8,"Labour Time per Operative":8,"Production":20,"Van Load":21,"Legs":22};
+  var BLOCK_ORDER={"This leg":0,"Standard for this job":1,"Standard for this production":1,"Operatives":2,"Production Dates":3,"Transported By":4,"Vehicle":5,"Travel Time, return":6,"Time Window":7,"Collection Slot":7,"QC":7.5,"What happened":0.5,"Production Time per Operative":8,"Site Time per Operative":8,"Labour Time per Operative":8,"Production":20,"Van Load":21,"Legs":22};
   function block(title,tipKey){ var d=el("div","blk"); d.dataset.order=BLOCK_ORDER[title]!=null?BLOCK_ORDER[title]:15; var h=el("div","bh"); h.appendChild(el("span",null,title)); if(tipKey) h.appendChild(tip(tipKey)); d.appendChild(h); return d; }
   function modal(){
     var o=findOpen(); if(!o) return null;
@@ -781,6 +782,11 @@ var SNAP=null, DETAIL={};
         if(tlm.driveBreak) twb.appendChild(el("div","hint far",part.who[0]+" has "+fmt(tlm.drive)+" driving that day. Over 4h 30m, so add a 45 minute break."));
         if(tlm.longDay) twb.appendChild(el("div","hint far",part.who[0]+"'s day runs "+fmt(tlm.end-DAY_START)+" from 8:00, over 11 hours for a driver.")); }
       right.appendChild(twb); }
+    if(!o.shop && j.collect && !o.leg){ var cwb=block("Collection Slot","slot"); var cwr=el("div","row tw");
+      var mkC=function(lbl,key){ var lab=el("label",null,lbl); var inp=el("input"); inp.type="time"; inp.step="300"; inp.value=j[key]||""; inp.setAttribute("aria-label",lbl); inp.onchange=function(){ j[key]=inp.value||null; persist(); render(); }; lab.appendChild(inp); return lab; };
+      cwr.appendChild(mkC("Customer arrives after","from")); cwr.appendChild(mkC("Loaded and ready by","by")); cwb.appendChild(cwr);
+      cwb.appendChild(el("div","hint",j.from||j.by?"The yard needs "+(part.who.length?part.who.join(", "):"someone")+" there"+(j.from?" from "+j.from:"")+(j.by?", with it picked and ready by "+j.by:"")+".":"Leave blank when the customer has not given a time. Put it in when they do, so the yard is not empty when they turn up."));
+      right.appendChild(cwb); }
     if(!o.shop && j.site && !contractorOnly && !j.isLeg){ var vb=block("Van Load","van"); var L=j.load||loadOf([]);
       var m3=j.cubeSet!=null?j.cubeSet:(L.complete?L.m3:null), kg=L.complete||j.cubeSet!=null?L.kg:0;
       var vt=el("div","vtot"); vt.appendChild(el("div","big",m3==null?"No load estimate yet":fmtM3(m3)+" of "+VAN_M3+" m\u00b3"));
@@ -903,6 +909,7 @@ var SNAP=null, DETAIL={};
     vehicle:"Which van goes. Our two Lutons, or a hire when the load needs more than a Luton or both vans are out. A hire is a job in itself: put the supplier and reference on it and tick Booked, and it nags from five working days out until you do.",
     qc:"Quality check before a job goes out. Trello ticks it when the checklist on the card is complete. Sign it off here when the workshop has checked the job, with who checked it. It clears Not QC'd on the card and in Outstanding.",
     happened:"Filled in after the day. Actual time, who went and a note, or Did not go and why. The Manager view compares actual time with the standard, so the standards can be corrected from real jobs.",
+    slot:"A customer or courier collecting from the yard. Customer arrives after is the earliest they said they will come. Loaded and ready by is when it must be picked, checked and by the door. Someone has to be in the yard for it, so it takes operatives and time like any other yard job.",
     window:"When the site can take us. Arrive after is the earliest they will let us in. Finish by is when the loading bay, lift or building shuts. The day is worked out from an 8:00 start, and a job that misses its window is flagged in red.",
     drive:"Return travel time, calculated from the site postcode plus 20 percent for traffic. Overtype if you know better.",
     time:"Labour time per operative. Use the quick options or enter hours and minutes."
@@ -931,6 +938,7 @@ var SNAP=null, DETAIL={};
     if(!isPrep&&j.prodDue){ var nrc=notReady(j); mid.appendChild(el("span","for"+(nrc?" late":""),nrc?nrc:"Production due "+niceDay(j.prodDue)+(j.collect?", customer collecting":""))); }
     else if(!isPrep&&j.collect) mid.appendChild(el("span","for","Customer collecting"));
     if(!isPrep&&j.site&&(j.from||j.by)) mid.appendChild(el("span","for",windowText(j).slice(2).replace(/^./,function(ch){return ch.toUpperCase();})));
+    if(!isPrep&&j.collect&&(j.from||j.by)) mid.appendChild(el("span","for",(j.from?"Customer arrives after "+j.from:"")+(j.from&&j.by?", ":"")+(j.by?"ready by "+j.by:"").replace(/^r/,j.from?"r":"R")));
     if(!isPrep&&!isShop&&j.site&&/Not Started|In-progress|Not QC/i.test(j.stageLabel||"")) mid.appendChild(el("span","for","Workshop: "+j.stageLabel.replace(/^Workshop:\s*/,"").toLowerCase()));
     if(j.isHold) mid.appendChild(el("span","for hold","Held for sales until "+niceDay(j.holdUntil||j.date)+". Counts "+j.holdCrew+(j.holdCrew===1?" operative":" operatives")+", "+fmt(j.mins)+" each. Confirm on the deal."));
     c.appendChild(mid);
@@ -957,7 +965,7 @@ var SNAP=null, DETAIL={};
   var NEED=false; try{ NEED=localStorage.getItem("cg-need")==="1"; }catch(e){}
   // NOT READY (Sam, 13 Sep 2026): a transport job whose workshop side is not finished. Counts in To plan, shows on the card and in the rail.
   function notReady(j){
-    if(!j.site||j.isHold||j.isLeg||j.collect) return null;
+    if((!j.site&&!j.collect)||j.isHold||j.isLeg) return null;
     if(j.prep){ if(!j.prep.date) return "Production not scheduled"; if(!j.prep.who.length) return "Production has no operatives"; if(j.prep.date>=j.date) return "Production ends "+niceDay(j.prep.date)+", delivery is "+niceDay(j.date); if(j.prodDue&&j.prep.date>j.prodDue) return "Production ends "+niceDay(j.prep.date)+", after the "+niceDay(j.prodDue)+" due date"; }
     if(j.notQc&&!j.qc) return "Not QC'd";
     return null;
