@@ -14,6 +14,8 @@
   .sec.transport .sec-h{background:var(--green)}
   .sec.production .sec-h{background:var(--blue)}
   .sec.labour .sec-h{background:#44546f}
+  .sec.loading .sec-h{background:#974f0c}
+  .sec.loading .who{background:var(--amber-bg)}
   .who{padding:12px 14px;font-size:16px;font-weight:800;border-bottom:1px solid var(--line);background:var(--green-bg)}
   .sec.production .who{background:var(--blue-bg)}
   .sec.labour .who{background:var(--list)}
@@ -210,9 +212,10 @@
     var L=loadNow(), m3=d.cube!=null?d.cube:(L.complete?L.m3:null), kg=(L.complete||d.cube!=null)?L.kg:0;
     var lbl=(card.labels||[]).map(function(l){return l.name;}).join(" ");
     var Lstd=L.rows.length?L:(d.load||L), std=(!workshop&&!contractorOnly)?standardFor(lbl,Lstd):null, over=std?aboveStandard(std,d.who,d.mins):null;
-    var kind=site?"transport":"labour", name=site?"Transport":(loading?"Loading":"Labour");
+    var jobName=/collect & return/i.test(lbl)?"Collection":/warranty|job issue/i.test(lbl)?"Site Visit":/removal/i.test(lbl)?"Removal":"Delivery";
+    var kind=site?"transport":"labour", name=site?jobName:(loading?"Loading":"Labour");
     var ts=section(kind,name,due?niceShort(due):"");
-    if(workshop){ ts.appendChild(el("div","who","Assigned once in Ready for Delivery / Collection")); }
+    if(workshop){ ts.appendChild(el("div","who","Operatives and time are set once the job is in Ready for Delivery / Collection")); }
     else {
       if(contractorOnly) ts.appendChild(el("div","who",d.contractor+" is carrying out this work"));
       else if(!d.who.length){ ts.appendChild(banner("Unassigned. Choose who is on it.")); OPEN.who=OPEN.who===undefined?true:OPEN.who; }
@@ -235,17 +238,18 @@
         },(d.mins==null||(site&&d.drive==null))?"todo":""));
       }
     }
-    // van load, for any site job including workshop stage
+    // LOADING: what goes in the van, for any job that goes out on our van, including workshop stage
     var vanApplies=!contractorOnly && (site || (workshop && !loading));
-    if(workshop && loading) ts.appendChild(el("div","who","Customer or courier collecting, so no van load"));
+    var ls=section("loading","Loading",due?niceShort(due):"");
+    if(workshop && loading) ls.appendChild(el("div","who","Customer or courier collecting, so nothing goes on our van"));
     if(vanApplies){
       var dayTot=null, others=[], missing=[], names=[];
       if(due){ others=OTHERS.filter(function(o){ return o.site && o.due===due && !(o.plan.contractor&&!(o.plan.who||[]).length); }); var om3=0, okg=0; others.forEach(function(o){ if(o.cube==null){ missing.push((o.name||"another job")+" ("+o.why+")"); return; } om3+=o.cube; okg+=o.kg; names.push((o.name||"another job")+" "+fmtM3(o.cube)); }); if(others.length) dayTot={m3:(m3||0)+om3,kg:(kg||0)+okg}; }
       var vanTxt=m3==null?"No estimate yet":fmtM3(m3)+" of "+VAN_M3+(dayTot?", day total "+fmtM3(dayTot.m3):"");
       var vanCls=m3==null||L.unmatched.length||(dayTot&&dayTot.m3>VAN_M3)?"todo":"";
-      if(L.unmatched.length) ts.appendChild(banner("Van load not worked out: "+L.unmatched.length+(L.unmatched.length===1?" item":" items")+" not in the table ("+L.unmatched.join("; ")+")."));
-      if(dayTot&&dayTot.m3>VAN_M3) ts.appendChild(banner("More than one van going out "+niceShort(due)+": "+fmtM3(dayTot.m3)+". Two rounds or the second van."));
-      ts.appendChild(rowEl("van","Van load",vanTxt,function(ed){
+      if(L.unmatched.length) ls.appendChild(banner("Van load not worked out: "+L.unmatched.length+(L.unmatched.length===1?" item":" items")+" not in the table ("+L.unmatched.join("; ")+")."));
+      if(dayTot&&dayTot.m3>VAN_M3) ls.appendChild(banner("More than one van going out "+niceShort(due)+": "+fmtM3(dayTot.m3)+". Two rounds or the second van."));
+      ls.appendChild(rowEl("van","Van load",vanTxt,function(ed){
         var tot=el("div","vtot"); tot.appendChild(el("div","big",m3==null?"No load estimate yet":fmtM3(m3)+" of "+VAN_M3+" m³"));
         if(m3!=null){ var bar=el("div","vbar"); var fill=el("i"); var pc=Math.min(100,m3/VAN_M3*100); fill.style.width=pc+"%"; fill.className=m3>VAN_M3||kg>VAN_KG?"over":(pc>85?"near":""); bar.appendChild(fill); tot.appendChild(bar); tot.appendChild(el("div","sub",(kg?Math.round(kg)+" kg of "+VAN_KG+" kg payload":"")+(m3>VAN_M3?". Over one van.":kg>VAN_KG?". Over the payload.":""))); }
         ed.appendChild(tot);
@@ -262,6 +266,7 @@
         set.appendChild(el("div","hint","A Luton box is about "+VAN_M3+" cubic metres, payload about "+VAN_KG+" kg. Desks count flat unless the item says built. Chair figures assume double stacking. Small parts ride in the cab.")); ed.appendChild(set);
       },vanCls));
     }
+    if(vanApplies||(workshop&&loading)) app.appendChild(ls);
     app.appendChild(ts);
 
     if(d.legs&&d.legs.length){ var ls=section("labour","Legs",""); var lf=fld(""); d.legs.forEach(function(Lg){ lf.appendChild(el("div",null,Lg.type.replace("_"," ")+(Lg.where?": "+Lg.where:"")+", "+(Lg.date?niceShort(Lg.date):"no date")+(Lg.who&&Lg.who.length?", "+Lg.who.join(", "):", unassigned")+(Lg.mins!=null?", "+fmt(Lg.mins):""))); }); lf.appendChild(el("div","hint","Legs are added and edited in the Scheduler.")); ls.appendChild(lf); app.appendChild(ls); }
