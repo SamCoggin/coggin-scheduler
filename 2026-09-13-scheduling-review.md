@@ -67,6 +67,8 @@ Fix: a simple week summary at the top: hours planned against hours available, va
 
 - 13 Sep 2026: gaps 3 and 4 built. Vehicle on every transport job (FX75, FX73 or Hire), van chip on the card, double-booked van and off-road van warnings, drivers out against vans on the road, hire supplier and reference with a Booked tick that nags from five working days out, vehicle on the routes view and both PDFs, no van counts as To plan.
 
+- 13 Sep 2026: gap 5 built. A delivery whose production is not scheduled, has no operatives, ends on or after delivery day or after its due date, or is not QC'd, is Not ready: it counts in To plan, the reason replaces the production due line on the card in red, and within two working days it is a red warning in the rail.
+
 ## Suggested order
 1. Time windows on transport jobs (gap 1), then the driver day check (gap 2).
 2. Vehicle on the job and rounds vs vans (gap 3), then hire booked tick (gap 4).
