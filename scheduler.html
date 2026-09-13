@@ -613,6 +613,7 @@ var SNAP=null, DETAIL={};
       if(tl.longDay) add(w+": "+fmt(tl.end-DAY_START)+" day from 8:00, over 11 hours for a driver. Split it or move a job.",null,w);
     });
     vehicleWarnings(k).forEach(function(v){ add(v.text,v.j,v.who); });
+    allJobs().filter(function(j){return onDay(j,k)&&j.site&&!j.isHold;}).forEach(function(j){ var r=notReady(j); if(r&&j.date>=iso(TODAY)&&workDaysBetween(iso(TODAY),j.date)<=2) add(short(j)+" goes out "+niceDay(j.date)+" and is not ready: "+r.charAt(0).toLowerCase()+r.slice(1)+".",j); });
     allJobs().filter(function(j){return onDay(j,k)&&j.site&&!j.isHold&&!j.who.length&&j.by&&j.drive!=null;}).forEach(function(j){ var by=parseHM(j.by), end=DAY_START+j.drive/2+(j.mins||0); if(by!=null&&end>by) add(short(j)+" cannot be done by "+j.by+": leaving at 8:00 it finishes about "+hmStr(end)+".",j); });
     return out;
   }
@@ -634,12 +635,10 @@ var SNAP=null, DETAIL={};
     if(!part.who.length) return el("span",cls,"Unassigned");
     if(part.isPrep){ if(part.mins==null) return el("span",cls,"No production time"); return el("span","bdg",fmt(part.mins)+(part.who.length>1?" each":"")); }
     var missing=[];
-    if(part.notQc) missing.push("Not QC'd");
     if(part.site&&part.drive==null&&!part.onRound) missing.push("No travel time");
     if(part.site&&!part.vehicle) missing.push("No van"); else if(part.site&&hireDue(part)) missing.push("Hire not booked");
     if(part.mins==null) missing.push(part.site?"No site time":"No labour time");
-    if(part.prep&&!part.prep.date) missing.push("Production not scheduled");
-    else if(part.prep&&part.prodDue&&part.prep.date>part.prodDue) missing.push("Production scheduled late");
+    var nr=notReady(part); if(nr) missing.push(nr);
     if(missing.length) return el("span",cls,missing.join(", "));
     if(part.onRound) return el("span","bdg","On round, "+fmt(part.mins)+" on site");
     return el("span","bdg"+(part.site&&part.drive>6*60?" now":""),(part.site&&part.drive?fmt(part.drive)+" travel + ":"")+fmt(part.mins)+(part.who.length>1?" each":""));
@@ -868,7 +867,7 @@ var SNAP=null, DETAIL={};
     mid.appendChild(el("span","for ctx",ctx.join(" \u00b7 ")));
     if(isPrep){ var pdays=daysOf(j.prep); mid.appendChild(el("span","for",(pdays.length>1?"Day "+(pdays.indexOf(k)+1)+" of "+pdays.length+". ":"")+"Required for "+niceDay(j.date)+(j.collect?", customer collecting":""))); }
     if(j.start){ var ds=daysOf(j); mid.appendChild(el("span","for","Day "+(ds.indexOf(k)+1)+" of "+ds.length+", "+niceDay(j.start)+" to "+niceDay(j.date))); }
-    if(!isPrep&&j.prodDue) mid.appendChild(el("span","for"+(j.prep&&j.prep.date&&j.prep.date>j.prodDue?" late":""),"Production due "+niceDay(j.prodDue)+(j.collect?", customer collecting":"")));
+    if(!isPrep&&j.prodDue){ var nrc=notReady(j); mid.appendChild(el("span","for"+(nrc?" late":""),nrc?nrc:"Production due "+niceDay(j.prodDue)+(j.collect?", customer collecting":""))); }
     else if(!isPrep&&j.collect) mid.appendChild(el("span","for","Customer collecting"));
     if(!isPrep&&j.site&&(j.from||j.by)) mid.appendChild(el("span","for",windowText(j).slice(2).replace(/^./,function(ch){return ch.toUpperCase();})));
     if(!isPrep&&!isShop&&j.site&&/Not Started|In-progress|Not QC/i.test(j.stageLabel||"")) mid.appendChild(el("span","for","Workshop: "+j.stageLabel.replace(/^Workshop:\s*/,"").toLowerCase()));
@@ -894,11 +893,18 @@ var SNAP=null, DETAIL={};
   var view="week", dayCur=iso(TODAY);
   // TO PLAN (Sam, 13 Sep 2026): a filter that hides everything already planned, so the board only shows what still needs operatives, time or travel
   var NEED=false; try{ NEED=localStorage.getItem("cg-need")==="1"; }catch(e){}
+  // NOT READY (Sam, 13 Sep 2026): a transport job whose workshop side is not finished. Counts in To plan, shows on the card and in the rail.
+  function notReady(j){
+    if(!j.site||j.isHold||j.isLeg||j.collect) return null;
+    if(j.prep){ if(!j.prep.date) return "Production not scheduled"; if(!j.prep.who.length) return "Production has no operatives"; if(j.prep.date>=j.date) return "Production ends "+niceDay(j.prep.date)+", delivery is "+niceDay(j.date); if(j.prodDue&&j.prep.date>j.prodDue) return "Production ends "+niceDay(j.prep.date)+", after the "+niceDay(j.prodDue)+" due date"; }
+    if(j.notQc) return "Not QC'd";
+    return null;
+  }
   function needsPlan(j,isPrep){
     if(j.isHold) return false; if(j.isLeg) return !j.who.length||j.mins==null;
     var part=isPrep?j.prep:j; if(!isPrep&&j.contractor&&!j.who.length) return false;
     if(!part.who.length||part.mins==null) return true;
-    return !isPrep&&!!j.site&&((j.drive==null&&!j.onRound)||!j.vehicle||hireDue(j));
+    return !isPrep&&!!j.site&&((j.drive==null&&!j.onRound)||!j.vehicle||hireDue(j)||!!notReady(j));
   }
   // everything from today on that still needs planning, for the count on the button
   // what still needs planning on the days in view: the day, the week, or the month
@@ -1446,7 +1452,7 @@ var SNAP=null, DETAIL={};
       var cap=dayCapacity(k,jobs,preps); if(cap.overTime||cap.overVans){ ISSUES.push({k:k,title:"If every hold lands",amber:true,text:(cap.overTime?"Over capacity: "+fmt(cap.need)+" needed, "+fmt(cap.avail)+" available.":"")+(cap.overVans?" "+cap.trips+" van trips, "+cap.vans+(cap.vans===1?" van":" vans")+" on the road.":"")}); }
       dayIssues(k).forEach(function(x){ x.amber=/hire not booked|waits until/.test(x.text); ISSUES.push(x); });
       var pfr=planFilter(jobs,preps,true); pfr.preps.forEach(function(j){ var miss=[]; if(!j.prep.who.length) miss.push("no operatives"); if(j.prep.mins==null) miss.push("no production time"); TOPLAN.push({k:k,title:short(j),j:j,amber:true,text:"Production, "+miss.join(", ")+"."}); });
-      pfr.jobs.forEach(function(j){ if(j.isHold) return; var miss=[]; if(!j.who.length) miss.push("no operatives"); if(j.mins==null) miss.push(j.site?"no site time":"no time"); if(j.site&&j.drive==null&&!j.onRound) miss.push("no travel time"); if(j.site&&!j.vehicle&&!(j.contractor&&!j.who.length)) miss.push("no van"); else if(j.site&&hireDue(j)) miss.push("hire not booked"); TOPLAN.push({k:k,title:short(j),j:j,amber:true,text:(j.movement||j.label||"Job")+", "+miss.join(", ")+"."}); });
+      pfr.jobs.forEach(function(j){ if(j.isHold) return; var miss=[]; if(!j.who.length) miss.push("no operatives"); if(j.mins==null) miss.push(j.site?"no site time":"no time"); if(j.site&&j.drive==null&&!j.onRound) miss.push("no travel time"); if(j.site&&!j.vehicle&&!(j.contractor&&!j.who.length)) miss.push("no van"); else if(j.site&&hireDue(j)) miss.push("hire not booked"); var nrr=notReady(j); if(nrr) miss.push(nrr.charAt(0).toLowerCase()+nrr.slice(1)); TOPLAN.push({k:k,title:short(j),j:j,amber:true,text:(j.movement||j.label||"Job")+", "+miss.join(", ")+"."}); });
       var ld=loadOn(k); TEAM.forEach(function(w){ if(ld[w].c!=="off"){ HOURS.avail+=DAY_MINS; HOURS.need+=ld[w].mins||0; } });
       h.appendChild(el("span",null,n?n+(NEED?" to plan":(n===1?" job":" jobs")):"")); list.appendChild(h);
       var cards=el("div","cards");
