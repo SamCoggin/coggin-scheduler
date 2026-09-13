@@ -267,7 +267,7 @@
       },vanCls));
     }
     if(vanApplies||(workshop&&loading)) app.appendChild(ls);
-    app.appendChild(ts);
+    if(!workshop) app.appendChild(ts);
 
     if(d.legs&&d.legs.length){ var ls=section("labour","Legs",""); var lf=fld(""); d.legs.forEach(function(Lg){ lf.appendChild(el("div",null,Lg.type.replace("_"," ")+(Lg.where?": "+Lg.where:"")+", "+(Lg.date?niceShort(Lg.date):"no date")+(Lg.who&&Lg.who.length?", "+Lg.who.join(", "):", unassigned")+(Lg.mins!=null?", "+fmt(Lg.mins):""))); }); lf.appendChild(el("div","hint","Legs are added and edited in the Scheduler.")); ls.appendChild(lf); app.appendChild(ls); }
     fit();
