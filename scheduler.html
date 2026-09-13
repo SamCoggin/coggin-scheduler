@@ -131,6 +131,7 @@
   .prow li{margin:2px 0}
 
   .strip{zoom:.88;flex-shrink:0;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;padding:12px 16px 0}
+  .strip[hidden]{display:none}
   .strip button{text-align:left;border:2px solid #3d4451;background:var(--card);border-radius:10px;padding:8px 12px;box-shadow:0 2px 6px rgba(9,30,66,.18)}
   .strip button small{display:block;font-size:12px;color:var(--muted);font-weight:700}
   .strip button b{font-size:22px;font-weight:800}
@@ -1520,7 +1521,7 @@ var SNAP=null, DETAIL={};
     persist();
     $("#pdf").onclick=function(){ try{ if(view==="routes") routesPdf(); else schedulePdf(); }catch(e){ alert("The PDF could not be built: "+(e&&e.message||e)); } };
     $("#pdf").textContent=view==="routes"?"Download routes":"Download schedule"; $("#guide").onclick=function(){ location.href="./guide.html"; };
-    $("#need").hidden=(view==="week"); $("#need").className=NEED?"on":""; var nTP=toPlanCount(); $("#need").textContent=(NEED?"Outstanding: on":"Outstanding")+(nTP?" ("+nTP+")":""); $("#need").title=nTP?nTP+(nTP===1?" job still needs":" jobs still need")+" operatives, time, travel or a van on the "+(view==="day"?"day":view==="month"?"month":"week")+" in view":"Everything in view is planned"; $("#need").onclick=function(){ NEED=!NEED; try{ localStorage.setItem("cg-need",NEED?"1":"0"); }catch(e){} render(); };
+    $("#need").hidden=(view==="week"); $("#need").className=NEED?"on":""; var nTP=toPlanCount(); $("#need").textContent="Outstanding"+(nTP?" ("+nTP+")":""); $("#need").title=nTP?nTP+(nTP===1?" job still needs":" jobs still need")+" operatives, time, travel or a van on the "+(view==="day"?"day":view==="month"?"month":"week")+" in view":"Everything in view is planned"; $("#need").onclick=function(){ NEED=!NEED; try{ localStorage.setItem("cg-need",NEED?"1":"0"); }catch(e){} render(); };
     document.body.onclick=function(){ if(tipOpen){ tipOpen=null; render(); } };
     $("#vday").className=view==="day"?"on":""; $("#vweek").className=view==="week"?"on":""; $("#vmonth").className=view==="month"?"on":""; $("#vroutes").className=view==="routes"?"on":""; $("#vroutes").onclick=function(){view="routes";render();}; $("#vmanager").className=view==="manager"?"on":""; $("#vmanager").onclick=function(){view="manager";render();};
     $("#vday").onclick=function(){view="day";render();}; $("#vweek").onclick=function(){view="week";render();}; $("#vmonth").onclick=function(){view="month";render();};
