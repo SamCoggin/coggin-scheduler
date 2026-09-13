@@ -69,6 +69,7 @@ var HEAD=[
   [/address|their site/i,"where"],
   [/^(items.*|load details|warranty\/job issue|deliver\/collect|additional items.*)$/i,"what"],
   [/^(access.*|logistics|safety.*)$/i,"access"],
+  [/^subcontract work and materials$/i,"support"],
   [/^(job|ref|service|delivery details|clearance details|refurb collection details|buyback drop-off details|delivery info|other items|additional info)$/i,"skip"]
 ];
 function cleanDesc(txt){
@@ -79,7 +80,7 @@ function cleanDesc(txt){
 }
 function parseDesc(txt){
   txt=cleanDesc(txt);
-  var groups={contact:[],where:[],what:[],access:[],notes:[]}, cur="notes";
+  var groups={contact:[],where:[],what:[],access:[],notes:[],support:[]}, cur="notes";
   txt.split("\n").forEach(function(raw){
     var l=raw.replace(/^\s*[-*_]+\s*/,"").replace(/_+$/,"").trim(); if(!l) return;
     var bare=l.replace(/:$/,"").trim(), hit=null;
@@ -288,5 +289,18 @@ function vehicleAdvice(m3,kg,lutonsOnRoad,opts){
   else if(lutons<=on) out.text="Our "+lutons+" Lutons, one trip each."+cityNote;
   else if(pair) out.text=(pair.a.t===pair.b.t?"Two "+pair.a.t.replace(/box$/,"boxes"):"One "+pair.a.t+" and one "+pair.b.t)+" (haulier with drivers; check site access)."+cityNote;
   else out.text="Nothing takes this in two vehicles: split the collection over days, or tranship from a depot."+cityNote;
+  return out;
+}
+
+// ── subcontract legs written on the card by the CRM (13 Sep 2026) ──
+// "10 seat pads: Deliver to Russkell Upholstery (PR1 2AB) on 2026-09-15"
+// "10 seat pads: Collect from Russkell Upholstery (PR1 2AB) on 2026-09-22"
+function supportLegs(desc){
+  var g=parseDesc(desc||""), out=[];
+  (g.support||[]).forEach(function(l){
+    var m=/^(?:(.*?):\s*)?(Deliver to|Collect from)\s+(.+?)(?:\s+on\s+(\d{4}-\d{2}-\d{2}))?(?:\s+by\s+(\w+))?(?:,\s*back with us)?\s*$/i.exec(l.trim());
+    if(!m) return;
+    out.push({type:/deliver/i.test(m[2])?"to_sub":"from_sub",what:(m[1]||"").trim(),where:m[3].trim(),date:m[4]||null,by:(m[5]||"us").toLowerCase()});
+  });
   return out;
 }

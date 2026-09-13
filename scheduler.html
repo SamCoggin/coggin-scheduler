@@ -383,6 +383,10 @@ var SNAP=null, DETAIL={};
       if(d.prodDue&&j.prep){ j.prodDue=d.prodDue; j.prodDueSet=true; }
       (d.legs||[]).forEach(function(L){ LEGS.push({parent:j.id,type:L.type,date:L.date,who:L.who||[],mins:L.mins,drive:L.drive,where:L.where||""}); });
     });
+    // legs the CRM wrote on the card: seed them once, then the plan on the card owns them
+    JOBS.forEach(function(j){ if(LEGS.some(function(L){return L.parent===j.id;})) return; var dd=DETAIL[j.id]; if(!dd) return;
+      supportLegs(dd.desc).forEach(function(L){ if(!L.date||L.by!=="us") return; var pc=/\(([A-Z]{1,2}\d[A-Z\d]?\s*\d[A-Z]{2})\)/i.exec(L.where); var area=pc?pc[1].replace(/\d.*$/,"").toUpperCase():"";
+        LEGS.push({parent:j.id,type:L.type,date:L.date,who:[],mins:null,drive:area&&DRIVE[area]?Math.round(DRIVE[area].h*2*60*TRAFFIC/5)*5:null,where:L.where+(L.what?", "+L.what:"")}); }); });
     if(SNAP.boardData&&SNAP.boardData.roundDrive){ for(var k in SNAP.boardData.roundDrive) ROUND_DRIVE[k]=SNAP.boardData.roundDrive[k]; }
     if(SNAP.boardData&&SNAP.boardData.vansOff){ VANS_OFF=SNAP.boardData.vansOff.slice(); }
     if(SNAP.boardData&&SNAP.boardData.contractors){ SNAP.boardData.contractors.forEach(function(c){ if(CONTRACTORS.indexOf(c)<0) CONTRACTORS.splice(CONTRACTORS.length-1,0,c); }); }
