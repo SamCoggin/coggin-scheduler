@@ -1586,7 +1586,7 @@ var SNAP=null, DETAIL={};
     if(view==="routes") return renderRoutes();
     if(view==="manager") return renderManager();
     $("#board").className="board week"; $("#board").style.gridTemplateRows="";
-    var mon=addDays(monday(TODAY),week*7); var ISSUES=[], TOPLAN=[], TORECORD=[], HOURS={need:0,avail:0};
+    var mon=addDays(monday(TODAY),week*7); var ISSUES=[], TOPLAN=[], TORECORD=[], HOURS={need:0,avail:0}, DAYH={};
     $("#title").textContent="Week of "+mon.getDate()+" "+MON[mon.getMonth()]+" "+mon.getFullYear();
     $("#src").textContent=NEED?"Showing only outstanding jobs, still missing operatives, time, travel or a van. Press Outstanding again to see everything.":"Select a job to assign operatives and allocate time.";
     var old=document.querySelector(".veil"); if(old) old.parentNode.removeChild(old);
@@ -1606,7 +1606,7 @@ var SNAP=null, DETAIL={};
       preps.forEach(function(j){ if(needsRecord(j,true)) TORECORD.push({k:k,title:short(j),j:j,prep:true,amber:true,text:"Production: how did it go? Record the time and any notes."}); });
       var pfr=planFilter(jobs,preps,true); pfr.preps.forEach(function(j){ var miss=[]; if(!j.prep.who.length) miss.push("no operatives"); if(j.prep.mins==null) miss.push("no production time"); TOPLAN.push({k:k,title:short(j),j:j,amber:true,text:"Production, "+miss.join(", ")+"."}); });
       pfr.jobs.forEach(function(j){ if(j.isHold) return; var miss=[]; if(!j.who.length) miss.push("no operatives"); if(j.mins==null) miss.push(j.site?"no site time":"no time"); if(j.site&&j.drive==null&&!j.onRound) miss.push("no travel time"); if(j.site&&!j.vehicle&&!(j.contractor&&!j.who.length)) miss.push("no van"); else if(j.site&&hireDue(j)) miss.push("hire not booked"); var nrr=notReady(j); if(nrr) miss.push(nrr.charAt(0).toLowerCase()+nrr.slice(1)); if(shortCrew(j)) miss.push("one operative with two-person items"); if(j.moved) miss.push("date moved from "+niceDay(j.moved.from)); TOPLAN.push({k:k,title:short(j),j:j,amber:true,text:(j.movement||j.label||"Job")+", "+miss.join(", ")+"."}); });
-      var ld=loadOn(k); TEAM.forEach(function(w){ if(ld[w].c!=="off"){ HOURS.avail+=DAY_MINS; HOURS.need+=ld[w].mins||0; } });
+      var ld=loadOn(k); var dh={need:0,avail:0,overVans:cap.overVans}; TEAM.forEach(function(w){ if(ld[w].c!=="off"){ dh.avail+=DAY_MINS; dh.need+=ld[w].mins||0; } }); HOURS.avail+=dh.avail; HOURS.need+=dh.need; DAYH[k]=dh;
       h.appendChild(el("span",null,n?n+(NEED?" outstanding":(n===1?" job":" jobs")):"")); list.appendChild(h);
       var cards=el("div","cards");
       var lv=LEAVE.filter(function(l){return l.date===k;}); if(lv.length){ var lh=el("div","sec-h"); var lhl=el("span",null,lv.some(function(l){return l.bh;})?"Bank Holiday":"Off"); lhl.appendChild(tip("leave",k)); lh.appendChild(lhl); cards.appendChild(lh); leaveLines(lv).forEach(function(tx){ cards.appendChild(el("div","leave",tx)); }); }
@@ -1644,6 +1644,15 @@ var SNAP=null, DETAIL={};
       list.appendChild(tot); b.appendChild(list);
     }
     // the week's recycling per operative: the hours nobody has allocated to a job are recycling, not spare
+    // WEEK-TO-WEEK NUDGE (Sam, 13 Sep 2026): a heavy day next to a light one. It names the lighter days and the jobs with no fixed window that could move. It never moves anything.
+    var dayFree=function(k){ if(DAYH[k]) return DAYH[k].avail-DAYH[k].need; var ld2=loadOn(k), f=0; TEAM.forEach(function(w){ if(ld2[w].c!=="off") f+=DAY_MINS-(ld2[w].mins||0); }); return f; };
+    var lookAhead=[]; for(var na=0;na<5;na++){ var nd=addDays(mon,7+na); if(nd.getDay()!==0&&nd.getDay()!==6) lookAhead.push(iso(nd)); }
+    var dayLabel=function(k){ var dd=new Date(k+"T12:00"); return DAYS[dd.getDay()]+" "+dd.getDate(); };
+    for(var i5=0;i5<5;i5++){ var kk=iso(addDays(mon,i5)), dh2=DAYH[kk]; if(!dh2||kk<iso(TODAY)) continue; var over=dh2.need-dh2.avail; if(over<=0&&!dh2.overVans) continue;
+      var weekDays=[]; for(var w5=0;w5<5;w5++) weekDays.push(iso(addDays(mon,w5))); var lighter=[].concat(weekDays.filter(function(x){return x!==kk&&x>=iso(TODAY);}),lookAhead).map(function(x){ return {k:x,free:dayFree(x)}; }).filter(function(x){ return x.free>=Math.max(over,DAY_MINS); }).sort(function(a,b){ return b.free-a.free; }).slice(0,2);
+      var movable=allJobs().filter(function(j){ return onDay(j,kk)&&!j.isHold&&!j.isLeg&&!j.from&&!j.by&&!j.moved&&!j.done&&!(j.contractor&&!j.who.length)&&!j.start; }).map(function(j){ return short(j)+(j.mins!=null?" ("+fmt((j.mins||0)+(j.site?(j.drive||0):0))+")":""); }).slice(0,3);
+      var txt=(over>0?dayLabel(kk)+" is over by "+fmt(over)+" of operative time.":dayLabel(kk)+" needs more vans than are on the road.")+(lighter.length?" "+lighter.map(function(x){return dayLabel(x.k)+" has "+fmt(x.free)+" free";}).join(", ")+".":" No lighter day this week or next.")+(movable.length?" "+movable.join(", ")+(movable.length===1?" has":" have")+" no fixed window and could move.":" Every job that day has a fixed window or date.");
+      ISSUES.push({k:kk,title:"Heavy day",amber:true,text:txt}); }
     // the attention rail: every warning for the week in one place, newest day first is not the point, day order is
     var rail=el("div","list rail"); var rh=el("h2"); rh.appendChild(el("span",null,"Needs a decision")); rh.appendChild(el("span",null,(ISSUES.length+TOPLAN.length+TORECORD.length)?String(ISSUES.length+TOPLAN.length+TORECORD.length):"none")); rail.appendChild(rh);
     var rc=el("div","cards"); if(!ISSUES.length&&!TOPLAN.length&&!TORECORD.length) rc.appendChild(el("div","hint","Nothing needs a decision this week."));
