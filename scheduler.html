@@ -158,8 +158,11 @@
   .sec-h.shop{color:#0055cc;background:rgba(0,85,204,.14)}
   .card{background:var(--card);border-radius:8px;border:1px solid var(--line);box-shadow:0 1px 2px rgba(9,30,66,.2);padding:0;text-align:left;width:100%;position:relative;overflow:hidden;flex-shrink:0}
   .card .top{padding:8px 12px 4px}
-  .card .mid{padding:0 12px 8px}
-  .card .foot{padding:6px 12px 8px;border-top:1px solid var(--line);display:flex;align-items:center;gap:6px;background:rgba(9,30,66,.04)}
+  .card .mid{padding:10px 12px 8px}
+  .for.ctx{color:var(--text);font-weight:600}
+  .card .foot{padding:6px 12px 8px;border-top:1px solid var(--line);display:flex;align-items:center;gap:6px;flex-wrap:wrap;background:rgba(9,30,66,.04)}
+  .card .foot:empty{display:none}
+  .card .foot .bdg:first-child{margin-left:0}
   .card:hover{outline:2px solid var(--blue)}
   .card.shop{background:var(--blue-bg)}
   .card.round{background:var(--green-bg);border-color:#1f845a}
@@ -452,7 +455,7 @@ var SNAP=null, DETAIL={};
     }
     j.vehicle=null; j.hireRef=""; j.hireBooked=false;   // the van on the job: a registration, "hire", or nothing yet
     j.from=null; j.by=null;   // time window on a transport job: arrive after, finish by (HH:MM)
-    var tw=/^(after|from|not before|before|by)\s*(\d{1,2})(?:[:.](\d{2}))?\s*(am|pm)?\s*[-,:]?\s*/i.exec(title||""); if(tw){ var hh=parseInt(tw[2],10); if(/pm/i.test(tw[4]||"")&&hh<12) hh+=12; var hm=(hh<10?"0":"")+hh+":"+(tw[3]||"00"); if(/before|by/i.test(tw[1])) j.by=hm; else j.from=hm; }
+    var tw=/^(after|from|not before|before|by)\s*(\d{1,2})(?:[:.](\d{2}))?\s*(am|pm)?\s*[-,:]?\s*/i.exec(title||""); if(tw){ var hh=parseInt(tw[2],10); if(/pm/i.test(tw[4]||"")&&hh<12) hh+=12; var hm=(hh<10?"0":"")+hh+":"+(tw[3]||"00"); if(/before|by/i.test(tw[1])) j.by=hm; else j.from=hm; if(title.length>tw[0].length+2){ title=title.slice(tw[0].length); j.title=title; } }
     j.start=c.start&&c.start<c.due?c.start:null;
     var dd=DETAIL[c.id]; j.allItems=itemsOf(dd?dd.desc:c.desc,dd?dd.checks:c.checks); j.ignore=[]; j.items=j.allItems.slice(); j.manual=[]; j.load=loadOf(j.items); j.cubeSet=null;
     return j; });
@@ -832,34 +835,37 @@ var SNAP=null, DETAIL={};
   }
   function cardEl(j,k,isPrep,isToday){
     if(j.isLeg) isPrep=false;
-    var c=el("button","card"+(isPrep||(j.isLeg&&j.leg.type==="production")?" shop":""));
-    var top=el("div","top");
-    if(isPrep){ var gl=el("span","lab","Production"); gl.style.background="#0055cc"; top.appendChild(gl); }
-    if(j.isLeg){ var ll=el("span","lab","Leg"); ll.style.background="#6e5dc6"; top.appendChild(ll); }
-    if(j.work){ var lw=el("span","lab",j.work); lw.style.background=COL[j.work]||"#626f86"; top.appendChild(lw); }
-    if(j.label){ var lb=el("span","lab",j.label); lb.style.background=COL[j.label]||"#626f86"; top.appendChild(lb); }
-    top.appendChild(el("span","lab stage",j.stageLabel)); if(!isPrep&&ourJob(j)&&j.vehicle){ var vl=el("span","lab van"+(j.vehicle==="hire"&&!j.hireBooked?" bad":""),j.vehicle==="hire"?(j.hireBooked?"Hire booked":"Hire not booked"):j.vehicle.split(" ")[0]); top.appendChild(vl); } c.appendChild(top);
+    var isShop=isPrep||(j.isLeg&&j.leg.type==="production");
+    var c=el("button","card"+(isShop?" shop":"")); c.style.borderLeft="6px solid "+(isShop?"#0055cc":(COL[j.work]||COL[j.label]||"#626f86"));
+    var partX=isPrep?j.prep:j;
     var mid=el("div","mid"); mid.appendChild(el("span","ttl",j.title));
+    // one line of context: what kind of work, who, which van
+    var ctx=[]; if(isPrep) ctx.push("Production"); else if(j.isLeg) ctx.push("Leg"); else ctx.push([j.work,j.movement||j.label].filter(Boolean).join(", ")||"Job");
+    if(!isPrep&&j.contractor&&!j.who.length) ctx.push(j.contractor); else if(partX.who.length) ctx.push(partX.who.join(", "));
+    if(!isPrep&&ourJob(j)&&j.vehicle) ctx.push(j.vehicle==="hire"?"Hire":j.vehicle.split(" ")[0]);
+    mid.appendChild(el("span","for ctx",ctx.join(" \u00b7 ")));
     if(isPrep){ var pdays=daysOf(j.prep); mid.appendChild(el("span","for",(pdays.length>1?"Day "+(pdays.indexOf(k)+1)+" of "+pdays.length+". ":"")+"Required for "+niceDay(j.date)+(j.collect?", customer collecting":""))); }
     if(j.start){ var ds=daysOf(j); mid.appendChild(el("span","for","Day "+(ds.indexOf(k)+1)+" of "+ds.length+", "+niceDay(j.start)+" to "+niceDay(j.date))); }
     if(!isPrep&&j.prodDue) mid.appendChild(el("span","for"+(j.prep&&j.prep.date&&j.prep.date>j.prodDue?" late":""),"Production due "+niceDay(j.prodDue)+(j.collect?", customer collecting":"")));
     else if(!isPrep&&j.collect) mid.appendChild(el("span","for","Customer collecting"));
-    if(!isPrep&&j.site&&(j.from||j.by)) mid.appendChild(el("span","for",windowText(j).slice(2).replace(/^./,function(c){return c.toUpperCase();})));
+    if(!isPrep&&j.site&&(j.from||j.by)) mid.appendChild(el("span","for",windowText(j).slice(2).replace(/^./,function(ch){return ch.toUpperCase();})));
+    if(!isPrep&&!isShop&&j.site&&/Not Started|In-progress|Not QC/i.test(j.stageLabel||"")) mid.appendChild(el("span","for","Workshop: "+j.stageLabel.replace(/^Workshop:\s*/,"").toLowerCase()));
+    if(j.isHold) mid.appendChild(el("span","for hold","Held for sales until "+niceDay(j.holdUntil||j.date)+". Counts "+j.holdCrew+(j.holdCrew===1?" operative":" operatives")+", "+fmt(j.mins)+" each. Confirm on the deal."));
     c.appendChild(mid);
-    if(j.isHold){ mid.appendChild(el("span","for hold","Held for sales until "+niceDay(j.holdUntil||j.date)+". Counts "+j.holdCrew+(j.holdCrew===1?" operative":" operatives")+", "+fmt(j.mins)+" each. Confirm on the deal.")); }
-    var partX=isPrep?j.prep:j;
-    var ft=el("div","foot"); ft.appendChild(avatars(partX.who));
+    var ft=el("div","foot");
     if(!isPrep&&!j.isLeg&&!(j.contractor&&!j.who.length)){ var stdX=standardFor(j.movement||j.label,j.load); if(aboveStandard(stdX,j.who,j.mins)) ft.appendChild(el("span","bdg now","Above standard")); }
     if(isPrep){ var pstdX=prodStandardFor(j.load,j.prep.who.length); if(aboveProdStandard(pstdX,j.prep.who,j.prep.mins,j.prep.start,j.prep.date)) ft.appendChild(el("span","bdg now","Above standard")); }
-    ft.appendChild(badge(partX,isToday)); if(!isPrep&&j.site&&j.by){ var twc=jobTiming(j,k); if(twc&&twc.late) ft.appendChild(el("span","bdg now","Finishes "+hmStr(twc.end)+", after "+j.by)); } c.appendChild(ft);
+    ft.appendChild(badge(partX,isToday)); if(!isPrep&&j.site&&j.by){ var twc=jobTiming(j,k); if(twc&&twc.late) ft.appendChild(el("span","bdg now","Finishes "+hmStr(twc.end)+", after "+j.by)); }
+    c.appendChild(ft);
     if(j.isHold){ c.className+=" hold"; c.onclick=function(){}; var bx=ft.querySelector(".bdg"); if(bx) ft.removeChild(bx); return c; }
     c.onclick=function(){ open=isPrep?j.id+":prep":j.id; render(); };
     return c;
   }
+  function vs_ok(v){ return !/No van/.test(v); }
   function roundEl(r){
-    var rc=el("div","card round"); var top=el("div","top"); var lb=el("span","lab","Delivery Round"); lb.style.background="#1f845a"; top.appendChild(lb); top.appendChild(tip("round")); rc.appendChild(top);
-    var mid=el("div","mid"); mid.appendChild(el("span","ttl",r.who+", "+r.stops.length+" stops")); mid.appendChild(el("span","for",r.stops.map(function(j){return j.title.split(" - ")[0];}).join(", "))); rc.appendChild(mid);
-    var ft=el("div","foot"); ft.appendChild(avatars([r.who])); ft.appendChild(el("span","bdg"+(r.drive==null?" todo":""),r.drive==null?"No travel time":fmt(r.drive)+" travel for the round")); rc.appendChild(ft);
+    var rc=el("div","card round"); rc.style.borderLeft="6px solid #1f845a";
+    var mid=el("div","mid"); var tt=el("span","ttl","Delivery Round, "+r.who); tt.appendChild(tip("round")); mid.appendChild(tt); var vsr=[]; r.stops.forEach(function(x){ var vt=vehicleText(x); if(vt&&vs_ok(vt)&&vsr.indexOf(vt)<0) vsr.push(vt); }); mid.appendChild(el("span","for ctx",r.stops.length+" stops"+(vsr.length?" \u00b7 "+vsr.join(", ").replace(/ [A-Z]{3}\b/g,""):""))); mid.appendChild(el("span","for",r.stops.map(function(j){return j.title.split(" - ")[0];}).join(", "))); rc.appendChild(mid);
+    var ft=el("div","foot"); ft.appendChild(el("span","bdg"+(r.drive==null?" todo":""),r.drive==null?"No travel time":fmt(r.drive)+" travel for the round")); rc.appendChild(ft);
     rc.onclick=function(){ openRound=r.key; open=null; render(); };
     return rc;
   }
