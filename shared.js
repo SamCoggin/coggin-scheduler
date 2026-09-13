@@ -245,14 +245,25 @@ var VEHICLE_CLASSES=[
   {t:"26 tonne box",     m3:65, kg:15000, licence:"C",  note:"haulier with driver; large site access only"},
   {t:"Artic, 13.6 m",    m3:85, kg:26000, licence:"CE", note:"haulier; dock or yard access, not for most offices"}
 ];
-// what a load needs: our Lutons first, then the smallest hired class that takes it in one
-function vehicleAdvice(m3,kg,lutonsOnRoad){
-  if(m3==null) return null; kg=kg||0;
-  var lutons=Math.max(Math.ceil(m3/VAN_M3),Math.ceil(kg/VAN_KG),1), on=lutonsOnRoad==null?2:lutonsOnRoad;
-  var hire=VEHICLE_CLASSES.filter(function(v){return v.licence!=="B"&&v.m3>=m3&&v.kg>=kg;})[0];
-  var out={lutons:lutons,fitsOurs:lutons<=on,hire:hire};
-  if(lutons===1) out.text="One Luton.";
-  else if(lutons<=on) out.text=lutons+" Lutons"+(hire?", or one "+hire.t+" ("+hire.note+")":"")+".";
-  else out.text=lutons+" Luton trips"+(on<lutons?" with "+on+" on the road":"")+(hire?", or one "+hire.t+" ("+hire.note+")":"")+".";
+// city centre postcode districts where nothing bigger than an 18 tonne gets to the door and bays must be booked
+var CITY_CENTRE=/^(EC\d|WC\d|E1|N1|NW1|SE1|SW1|W1|M[1-4]|B[1-5]|BA1|LS[12]|L[1-3]|BS1|EH[1-3]|G[1-3]|S1|NE1|NG1|CF10|BN1|OX1|CB[12]|YO1)$/i;
+function districtOf(pc){ var m=/^\s*([A-Z]{1,2}\d[A-Z\d]?)/i.exec(pc||""); return m?m[1].toUpperCase():""; }
+// what a load needs: our Lutons first, then the smallest single wagon, then the smallest pair of common wagons.
+// an artic never goes to a site. city centres cap at an 18 tonne and need a parking suspension.
+function vehicleAdvice(m3,kg,lutonsOnRoad,opts){
+  if(m3==null) return null; kg=kg||0; opts=opts||{};
+  var on=lutonsOnRoad==null?2:lutonsOnRoad, city=CITY_CENTRE.test(districtOf(opts.postcode));
+  var lutons=Math.max(Math.ceil(m3/VAN_M3),Math.ceil(kg/VAN_KG),1);
+  var wagons=VEHICLE_CLASSES.filter(function(v){return v.licence!=="B"&&v.licence!=="CE"&&(!city||v.kg<=9500);});
+  var common=wagons.filter(function(v){return /7\.5|18|26/.test(v.t);});
+  var single=wagons.filter(function(v){return v.m3>=m3&&v.kg>=kg;})[0]||null, pair=null;
+  common.forEach(function(a){ common.forEach(function(b){ if(a.m3+b.m3>=m3&&a.kg+b.kg>=kg){ if(!pair||a.m3+b.m3<pair.m3) pair=a.m3>=b.m3?{a:a,b:b,m3:a.m3+b.m3}:{a:b,b:a,m3:a.m3+b.m3}; } }); });
+  var out={lutons:lutons,fitsOurs:lutons<=on,city:city,hire:single,pair:pair};
+  var cityNote=city?" City centre: nothing bigger than an 18 tonne, and book a parking suspension for the bays.":"";
+  if(lutons===1) out.text="One Luton."+cityNote;
+  else if(lutons<=on) out.text=lutons+" Lutons"+(single?", or one "+single.t+" ("+single.note+")":"")+"."+cityNote;
+  else if(single) out.text="One "+single.t+" ("+single.note+")"+(lutons<=3?", or "+lutons+" Luton trips"+(on<lutons?" with "+on+" on the road":""):"")+"."+cityNote;
+  else if(pair) out.text=(pair.a.t===pair.b.t?"Two "+pair.a.t.replace(/box$/,"boxes"):"One "+pair.a.t+" and one "+pair.b.t)+" (haulier with drivers; check site access), or tranship: a big wagon to the edge and Lutons to the door."+cityNote;
+  else out.text="More than two wagons: split the collection over days, or tranship from a depot."+cityNote;
   return out;
 }
