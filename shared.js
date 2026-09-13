@@ -167,11 +167,12 @@ var STANDARD=[
 function standardFor(label,load){
   var st=null; for(var i=0;i<STANDARD.length;i++){ if(STANDARD[i].re.test(label||"")){ st=STANDARD[i]; break; } }
   if(!st) return null;
-  if(st.mins!=null) return {crew:st.crew,mins:st.mins,why:"fixed time for a "+label.toLowerCase()};
-  if(!load||!load.complete) return {crew:st.crew,mins:null,why:"needs the items to work out the time"};
+  if(st.mins!=null) return {crew:st.crew,mins:st.mins,why:"A "+label.toLowerCase()+" is a set "+fmt(st.mins)+" for "+st.crew+(st.crew===1?" operative":" operatives")+", whatever is on the card"};
+  if(!load||!load.complete) return {crew:st.crew,mins:null,why:"The time comes from the items on the card, so add them first"};
   var crew=st.crew, big=load.m3>12||load.rows.some(function(r){return r.type==="Booth"||r.type==="Pod";}); if(big) crew+=1;
   var total=st.base+load.min, each=Math.ceil(total/crew/5)*5;
-  return {crew:crew,mins:Math.max(15,each),why:st.base+" min on site plus "+load.min+" min handling the items, over "+crew+(big?" (big load, so one extra)":"")};
+  var what=load.rows.map(function(r){return r.n+" "+r.type.toLowerCase()+(r.n>1?"s":"");}).join(", ");
+  return {crew:crew,mins:Math.max(15,each),why:st.base+" minutes for parking, the contact and the sign off, plus "+load.min+" minutes to carry in and place "+what+". Shared between "+crew+" operatives that is "+Math.max(15,each)+" minutes each"+(big?". One extra operative because the load is big":"")};
 }
 // allocated against standard: an amber flag when the crew or the time is well over
 function aboveStandard(std,who,mins){
