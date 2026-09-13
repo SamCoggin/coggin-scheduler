@@ -58,7 +58,7 @@ Fix: a simple week summary at the top: hours planned against hours available, va
 - Contractor jobs carry no time or cost to us, but they still need someone to hand over keys or meet the truck. Allow "our operative to attend" on a contractor job.
 - Site visits and surveys use the same card as a delivery. Dropped: operatives do not use their own cars for work (insurance), so a site visit goes in a company vehicle and counts against the vans, which is what the Scheduler does.
 - Customer collects still needs a loading slot and someone in the yard. It shows in transport; it should show in yard operations with a time, so the yard is not empty when the customer turns up.
-- Multi-day transport jobs (a two-day clearance) do carry Day 1 of 2, but the load is counted on both days. Count it once, on the last day, or split it.
+- Multi-day transport jobs: done 13 Sep 2026, the load is shared equally across the days (a two-day 20 m³ clearance is 10 m³ a day), everywhere a day is added up.
 - Travel time is straight line times 1.25 plus 20 percent. Fine for planning, wrong for the Lake District and central Manchester. A postcode-pair cache of real drive times from one lookup would fix most of it.
 - The Manager PIN is client-side. Fine for keeping £ off the yard screen, not a control.
 
