@@ -10,7 +10,7 @@ var CONTRACTORS=["MAK Installations","Courier","Other contractor"];
 var VAN_M3=18.7, VAN_KG=1000;
 var VEHICLES=[{reg:"FX75 BKG",name:"Renault Master Luton FX75 BKG (2025)"},{reg:"FX73 CWF",name:"Renault Master Luton FX73 CWF (2024)"}];
 // loaded volume (item plus the space around it on the van) and weight per product type.
-// figures: removals trade lists and a council reuse dataset; rows marked est are estimates until the warehouse corrects them.
+// figures: removals trade lists and a council reuse dataset; rows marked est are estimates until the labour corrects them.
 // small parts (arm pads, castors, gas lifts, spares) ride in the cab: 0.01 m3 and 1 kg each, one minute to hand over
 // chairs are DOUBLE STACKED figures: 0.40 per swivel chair is Sam's "40 in a Luton", which only works stacked two high;
 // loose meeting chairs (tub, cantilever) at 0.40 (about 45 a van, Sam corrected 0.20) and stacking chairs at 0.10 (stacks of five or six) assume the same.
@@ -125,8 +125,8 @@ function qcDone(badges){ return !!(badges&&badges.checkItems>0&&badges.checkItem
 // comes in, a refurb goes both ways. The older names (two labels, and the board's original single labels) are
 // still understood so nothing breaks on a card made before the switch.
 var WORK_LABELS=["Resale","Refurb","Clearance","Recycling","Buyback","Donation","Warranty","Job Issue"];
-var MOVEMENT_LABELS=["Delivery","Collection","Collect and Return","Customer Delivers","Customer Collects","Customer Delivers and Collects","Site Visit","Warehouse"];
-var OLD_MOVEMENT={"delivery/installation":"Delivery","removal job":"Collection","collect & return":"Collect and Return","customer collecting":"Customer Collects","courier collecting":"Customer Collects","courier collects":"Customer Collects","recycling delivery":"Customer Delivers","new stock delivery":"Customer Delivers","stock delivery":"Customer Delivers","plastic delivery":"Customer Delivers","plastic collection":"Collection","skip exchange":"Warehouse","warehouse":"Warehouse","yard":"Warehouse","warranty/job issue":"Site Visit","donations":"Delivery","charity donation":"Delivery"};
+var MOVEMENT_LABELS=["Delivery","Collection","Collect and Return","Customer Delivers","Customer Collects","Customer Delivers and Collects","Site Visit","Labour"];
+var OLD_MOVEMENT={"delivery/installation":"Delivery","removal job":"Collection","collect & return":"Collect and Return","customer collecting":"Customer Collects","courier collecting":"Customer Collects","courier collects":"Customer Collects","recycling delivery":"Customer Delivers","new stock delivery":"Customer Delivers","stock delivery":"Customer Delivers","plastic delivery":"Customer Delivers","plastic collection":"Collection","skip exchange":"Labour","labour":"Labour","warehouse":"Labour","yard":"Labour","warranty/job issue":"Site Visit","donations":"Delivery","charity donation":"Delivery"};
 var OLD_WORK={"delivery/installation":"Resale","removal job":"Clearance","collect & return":"Refurb","recycling delivery":"Recycling","new stock delivery":"Buyback","stock delivery":"Buyback","plastic delivery":"Recycling","plastic collection":"Recycling","skip exchange":"Recycling","warranty/job issue":"Warranty","donations":"Donation","charity donation":"Donation"};
 // the movement half of a combined label, by the words after the dash
 var COMBINED_MOVE={"delivery/installation":"Delivery","delivery":"Delivery","redelivery":"Delivery","customer collects":"Customer Collects","collect & return":"Collect and Return","customer drops off":"Customer Delivers and Collects","on site":"Site Visit","site visit":"Site Visit","we collect":"Collection","collection":"Collection","customer delivers":"Customer Delivers","seller delivers":"Customer Delivers"};
@@ -214,8 +214,8 @@ function todayIso(){ var d=new Date(); return d.getFullYear()+"-"+String(d.getMo
 // site time per operative = (base + handling minutes for the items) / crew. fixed jobs have mins instead.
 var STANDARD=[
   {re:/skip exchange/i,            crew:1, mins:20},
-  {re:/^(warehouse|yard) (load|unload)$/i, crew:2, base:15},
-  {re:/^(warehouse|yard)$/i,        crew:2, mins:60},
+  {re:/^(labour|warehouse|yard) (load|unload)$/i, crew:2, base:15},
+  {re:/^(labour|warehouse|yard)$/i, crew:2, mins:60},
   {re:/customer delivers$/i,       crew:2, mins:60},
   {re:/site visit/i,               crew:1, mins:45},
   {re:/customer collects|customer delivers and collects/i, crew:1, base:10},
@@ -237,8 +237,8 @@ function standardFor(label,load){
   if(small) crew=1; if(big) crew+=1;
   var total=st.base+load.min, each=Math.ceil(total/crew/5)*5;
   var what=load.rows.map(function(r){return r.n+" "+r.type.toLowerCase()+(r.n>1?"s":"");}).join(", ");
-  var warehouse=/^warehouse/i.test(String(mv)), unload=/unload/i.test(String(mv));
-  var why=warehouse?(st.base+" minutes to set out and clear away, plus "+load.min+" minutes to "+(unload?"unload and put away ":"bring out and load ")+what+"."):(st.base+" minutes for parking, the contact and the sign off, plus "+load.min+" minutes to carry in and place "+what+".");
+  var labour=/^labour/i.test(String(mv)), unload=/unload/i.test(String(mv));
+  var why=labour?(st.base+" minutes to set out and clear away, plus "+load.min+" minutes to "+(unload?"unload and put away ":"bring out and load ")+what+"."):(st.base+" minutes for parking, the contact and the sign off, plus "+load.min+" minutes to carry in and place "+what+".");
   why+=crew===1?" One operative can manage that alone, so "+Math.max(15,each)+" minutes.":" Shared between "+crew+" operatives that is "+Math.max(15,each)+" minutes each"+(big?". One extra operative because the load is big":(twoHanded?". Two because some items need two to carry":""))+".";
   return {crew:crew,mins:Math.max(15,each),why:why};
 }
@@ -301,7 +301,7 @@ var VEHICLE_CLASSES=[
   {t:"12 tonne box",     m3:40, kg:6000,  licence:"C",  note:"haulier with driver; check site access and parking"},
   {t:"18 tonne box",     m3:55, kg:9500,  licence:"C", tall:true,  note:"haulier with driver; needs a proper loading bay or wide access"},
   {t:"26 tonne box",     m3:65, kg:15000, licence:"C", tall:true,  note:"haulier with driver; large site access only"},
-  {t:"Artic, 13.6 m",    m3:85, kg:26000, licence:"CE", tall:true, note:"haulier; dock or warehouse access, not for most offices"}
+  {t:"Artic, 13.6 m",    m3:85, kg:26000, licence:"CE", tall:true, note:"haulier; dock or labour access, not for most offices"}
 ];
 // the smallest vehicle that takes a load, for telling a contractor or courier what to send (any licence: it is their driver)
 function contractorVehicle(m3,kg,postcode){
@@ -340,28 +340,28 @@ function vehicleAdvice(m3,kg,lutonsOnRoad,opts){
 // "10 seat pads: Collect from Russkell Upholstery (PR1 2AB) on 2026-09-22"
 // THE PARTS OF A JOB (Sam, 14 Sep 2026: a sub-contractor collects, the customer loads, the truck comes back to
 // Forton and our operatives unload it). The CRM writes a Parts block on the card; this reads it back:
-//   {production:true/false, site:"clear and load"|"", transport:"G&T Express, customer loads"|"our van"|..., ours:true/false, warehouse:"unload at Forton"|""}
+//   {production:true/false, site:"clear and load"|"", transport:"G&T Express, customer loads"|"our van"|..., ours:true/false, labour:"unload at Forton"|""}
 function partsOf(desc){
-  var g=parseDesc(desc||""), P={production:false,site:"",transport:"",ours:false,warehouse:"",known:false};
+  var g=parseDesc(desc||""), P={production:false,site:"",transport:"",ours:false,labour:"",known:false};
   (g.parts||[]).forEach(function(l){
-    var m=/^(production|site|transport|warehouse|yard):\s*(.*)$/i.exec(l.trim()); if(!m) return; P.known=true;
+    var m=/^(production|site|transport|labour|warehouse|yard):\s*(.*)$/i.exec(l.trim()); if(!m) return; P.known=true;
     var k=m[1].toLowerCase(), v=m[2].trim(), none=/^(no|none)$/i.test(v);
     if(k==="production") P.production=!none;
     else if(k==="site") P.site=none?"":v;
     else if(k==="transport"){ P.transport=none?"":v; P.ours=/^our van/i.test(v); }
-    else if(k==="warehouse"||k==="yard") P.warehouse=none?"":v;
+    else if(k==="labour"||k==="warehouse"||k==="yard") P.labour=none?"":v;
   });
   return P;
 }
 // the firm named on a transport line: "G&T Express, customer loads" -> "G&T Express"; "our van" and "customer ..." -> ""
 function partsCarrier(P){ if(!P||!P.transport||P.ours) return ""; if(/^(customer|seller)\b/i.test(P.transport)) return ""; return P.transport.split(",")[0].trim(); }
-// No Parts block on the card (made before 14 Sep 2026, or by hand): what the label alone implies for the warehouse.
+// No Parts block on the card (made before 14 Sep 2026, or by hand): what the label alone implies for the labour.
 function impliedParts(labels){
-  var wk=workOf(labels), mv=movementOf(labels), carrier=carrierOf(labels), P={production:false,site:"",transport:"",ours:false,warehouse:"",known:false};
-  if(wk==="Clearance"||wk==="Recycling"||wk==="Buyback"){ P.warehouse="unload at Forton"; if(carrier) P.transport=carrier; }
-  else if(mv==="Customer Collects"||mv==="Customer Delivers and Collects") P.warehouse="load at the collection slot";
-  else if(carrier==="Courier") P.warehouse="load the courier";
-  else if(carrier==="Sub-contractor"&&wk==="Resale") P.warehouse="load the sub-contractor";
+  var wk=workOf(labels), mv=movementOf(labels), carrier=carrierOf(labels), P={production:false,site:"",transport:"",ours:false,labour:"",known:false};
+  if(wk==="Clearance"||wk==="Recycling"||wk==="Buyback"){ P.labour="unload at Forton"; if(carrier) P.transport=carrier; }
+  else if(mv==="Customer Collects"||mv==="Customer Delivers and Collects") P.labour="load at the collection slot";
+  else if(carrier==="Courier") P.labour="load the courier";
+  else if(carrier==="Sub-contractor"&&wk==="Resale") P.labour="load the sub-contractor";
   return P;
 }
 function supportLegs(desc){
