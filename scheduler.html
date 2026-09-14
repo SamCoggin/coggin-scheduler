@@ -589,6 +589,22 @@ var SNAP=null, DETAIL={};
   var ROUND_DRIVE={};   // "date|person" -> minutes, when you have changed it
   var CRM_KEY="", HOLDS=[], REQUESTS=[];   // REQUESTS: dates sales have asked for that operations have not answered   // the shared key for the CRM's opsHolds function, saved on the board from the Manager view
   var CRM_HOLDS_URL="https://coggin-sos-os.base44.app/api/apps/69c930a6240fba922f369aa2/functions/opsHolds";
+  // THE RECYCLING TALLY (Sam, 14 Sep 2026). One row per operative per day in the CRM: minutes on recycling, the
+  // target for those minutes, and the units that came back on the tally sheet. Read for five weeks back on open,
+  // written the moment a number is typed on the Day view.
+  var CRM_TALLY_URL="https://coggin-sos-os.base44.app/api/apps/69c930a6240fba922f369aa2/functions/recyclingTally";
+  var TALLIES={};   // "date|who" -> {units, notes, target, minutes}
+  function tallyKey(k,w){ return k+"|"+w; }
+  function fetchTallies(){ if(!CRM_KEY) return Promise.resolve();
+    return fetch(CRM_TALLY_URL,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({key:CRM_KEY,action:"list",from:iso(addDays(TODAY,-35)),to:iso(addDays(TODAY,14))})}).then(function(x){return x.json();}).then(function(r){ if(!(r&&r.ok)) return; (r.rows||[]).forEach(function(t){ TALLIES[tallyKey(String(t.date).slice(0,10),t.operative)]={units:t.units,notes:t.notes||"",target:t.target,minutes:t.minutes}; }); }).catch(function(){}); }
+  function saveTally(k,w,units,notes){ var rec=(loadOn(k)[w]||{}).rec||0, row={date:k,operative:w,minutes:rec,target:recTarget(rec),units:units===""||units==null?null:Number(units),notes:notes||"",recorded_by:"scheduler"};
+    TALLIES[tallyKey(k,w)]={units:row.units,notes:row.notes,target:row.target,minutes:row.minutes};
+    if(!CRM_KEY) return; try{ fetch(CRM_TALLY_URL,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({key:CRM_KEY,action:"save",rows:[row]})}).catch(function(){}); }catch(e){} }
+  // the tally added up over a date range, per operative: minutes on recycling, target, units, and the days with a number
+  function tallySummary(from,to){ var out={}; TEAM.forEach(function(w){ out[w]={mins:0,target:0,units:0,days:0,counted:0}; });
+    for(var d=new Date(from+"T12:00"); iso(d)<=to; d.setDate(d.getDate()+1)){ if(d.getDay()===0||d.getDay()===6) continue; var k=iso(d), L=loadOn(k);
+      TEAM.forEach(function(w){ var rec=(L[w]||{}).rec||0; if(!rec) return; var t=TALLIES[tallyKey(k,w)]; out[w].days++; if(t&&t.units!=null){ out[w].counted++; out[w].mins+=rec; out[w].target+=recTarget(rec); out[w].units+=t.units; } }); }
+    return out; }
   var VANS_OFF=[];      // registrations currently off the road
   function vansOnRoad(){ return VEHICLES.filter(function(v){return VANS_OFF.indexOf(v.reg)<0;}).length; }
   function roundsOn(k,jobs){
@@ -933,6 +949,7 @@ var SNAP=null, DETAIL={};
     van:"The load worked out from the items on the card, in cubic metres and kilos, against a "+VAN_M3+" cubic metre Luton and its payload. Overtype it if the labour knows better. Two Lutons on the fleet; a van off the road is marked in the Routes view and extra vans are hired in.",
     routes:"Combine Trips finds jobs booked for later that are near a stop already going out this week, and says what it takes to put them on the same van. Below it, where the week's transport jobs are. Each round is drawn from the labour in its day's colour. Nearby jobs on other days could join a round if there is room in the van and production is done.",
     vehicle:"Which van goes. Our two Lutons, or a hire when the load needs more than a Luton or both vans are out. A hire is a job in itself: put the supplier and reference on it and tick Booked, and it nags from five working days out until you do.",
+    tally:"Units processed on recycling today, off the tally sheet. A unit is one item of any kind. The target is 100 for a full day, scaled to the time this operative had left after their jobs. Saved to the CRM as you type.",
     qc:"Quality check before a job goes out. Trello ticks it when the checklist on the card is complete. Sign it off here when the workshop has checked the job, with who checked it. It clears Not QC'd on the card and in Outstanding.",
     happened:"Filled in after the day. Actual time, who went and a note, or Did not go and why. The Manager view compares actual time with the standard, so the standards can be corrected from real jobs.",
     slot:"A customer or courier collecting from the labour. Customer arrives after is the earliest they said they will come. Loaded and ready by is when it must be picked, checked and by the door. Someone has to be in the labour for it, so it takes operatives and time like any other labour job.",
@@ -1295,6 +1312,13 @@ var SNAP=null, DETAIL={};
     rows.sort(function(a,b){ return (b.ratio||0)-(a.ratio||0) || (a.date<b.date?-1:1); });
     var sum=el("div","msum"); TEAM.forEach(function(w){ var o=perOp[w]; if(!o.jobs) return; var ratio=o.std?o.alloc/o.std:null; var sp=el("span",ratio==null?"":(ratio>2?"red":ratio>1.5?"amber":""),w+": "+fmt(Math.round(o.alloc))+" allocated"+(ratio!=null?", standard "+fmt(Math.round(o.std))+" ("+Math.round(ratio*100)+"%)":"")+", "+o.jobs+(o.jobs===1?" job":" jobs")); sum.appendChild(sp); });
     box.appendChild(el("div","sub","By operative, all their jobs added up:")); box.appendChild(sum);
+    // THE RECYCLING TALLY, four weeks back to today: hours on recycling, the target for them, the units that came
+    // back, and the percentage. Amber under 80 percent. Days with no number are counted as not yet recorded.
+    var tFrom=iso(addDays(TODAY,-27)), tTo=iso(TODAY), TS=tallySummary(tFrom,tTo);
+    box.appendChild(el("h2",null,"Recycling tally, last four weeks")); box.appendChild(el("div","sub","100 units a day is the average for a full day on recycling; the target scales with the time each operative actually had. Type the day's number on the Day view."));
+    var thd=el("div","mrow head"); ["Operative","Hours on recycling","Target","Units done","Against target"].forEach(function(t){ thd.appendChild(el("span",null,t)); }); box.appendChild(thd);
+    TEAM.forEach(function(w){ var o=TS[w]; var pct=o.target?Math.round(o.units/o.target*100):null; var cls=pct==null?"":(pct<60?"red":pct<80?"amber":""); var row=el("div","mrow"+(cls?" "+cls:""));
+      row.appendChild(el("span",null,w)); row.appendChild(el("span",null,fmt(o.mins)+(o.days>o.counted?" ("+(o.days-o.counted)+(o.days-o.counted===1?" day":" days")+" not recorded)":""))); row.appendChild(el("span",null,String(o.target))); row.appendChild(el("span",null,String(o.units))); row.appendChild(el("span",null,pct==null?"nothing recorded yet":pct+"%")); box.appendChild(row); });
     var hd=el("div","mrow head"); ["Job","Part","Operatives and time","Items and standard","Against standard"].forEach(function(t){ hd.appendChild(el("span",null,t)); }); box.appendChild(hd);
     if(!rows.length) box.appendChild(el("div","sub","No jobs with time allocated in this window."));
     rows.forEach(function(r){ var cls=r.ratio==null?"":(r.ratio>2?"red":r.ratio>1.5?"amber":""); var row=el("div","mrow"+(cls?" "+cls:""));
@@ -1597,6 +1621,16 @@ var SNAP=null, DETAIL={};
       }
       if(labour.length){ block("IN THE LABOUR",""); labour.forEach(function(j){ if(y>245){ doc.addPage(); y=14; } doc.setFont("helvetica","bold"); doc.setFontSize(12); doc.setTextColor(17,17,17); doc.text(j.title,12,y+1); doc.setFont("helvetica","normal"); doc.setFontSize(9); doc.setTextColor(PDF_GREY[0],PDF_GREY[1],PDF_GREY[2]); doc.text([j.work,j.movement||j.label].filter(Boolean).join(", ")+"   "+(j.mins!=null?"Allow "+fmt(j.mins):"No time set")+(j.collect&&j.collect.from?", customer arrives after "+j.collect.from:""),12,y+6); y+=11; facts(j,false); }); }
       if(preps.length){ block("PRODUCTION",""); preps.forEach(function(j){ if(y>245){ doc.addPage(); y=14; } doc.setFont("helvetica","bold"); doc.setFontSize(12); doc.setTextColor(17,17,17); doc.text(j.title,12,y+1); doc.setFont("helvetica","normal"); doc.setFontSize(9); doc.setTextColor(PDF_GREY[0],PDF_GREY[1],PDF_GREY[2]); doc.text("Required for "+niceDay(j.date)+(j.prep.mins!=null?", allow "+fmt(j.prep.mins):", no time set")+(j.prep.who.length>1?" each, with "+j.prep.who.filter(function(x){return x!==w;}).join(", "):""),12,y+6); y+=11; facts(j,false); }); }
+      // THE RECYCLING TALLY (Sam, 14 Sep 2026): time left after the jobs is recycling, with a target of 100 units a
+      // full day, pro rata. A grid of 100 boxes to strike through, then the number and notes to bring back.
+      var recM=(loadOn(k)[w]||{}).rec||0;
+      if(recM>0){ if(y>200){ doc.addPage(); y=14; } var tgt=recTarget(recM);
+        y=pdfBand(doc,y,"RECYCLING    "+fmt(recM)+" on recycling, target "+tgt+" units");
+        doc.setFont("helvetica","normal"); doc.setFontSize(9); doc.setTextColor(PDF_GREY[0],PDF_GREY[1],PDF_GREY[2]);
+        doc.text("A unit is one item of any kind. 100 is a full day; your target is for the time you have. Strike a box per unit, write the total at the end.",12,y+1); y+=5;
+        doc.setDrawColor(120,120,120); doc.setLineWidth(.25);
+        for(var r=0;r<10;r++){ for(var c=0;c<10;c++){ doc.rect(12+c*6.2,y+r*5.2,5.4,4.4); } } y+=10*5.2+3;
+        doc.setFont("helvetica","bold"); doc.setFontSize(9.5); doc.setTextColor(17,17,17); doc.text("Units processed:",12,y+4); doc.setDrawColor(150,150,150); doc.line(42,y+4.5,70,y+4.5); doc.text("Notes:",80,y+4); doc.line(94,y+4.5,198,y+4.5); y+=10; }
       if(y>240){ doc.addPage(); y=14; }
       y=pdfBand(doc,y,"END OF DAY");
       doc.setFont("helvetica","bold"); doc.setFontSize(9.5); doc.setTextColor(17,17,17); doc.text("Started:",12,y+4); doc.text("Finished:",60,y+4); doc.text("Van checked and fuelled:",112,y+4); doc.setDrawColor(150,150,150); doc.line(28,y+4.5,54,y+4.5); doc.line(78,y+4.5,106,y+4.5); doc.rect(158,y+.6,4,4); doc.setFont("helvetica","normal"); doc.setFontSize(8); doc.text("Yes",163,y+4); doc.rect(172,y+.6,4,4); doc.text("No",177,y+4); y+=10;
@@ -1800,12 +1834,16 @@ var SNAP=null, DETAIL={};
     var wk=el("div","weektot"); var wh=el("span","n","Recycling this week"); wh.appendChild(tip("recycling")); wk.appendChild(wh); var teamRec=0;
     TEAM.forEach(function(w){ var m=WEEK_REC[w]||0; teamRec+=m; wk.appendChild(el("span",m<DAY_MINS?"low":"",w+": "+fmt(m))); });
     wk.appendChild(el("span","team","Team: "+fmt(teamRec))); b.appendChild(wk);
+    if(view==="day"){ var L0=loadOn(dayCur), tk=el("div","weektot tally"); var th=el("span","n","Recycling today"); th.appendChild(tip("tally")); tk.appendChild(th);
+      TEAM.forEach(function(w){ var rec=(L0[w]||{}).rec||0; if(!rec) return; var tgt=recTarget(rec), t=TALLIES[tallyKey(dayCur,w)]||{}, cell=el("span",t.units!=null?(t.units<tgt*0.8?"low":""):"");
+        cell.appendChild(document.createTextNode(w+": "+fmt(rec)+", target "+tgt+", done ")); var inp=el("input"); inp.type="number"; inp.min="0"; inp.step="1"; inp.value=t.units==null?"":String(t.units); inp.setAttribute("aria-label",w+" units processed"); inp.style.width="64px"; inp.onchange=function(){ saveTally(dayCur,w,inp.value,t.notes||""); render(); }; cell.appendChild(inp); tk.appendChild(cell); });
+      if(!CRM_KEY) tk.appendChild(el("span","low","Paste the CRM key in the Manager view to save the tally.")); b.appendChild(tk); }
     var mo=openRound?roundModal():modal(); if(mo){ document.body.appendChild(mo); if(window.__keepScroll) mo.scrollTop=window.__keepScroll; }
     $("#prev").onclick=function(){week--;render();}; $("#next").onclick=function(){week++;render();};
   }
   if(t){
     $("#src").textContent="Reading the board...";
-    loadBoard().then(function(snap){ buildFromSnap(snap); lastSaved={}; render(); refreshDrive(); setTimeout(refreshRounds,1500); }).catch(function(e){ $("#src").textContent="Could not read the board: "+(e&&e.message||e); });
+    loadBoard().then(function(snap){ buildFromSnap(snap); lastSaved={}; render(); refreshDrive(); setTimeout(refreshRounds,1500); fetchTallies().then(function(){ if(view==="day"||view==="manager") render(); }); }).catch(function(e){ $("#src").textContent="Could not read the board: "+(e&&e.message||e); });
   } else { $("#src").textContent="Open this from the Scheduler button on the Trello board."; }
 })();
 </script>

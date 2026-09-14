@@ -113,6 +113,11 @@ function itemsOf(desc,checks){
 // the working week is 38 hours 45 minutes Monday to Friday: 7 hours 45 minutes a day
 // (8am to 4:30pm with 30 minutes for lunch and a 15 minute break)
 var WEEK_MINS=38*60+45, DAY_MINS=WEEK_MINS/5, DAY_H=DAY_MINS/60;
+// THE RECYCLING TARGET (Sam, 14 Sep 2026): "one operative should be processing 100 units a day on average subject
+// to how much time they have been on the job". A unit is one item of any kind; some go faster, 100 is the average.
+// The target follows the time: 100 for a full day, pro rata for the minutes actually on recycling.
+var REC_TARGET_DAY=100;
+function recTarget(mins){ return Math.max(0,Math.round((mins||0)/DAY_MINS*REC_TARGET_DAY)); }
 var QUICK=[[15,"15 min"],[30,"30 min"],[60,"1 hour"],[120,"2 hours"],[240,"Half day"],[DAY_MINS,"Full day"]];
 var WORKSHOP_LISTS=/Workshop Jobs - (Not Started|In-progress)/;
 var READY_LIST=/Workshop Jobs - Ready/;
