@@ -117,11 +117,12 @@ var WORKSHOP_LISTS=/Workshop Jobs - (Not Started|In-progress)/;
 var READY_LIST=/Workshop Jobs - Ready/;
 // QC evidence is the card checklist (photos, labels): all items ticked
 function qcDone(badges){ return !!(badges&&badges.checkItems>0&&badges.checkItemsChecked>=badges.checkItems); }
-// ── two labels on every card (Sam, 13 Sep 2026) ──
-// WORK says what the job is: Resale, Refurb, Clearance, Recycling, Buyback, Donation, Warranty.
-// MOVEMENT says which way the furniture travels: Delivery, Collection, Collect and Return, Customer Delivers,
-// Customer Collects, Customer Delivers and Collects, Site Visit, Yard. Who carries it out is the Carried Out By
-// choice on the card, never a label. The old single labels are still understood so nothing breaks mid-switch.
+// ── one label on every card, the board's own names (Sam, 14 Sep 2026: "keep this really simple and dummy proof") ──
+// The CRM sends one of the board's labels: Delivery/Installation, Customer Collecting, Removal Job, Recycling
+// Delivery, Collect & Return, Donations, Warranty/Job Issue. The Scheduler reads WORK (what the job is) and
+// MOVEMENT (which way the furniture travels) from that name through OLD_WORK and OLD_MOVEMENT below. The
+// two-label names are still understood in case a card was made with them. Who carries it out is the
+// Transported By choice on the card, never a label.
 var WORK_LABELS=["Resale","Refurb","Clearance","Recycling","Buyback","Donation","Warranty"];
 var MOVEMENT_LABELS=["Delivery","Collection","Collect and Return","Customer Delivers","Customer Collects","Customer Delivers and Collects","Site Visit","Yard"];
 var OLD_MOVEMENT={"delivery/installation":"Delivery","removal job":"Collection","collect & return":"Collect and Return","customer collecting":"Customer Collects","courier collecting":"Customer Collects","courier collects":"Customer Collects","recycling delivery":"Customer Delivers","new stock delivery":"Customer Delivers","stock delivery":"Customer Delivers","plastic delivery":"Customer Delivers","plastic collection":"Collection","skip exchange":"Yard","warranty/job issue":"Site Visit","donations":"Delivery","charity donation":"Delivery"};
