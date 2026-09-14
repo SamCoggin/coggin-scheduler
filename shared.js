@@ -355,6 +355,15 @@ function partsOf(desc){
 }
 // the firm named on a transport line: "G&T Express, customer loads" -> "G&T Express"; "our van" and "customer ..." -> ""
 function partsCarrier(P){ if(!P||!P.transport||P.ours) return ""; if(/^(customer|seller)\b/i.test(P.transport)) return ""; return P.transport.split(",")[0].trim(); }
+// No Parts block on the card (made before 14 Sep 2026, or by hand): what the label alone implies for the warehouse.
+function impliedParts(labels){
+  var wk=workOf(labels), mv=movementOf(labels), carrier=carrierOf(labels), P={production:false,site:"",transport:"",ours:false,warehouse:"",known:false};
+  if(wk==="Clearance"||wk==="Recycling"||wk==="Buyback"){ P.warehouse="unload at Forton"; if(carrier) P.transport=carrier; }
+  else if(mv==="Customer Collects"||mv==="Customer Delivers and Collects") P.warehouse="load at the collection slot";
+  else if(carrier==="Courier") P.warehouse="load the courier";
+  else if(carrier==="Sub-contractor"&&wk==="Resale") P.warehouse="load the sub-contractor";
+  return P;
+}
 function supportLegs(desc){
   var g=parseDesc(desc||""), out=[];
   (g.support||[]).forEach(function(l){

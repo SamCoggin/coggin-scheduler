@@ -513,7 +513,7 @@ var SNAP=null, DETAIL={};
     // THE PARTS OF A JOB (Sam, 14 Sep 2026). A warehouse part becomes a warehouse leg on the due day, planned like any
     // other leg with its own operatives and time. Transport by somebody else makes the main job a contractor
     // job: it shows under Transport for information, needs no van and no operatives of ours.
-    JOBS.forEach(function(j){ var dd=DETAIL[j.id]; if(!dd) return; var P=partsOf(dd.desc); if(!P.known) return; j.parts=P;
+    JOBS.forEach(function(j){ var dd=DETAIL[j.id]; if(!dd) return; var P=partsOf(dd.desc); if(!P.known) P=impliedParts(j.labels); j.parts=P;
       var carrier=partsCarrier(P); if(carrier&&!j.contractor&&j.site) j.contractor=carrier;
       if(P.warehouse&&!LEGS.some(function(L){return L.parent===j.id&&L.type==="warehouse";})) LEGS.push({parent:j.id,type:"warehouse",date:j.date,who:[],mins:null,drive:null,where:P.warehouse}); });
     if(SNAP.boardData&&SNAP.boardData.roundDrive){ for(var k in SNAP.boardData.roundDrive) ROUND_DRIVE[k]=SNAP.boardData.roundDrive[k]; }
