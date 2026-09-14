@@ -18,8 +18,11 @@
         var list=r[2].filter(function(l){return l.id===card.idList;})[0], workshop=!!(list&&WORKSHOP_LISTS.test(list.name));
         if(list&&READY_LIST.test(list.name)&&!qcDone(card.badges)) out.push({ text:"Not QC'd", color:"red" });
         if(workshop&&card.due){ var pd=(d&&d.prodDue)||productionDue("",card.due.slice(0,10)); var late=!!(d&&d.prep&&d.prep.date&&d.prep.date>pd); out.push({ text:"Production due "+niceShort(pd), color:late?"red":(pd<todayIso()?"red":"blue") }); }
-        if(workshop&&d){ var pb=prodBadgeText(d); out.push({ text:pb.text, color:pb.color }); }
-        if(d){ frontBadges(d,isSite(card)).forEach(function(b){ out.push({ text:b.text, color:b.color }); }); }
+        // A card nobody has planned yet is the one that most needs saying so (Sam, 14 Sep 2026: "why does
+        // D9D283 not have production not scheduled and transport unassigned?"). No saved plan reads as an empty one.
+        var plan=d||{};
+        if(workshop){ var pb=prodBadgeText(plan); out.push({ text:pb.text, color:pb.color }); }
+        frontBadges(plan,isSite(card)).forEach(function(b){ out.push({ text:b.text, color:b.color }); });
         return out;
       });
     },
@@ -29,8 +32,9 @@
         var list=r[2].filter(function(l){return l.id===card.idList;})[0], workshop=!!(list&&WORKSHOP_LISTS.test(list.name));
         if(list&&READY_LIST.test(list.name)&&!qcDone(card.badges)) out.push({ title:"QC", text:"Not QC'd: checklist not complete", color:"red" });
         if(workshop&&card.due){ var pd=(d&&d.prodDue)||productionDue("",card.due.slice(0,10)); out.push({ title:"Production due", text:niceShort(pd), color:pd<todayIso()?"red":"blue" }); }
-        if(workshop&&d){ var pb2=prodBadgeText(d,true); out.push({ title:"Production", text:pb2.text.replace(/^Production:? ?/,""), color:pb2.color }); }
-        if(!d) out.push({ title:"Scheduling", text:"Not planned", color:"yellow" }); else { var b=badgeText(d,isSite(card)); out.push({ title:"Scheduling", text:b.text, color:b.color }); }
+        var plan2=d||{};
+        if(workshop){ var pb2=prodBadgeText(plan2,true); out.push({ title:"Production", text:pb2.text.replace(/^Production:? ?/,""), color:pb2.color }); }
+        var b=badgeText(plan2,isSite(card)); out.push({ title:"Scheduling", text:b.text, color:b.color });
         return out;
       });
     },
