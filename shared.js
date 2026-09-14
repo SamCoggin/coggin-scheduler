@@ -153,9 +153,13 @@ var SITE_LABELS={ test:function(name){ return isSiteMove(movementOf([name])); } 
 // production together. Anyone on the card who is not crew is left alone. Needs the CRM key from the Manager view.
 var CRM_MEMBERS_URL="https://coggin-sos-os.base44.app/api/apps/69c930a6240fba922f369aa2/functions/trelloSyncMembers";
 var _memberSync={};
-function syncCardMembers(cardId,plan,crmKey){
+// The members follow the stage (Sam, 14 Sep 2026: "why is Bart's headshot showing when he is just for transport
+// and it is still in progress?"): in a workshop list the card shows the production operatives, anywhere else the
+// transport operatives. The Scheduler re-sends every open, so a card moved to Ready swaps faces on its own.
+function syncCardMembers(cardId,plan,crmKey,inWorkshop){
   if(!cardId||!crmKey) return;
-  var names=[].concat((plan&&plan.who)||[],(plan&&plan.prep&&plan.prep.who)||[]).filter(function(n,i,a){return CREW.indexOf(n)>=0&&a.indexOf(n)===i;});
+  var pick=inWorkshop?((plan&&plan.prep&&plan.prep.who)||[]):((plan&&plan.who)||[]);
+  var names=pick.filter(function(n,i,a){return CREW.indexOf(n)>=0&&a.indexOf(n)===i;});
   var key=names.slice().sort().join(",");
   if(_memberSync[cardId]===key) return; _memberSync[cardId]=key;
   try{ fetch(CRM_MEMBERS_URL,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({key:crmKey,card_id:cardId,names:names,crew:CREW})}).catch(function(){}); }catch(e){}

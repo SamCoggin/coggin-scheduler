@@ -466,6 +466,7 @@ var SNAP=null, DETAIL={};
     Object.keys(BANK_HOLIDAYS).forEach(function(k){ TEAM.forEach(function(w){ if(LEAVE.some(function(l){return l.date===k&&l.text.split(" ")[0]===w;})) return; LEAVE.push({date:k,text:w+" bank holiday",bh:true}); }); }); }
   function leaveLines(lv){ var out=[], bh=lv.filter(function(l){return l.bh;}); if(bh.length){ var d=bh[0].date; out.push("Bank holiday: "+BANK_HOLIDAYS[d]); } lv.filter(function(l){return !l.bh;}).forEach(function(l){ out.push(l.text); }); return out; }
   function toggleOff(k,w,why){ var list=OFF[k]||[]; var i=list.indexOf(w); if(i>=0){ list.splice(i,1); delete OFF_WHY[k+"|"+w]; } else { list.push(w); if(why) OFF_WHY[k+"|"+w]=why; } OFF[k]=list; if(!list.length) delete OFF[k]; syncOff(); persist(); render(); }
+  function inWorkshop(j){ return /^Workshop: (Not Started|In-progress)$/.test(j.stageLabel||""); }
   function buildFromSnap(SNAP){
     JOBS=SNAP.cards.filter(function(c){return c.due && c.role!=="leave";}).map(function(c){
     var mv=movementOf(c.labels), wk=workOf(c.labels), lb=mv||c.labels[0]||"", title=nice(c.name), subName=c.who.filter(function(w){return TEAM.indexOf(w)<0;})[0]||"";
@@ -512,7 +513,7 @@ var SNAP=null, DETAIL={};
     // the member sync existed were never sent. Every open sends today's and future jobs that have operatives; the
     // helper skips anything it has already sent this session, so this costs one call per changed card.
     var ck=(SNAP.boardData&&SNAP.boardData.crmKey)||"", todayK=iso(TODAY);
-    if(ck){ JOBS.forEach(function(j){ if(j.date<todayK) return; if(!(j.who&&j.who.length)&&!(j.prep&&j.prep.who&&j.prep.who.length)) return; syncCardMembers(j.id,{who:j.who,prep:j.prep},ck); }); }
+    if(ck){ JOBS.forEach(function(j){ if(j.date<todayK) return; if(!(j.who&&j.who.length)&&!(j.prep&&j.prep.who&&j.prep.who.length)) return; syncCardMembers(j.id,{who:j.who,prep:j.prep},ck,inWorkshop(j)); }); }
     if(SNAP.boardData&&SNAP.boardData.off){ OFF=JSON.parse(JSON.stringify(SNAP.boardData.off)); } if(SNAP.boardData&&SNAP.boardData.offWhy){ OFF_WHY=JSON.parse(JSON.stringify(SNAP.boardData.offWhy)); } syncOff();
     // HELD DATES FROM THE CRM (Sam, 13 Sep 2026): a request sales are waiting on. Ghost cards: they sit on
     // their day, count the standard crew and time and the van load, and vanish when the hold lapses.
@@ -558,7 +559,7 @@ var SNAP=null, DETAIL={};
     JOBS.forEach(function(j){
       var d={date:j.moved?j.moved.from:j.date,who:j.who,mins:j.mins,drive:j.drive,driveAuto:!!j.driveAuto,cube:j.cubeSet,ignore:j.ignore&&j.ignore.length?j.ignore:undefined,items:j.manual&&j.manual.length?j.manual:undefined,load:j.load&&j.load.any?{m3:j.load.m3,kg:j.load.kg,complete:j.load.complete,rows:j.load.rows.map(function(r){return {n:r.n,type:r.type,m3:r.m3,kg:r.kg,built:r.built,est:r.est};}),unmatched:j.load.unmatched}:undefined,contractor:j.contractor||"",from:j.from||null,by:j.by||null,vehicle:j.vehicle||null,soloOk:j.soloOk||"",qc:j.qc||null,done:j.done||null,hireRef:j.hireRef||"",hireBooked:!!j.hireBooked,prodDue:j.prodDueSet?j.prodDue:null,prep:j.prep?{who:j.prep.who,mins:j.prep.mins,start:j.prep.start,date:j.prep.date,done:j.prep.done||null}:null,
         legs:LEGS.filter(function(L){return L.parent===j.id;}).map(function(L){return {type:L.type,date:L.date,who:L.who,mins:L.mins,drive:L.drive,where:L.where};})};
-      var js=JSON.stringify(d); if(lastSaved[j.id]===js) return; lastSaved[j.id]=js; t.set(j.id,"shared","sched",d); syncCardMembers(j.id,d,CRM_KEY);
+      var js=JSON.stringify(d); if(lastSaved[j.id]===js) return; lastSaved[j.id]=js; t.set(j.id,"shared","sched",d); syncCardMembers(j.id,d,CRM_KEY,inWorkshop(j));
     });
     var extra=CONTRACTORS.filter(function(c){return ["MAK Installations","Courier","Other contractor"].indexOf(c)<0;});
     var bd=JSON.stringify({roundDrive:ROUND_DRIVE,contractors:extra,vansOff:VANS_OFF,crmKey:CRM_KEY,off:OFF,offWhy:OFF_WHY}); if(lastSaved.__board!==bd){ lastSaved.__board=bd; t.set("board","shared","sched",{roundDrive:ROUND_DRIVE,contractors:extra,vansOff:VANS_OFF,crmKey:CRM_KEY,off:OFF,offWhy:OFF_WHY}); }
