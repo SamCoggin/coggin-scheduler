@@ -14,6 +14,7 @@
   .hdr{zoom:.88;flex-shrink:0;display:flex;align-items:center;gap:10px;padding:10px 16px;background:var(--card);border-bottom:1px solid var(--line)}
   .hdr h1{font-size:22px;font-weight:800;margin:0}
   .hdr .src{color:var(--muted);font-size:13px;margin-right:auto;margin-left:6px}
+  .hdr .src.filt{color:#fff;background:var(--red);border-radius:6px;padding:4px 10px;font-weight:800}
   .hdr button{border:0;background:var(--list);border-radius:6px;padding:7px 14px;font-weight:600}
   .hdr button:hover{background:var(--line)}
   .hdr .t{font-weight:800;min-width:210px;text-align:center;font-size:17px}
@@ -969,7 +970,7 @@ var SNAP=null, DETAIL={};
   }
   var view="week", dayCur=iso(TODAY);
   // TO PLAN (Sam, 13 Sep 2026): a filter that hides everything already planned, so the board only shows what still needs operatives, time or travel
-  var NEED=false; try{ NEED=localStorage.getItem("cg-need")==="1"; }catch(e){}
+  var NEED=false;   // Sam, 14 Sep 2026: "THE SCHEDULER SHOULD SHOW EVERYTHING". The filter is off on every open and is never remembered.
   // NOT READY (Sam, 13 Sep 2026): a transport job whose workshop side is not finished. Counts in To plan, shows on the card and in the rail.
   function notReady(j){
     if((!j.site&&!j.collect)||j.isHold||j.isLeg) return null;
@@ -1629,7 +1630,7 @@ var SNAP=null, DETAIL={};
     $("#pdf").onclick=function(){ try{ if(view==="routes") routesPdf(); else schedulePdf(); }catch(e){ alert("The PDF could not be built: "+(e&&e.message||e)); } };
     $("#pdf").textContent=view==="routes"?"Download routes":"Download schedule"; $("#guide").onclick=function(){ location.href="./guide.html"; };
     if(t&&view!=="manager"&&view!=="month") setTimeout(refreshRounds,0);
-    $("#need").hidden=(view==="week"); $("#need").className=NEED?"on":""; var nTP=toPlanCount(); $("#need").textContent="Outstanding"+(nTP?" ("+nTP+")":""); $("#need").title=nTP?nTP+(nTP===1?" job still needs":" jobs still need")+" operatives, time, travel or a van on the "+(view==="day"?"day":view==="month"?"month":"week")+" in view":"Everything in view is planned"; $("#need").onclick=function(){ NEED=!NEED; try{ localStorage.setItem("cg-need",NEED?"1":"0"); }catch(e){} render(); };
+    $("#need").hidden=(view==="week"); $("#need").className=NEED?"on":""; var nTP=toPlanCount(); $("#need").textContent="Outstanding"+(nTP?" ("+nTP+")":""); $("#need").title=nTP?nTP+(nTP===1?" job still needs":" jobs still need")+" operatives, time, travel or a van on the "+(view==="day"?"day":view==="month"?"month":"week")+" in view":"Everything in view is planned"; $("#need").onclick=function(){ NEED=!NEED; render(); };
     document.body.onclick=function(){ if(tipOpen){ tipOpen=null; render(); } };
     $("#vday").className=view==="day"?"on":""; $("#vweek").className=view==="week"?"on":""; $("#vmonth").className=view==="month"?"on":""; $("#vroutes").className=view==="routes"?"on":""; $("#vroutes").onclick=function(){view="routes";render();}; $("#vmanager").className=view==="manager"?"on":""; $("#vmanager").onclick=function(){view="manager";render();};
     $("#vday").onclick=function(){view="day";render();}; $("#vweek").onclick=function(){view="week";render();}; $("#vmonth").onclick=function(){view="month";render();};
@@ -1643,7 +1644,7 @@ var SNAP=null, DETAIL={};
     $("#board").className="board week"; $("#board").style.gridTemplateRows="";
     var mon=addDays(monday(TODAY),week*7); var ISSUES=[], TOPLAN=[], TORECORD=[], HOURS={need:0,avail:0}, DAYH={};
     $("#title").textContent="Week of "+mon.getDate()+" "+MON[mon.getMonth()]+" "+mon.getFullYear();
-    $("#src").textContent=NEED?"Showing only outstanding jobs, still missing operatives, time, travel or a van. Press Outstanding again to see everything.":"Select a job to assign operatives and allocate time.";
+    $("#src").textContent=NEED?"FILTER ON: only outstanding jobs are showing. Press Outstanding to show everything.":"Select a job to assign operatives and allocate time."; $("#src").className="src"+(NEED?" filt":"");
     var old=document.querySelector(".veil"); if(old) old.parentNode.removeChild(old);
     var b=$("#board"); b.innerHTML=""; b.style.gridTemplateRows="1fr auto"; var WEEK_REC={};
     for(var i=0;i<5;i++){
@@ -1719,7 +1720,7 @@ var SNAP=null, DETAIL={};
     rail.appendChild(rc); b.appendChild(rail);
     var strip=$("#strip"); strip.hidden=false; strip.innerHTML="";
     var tile=function(lbl,val,cls,onclick){ var bt=el("button",null); bt.appendChild(el("small",null,lbl)); bt.appendChild(el("b",cls||"",val)); if(onclick) bt.onclick=onclick; strip.appendChild(bt); return bt; };
-    var nTP=toPlanCount(); var tp=tile("Outstanding this week",String(nTP),nTP?"bad":"",function(){ NEED=!NEED; try{ localStorage.setItem("cg-need",NEED?"1":"0"); }catch(e){} render(); }); if(NEED) tp.className="on";
+    var nTP=toPlanCount(); var tp=tile("Outstanding this week",String(nTP),nTP?"bad":"",function(){ NEED=!NEED; render(); }); if(NEED) tp.className="on";
     var reds=ISSUES.filter(function(x){return !x.amber;}).length; tile("Warnings this week",ISSUES.length?String(ISSUES.length):"0",reds?"bad":(ISSUES.length?"warn":""));
     tile("Vans on the road",vansOnRoad()+" of "+VEHICLES.length,vansOnRoad()<VEHICLES.length?"warn":"",function(){ view="routes"; render(); });
     tile("Hours planned",fmt(HOURS.need)+" of "+fmt(HOURS.avail),HOURS.need>HOURS.avail?"bad":"");
