@@ -440,16 +440,19 @@ var SNAP=null, DETAIL={};
   // extra legs on a job: a delivery to a subcontractor, the collection back,
   // a second production stint, a site visit. each has its own day, people,
   // travel and time, and shows on the board like any other job.
-  var LEG_TYPES=[["to_sub","Deliver to subcontractor",true],["from_sub","Collect from subcontractor",true],["production","Production",false],["site","Site visit",true]];
+  var LEG_TYPES=[["to_sub","Deliver to subcontractor",true],["from_sub","Collect from subcontractor",true],["production","Production",false],["site","Site visit",true],["yard","Yard",false]];
   var LEGS=[];
   function legJobs(){
     return LEGS.map(function(L,i){
       var parent=JOBS.filter(function(j){return j.id===L.parent;})[0]; if(!parent) return null;
       var tdef=LEG_TYPES.filter(function(t){return t[0]===L.type;})[0];
       var j={id:L.parent+":leg"+i,leg:L,parentJob:parent,title:parent.title,label:parent.label,stageLabel:tdef[1]+(L.where?": "+L.where:""),date:L.date,start:null,who:L.who,contractor:"",mins:L.mins,site:tdef[2],drive:L.drive,isLeg:true};
+      // a yard leg carries the parent's load, and its standard is a yard load or unload of that load
+      if(L.type==="yard"){ j.movement=/unload|receive/i.test(L.where||"")?"Yard unload":"Yard load"; j.work=parent.work; j.load=parent.load; j.items=parent.items; j.allItems=parent.allItems; j.cubeSet=parent.cubeSet; }
       return j; }).filter(Boolean);
   }
   function allJobs(){ return JOBS.concat(legJobs()).concat(HOLDS); }
+  window.__allJobs=allJobs; // reachable by check.mjs
   var prevWork=function(k){ var d=new Date(k+"T12:00"); do{ d.setDate(d.getDate()-1); }while(d.getDay()===0||d.getDay()===6); return iso(d); };
   // the list a card sits in says what it is:
   //   Not Started / In-progress   workshop work, one card, on the day it is being done
@@ -507,6 +510,12 @@ var SNAP=null, DETAIL={};
     JOBS.forEach(function(j){ if(LEGS.some(function(L){return L.parent===j.id;})) return; var dd=DETAIL[j.id]; if(!dd) return;
       supportLegs(dd.desc).forEach(function(L){ if(!L.date||L.by!=="us") return; var pc=/\(([A-Z]{1,2}\d[A-Z\d]?\s*\d[A-Z]{2})\)/i.exec(L.where); var area=pc?pc[1].replace(/\d.*$/,"").toUpperCase():"";
         LEGS.push({parent:j.id,type:L.type,date:L.date,who:[],mins:null,drive:area&&DRIVE[area]?Math.round(DRIVE[area].h*2*60*TRAFFIC/5)*5:null,where:L.where+(L.what?", "+L.what:"")}); }); });
+    // THE PARTS OF A JOB (Sam, 14 Sep 2026). A yard part becomes a yard leg on the due day, planned like any
+    // other leg with its own operatives and time. Transport by somebody else makes the main job a contractor
+    // job: it shows under Transport for information, needs no van and no operatives of ours.
+    JOBS.forEach(function(j){ var dd=DETAIL[j.id]; if(!dd) return; var P=partsOf(dd.desc); if(!P.known) return; j.parts=P;
+      var carrier=partsCarrier(P); if(carrier&&!j.contractor&&j.site) j.contractor=carrier;
+      if(P.yard&&!LEGS.some(function(L){return L.parent===j.id&&L.type==="yard";})) LEGS.push({parent:j.id,type:"yard",date:j.date,who:[],mins:null,drive:null,where:P.yard}); });
     if(SNAP.boardData&&SNAP.boardData.roundDrive){ for(var k in SNAP.boardData.roundDrive) ROUND_DRIVE[k]=SNAP.boardData.roundDrive[k]; }
     if(SNAP.boardData&&SNAP.boardData.vansOff){ VANS_OFF=SNAP.boardData.vansOff.slice(); }
     // CATCH-UP (Sam, 14 Sep 2026: "why are members not attached even though some are assigned?"): jobs planned before

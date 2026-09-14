@@ -76,6 +76,7 @@ var HEAD=[
   [/^(items.*|load details|warranty\/job issue|deliver\/collect|additional items.*)$/i,"what"],
   [/^(access.*|logistics|safety.*)$/i,"access"],
   [/^subcontract work and materials$/i,"support"],
+  [/^parts$/i,"parts"],
   [/^(job|ref|service|delivery details|clearance details|refurb collection details|buyback drop-off details|delivery info|other items|additional info)$/i,"skip"]
 ];
 function cleanDesc(txt){
@@ -86,7 +87,7 @@ function cleanDesc(txt){
 }
 function parseDesc(txt){
   txt=cleanDesc(txt);
-  var groups={contact:[],where:[],what:[],access:[],notes:[],support:[]}, cur="notes";
+  var groups={contact:[],where:[],what:[],access:[],notes:[],support:[],parts:[]}, cur="notes";
   txt.split("\n").forEach(function(raw){
     var l=raw.replace(/^\s*[-*_]+\s*/,"").replace(/_+$/,"").trim(); if(!l) return;
     var bare=l.replace(/:$/,"").trim(), hit=null;
@@ -213,6 +214,7 @@ function todayIso(){ var d=new Date(); return d.getFullYear()+"-"+String(d.getMo
 // site time per operative = (base + handling minutes for the items) / crew. fixed jobs have mins instead.
 var STANDARD=[
   {re:/skip exchange/i,            crew:1, mins:20},
+  {re:/^yard (load|unload)$/i,     crew:2, base:15},
   {re:/^yard$/i,                   crew:2, mins:60},
   {re:/customer delivers$/i,       crew:2, mins:60},
   {re:/site visit/i,               crew:1, mins:45},
@@ -235,7 +237,8 @@ function standardFor(label,load){
   if(small) crew=1; if(big) crew+=1;
   var total=st.base+load.min, each=Math.ceil(total/crew/5)*5;
   var what=load.rows.map(function(r){return r.n+" "+r.type.toLowerCase()+(r.n>1?"s":"");}).join(", ");
-  var why=st.base+" minutes for parking, the contact and the sign off, plus "+load.min+" minutes to carry in and place "+what+".";
+  var yard=/^yard/i.test(String(mv)), unload=/unload/i.test(String(mv));
+  var why=yard?(st.base+" minutes to set out and clear away, plus "+load.min+" minutes to "+(unload?"unload and put away ":"bring out and load ")+what+"."):(st.base+" minutes for parking, the contact and the sign off, plus "+load.min+" minutes to carry in and place "+what+".");
   why+=crew===1?" One operative can manage that alone, so "+Math.max(15,each)+" minutes.":" Shared between "+crew+" operatives that is "+Math.max(15,each)+" minutes each"+(big?". One extra operative because the load is big":(twoHanded?". Two because some items need two to carry":""))+".";
   return {crew:crew,mins:Math.max(15,each),why:why};
 }
@@ -335,6 +338,23 @@ function vehicleAdvice(m3,kg,lutonsOnRoad,opts){
 // ── subcontract legs written on the card by the CRM (13 Sep 2026) ──
 // "10 seat pads: Deliver to Russkell Upholstery (PR1 2AB) on 2026-09-15"
 // "10 seat pads: Collect from Russkell Upholstery (PR1 2AB) on 2026-09-22"
+// THE PARTS OF A JOB (Sam, 14 Sep 2026: a sub-contractor collects, the customer loads, the truck comes back to
+// Forton and our operatives unload it). The CRM writes a Parts block on the card; this reads it back:
+//   {production:true/false, site:"clear and load"|"", transport:"G&T Express, customer loads"|"our van"|..., ours:true/false, yard:"unload at Forton"|""}
+function partsOf(desc){
+  var g=parseDesc(desc||""), P={production:false,site:"",transport:"",ours:false,yard:"",known:false};
+  (g.parts||[]).forEach(function(l){
+    var m=/^(production|site|transport|yard):\s*(.*)$/i.exec(l.trim()); if(!m) return; P.known=true;
+    var k=m[1].toLowerCase(), v=m[2].trim(), none=/^(no|none)$/i.test(v);
+    if(k==="production") P.production=!none;
+    else if(k==="site") P.site=none?"":v;
+    else if(k==="transport"){ P.transport=none?"":v; P.ours=/^our van/i.test(v); }
+    else if(k==="yard") P.yard=none?"":v;
+  });
+  return P;
+}
+// the firm named on a transport line: "G&T Express, customer loads" -> "G&T Express"; "our van" and "customer ..." -> ""
+function partsCarrier(P){ if(!P||!P.transport||P.ours) return ""; if(/^(customer|seller)\b/i.test(P.transport)) return ""; return P.transport.split(",")[0].trim(); }
 function supportLegs(desc){
   var g=parseDesc(desc||""), out=[];
   (g.support||[]).forEach(function(l){
