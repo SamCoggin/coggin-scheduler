@@ -117,19 +117,28 @@ var WORKSHOP_LISTS=/Workshop Jobs - (Not Started|In-progress)/;
 var READY_LIST=/Workshop Jobs - Ready/;
 // QC evidence is the card checklist (photos, labels): all items ticked
 function qcDone(badges){ return !!(badges&&badges.checkItems>0&&badges.checkItemsChecked>=badges.checkItems); }
-// ── one label on every card, the board's own names (Sam, 14 Sep 2026: "keep this really simple and dummy proof") ──
-// The CRM sends one of the board's labels: Delivery/Installation, Customer Collecting, Removal Job, Recycling
-// Delivery, Collect & Return, Donations, Warranty/Job Issue. The Scheduler reads WORK (what the job is) and
-// MOVEMENT (which way the furniture travels) from that name through OLD_WORK and OLD_MOVEMENT below. The
-// two-label names are still understood in case a card was made with them. Who carries it out is the
-// Transported By choice on the card, never a label.
-var WORK_LABELS=["Resale","Refurb","Clearance","Recycling","Buyback","Donation","Warranty"];
+// ── one label that says both things (Sam, 14 Sep 2026: "Donation - Delivery... Resale - Courier and Resale - Sub-contractor") ──
+// The CRM puts one label on every card, "Work - Movement", spelled exactly as the board spells it. The Scheduler
+// reads WORK (what the job is) and MOVEMENT (which way the furniture travels) back out of that name. Courier and
+// Sub-contractor say who carries it, so the movement for those follows the work: a resale goes out, a clearance
+// comes in, a refurb goes both ways. The older names (two labels, and the board's original single labels) are
+// still understood so nothing breaks on a card made before the switch.
+var WORK_LABELS=["Resale","Refurb","Clearance","Recycling","Buyback","Donation","Warranty","Job Issue"];
 var MOVEMENT_LABELS=["Delivery","Collection","Collect and Return","Customer Delivers","Customer Collects","Customer Delivers and Collects","Site Visit","Yard"];
 var OLD_MOVEMENT={"delivery/installation":"Delivery","removal job":"Collection","collect & return":"Collect and Return","customer collecting":"Customer Collects","courier collecting":"Customer Collects","courier collects":"Customer Collects","recycling delivery":"Customer Delivers","new stock delivery":"Customer Delivers","stock delivery":"Customer Delivers","plastic delivery":"Customer Delivers","plastic collection":"Collection","skip exchange":"Yard","warranty/job issue":"Site Visit","donations":"Delivery","charity donation":"Delivery"};
 var OLD_WORK={"delivery/installation":"Resale","removal job":"Clearance","collect & return":"Refurb","recycling delivery":"Recycling","new stock delivery":"Buyback","stock delivery":"Buyback","plastic delivery":"Recycling","plastic collection":"Recycling","skip exchange":"Recycling","warranty/job issue":"Warranty","donations":"Donation","charity donation":"Donation"};
+// the movement half of a combined label, by the words after the dash
+var COMBINED_MOVE={"delivery/installation":"Delivery","delivery":"Delivery","redelivery":"Delivery","customer collects":"Customer Collects","collect & return":"Collect and Return","customer drops off":"Customer Delivers and Collects","on site":"Site Visit","site visit":"Site Visit","we collect":"Collection","collection":"Collection","customer delivers":"Customer Delivers","seller delivers":"Customer Delivers"};
+// who carries it: for those the movement follows the work
+var CARRIER_MOVE={"Resale":"Delivery","Refurb":"Collect and Return","Clearance":"Collection","Recycling":"Customer Delivers","Buyback":"Collection","Donation":"Delivery","Warranty":"Site Visit","Job Issue":"Site Visit"};
+function splitLabel(name){ var i=String(name||"").indexOf(" - "); if(i<0) return null; var w=name.slice(0,i).trim(), m=name.slice(i+3).trim(); if(WORK_LABELS.indexOf(w)<0) return null; return {work:w,move:m}; }
+function combinedMovement(name){ var p=splitLabel(name); if(!p) return ""; var k=p.move.toLowerCase(); if(k==="courier"||k==="sub-contractor") return CARRIER_MOVE[p.work]||""; return COMBINED_MOVE[k]||""; }
+function combinedWork(name){ var p=splitLabel(name); return p?p.work:""; }
+// Courier or Sub-contractor on the label: who the card says is carrying it, "" when it is our crew
+function carrierOf(labels){ var n=labelNames(labels); for(var i=0;i<n.length;i++){ var p=splitLabel(n[i]); if(p&&/^(courier|sub-contractor)$/i.test(p.move)) return p.move; } return ""; }
 function labelNames(labels){ return (labels||[]).map(function(l){return typeof l==="string"?l:(l&&l.name)||"";}).filter(Boolean); }
-function movementOf(labels){ var n=labelNames(labels); for(var i=0;i<n.length;i++){ if(MOVEMENT_LABELS.indexOf(n[i])>=0) return n[i]; } for(var k=0;k<n.length;k++){ var m=OLD_MOVEMENT[n[k].toLowerCase()]; if(m) return m; } return ""; }
-function workOf(labels){ var n=labelNames(labels); for(var i=0;i<n.length;i++){ if(WORK_LABELS.indexOf(n[i])>=0) return n[i]; } for(var k=0;k<n.length;k++){ var w=OLD_WORK[n[k].toLowerCase()]; if(w) return w; } return ""; }
+function movementOf(labels){ var n=labelNames(labels); for(var c=0;c<n.length;c++){ var cm=combinedMovement(n[c]); if(cm) return cm; } for(var i=0;i<n.length;i++){ if(MOVEMENT_LABELS.indexOf(n[i])>=0) return n[i]; } for(var k=0;k<n.length;k++){ var m=OLD_MOVEMENT[n[k].toLowerCase()]; if(m) return m; } return ""; }
+function workOf(labels){ var n=labelNames(labels); for(var c=0;c<n.length;c++){ var cw=combinedWork(n[c]); if(cw) return cw; } for(var i=0;i<n.length;i++){ if(WORK_LABELS.indexOf(n[i])>=0) return n[i]; } for(var k=0;k<n.length;k++){ var w=OLD_WORK[n[k].toLowerCase()]; if(w) return w; } return ""; }
 // our van goes out: the transport movements
 function isSiteMove(mv){ return mv==="Delivery"||mv==="Collection"||mv==="Collect and Return"||mv==="Site Visit"; }
 // they come to Forton: loading only, no van of ours
