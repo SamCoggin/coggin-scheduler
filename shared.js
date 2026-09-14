@@ -147,6 +147,19 @@ function isSiteLabels(labels){ return isSiteMove(movementOf(labels)); }
 function isCollectLabels(labels){ return isCollectMove(movementOf(labels)); }
 // kept for the old callers
 var SITE_LABELS={ test:function(name){ return isSiteMove(movementOf([name])); } };
+// OPERATIVES BECOME MEMBERS OF THE CARD (Sam, 14 Sep 2026: the crew use the Trello app, where only what is
+// native to the card shows, and they want the headshot of whoever is on the job). Whenever a plan is saved the
+// CRM's Trello connection is asked to set the card's crew members to the assigned operatives, transport and
+// production together. Anyone on the card who is not crew is left alone. Needs the CRM key from the Manager view.
+var CRM_MEMBERS_URL="https://coggin-sos-os.base44.app/api/apps/69c930a6240fba922f369aa2/functions/trelloSyncMembers";
+var _memberSync={};
+function syncCardMembers(cardId,plan,crmKey){
+  if(!cardId||!crmKey) return;
+  var names=[].concat((plan&&plan.who)||[],(plan&&plan.prep&&plan.prep.who)||[]).filter(function(n,i,a){return CREW.indexOf(n)>=0&&a.indexOf(n)===i;});
+  var key=names.slice().sort().join(",");
+  if(_memberSync[cardId]===key) return; _memberSync[cardId]=key;
+  try{ fetch(CRM_MEMBERS_URL,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({key:crmKey,card_id:cardId,names:names,crew:CREW})}).catch(function(){}); }catch(e){}
+}
 function fmt(m){ if(m==null) return ""; if(m<60) return m+" min"; var h=Math.floor(m/60), r=m%60; return h+"h"+(r?" "+r+"m":""); }
 // what the front of the card says, from the saved plan
 function badgeText(d,site){

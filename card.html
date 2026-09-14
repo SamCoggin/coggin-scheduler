@@ -143,7 +143,7 @@
       return Promise.all([cl,loadOthers()]).then(render);
     });
   }
-  function save(){ clearTimeout(saving); saving=setTimeout(function(){ t.set("card","shared","sched",d); },250); }
+  function save(){ clearTimeout(saving); saving=setTimeout(function(){ t.set("card","shared","sched",d); if(card&&card.id) syncCardMembers(card.id,d,boardData.crmKey||""); },250); }
   function hm(get,set,label){
     var w=el("span","row"); var v=get();
     var h=el("input"); h.type="number"; h.min="0"; h.value=v==null?"":String(Math.floor(v/60)); h.placeholder="0"; h.setAttribute("aria-label",label+" hours");
