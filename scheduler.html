@@ -988,7 +988,9 @@ var SNAP=null, DETAIL={};
   function needsRecord(j,isPrep){ var part=isPrep?j.prep:j; if(!part||j.isHold||j.isLeg) return false; var k=partDate(j,isPrep); if(!dayPassed(k)) return false; if(!isPrep&&j.contractor&&!j.who.length) return false; if(!part.who.length&&part.mins==null) return false; return !part.done; }
   function needsPlan(j,isPrep){
     if(j.isHold) return false; if(j.isLeg) return !j.who.length||j.mins==null;
-    var part=isPrep?j.prep:j; if(!isPrep&&j.contractor&&!j.who.length) return false;
+    var part=isPrep?j.prep:j;
+    // A contractor job needs nothing from us on the day, but its workshop side can still be unplanned (Harper Interiors, 14 Sep 2026: hidden because G&T Express carry it, while production was not scheduled).
+    if(!isPrep&&j.contractor&&!j.who.length) return !!notReady(j);
     if(!part.who.length||part.mins==null) return true;
     return !isPrep&&!!j.site&&((j.drive==null&&!j.onRound)||(!j.vehicle&&!attending(j))||hireDue(j)||!!notReady(j)||!!shortCrew(j)||!!j.moved);
   }
