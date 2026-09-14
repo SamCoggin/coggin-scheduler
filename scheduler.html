@@ -508,6 +508,11 @@ var SNAP=null, DETAIL={};
         LEGS.push({parent:j.id,type:L.type,date:L.date,who:[],mins:null,drive:area&&DRIVE[area]?Math.round(DRIVE[area].h*2*60*TRAFFIC/5)*5:null,where:L.where+(L.what?", "+L.what:"")}); }); });
     if(SNAP.boardData&&SNAP.boardData.roundDrive){ for(var k in SNAP.boardData.roundDrive) ROUND_DRIVE[k]=SNAP.boardData.roundDrive[k]; }
     if(SNAP.boardData&&SNAP.boardData.vansOff){ VANS_OFF=SNAP.boardData.vansOff.slice(); }
+    // CATCH-UP (Sam, 14 Sep 2026: "why are members not attached even though some are assigned?"): jobs planned before
+    // the member sync existed were never sent. Every open sends today's and future jobs that have operatives; the
+    // helper skips anything it has already sent this session, so this costs one call per changed card.
+    var ck=(SNAP.boardData&&SNAP.boardData.crmKey)||"", todayK=iso(TODAY);
+    if(ck){ JOBS.forEach(function(j){ if(j.date<todayK) return; if(!(j.who&&j.who.length)&&!(j.prep&&j.prep.who&&j.prep.who.length)) return; syncCardMembers(j.id,{who:j.who,prep:j.prep},ck); }); }
     if(SNAP.boardData&&SNAP.boardData.off){ OFF=JSON.parse(JSON.stringify(SNAP.boardData.off)); } if(SNAP.boardData&&SNAP.boardData.offWhy){ OFF_WHY=JSON.parse(JSON.stringify(SNAP.boardData.offWhy)); } syncOff();
     // HELD DATES FROM THE CRM (Sam, 13 Sep 2026): a request sales are waiting on. Ghost cards: they sit on
     // their day, count the standard crew and time and the van load, and vanish when the hold lapses.
