@@ -359,7 +359,7 @@
   <h1>Scheduler</h1>
   <span class="src" id="src"></span>
   <span class="views"><button id="vday">Day</button><button id="vweek" class="on">Week</button><button id="vmonth">Month</button><button id="vroutes">Routes</button><button id="vmanager">Manager</button></span>
-  <button id="need" title="Show only the jobs still missing operatives, time, travel or a van">Outstanding</button><button id="prev">Back</button><span class="t" id="title"></span><button id="next">Next</button><button id="pdf" title="Download as a PDF file">Download schedule</button><button id="guide" title="How to use the Scheduler">Guide</button>
+  <button id="need" title="Show only the jobs still missing operatives, time, travel or a van">Outstanding</button><button id="prev">Back</button><span class="t" id="title"></span><button id="next">Next</button><button id="pdf" title="Download as a PDF file">Download schedule</button><button id="sheets" title="One page per operative for the day in view, to hand out in the morning and hand back at night" hidden>Job sheets</button><button id="guide" title="How to use the Scheduler">Guide</button>
 </div>
 <div class="strip" id="strip" hidden></div>
 <div class="board" id="board"></div>
@@ -1534,6 +1534,61 @@ var SNAP=null, DETAIL={};
     pdfPortraitFooter(doc,"Loading sheet, "+who+", "+niceDay(k)+", printed "+new Date().toLocaleDateString("en-GB"));
     doc.save("loading-"+k+"-"+who.toLowerCase()+".pdf");
   }
+  // JOB SHEETS PER OPERATIVE (Sam, 14 Sep 2026): the crew use the Trello app and cannot see the plan, so each
+  // operative gets a printed page for the day at the start, in driving order, with the facts the card holds and
+  // the items to tick, and hands it back at the end with the times and what happened written in.
+  function clock(m){ if(m==null) return ""; m=Math.round(m); var h=Math.floor(m/60), r=m%60; return (h<10?"0":"")+h+":"+(r<10?"0":"")+r; }
+  function crewSheetsPdf(k){
+    var dj=allJobs().filter(function(j){return onDay(j,k)&&!j.isHold;});
+    var people=TEAM.filter(function(w){ return dj.some(function(j){return j.who.indexOf(w)>=0;})||JOBS.some(function(j){return j.prep&&j.prep.date&&daysOf(j.prep).indexOf(k)>=0&&j.prep.who.indexOf(w)>=0;}); });
+    if(!people.length){ alert("Nobody is on a job on "+niceDay(k)+" yet."); return; }
+    var J=window.jspdf&&window.jspdf.jsPDF; if(!J) return; var doc=new J({orientation:"portrait",unit:"mm",format:"a4"}); var firstPage=true;
+    people.forEach(function(w){
+      if(!firstPage) doc.addPage(); firstPage=false;
+      var tl=dayTimeline(k,w), jobs=dj.filter(function(j){return j.who.indexOf(w)>=0;}), yard=jobs.filter(function(j){return !j.site;});
+      var preps=JOBS.filter(function(j){return j.prep&&j.prep.date&&daysOf(j.prep).indexOf(k)>=0&&j.prep.who.indexOf(w)>=0;});
+      var mates={}; jobs.forEach(function(j){ j.who.forEach(function(x){ if(x!==w) mates[x]=1; }); }); var mateList=Object.keys(mates);
+      var vans=[]; jobs.forEach(function(j){ var vt=vehicleText(j); if(vt&&vt!=="No van"&&vans.indexOf(vt)<0) vans.push(vt); });
+      doc.setFont("helvetica","bold"); doc.setFontSize(20); doc.setTextColor(17,17,17); doc.text(w+", "+niceDay(k),12,17);
+      doc.setFont("helvetica","normal"); doc.setFontSize(9.5); doc.setTextColor(PDF_GREY[0],PDF_GREY[1],PDF_GREY[2]);
+      var sub=[tl.stops.length?(tl.stops.length===1?"1 stop":tl.stops.length+" stops")+", leave the yard 08:00, back about "+clock(tl.back):"No driving today", vans.length?"Van: "+vans.join(", "):"", mateList.length?"With: "+mateList.join(", "):"", "Finish about "+clock(tl.end)];
+      doc.text(sub.filter(Boolean).join(".  ")+".",12,23); var y=30;
+      if(tl.driveBreak||tl.longDay){ doc.setFont("helvetica","bold"); doc.setTextColor(PDF_RED[0],PDF_RED[1],PDF_RED[2]); doc.text((tl.driveBreak?"Take a 45 minute break before 4h 30m of driving. ":"")+(tl.longDay?"Long day: over 11 hours.":""),12,y); y+=6; }
+      var block=function(title,right){ y=pdfBand(doc,y,title+(right?"    "+right:"")); };
+      var facts=function(j,site){
+        var lines=[]; var f=siteFacts(j), pc=pcOf(j);
+        if(site){ if(pc) lines.push(["Postcode",pc]); if(f.contact.length) lines.push(["Contact",f.contact.join(", ")]); if(f.access.length) lines.push(["Access",f.access.join(". ")]); if(windowText(j)) lines.push(["Time window",windowText(j).replace(/^,\s*/,"")]); }
+        if(j.contractor) lines.push([site?"Transported by":"With",j.contractor]);
+        var items=itemLines(j);
+        doc.setFontSize(9.5); doc.setTextColor(17,17,17);
+        lines.forEach(function(l){ if(y>270){ doc.addPage(); y=14; } doc.setFont("helvetica","bold"); doc.text(l[0]+":",14,y); doc.setFont("helvetica","normal"); var tx=doc.splitTextToSize(l[1],150); doc.text(tx,44,y); y+=tx.length*4.5; });
+        if(items.length){ if(y>262){ doc.addPage(); y=14; } doc.setFont("helvetica","bold"); doc.text("Items:",14,y); y+=5; doc.setFont("helvetica","normal");
+          items.forEach(function(it){ if(y>275){ doc.addPage(); y=14; } doc.setDrawColor(90,90,90); doc.setLineWidth(.3); doc.rect(16,y-3.4,4,4); var tx=doc.splitTextToSize(it,160); doc.text(tx,23,y); y+=Math.max(5.5,tx.length*4.5); }); }
+        if(y>250){ doc.addPage(); y=14; }
+        doc.setFont("helvetica","bold"); doc.setFontSize(9); doc.text("Arrived:",14,y+4); doc.text("Left:",54,y+4); doc.text("Done:",90,y+4); doc.text("Notes:",120,y+4);
+        doc.setDrawColor(150,150,150); doc.line(29,y+4.5,50,y+4.5); doc.line(64,y+4.5,86,y+4.5); doc.rect(102,y+.6,4,4); doc.setFont("helvetica","normal"); doc.setFontSize(8); doc.text("Yes",107,y+4); doc.rect(112,y+.6,4,4); doc.setFontSize(8); doc.text("No",117,y+4); doc.setFontSize(9); doc.line(132,y+4.5,198,y+4.5); doc.line(14,y+12,198,y+12);
+        y+=17;
+      };
+      if(tl.stops.length){
+        block("ON THE ROAD", tl.drive?fmt(tl.drive)+" driving":"");
+        tl.stops.forEach(function(x,n){ var j=x.j; if(y>245){ doc.addPage(); y=14; }
+          doc.setFont("helvetica","bold"); doc.setFontSize(12); doc.setTextColor(17,17,17); doc.text((n+1)+". "+j.title,12,y+1);
+          doc.setFont("helvetica","normal"); doc.setFontSize(9); doc.setTextColor(PDF_GREY[0],PDF_GREY[1],PDF_GREY[2]);
+          doc.text([j.work,j.movement||j.label].filter(Boolean).join(", ")+"   Arrive about "+clock(x.arrive)+(x.wait?", wait until "+clock(x.start):"")+(j.mins!=null?", allow "+fmt(j.mins):", no time set")+(x.by!=null?", must finish by "+clock(x.by):""),12,y+6); y+=11;
+          facts(j,true); });
+      }
+      if(yard.length){ block("IN THE YARD",""); yard.forEach(function(j){ if(y>245){ doc.addPage(); y=14; } doc.setFont("helvetica","bold"); doc.setFontSize(12); doc.setTextColor(17,17,17); doc.text(j.title,12,y+1); doc.setFont("helvetica","normal"); doc.setFontSize(9); doc.setTextColor(PDF_GREY[0],PDF_GREY[1],PDF_GREY[2]); doc.text([j.work,j.movement||j.label].filter(Boolean).join(", ")+"   "+(j.mins!=null?"Allow "+fmt(j.mins):"No time set")+(j.collect&&j.collect.from?", customer arrives after "+j.collect.from:""),12,y+6); y+=11; facts(j,false); }); }
+      if(preps.length){ block("PRODUCTION",""); preps.forEach(function(j){ if(y>245){ doc.addPage(); y=14; } doc.setFont("helvetica","bold"); doc.setFontSize(12); doc.setTextColor(17,17,17); doc.text(j.title,12,y+1); doc.setFont("helvetica","normal"); doc.setFontSize(9); doc.setTextColor(PDF_GREY[0],PDF_GREY[1],PDF_GREY[2]); doc.text("Required for "+niceDay(j.date)++(j.prep.mins!=null?", allow "+fmt(j.prep.mins):", no time set")+(j.prep.who.length>1?" each, with "+j.prep.who.filter(function(x){return x!==w;}).join(", "):""),12,y+6); y+=11; facts(j,false); }); }
+      if(y>240){ doc.addPage(); y=14; }
+      y=pdfBand(doc,y,"END OF DAY");
+      doc.setFont("helvetica","bold"); doc.setFontSize(9.5); doc.setTextColor(17,17,17); doc.text("Started:",12,y+4); doc.text("Finished:",60,y+4); doc.text("Van checked and fuelled:",112,y+4); doc.setDrawColor(150,150,150); doc.line(28,y+4.5,54,y+4.5); doc.line(78,y+4.5,106,y+4.5); doc.rect(158,y+.6,4,4); doc.setFont("helvetica","normal"); doc.setFontSize(8); doc.text("Yes",163,y+4); doc.rect(172,y+.6,4,4); doc.text("No",177,y+4); y+=10;
+      y=pdfLines(doc,y,"Anything that did not go to plan, damage, or something the office needs to know",3);
+      doc.setFont("helvetica","bold"); doc.setFontSize(9.5); doc.text("Signed:",12,y+4); doc.line(27,y+4.5,90,y+4.5); doc.text("Handed back to:",110,y+4); doc.line(140,y+4.5,198,y+4.5);
+    });
+    pdfPortraitFooter(doc,"Job sheets, "+niceDay(k)+". Hand this back at the end of the day.");
+    doc.save("job-sheets-"+k+".pdf");
+  }
+  window.__crewSheetsPdf=crewSheetsPdf; // reachable by check.mjs
   function routesPdf(){
     var mon=addDays(monday(TODAY),week*7), days=[]; for(var i=0;i<5;i++) days.push(iso(addDays(mon,i)));
     var doc=pdfDoc("Routes, "+niceDay(days[0])+" to "+niceDay(days[4])+" "+mon.getFullYear(),"Printed "+new Date().toLocaleString("en-GB",{day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"})+". One colour per day, stops numbered in driving order from the yard. Miles are road estimates."); if(!doc) return;
@@ -1628,7 +1683,7 @@ var SNAP=null, DETAIL={};
   function render(){
     persist();
     $("#pdf").onclick=function(){ try{ if(view==="routes") routesPdf(); else schedulePdf(); }catch(e){ alert("The PDF could not be built: "+(e&&e.message||e)); } };
-    $("#pdf").textContent=view==="routes"?"Download routes":"Download schedule"; $("#guide").onclick=function(){ location.href="./guide.html"; };
+    $("#pdf").textContent=view==="routes"?"Download routes":"Download schedule"; $("#sheets").hidden=view!=="day"; $("#sheets").onclick=function(){ try{ crewSheetsPdf(dayCur); }catch(e){ alert("The job sheets could not be built: "+(e&&e.message||e)); } }; $("#guide").onclick=function(){ location.href="./guide.html"; };
     if(t&&view!=="manager"&&view!=="month") setTimeout(refreshRounds,0);
     $("#need").hidden=(view==="week"); $("#need").className=NEED?"on":""; var nTP=toPlanCount(); $("#need").textContent="Outstanding"+(nTP?" ("+nTP+")":""); $("#need").title=nTP?nTP+(nTP===1?" job still needs":" jobs still need")+" operatives, time, travel or a van on the "+(view==="day"?"day":view==="month"?"month":"week")+" in view":"Everything in view is planned"; $("#need").onclick=function(){ NEED=!NEED; render(); };
     document.body.onclick=function(){ if(tipOpen){ tipOpen=null; render(); } };

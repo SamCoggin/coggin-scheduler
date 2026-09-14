@@ -18,3 +18,10 @@ setTimeout(()=>{ const c=[...(function walk(n,o=[]){o.push(n);(n.children||[]).f
   const v=body.children.find(n=>n.className==='veil'); const T=(function walk(n,o=[]){o.push(n);(n.children||[]).forEach(x=>walk(x,o));return o;})(v).map(x=>x.textContent).filter(Boolean).join(' ');
   console.log('clean contact:',/Contact Michael Knowles,\s+07946508174/.test(T),'| items:',/Items \(1\) 5 x Metal filing cabinets/.test(T),'| no ** left:',!/\*\*|\\_|Sign-off/.test(T)); },400);
 setTimeout(()=>{ const walk=(n,o=[])=>{o.push(n);(n.children||[]).forEach(c=>walk(c,o));return o;}; const T=walk(reg['#board']).map(x=>x.textContent).filter(Boolean).join(' '); console.log('production due shown:',/Skipton - Harrison Drury .*(Production due Fri 11 Sep|Production not scheduled)/.test(T)); },500);
+
+// JOB SHEETS: a fake jsPDF records every line of text; the sheet for the day must name the operative, the job and the hand-back block.
+setTimeout(()=>{ const out=[]; class FakeDoc{ constructor(){ this.internal={pageSize:{}}; } setFont(){} setFontSize(){} setTextColor(){} setFillColor(){} setDrawColor(){} setLineWidth(){} roundedRect(){} rect(){} line(){} addPage(){} setPage(){} getNumberOfPages(){return 1;} splitTextToSize(t){return String(t).split('\n');} text(t){ out.push(Array.isArray(t)?t.join(' '):String(t)); } save(n){ out.push('SAVED '+n); } }
+  global.window.jspdf={jsPDF:FakeDoc}; global.alert=m=>out.push('ALERT '+m);
+  try{ global.window.__crewSheetsPdf('2026-09-15'); }catch(e){ console.log('SHEETS THROW',e.stack.split('\n').slice(0,3).join('\n')); }
+  const T=out.join(' | '); console.log('job sheets:',/Bart, Tue 15 Sep/.test(T)&&/Skipton - Harrison Drury/.test(T)&&/no time set/.test(T)&&/END OF DAY/.test(T)&&/SAVED job-sheets-2026-09-15\.pdf/.test(T));
+},700);
