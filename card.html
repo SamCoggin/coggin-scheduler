@@ -300,7 +300,7 @@
       var ws=section("labour","Labour",W.date?niceShort(W.date):"");
       ws.appendChild(el("div","who",W.where.charAt(0).toUpperCase()+W.where.slice(1)+(PARTS&&PARTS.transport&&!PARTS.ours?", "+PARTS.transport+" carries it":"")+"."));
       var Lw=loadNow(), wstd=standardFor(/unload|receive/i.test(W.where)?"Labour unload":"Labour load",Lw), overW=wstd?aboveStandard(wstd,W.who,W.mins):null;
-      if(!W.who.length) ws.appendChild(banner("Unassigned. Choose who is on it in the labour."));
+      if(!W.who.length) ws.appendChild(banner("Unassigned. Choose who is on it at Forton."));
       if(overW) ws.appendChild(banner("Above standard: "+overW+"."));
       ws.appendChild(rowEl("wwho",W.who.length===1?"Operative":"Operatives",W.who.length?W.who.join(", "):"Unassigned",function(ed){ ed.appendChild(people(W,false,function(){ var s3=standardFor(/unload|receive/i.test(W.where)?"Labour unload":"Labour load",loadNow()); return s3&&s3.mins!=null?s3.mins:null; })); },W.who.length?"":"bad"));
       ws.appendChild(rowEl("wdate","Day",W.date?niceShort(W.date):"Not set",function(ed){ var wr=el("div","row"); var wd=el("input"); wd.type="date"; wd.value=W.date||""; wd.onchange=function(){ W.date=wd.value||null; save(); render(); }; wr.appendChild(wd); ed.appendChild(wr); ed.appendChild(el("div","hint","The day the truck is unloaded or the load is put out. It shows under Labour Operations in the Scheduler.")); },W.date?"":"todo"));

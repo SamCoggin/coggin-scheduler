@@ -143,11 +143,11 @@
     <li>The stops are put in driving order: deliveries before collections, then any cut-off times, then nearest first.</li>
     <li>The round is routed as one trip, labour to each stop to labour, and the travel is the sum of the real legs plus a fifth for traffic. The round card says "Road time labour to 3 stops and back".</li>
     <li>Until it is looked up, the round uses the longest single journey plus 20 minutes a stop, and the card says so.</li>
-    <li>The day plan walks the real legs, so the arrival at each stop, any wait for a window, and the time back at the labour follow the road. The Routes view and the routes sheet show each leg's miles.</li>
+    <li>The day plan walks the real legs, so the arrival at each stop, any wait for a window, and the time back at Forton follow the road. The Routes view and the routes sheet show each leg's miles.</li>
     <li>Press the round card to type a different travel time. Yours is kept.</li>
   </ul>
   <h3>Time Window</h3>
-  <p>When the site can take us. "Arrive after" is the earliest they will let us in. "Finish by" is when the loading bay or building shuts. Leave both blank when any time in the day is fine. The Scheduler then shows the plan in words: leave the labour 8:00, arrive 10:40, back at the labour 14:40.</p>
+  <p>When the site can take us. "Arrive after" is the earliest they will let us in. "Finish by" is when the loading bay or building shuts. Leave both blank when any time in the day is fine. The Scheduler then shows the plan in words: leave Forton 8:00, arrive 10:40, back at Forton 14:40.</p>
   <h3>Van Load</h3>
   <p>The items on the card added up in cubic metres and kilos against the van. If an item on the card cannot be matched, the load says so and gives no estimate rather than a wrong one. Remove wrong lines with the cross, or add items by hand.</p>
   <h3>Time</h3>
@@ -164,8 +164,8 @@
     <dt>No site time, No production time, No travel time, No van</dt><dd>What is still missing. The job stays Outstanding until each one is set.</dd>
     <dt>Not QC'd</dt><dd>The workshop has not passed the job for delivery. It shows on the delivery card so you do not send a van for something that is not ready. Trello clears it when the card's checklist is complete, or sign it off on the card back: QC, choose who checked it, Pass QC.</dd>
     <dt>Above standard</dt><dd>More people or more time than the items on the card need. Check it is deliberate.</dd>
-    <dt>Delivery Round</dt><dd>Two or more transport jobs by one operative on the same day, in one trip. The travel is the real road time from the labour to each stop and back, looked up from OpenStreetMap routing, plus a fifth for traffic. Until it arrives it is the longest single journey plus 20 minutes a stop. Press the round card to change it.</dd>
-    <dt>Customer Collects</dt><dd>The customer or a courier picks up from the labour. It sits in Labour Operations because somebody has to be there to load it. Give it operatives and time like any other labour job, put the time they said they will come in the Collection Slot, and it is flagged if the workshop side is not ready.</dd>
+    <dt>Delivery Round</dt><dd>Two or more transport jobs by one operative on the same day, in one trip. The travel is the real road time from Forton to each stop and back, looked up from OpenStreetMap routing, plus a fifth for traffic. Until it arrives it is the longest single journey plus 20 minutes a stop. Press the round card to change it.</dd>
+    <dt>Customer Collects</dt><dd>The customer or a courier picks up from Forton. It sits in Labour Operations because somebody has to be there to load it. Give it operatives and time like any other labour job, put the time they said they will come in the Collection Slot, and it is flagged if the workshop side is not ready.</dd>
     <dt>Held for sales</dt><dd>A striped card. Sales have asked to hold a date but the customer has not confirmed. It counts against the day so you do not overbook, and it drops off on the date shown if not confirmed. You cannot plan it.</dd>
     <dt>Hire not booked</dt><dd>The job needs a hired vehicle and nobody has ticked Booked yet.</dd>
     <dt>Recycling</dt><dd>Every hour of a working day not allocated to a job. The Scheduler shows it per operative per day and for the week. It is planned work, not spare time.</dd>
@@ -195,17 +195,17 @@
 <section id="views">
   <h2><small>Around the Scheduler</small>The other views</h2>
   <h3>Day</h3>
-  <p>One day in full: the three columns and every operative's day with what they are on and when a driver is back at the labour.</p>
+  <p>One day in full: the three columns and every operative's day with what they are on and when a driver is back at Forton.</p>
   <h3>Month</h3>
   <p>A pill per day: how many production, transport and labour jobs, leave, and "Over if holds land". Press a day to open it. With Outstanding on, it shows only the days with gaps.</p>
   <h3>Routes</h3>
-  <p>The week's transport on a map, one colour per day, drawn as rounds from the labour. Below it, each day's rounds with miles, van load and the vehicle advice. Mark a van off the road here. Combine Trips finds jobs booked for later near a stop already going out this week.</p>
+  <p>The week's transport on a map, one colour per day, drawn as rounds from Forton. Below it, each day's rounds with miles, van load and the vehicle advice. Mark a van off the road here. Combine Trips finds jobs booked for later near a stop already going out this week.</p>
   <h3>Manager</h3>
   <p>Behind a PIN. Every job with time allocated against its standard, so you can see where time is going.</p>
   <h3>Loading sheet</h3>
   <p>Open a job or a round and press Download loading sheet. It is one van on one day. Deliveries are listed in loading order, last drop in first at the front, first drop in last by the tail, each with On and Off tick boxes. Collections come after, because they go on once the deliveries are off, and the sheet shows the load on board after every stop so you can see the fullest point. Then the checks before the van leaves: straps, trolley, load secured, walk-round, fuel, waste transfer notes.</p>
   <h3>The parts of a job</h3>
-  <p>A job is not one thing. It can have production in the workshop, work on the customer's site, transport, and work in the labour. The card from the CRM says which parts it has and who does each. A clearance a sub-contractor collects has no site work and no van of ours, but the truck comes back to Forton and our operatives unload it, so the Scheduler shows the sub-contractor under Transport for information and a Labour leg on the same day for the unload, with its own operatives and time. A courier delivery gets a labour leg to load the courier. Labour legs sit under Labour Operations and print on the job sheets like any other work.</p>
+  <p>A job is not one thing. It can have production in the workshop, work on the customer's site, transport, and work at Forton. The card from the CRM says which parts it has and who does each. A clearance a sub-contractor collects has no site work and no van of ours, but the truck comes back to Forton and our operatives unload it, so the Scheduler shows the sub-contractor under Transport for information and a Labour leg on the same day for the unload, with its own operatives and time. A courier delivery gets a labour leg to load the courier. Labour legs sit under Labour Operations and print on the job sheets like any other work.</p>
   <h3>Time goes in with the first operative</h3>
   <p>Put the first operative on a job and the standard time for that crew goes in by itself, on production and on transport. Change it if the job needs more or less. If there is no standard to lean on, because the items are not on the card, the Time row turns red until a time is typed, so a job cannot go out with a person and no time.</p>
   <h3>Recycling tally</h3>

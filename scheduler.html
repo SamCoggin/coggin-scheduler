@@ -820,14 +820,14 @@ var SNAP=null, DETAIL={};
       twr.appendChild(mkT("Arrive after","from")); twr.appendChild(mkT("Finish by","by")); twb.appendChild(twr);
       twb.appendChild(el("div","hint","Leave both blank when any time in the working day is fine."));
       if(part.who.length){ var tlm=dayTimeline(j.date,part.who[0]), stp=tlm.stops.filter(function(x){return x.j===j;})[0];
-        if(stp&&!stp.noDrive) twb.appendChild(el("div","hint"+(stp.late?" far":""),"Plan: leave the labour 8:00, arrive about "+hmStr(stp.arrive)+(stp.wait?", wait until "+j.from:"")+", leave site "+hmStr(stp.end)+", back at the labour "+hmStr(tlm.back)+"."+(stp.late?" That is after the "+j.by+" cut-off.":"")));
+        if(stp&&!stp.noDrive) twb.appendChild(el("div","hint"+(stp.late?" far":""),"Plan: leave Forton 8:00, arrive about "+hmStr(stp.arrive)+(stp.wait?", wait until "+j.from:"")+", leave site "+hmStr(stp.end)+", back at Forton "+hmStr(tlm.back)+"."+(stp.late?" That is after the "+j.by+" cut-off.":"")));
         if(tlm.driveBreak) twb.appendChild(el("div","hint far",part.who[0]+" has "+fmt(tlm.drive)+" driving that day. Over 4h 30m, so add a 45 minute break."));
         if(tlm.longDay) twb.appendChild(el("div","hint far",part.who[0]+"'s day runs "+fmt(tlm.end-DAY_START)+" from 8:00, over 11 hours for a driver.")); }
       right.appendChild(twb); }
     if(!o.shop && j.collect && !o.leg){ var cwb=block("Collection Slot","slot"); var cwr=el("div","row tw");
       var mkC=function(lbl,key){ var lab=el("label",null,lbl); var inp=el("input"); inp.type="time"; inp.step="300"; inp.value=j[key]||""; inp.setAttribute("aria-label",lbl); inp.onchange=function(){ j[key]=inp.value||null; persist(); render(); }; lab.appendChild(inp); return lab; };
       cwr.appendChild(mkC("Customer arrives after","from")); cwr.appendChild(mkC("Loaded and ready by","by")); cwb.appendChild(cwr);
-      cwb.appendChild(el("div","hint",j.from||j.by?"The labour needs "+(part.who.length?part.who.join(", "):"someone")+" there"+(j.from?" from "+j.from:"")+(j.by?", with it picked and ready by "+j.by:"")+".":"Leave blank when the customer has not given a time. Put it in when they do, so the labour is not empty when they turn up."));
+      cwb.appendChild(el("div","hint",j.from||j.by?"The labour needs "+(part.who.length?part.who.join(", "):"someone")+" there"+(j.from?" from "+j.from:"")+(j.by?", with it picked and ready by "+j.by:"")+".":"Leave blank when the customer has not given a time. Put it in when they do, so Forton is not empty when they turn up."));
       right.appendChild(cwb); }
     if(!o.shop && j.site && !contractorOnly && !j.isLeg){ var vb=block("Van Load","van"); var L=j.load||loadOf([]);
       var m3=j.cubeSet!=null?j.cubeSet:(L.complete?L.m3:null), kg=L.complete||j.cubeSet!=null?L.kg:0;
@@ -946,15 +946,15 @@ var SNAP=null, DETAIL={};
     pstandard:"How long the workshop should take on the items: 30 minutes a swivel chair start to finish, 10 for a clean-only chair, 15 for storage, 45 for a desk. More operatives divide the work, with 10 percent for handover. Use standard sets the time per operative.",
     standard:"The standard crew and time for this job type, worked out from the items on the card. Above it is not wrong, but it should be a decision. Use standard sets the time to it.",
     drivers:"Rob, Jack and Bart drive the van. Jordan and Bradley go along as a second pair of hands, so every transport job needs one of the drivers on it.",
-    van:"The load worked out from the items on the card, in cubic metres and kilos, against a "+VAN_M3+" cubic metre Luton and its payload. Overtype it if the labour knows better. Two Lutons on the fleet; a van off the road is marked in the Routes view and extra vans are hired in.",
-    routes:"Combine Trips finds jobs booked for later that are near a stop already going out this week, and says what it takes to put them on the same van. Below it, where the week's transport jobs are. Each round is drawn from the labour in its day's colour. Nearby jobs on other days could join a round if there is room in the van and production is done.",
+    van:"The load worked out from the items on the card, in cubic metres and kilos, against a "+VAN_M3+" cubic metre Luton and its payload. Overtype it if the crew know better. Two Lutons on the fleet; a van off the road is marked in the Routes view and extra vans are hired in.",
+    routes:"Combine Trips finds jobs booked for later that are near a stop already going out this week, and says what it takes to put them on the same van. Below it, where the week's transport jobs are. Each round is drawn from Forton in its day's colour. Nearby jobs on other days could join a round if there is room in the van and production is done.",
     vehicle:"Which van goes. Our two Lutons, or a hire when the load needs more than a Luton or both vans are out. A hire is a job in itself: put the supplier and reference on it and tick Booked, and it nags from five working days out until you do.",
     tally:"Units processed on recycling today, off the tally sheet. A unit is one item of any kind. The target is 100 for a full day, scaled to the time this operative had left after their jobs. Saved to the CRM as you type.",
     qc:"Quality check before a job goes out. Trello ticks it when the checklist on the card is complete. Sign it off here when the workshop has checked the job, with who checked it. It clears Not QC'd on the card and in Outstanding.",
     happened:"Filled in after the day. Actual time, who went and a note, or Did not go and why. The Manager view compares actual time with the standard, so the standards can be corrected from real jobs.",
-    slot:"A customer or courier collecting from the labour. Customer arrives after is the earliest they said they will come. Loaded and ready by is when it must be picked, checked and by the door. Someone has to be in the labour for it, so it takes operatives and time like any other labour job.",
+    slot:"A customer or courier collecting from Forton. Customer arrives after is the earliest they said they will come. Loaded and ready by is when it must be picked, checked and by the door. Someone has to be at Forton for it, so it takes operatives and time like any other labour job.",
     window:"When the site can take us. Arrive after is the earliest they will let us in. Finish by is when the loading bay, lift or building shuts. The day is worked out from an 8:00 start, and a job that misses its window is flagged in red.",
-    drive:"Return travel time. Real road time from the labour to the postcode, from OpenStreetMap routing, plus 20 percent for traffic. Before that arrives, or when the routing service is down, an estimate from the postcode area. Overtype if you know better, and it stays as you typed it.",
+    drive:"Return travel time. Real road time from Forton to the postcode, from OpenStreetMap routing, plus 20 percent for traffic. Before that arrives, or when the routing service is down, an estimate from the postcode area. Overtype if you know better, and it stays as you typed it.",
     time:"Labour time per operative. Use the quick options or enter hours and minutes."
   };
   var tipOpen=null;
@@ -1065,15 +1065,17 @@ var SNAP=null, DETAIL={};
     TEAM.forEach(function(w){
       var row=el("div","prow"); row.appendChild(el("span","av",ini(w))); var tx=el("div"); var nmb=el("b",null,w);
       var isOff=(OFF[k]||[]).indexOf(w)>=0, onLeaveCard=LEAVE.some(function(l){return l.date===k&&!l.off&&l.text.split(" ")[0]===w;});
+      var jsb=el("button","offbtn","Job sheet"); jsb.title="Download "+w+"'s job sheet for this day"; jsb.onclick=function(e){ e.stopPropagation(); try{ crewSheetsPdf(dayCur,w); }catch(err){ alert("The job sheet could not be built: "+(err&&err.message||err)); } }; 
       if(!onLeaveCard){ var ob=el("button","offbtn"+(isOff?" on":""),isOff?"Back in":"Mark as off"); ob.title=isOff?"Put "+w+" back on the day":"Mark "+w+" as off for this day: sick, a course, a breakdown. It asks why.";
       if(isOff&&OFF_WHY[k+"|"+w]) nmb.appendChild(el("span","offwhy","off, "+OFF_WHY[k+"|"+w])); ob.onclick=function(){ if(isOff){ toggleOff(k,w); return; } var why=prompt(w+" is off on "+niceDay(k)+". Why? (sick, course, van breakdown)","sick"); if(why===null) return; toggleOff(k,w,why.trim()); }; nmb.appendChild(ob); }
+      if(!isOff&&!onLeaveCard) nmb.appendChild(jsb);
       tx.appendChild(nmb); tx.appendChild(el("span","ld "+load[w].c,load[w].t));
       var ul=el("ul");
       preps.filter(function(j){return j.prep.who.indexOf(w)>=0;}).forEach(function(j){ ul.appendChild(el("li",null,"Production: "+j.title+(j.prep.mins!=null?", "+fmt(j.prep.mins):""))); });
       var r=rounds.filter(function(x){return x.who===w;})[0]; if(r) ul.appendChild(el("li",null,"Delivery round, "+r.stops.length+" stops"+(r.drive?", "+fmt(r.drive)+" travel":"")));
       jobs.filter(function(j){return j.who.indexOf(w)>=0;}).forEach(function(j){ ul.appendChild(el("li",null,j.title+(j.mins!=null?", "+fmt(j.mins)+(j.site&&!j.onRound&&j.drive?" + "+fmt(j.drive)+" travel":""):""))); });
       if(load[w].c!=="off"&&load[w].rec>=30) ul.appendChild(el("li","rec","Recycling: "+fmt(load[w].rec)));
-      var tlw=dayTimeline(k,w); if(tlw.isDriver&&tlw.drive) ul.appendChild(el("li",tlw.driveBreak||tlw.longDay?"warn":"","Driving "+fmt(tlw.drive)+", back at the labour about "+hmStr(tlw.back)+(tlw.driveBreak?". Needs a 45 minute break":"")+(tlw.longDay?". Day over 11 hours":"")));
+      var tlw=dayTimeline(k,w); if(tlw.isDriver&&tlw.drive) ul.appendChild(el("li",tlw.driveBreak||tlw.longDay?"warn":"","Driving "+fmt(tlw.drive)+", back at Forton about "+hmStr(tlw.back)+(tlw.driveBreak?". Needs a 45 minute break":"")+(tlw.longDay?". Day over 11 hours":"")));
       tx.appendChild(ul); row.appendChild(tx); pc.appendChild(row);
     });
     pl.appendChild(pc); b.appendChild(pl);
@@ -1116,7 +1118,7 @@ var SNAP=null, DETAIL={};
   }
   var MONTHS=["January","February","March","April","May","June","July","August","September","October","November","December"];
 
-  // ── Routes: where the week's transport jobs are, as rounds from the labour ──
+  // ── Routes: where the week's transport jobs are, as rounds from Forton ──
   // the load a job puts on the van: the estimate from its items, unless overtyped
   function cubeOf(j){ if(j.cubeSet!=null) return j.cubeSet; return j.load&&j.load.complete?j.load.m3:null; }
   // MULTI-DAY LOADS (Sam, 13 Sep 2026): a job spread over several days moves its load a day at a time, so each day carries an equal share, not the whole lot.
@@ -1143,7 +1145,7 @@ var SNAP=null, DETAIL={};
     outs.forEach(function(o){ jobs.push(fetch("https://api.postcodes.io/outcodes/"+encodeURIComponent(o)).then(function(r){return r.json();}).then(function(x){ GEO[o]=x.result?{lat:x.result.latitude,lng:x.result.longitude}:false; }).catch(function(){})); });
     return Promise.all(jobs).then(function(){ try{ localStorage.setItem("cg-geo",JSON.stringify(GEO)); }catch(e){} });
   }
-  // REAL DRIVE TIMES (Sam, 13 Sep 2026): road time from the labour to the postcode, from OpenStreetMap routing (OSRM, no key).
+  // REAL DRIVE TIMES (Sam, 13 Sep 2026): road time from Forton to the postcode, from OpenStreetMap routing (OSRM, no key).
   // Cached for 30 days. Only replaces a travel time nobody has typed over. The postcode-area estimate stays as the fallback.
   var ROAD={}; try{ ROAD=JSON.parse(localStorage.getItem("cg-road")||"{}"); }catch(e){ ROAD={}; }
   function roadTime(pc){
@@ -1377,7 +1379,7 @@ var SNAP=null, DETAIL={};
     var box=$("#printsheet"); box.innerHTML="";
     var mon=addDays(monday(TODAY),week*7), days=[]; for(var i=0;i<5;i++) days.push(iso(addDays(mon,i)));
     box.appendChild(el("h1",null,"Routes, "+niceDay(days[0])+" to "+niceDay(days[4])+" "+mon.getFullYear()));
-    box.appendChild(el("p","sub","Coggin SOS. Printed "+new Date().toLocaleString("en-GB",{day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"})+". The plan below is drawn to scale from the labour, one colour per day, stops numbered in driving order. Miles are road estimates."));
+    box.appendChild(el("p","sub","Coggin SOS. Printed "+new Date().toLocaleString("en-GB",{day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"})+". The plan below is drawn to scale from Forton, one colour per day, stops numbered in driving order. Miles are road estimates."));
     var all=allJobs().filter(function(j){return j.site && !(j.contractor&&!j.who.length);});
     var weekJobs=all.filter(function(j){return days.some(function(k){return onDay(j,k);});});
     // ── the drawn plan: an SVG, so it prints the same every time ──
@@ -1533,7 +1535,7 @@ var SNAP=null, DETAIL={};
     var dels=stops.filter(function(j){return !takesOn(j);}), cols=stops.filter(function(j){return takesOn(j);});
     var m3of=function(j){ return cubeOn(j)||0; }, kgof=function(j){ return kgOn(j)||0; };
     // the load on board leaving the labour is every delivery; it drops at each delivery and rises at each collection
-    var onM3=dels.reduce(function(t,j){return t+m3of(j);},0), onKg=dels.reduce(function(t,j){return t+kgof(j);},0), peakM3=onM3, peakKg=onKg, run=[["Leaving the labour",fmtM3(onM3)+(onKg?", "+Math.round(onKg)+" kg":"")]];
+    var onM3=dels.reduce(function(t,j){return t+m3of(j);},0), onKg=dels.reduce(function(t,j){return t+kgof(j);},0), peakM3=onM3, peakKg=onKg, run=[["Leaving Forton",fmtM3(onM3)+(onKg?", "+Math.round(onKg)+" kg":"")]];
     stops.forEach(function(j,i){ if(takesOn(j)){ onM3+=m3of(j); onKg+=kgof(j); } else { onM3-=m3of(j); onKg-=kgof(j); } peakM3=Math.max(peakM3,onM3); peakKg=Math.max(peakKg,onKg); run.push(["After stop "+(i+1)+", "+short(j)+(takesOn(j)?" (on)":" (off)"),fmtM3(Math.max(0,onM3))+(onKg>0?", "+Math.round(onKg)+" kg":"")]); });
     var unknown=stops.filter(function(j){return cubeOf(j)==null;}).length, over=peakM3>VAN_M3||peakKg>VAN_KG;
     var doc=pdfPortrait("Loading sheet, "+who+", "+niceDay(k),(veh.length?veh.join(", ")+". ":"No van chosen yet. ")+stops.length+(stops.length===1?" stop. ":" stops. ")+(dels.length>1?"Deliveries load in reverse: the last drop goes in first, at the front, and the first drop goes in last, by the tail. ":"")+(cols.length?"Collections go on after the deliveries are off, so keep that space clear. ":"")+"Tick On as it goes on the van and Off at the site."); if(!doc) return;
@@ -1580,10 +1582,11 @@ var SNAP=null, DETAIL={};
   // operative gets a printed page for the day at the start, in driving order, with the facts the card holds and
   // the items to tick, and hands it back at the end with the times and what happened written in.
   function clock(m){ if(m==null) return ""; m=Math.round(m); var h=Math.floor(m/60), r=m%60; return (h<10?"0":"")+h+":"+(r<10?"0":"")+r; }
-  function crewSheetsPdf(k){
+  function crewSheetsPdf(k,onlyW){
     var dj=allJobs().filter(function(j){return onDay(j,k)&&!j.isHold;});
-    var people=TEAM.filter(function(w){ return dj.some(function(j){return j.who.indexOf(w)>=0;})||JOBS.some(function(j){return j.prep&&j.prep.date&&daysOf(j.prep).indexOf(k)>=0&&j.prep.who.indexOf(w)>=0;}); });
-    if(!people.length){ alert("Nobody is on a job on "+niceDay(k)+" yet."); return; }
+    // one operative when asked from their card on the Day view (Sam, 14 Sep 2026), else everyone with work or recycling time
+    var people=onlyW?[onlyW]:TEAM.filter(function(w){ return (loadOn(k)[w]||{}).c!=="off"; });
+    if(!people.length){ alert("Nobody is working on "+niceDay(k)+"."); return; }
     var J=window.jspdf&&window.jspdf.jsPDF; if(!J) return; var doc=new J({orientation:"portrait",unit:"mm",format:"a4"}); var firstPage=true;
     people.forEach(function(w){
       if(!firstPage) doc.addPage(); firstPage=false;
@@ -1593,7 +1596,7 @@ var SNAP=null, DETAIL={};
       var vans=[]; jobs.forEach(function(j){ var vt=vehicleText(j); if(vt&&vt!=="No van"&&vans.indexOf(vt)<0) vans.push(vt); });
       doc.setFont("helvetica","bold"); doc.setFontSize(20); doc.setTextColor(17,17,17); doc.text(w+", "+niceDay(k),12,17);
       doc.setFont("helvetica","normal"); doc.setFontSize(9.5); doc.setTextColor(PDF_GREY[0],PDF_GREY[1],PDF_GREY[2]);
-      var sub=[tl.stops.length?(tl.stops.length===1?"1 stop":tl.stops.length+" stops")+", leave the labour 08:00, back about "+clock(tl.back):"No driving today", vans.length?"Van: "+vans.join(", "):"", mateList.length?"With: "+mateList.join(", "):"", "Finish about "+clock(tl.end)];
+      var sub=[tl.stops.length?(tl.stops.length===1?"1 stop":tl.stops.length+" stops")+", leave Forton 08:00, back about "+clock(tl.back):"No driving today", vans.length?"Van: "+vans.join(", "):"", mateList.length?"With: "+mateList.join(", "):"", "Finish about "+clock(tl.end)];
       doc.text(sub.filter(Boolean).join(".  ")+".",12,23); var y=30;
       if(tl.driveBreak||tl.longDay){ doc.setFont("helvetica","bold"); doc.setTextColor(PDF_RED[0],PDF_RED[1],PDF_RED[2]); doc.text((tl.driveBreak?"Take a 45 minute break before 4h 30m of driving. ":"")+(tl.longDay?"Long day: over 11 hours.":""),12,y); y+=6; }
       var block=function(title,right){ y=pdfBand(doc,y,title+(right?"    "+right:"")); };
@@ -1638,12 +1641,12 @@ var SNAP=null, DETAIL={};
       doc.setFont("helvetica","bold"); doc.setFontSize(9.5); doc.text("Signed:",12,y+4); doc.line(27,y+4.5,90,y+4.5); doc.text("Handed back to:",110,y+4); doc.line(140,y+4.5,198,y+4.5);
     });
     pdfPortraitFooter(doc,"Job sheets, "+niceDay(k)+". Hand this back at the end of the day.");
-    doc.save("job-sheets-"+k+".pdf");
+    doc.save((onlyW?"job-sheet-"+onlyW.toLowerCase()+"-":"job-sheets-")+k+".pdf");
   }
   window.__crewSheetsPdf=crewSheetsPdf; // reachable by check.mjs
   function routesPdf(){
     var mon=addDays(monday(TODAY),week*7), days=[]; for(var i=0;i<5;i++) days.push(iso(addDays(mon,i)));
-    var doc=pdfDoc("Routes, "+niceDay(days[0])+" to "+niceDay(days[4])+" "+mon.getFullYear(),"Printed "+new Date().toLocaleString("en-GB",{day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"})+". One colour per day, stops numbered in driving order from the labour. Miles are road estimates."); if(!doc) return;
+    var doc=pdfDoc("Routes, "+niceDay(days[0])+" to "+niceDay(days[4])+" "+mon.getFullYear(),"Printed "+new Date().toLocaleString("en-GB",{day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"})+". One colour per day, stops numbered in driving order from Forton. Miles are road estimates."); if(!doc) return;
     var all=allJobs().filter(function(j){return j.site && !(j.contractor&&!j.who.length);});
     var weekJobs=all.filter(function(j){return days.some(function(k){return onDay(j,k);});});
     // the plan: real map tiles when they load, otherwise a drawn plan
