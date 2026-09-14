@@ -1614,8 +1614,8 @@ var SNAP=null, DETAIL={};
         if(items.length){ if(y>262){ doc.addPage(); y=14; } doc.setFont("helvetica","bold"); doc.text("Items:",14,y); y+=5; doc.setFont("helvetica","normal");
           items.forEach(function(it){ if(y>275){ doc.addPage(); y=14; } doc.setDrawColor(90,90,90); doc.setLineWidth(.3); doc.rect(16,y-3.4,4,4); var tx=doc.splitTextToSize(it,160); doc.text(tx,23,y); y+=Math.max(5.5,tx.length*4.5); }); }
         if(y>250){ doc.addPage(); y=14; }
-        doc.setFont("helvetica","bold"); doc.setFontSize(9); doc.text("Arrived:",14,y+4); doc.text("Left:",54,y+4); doc.text("Done:",90,y+4); doc.text("Notes:",120,y+4);
-        doc.setDrawColor(150,150,150); doc.line(29,y+4.5,50,y+4.5); doc.line(64,y+4.5,86,y+4.5); doc.rect(102,y+.6,4,4); doc.setFont("helvetica","normal"); doc.setFontSize(8); doc.text("Yes",107,y+4); doc.rect(112,y+.6,4,4); doc.setFontSize(8); doc.text("No",117,y+4); doc.setFontSize(9); doc.line(132,y+4.5,198,y+4.5); doc.line(14,y+12,198,y+12);
+        doc.setFont("helvetica","bold"); doc.setFontSize(9); doc.text("Arrived:",14,y+4); doc.text("Left:",52,y+4); doc.text("Done:",86,y+4); doc.text("Notes:",134,y+4);
+        doc.setDrawColor(150,150,150); doc.line(29,y+4.5,48,y+4.5); doc.line(62,y+4.5,82,y+4.5); doc.rect(98,y+.6,4,4); doc.setFont("helvetica","normal"); doc.setFontSize(8); doc.text("Yes",103.5,y+4); doc.rect(114,y+.6,4,4); doc.text("No",119.5,y+4); doc.setFontSize(9); doc.line(147,y+4.5,198,y+4.5); doc.line(14,y+12,198,y+12);
         y+=17;
       };
       if(tl.stops.length){
@@ -1626,7 +1626,7 @@ var SNAP=null, DETAIL={};
           doc.text([j.work,j.movement||j.label].filter(Boolean).join(", ")+"   Arrive about "+clock(x.arrive)+(x.wait?", wait until "+clock(x.start):"")+(j.mins!=null?", allow "+fmt(j.mins):", no time set")+(x.by!=null?", must finish by "+clock(x.by):""),12,y+6); y+=11;
           facts(j,true); });
       }
-      if(labour.length){ block("IN THE LABOUR",""); labour.forEach(function(j){ if(y>245){ doc.addPage(); y=14; } doc.setFont("helvetica","bold"); doc.setFontSize(12); doc.setTextColor(17,17,17); doc.text(j.title,12,y+1); doc.setFont("helvetica","normal"); doc.setFontSize(9); doc.setTextColor(PDF_GREY[0],PDF_GREY[1],PDF_GREY[2]); doc.text([j.work,j.movement||j.label].filter(Boolean).join(", ")+"   "+(j.mins!=null?"Allow "+fmt(j.mins):"No time set")+(j.collect&&j.collect.from?", customer arrives after "+j.collect.from:""),12,y+6); y+=11; facts(j,false); }); }
+      if(labour.length){ block("LABOUR AT FORTON",""); labour.forEach(function(j){ if(y>245){ doc.addPage(); y=14; } doc.setFont("helvetica","bold"); doc.setFontSize(12); doc.setTextColor(17,17,17); doc.text(j.title,12,y+1); doc.setFont("helvetica","normal"); doc.setFontSize(9); doc.setTextColor(PDF_GREY[0],PDF_GREY[1],PDF_GREY[2]); doc.text([j.work,j.movement||j.label].filter(Boolean).join(", ")+"   "+(j.mins!=null?"Allow "+fmt(j.mins):"No time set")+(j.collect&&j.collect.from?", customer arrives after "+j.collect.from:""),12,y+6); y+=11; facts(j,false); }); }
       if(preps.length){ block("PRODUCTION",""); preps.forEach(function(j){ if(y>245){ doc.addPage(); y=14; } doc.setFont("helvetica","bold"); doc.setFontSize(12); doc.setTextColor(17,17,17); doc.text(j.title,12,y+1); doc.setFont("helvetica","normal"); doc.setFontSize(9); doc.setTextColor(PDF_GREY[0],PDF_GREY[1],PDF_GREY[2]); doc.text("Required for "+niceDay(j.date)+(j.prep.mins!=null?", allow "+fmt(j.prep.mins):", no time set")+(j.prep.who.length>1?" each, with "+j.prep.who.filter(function(x){return x!==w;}).join(", "):""),12,y+6); y+=11; facts(j,false); }); }
       // THE RECYCLING TALLY (Sam, 14 Sep 2026): time left after the jobs is recycling, with a target of 100 units a
       // full day, pro rata. A grid of 100 boxes to strike through, then the number and notes to bring back.
