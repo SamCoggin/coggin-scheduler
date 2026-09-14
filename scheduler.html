@@ -1596,7 +1596,8 @@ var SNAP=null, DETAIL={};
       var vans=[]; jobs.forEach(function(j){ var vt=vehicleText(j); if(vt&&vt!=="No van"&&vans.indexOf(vt)<0) vans.push(vt); });
       doc.setFont("helvetica","bold"); doc.setFontSize(20); doc.setTextColor(17,17,17); doc.text(w+", "+niceDay(k),12,17);
       doc.setFont("helvetica","normal"); doc.setFontSize(9.5); doc.setTextColor(PDF_GREY[0],PDF_GREY[1],PDF_GREY[2]);
-      var sub=[tl.stops.length?(tl.stops.length===1?"1 stop":tl.stops.length+" stops")+", leave Forton 08:00, back about "+clock(tl.back):"No driving today", vans.length?"Van: "+vans.join(", "):"", mateList.length?"With: "+mateList.join(", "):"", "Finish about "+clock(tl.end)];
+      var recToday=(loadOn(k)[w]||{}).rec||0, finishAt=Math.max(tl.end,recToday>0?DAY_END:tl.end);
+      var sub=[tl.stops.length?(tl.stops.length===1?"1 stop":tl.stops.length+" stops")+", leave Forton 08:00, back about "+clock(tl.back):(recToday>0&&!jobs.length&&!preps.length?"Recycling all day":"No driving today"), vans.length?"Van: "+vans.join(", "):"", mateList.length?"With: "+mateList.join(", "):"", "Finish about "+clock(finishAt)];
       doc.text(sub.filter(Boolean).join(".  ")+".",12,23); var y=30;
       if(tl.driveBreak||tl.longDay){ doc.setFont("helvetica","bold"); doc.setTextColor(PDF_RED[0],PDF_RED[1],PDF_RED[2]); doc.text((tl.driveBreak?"Take a 45 minute break before 4h 30m of driving. ":"")+(tl.longDay?"Long day: over 11 hours.":""),12,y); y+=6; }
       var block=function(title,right){ y=pdfBand(doc,y,title+(right?"    "+right:"")); };
@@ -1627,16 +1628,23 @@ var SNAP=null, DETAIL={};
       // THE RECYCLING TALLY (Sam, 14 Sep 2026): time left after the jobs is recycling, with a target of 100 units a
       // full day, pro rata. A grid of 100 boxes to strike through, then the number and notes to bring back.
       var recM=(loadOn(k)[w]||{}).rec||0;
-      if(recM>0){ if(y>200){ doc.addPage(); y=14; } var tgt=recTarget(recM);
-        y=pdfBand(doc,y,"RECYCLING    "+fmt(recM)+" on recycling, target "+tgt+" units");
-        doc.setFont("helvetica","normal"); doc.setFontSize(9); doc.setTextColor(PDF_GREY[0],PDF_GREY[1],PDF_GREY[2]);
-        doc.text("A unit is one item of any kind. 100 is a full day; your target is for the time you have. Strike a box per unit, write the total at the end.",12,y+1); y+=5;
-        doc.setDrawColor(120,120,120); doc.setLineWidth(.25);
-        for(var r=0;r<10;r++){ for(var c=0;c<10;c++){ doc.rect(12+c*6.2,y+r*5.2,5.4,4.4); } } y+=10*5.2+3;
-        doc.setFont("helvetica","bold"); doc.setFontSize(9.5); doc.setTextColor(17,17,17); doc.text("Units processed:",12,y+4); doc.setDrawColor(150,150,150); doc.line(42,y+4.5,70,y+4.5); doc.text("Notes:",80,y+4); doc.line(94,y+4.5,198,y+4.5); y+=10; }
+      if(recM>0){ if(y>170){ doc.addPage(); y=14; } var tgt=recTarget(recM);
+        y=pdfBand(doc,y,"RECYCLING");
+        // the target, big, with what it is for
+        doc.setFont("helvetica","bold"); doc.setFontSize(34); doc.setTextColor(PDF_NAVY[0],PDF_NAVY[1],PDF_NAVY[2]); doc.text(String(tgt),12,y+13);
+        doc.setFontSize(9); doc.setTextColor(17,17,17); doc.text("TARGET UNITS",12,y+18);
+        doc.setFont("helvetica","normal"); doc.setFontSize(8.5); doc.setTextColor(PDF_GREY[0],PDF_GREY[1],PDF_GREY[2]);
+        doc.text(doc.splitTextToSize(fmt(recM)+" on recycling today. 100 is a full day, so this is your share. A unit is one item of any kind.",44),12,y+24);
+        // the grid: 10 across, 10 down, a running count at the end of every row
+        var gx=64, gw=11.2, gh=6.6, gy=y+2; doc.setDrawColor(110,110,110); doc.setLineWidth(.3);
+        for(var r=0;r<10;r++){ for(var c=0;c<10;c++){ doc.rect(gx+c*gw,gy+r*gh,gw-1.2,gh-1.2); } doc.setFont("helvetica","bold"); doc.setFontSize(8); doc.setTextColor(120,120,120); doc.text(String((r+1)*10),gx+10*gw+1,gy+r*gh+4.6); }
+        y=gy+10*gh+4;
+        doc.setFont("helvetica","bold"); doc.setFontSize(11); doc.setTextColor(17,17,17); doc.text("Units processed today:",12,y+5); doc.setDrawColor(51,51,51); doc.setLineWidth(.5); doc.rect(62,y-1,36,10);
+        doc.setFontSize(9.5); doc.text("Notes:",106,y+5); doc.setDrawColor(150,150,150); doc.setLineWidth(.3); doc.line(120,y+5.5,198,y+5.5); doc.line(106,y+12.5,198,y+12.5); y+=18; }
       if(y>240){ doc.addPage(); y=14; }
       y=pdfBand(doc,y,"END OF DAY");
-      doc.setFont("helvetica","bold"); doc.setFontSize(9.5); doc.setTextColor(17,17,17); doc.text("Started:",12,y+4); doc.text("Finished:",60,y+4); doc.text("Van checked and fuelled:",112,y+4); doc.setDrawColor(150,150,150); doc.line(28,y+4.5,54,y+4.5); doc.line(78,y+4.5,106,y+4.5); doc.rect(158,y+.6,4,4); doc.setFont("helvetica","normal"); doc.setFontSize(8); doc.text("Yes",163,y+4); doc.rect(172,y+.6,4,4); doc.text("No",177,y+4); y+=10;
+      doc.setFont("helvetica","bold"); doc.setFontSize(9.5); doc.setTextColor(17,17,17); doc.text("Started:",12,y+4); doc.text("Finished:",60,y+4); doc.setDrawColor(150,150,150); doc.line(28,y+4.5,54,y+4.5); doc.line(78,y+4.5,106,y+4.5);
+      if(tl.stops.length){ doc.text("Van checked and fuelled:",112,y+4); doc.rect(158,y+.6,4,4); doc.setFont("helvetica","normal"); doc.setFontSize(8); doc.text("Yes",163,y+4); doc.rect(172,y+.6,4,4); doc.text("No",177,y+4); } y+=10;
       y=pdfLines(doc,y,"Anything that did not go to plan, damage, or something the office needs to know",3);
       doc.setFont("helvetica","bold"); doc.setFontSize(9.5); doc.text("Signed:",12,y+4); doc.line(27,y+4.5,90,y+4.5); doc.text("Handed back to:",110,y+4); doc.line(140,y+4.5,198,y+4.5);
     });
