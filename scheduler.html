@@ -404,7 +404,7 @@ var SNAP=null, DETAIL={};
         var snap={board:board.name,crew:CREW,cards:cs,boardData:boardData};
         // date holds from the CRM: ghost cards, counted but never booked here
         if(!CRM_KEY) return snap;
-        return fetch(CRM_HOLDS_URL,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({key:CRM_KEY})}).then(function(x){return x.json();}).then(function(h){ snap.holds=(h&&h.ok&&h.holds)||[]; return snap; }).catch(function(){ snap.holds=[]; return snap; });
+        return fetch(CRM_HOLDS_URL,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({key:CRM_KEY})}).then(function(x){return x.json();}).then(function(h){ snap.holds=(h&&h.ok&&h.holds)||[]; snap.requests=(h&&h.ok&&h.requests)||[]; return snap; }).catch(function(){ snap.holds=[]; snap.requests=[]; return snap; });
       });
     });
   }
@@ -510,6 +510,7 @@ var SNAP=null, DETAIL={};
     if(SNAP.boardData&&SNAP.boardData.off){ OFF=JSON.parse(JSON.stringify(SNAP.boardData.off)); } if(SNAP.boardData&&SNAP.boardData.offWhy){ OFF_WHY=JSON.parse(JSON.stringify(SNAP.boardData.offWhy)); } syncOff();
     // HELD DATES FROM THE CRM (Sam, 13 Sep 2026): a request sales are waiting on. Ghost cards: they sit on
     // their day, count the standard crew and time and the van load, and vanish when the hold lapses.
+    REQUESTS=(SNAP.requests||[]);
     HOLDS=(SNAP.holds||[]).map(function(h){ var mv=h.movement||"Delivery", load=loadOf(h.items||[]), std=standardFor(mv,load);
       var j={id:"hold:"+h.id,title:h.title||h.ref,label:mv,movement:mv,work:h.service==="Office Clearance"?"Clearance":h.service==="Refurbishing"?"Refurb":h.service||"",labels:[],who:[],contractor:"",mins:std&&std.mins!=null?std.mins:120,out:h.date,date:h.date,start:null,site:isSiteMove(mv),collect:isCollectMove(mv),
         stageLabel:"Held until "+niceShort(h.until||h.date),isHold:true,holdUntil:h.until,holdCrew:std?std.crew:2,load:load,cubeSet:null,items:h.items||[],manual:[],ignore:[],allItems:h.items||[],prep:null};
@@ -570,7 +571,7 @@ var SNAP=null, DETAIL={};
   }
   // a round: one person, one day, two or more site jobs. one drive for the lot.
   var ROUND_DRIVE={};   // "date|person" -> minutes, when you have changed it
-  var CRM_KEY="", HOLDS=[];   // the shared key for the CRM's opsHolds function, saved on the board from the Manager view
+  var CRM_KEY="", HOLDS=[], REQUESTS=[];   // REQUESTS: dates sales have asked for that operations have not answered   // the shared key for the CRM's opsHolds function, saved on the board from the Manager view
   var CRM_HOLDS_URL="https://coggin-sos-os.base44.app/api/apps/69c930a6240fba922f369aa2/functions/opsHolds";
   var VANS_OFF=[];      // registrations currently off the road
   function vansOnRoad(){ return VEHICLES.filter(function(v){return VANS_OFF.indexOf(v.reg)<0;}).length; }
@@ -1706,11 +1707,13 @@ var SNAP=null, DETAIL={};
       var txt=(over>0?dayLabel(kk)+" is over by "+fmt(over)+" of operative time.":dayLabel(kk)+" needs more vans than are on the road.")+(lighter.length?" "+lighter.map(function(x){return dayLabel(x.k)+" has "+fmt(x.free)+" free";}).join(", ")+".":" No lighter day this week or next.")+(movable.length?" "+movable.join(", ")+(movable.length===1?" has":" have")+" no fixed window and could move.":" Every job that day has a fixed window or date.");
       ISSUES.push({k:kk,title:"Heavy day",amber:true,text:txt}); }
     // the attention rail: every warning for the week in one place, newest day first is not the point, day order is
-    var rail=el("div","list rail"); var rh=el("h2"); rh.appendChild(el("span",null,"Needs a decision")); rh.appendChild(el("span",null,(ISSUES.length+TOPLAN.length+TORECORD.length)?String(ISSUES.length+TOPLAN.length+TORECORD.length):"none")); rail.appendChild(rh);
-    var rc=el("div","cards"); if(!ISSUES.length&&!TOPLAN.length&&!TORECORD.length) rc.appendChild(el("div","hint","Nothing needs a decision this week."));
-    if(ISSUES.length&&TOPLAN.length) rc.appendChild(el("div","sec-h","Warnings"));
-    var railItems=ISSUES.slice(); if(TOPLAN.length){ railItems.push({sep:TOPLAN.length+" outstanding this week"}); railItems=railItems.concat(TOPLAN); } if(TORECORD.length){ railItems.push({sep:TORECORD.length+" to record"}); railItems=railItems.concat(TORECORD); }
-    railItems.forEach(function(x){ if(x.sep){ rc.appendChild(el("div","sec-h",x.sep)); return; } if(x.prep){ var itp=el("button","iss amber"); itp.appendChild(el("b",null,shortDay(x.k)+" \u00b7 "+x.title)); itp.appendChild(el("span",null,x.text)); itp.onclick=function(){ open=x.j.id+":prep"; render(); }; rc.appendChild(itp); return; } var it=el("button","iss"+(x.amber?" amber":"")); it.appendChild(el("b",null,shortDay(x.k)+" \u00b7 "+x.title)); it.appendChild(el("span",null,x.text)); if(x.j&&!x.j.isHold){ it.onclick=function(){ open=x.j.id; render(); }; } else { it.onclick=function(){ dayCur=x.k; view="day"; render(); }; } rc.appendChild(it); });
+    var rail=el("div","list rail"); var rh=el("h2"); rh.appendChild(el("span",null,"Needs a decision")); rh.appendChild(el("span",null,(ISSUES.length+TOPLAN.length+TORECORD.length+REQUESTS.length)?String(ISSUES.length+TOPLAN.length+TORECORD.length+REQUESTS.length):"none")); rail.appendChild(rh);
+    var rc=el("div","cards"); if(!ISSUES.length&&!TOPLAN.length&&!TORECORD.length&&!REQUESTS.length) rc.appendChild(el("div","hint","Nothing needs a decision this week."));
+    // DATE REQUESTS (Sam, 14 Sep 2026: "how does this notify operations?"). Asked on the CRM, unanswered, listed here where operations plan. Press one to open the record on the CRM.
+    var railItems=[]; if(REQUESTS.length){ railItems.push({sep:REQUESTS.length+(REQUESTS.length===1?" date request":" date requests")}); REQUESTS.forEach(function(r){ railItems.push({req:true,title:r.title,url:r.url,amber:true,text:(r.type==="required"&&r.date?"Asks for "+niceDay(r.date):"Asks for the next available slot")+", "+(r.movement||"job").toLowerCase()+(r.service?" ("+r.service+")":"")+"."+(r.note?" "+r.note:"")+" Hold a date on the CRM."}); }); }
+    if(ISSUES.length&&(TOPLAN.length||REQUESTS.length||TORECORD.length)) railItems.push({sep:"Warnings"});
+    railItems=railItems.concat(ISSUES); if(TOPLAN.length){ railItems.push({sep:TOPLAN.length+" outstanding this week"}); railItems=railItems.concat(TOPLAN); } if(TORECORD.length){ railItems.push({sep:TORECORD.length+" to record"}); railItems=railItems.concat(TORECORD); }
+    railItems.forEach(function(x){ if(x.sep){ rc.appendChild(el("div","sec-h",x.sep)); return; } if(x.req){ var itr=el("button","iss amber"); itr.appendChild(el("b",null,x.title)); itr.appendChild(el("span",null,x.text)); itr.onclick=function(){ window.open(x.url,"_blank"); }; rc.appendChild(itr); return; } if(x.prep){ var itp=el("button","iss amber"); itp.appendChild(el("b",null,shortDay(x.k)+" \u00b7 "+x.title)); itp.appendChild(el("span",null,x.text)); itp.onclick=function(){ open=x.j.id+":prep"; render(); }; rc.appendChild(itp); return; } var it=el("button","iss"+(x.amber?" amber":"")); it.appendChild(el("b",null,shortDay(x.k)+" \u00b7 "+x.title)); it.appendChild(el("span",null,x.text)); if(x.j&&!x.j.isHold){ it.onclick=function(){ open=x.j.id; render(); }; } else { it.onclick=function(){ dayCur=x.k; view="day"; render(); }; } rc.appendChild(it); });
     rail.appendChild(rc); b.appendChild(rail);
     var strip=$("#strip"); strip.hidden=false; strip.innerHTML="";
     var tile=function(lbl,val,cls,onclick){ var bt=el("button",null); bt.appendChild(el("small",null,lbl)); bt.appendChild(el("b",cls||"",val)); if(onclick) bt.onclick=onclick; strip.appendChild(bt); return bt; };
