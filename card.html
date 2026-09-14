@@ -79,7 +79,10 @@
   .vday .sub.bad{color:var(--red);font-weight:700}
   .vadd .lbl{margin-bottom:6px}
 </style></head>
-<body>
+<!-- Trello gives its frame the signed URL as a hover tooltip. An empty title on every layer
+     of our page stops it showing wherever the mouse rests, including the strip below the app
+     while the frame is resizing (Sam, 14 Sep 2026: "why does this show sometimes?"). -->
+<body title="">
 <div id="app" title=""></div>
 <script src="https://p.trellocdn.com/power-up.min.js"></script>
 <script>document.write('<script src="./shared.js?v='+Math.floor(Date.now()/60000)+'"><\/script>');</script>
