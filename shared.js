@@ -273,6 +273,13 @@ var VEHICLE_CLASSES=[
   {t:"26 tonne box",     m3:65, kg:15000, licence:"C", tall:true,  note:"haulier with driver; large site access only"},
   {t:"Artic, 13.6 m",    m3:85, kg:26000, licence:"CE", tall:true, note:"haulier; dock or yard access, not for most offices"}
 ];
+// the smallest vehicle that takes a load, for telling a contractor or courier what to send (any licence: it is their driver)
+function contractorVehicle(m3,kg,postcode){
+  if(m3==null) return null; kg=kg||0; var city=CITY_CENTRE.test(districtOf(postcode||""));
+  var ok=VEHICLE_CLASSES.filter(function(v){ return v.licence!=="CE"&&(!city||v.kg<=9500)&&v.m3>=m3&&v.kg>=kg; })[0];
+  if(!ok) return {text:"Nothing on one vehicle takes this. Split it over two trips or two vehicles."+(city?" City centre, so nothing over 18 tonne.":"")};
+  return {v:ok,text:"Send a "+ok.t+" or bigger: "+ok.m3+" m\u00b3, "+ok.kg.toLocaleString("en-GB")+" kg payload."+(city?" City centre: book the bay and nothing over 18 tonne.":"")};
+}
 // city centre postcode districts where nothing bigger than an 18 tonne gets to the door and bays must be booked
 var CITY_CENTRE=/^(EC\d|WC\d|E1|N1|NW1|SE1|SW1|W1|M[1-4]|B[1-5]|BA1|LS[12]|L[1-3]|BS1|EH[1-3]|G[1-3]|S1|NE1|NG1|CF10|BN1|OX1|CB[12]|YO1)$/i;
 function districtOf(pc){ var m=/^\s*([A-Z]{1,2}\d[A-Z\d]?)/i.exec(pc||""); return m?m[1].toUpperCase():""; }
