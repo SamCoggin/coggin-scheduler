@@ -117,6 +117,9 @@ var WEEK_MINS=38*60+45, DAY_MINS=WEEK_MINS/5, DAY_H=DAY_MINS/60;
 // to how much time they have been on the job". A unit is one item of any kind; some go faster, 100 is the average.
 // The target follows the time: 100 for a full day, pro rata for the minutes actually on recycling.
 var REC_TARGET_DAY=100;
+// PLASTIC SHREDDING (Sam, 14 Sep 2026: "total amount and type of material processed and cages processed"). The
+// streams are never mixed: PA6, PA66 and PP with their fillers shred separately, anything else is Other.
+var SHRED_MATERIALS=["PA6","PA66","PP","Other"];
 function recTarget(mins){ return Math.max(0,Math.round((mins||0)/DAY_MINS*REC_TARGET_DAY)); }
 var QUICK=[[15,"15 min"],[30,"30 min"],[60,"1 hour"],[120,"2 hours"],[240,"Half day"],[DAY_MINS,"Full day"]];
 var WORKSHOP_LISTS=/Workshop Jobs - (Not Started|In-progress)/;

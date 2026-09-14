@@ -73,6 +73,7 @@
   .vbar i{display:block;height:100%;background:var(--green)} .vbar i.near{background:var(--amber)} .vbar i.over{background:var(--red)}
   .vday{padding:10px 12px;border-radius:8px;background:var(--blue-bg);margin-bottom:10px;font-size:13px}
   .vday b{display:block;font-size:14px}
+  .weektot.tally .shred{display:flex;flex-wrap:wrap;gap:8px;align-items:center;width:100%;padding:6px 0} .weektot.tally .shrow{display:inline-flex;gap:4px;align-items:center;border:1px solid var(--line);border-radius:6px;padding:3px 6px} .weektot.tally .mat{font-weight:700;min-width:40px}
   .vlist{display:flex;flex-direction:column;border:1px solid var(--line);border-radius:8px;overflow:hidden;margin-bottom:10px}
   .vrow{display:grid;grid-template-columns:1fr auto auto auto;gap:10px;align-items:center;padding:8px 10px;border-top:1px solid var(--line);font-size:14px}
   .vrow:first-child{border-top:0}
@@ -593,17 +594,18 @@ var SNAP=null, DETAIL={};
   // target for those minutes, and the units that came back on the tally sheet. Read for five weeks back on open,
   // written the moment a number is typed on the Day view.
   var CRM_TALLY_URL="https://coggin-sos-os.base44.app/api/apps/69c930a6240fba922f369aa2/functions/recyclingTally";
-  var TALLIES={};   // "date|who" -> {units, notes, target, minutes}
+  var TALLIES={};   // "date|who" -> {units, notes, target, minutes, shredding:[{material,cages,kg}]}
+  var SHRED_OPEN=null;   // the operative whose shredding rows are open on the Day view
   function tallyKey(k,w){ return k+"|"+w; }
   function fetchTallies(){ if(!CRM_KEY) return Promise.resolve();
-    return fetch(CRM_TALLY_URL,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({key:CRM_KEY,action:"list",from:iso(addDays(TODAY,-35)),to:iso(addDays(TODAY,14))})}).then(function(x){return x.json();}).then(function(r){ if(!(r&&r.ok)) return; (r.rows||[]).forEach(function(t){ TALLIES[tallyKey(String(t.date).slice(0,10),t.operative)]={units:t.units,notes:t.notes||"",target:t.target,minutes:t.minutes}; }); }).catch(function(){}); }
-  function saveTally(k,w,units,notes){ var rec=(loadOn(k)[w]||{}).rec||0, row={date:k,operative:w,minutes:rec,target:recTarget(rec),units:units===""||units==null?null:Number(units),notes:notes||"",recorded_by:"scheduler"};
-    TALLIES[tallyKey(k,w)]={units:row.units,notes:row.notes,target:row.target,minutes:row.minutes};
+    return fetch(CRM_TALLY_URL,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({key:CRM_KEY,action:"list",from:iso(addDays(TODAY,-35)),to:iso(addDays(TODAY,14))})}).then(function(x){return x.json();}).then(function(r){ if(!(r&&r.ok)) return; (r.rows||[]).forEach(function(t){ TALLIES[tallyKey(String(t.date).slice(0,10),t.operative)]={units:t.units,notes:t.notes||"",target:t.target,minutes:t.minutes,shredding:t.shredding||[]}; }); }).catch(function(){}); }
+  function saveTally(k,w,units,notes,shredding){ var rec=(loadOn(k)[w]||{}).rec||0, prev=TALLIES[tallyKey(k,w)]||{}, row={date:k,operative:w,minutes:rec,target:recTarget(rec),units:units===""||units==null?null:Number(units),notes:notes||"",shredding:shredding||prev.shredding||[],recorded_by:"scheduler"};
+    TALLIES[tallyKey(k,w)]={units:row.units,notes:row.notes,target:row.target,minutes:row.minutes,shredding:row.shredding};
     if(!CRM_KEY) return; try{ fetch(CRM_TALLY_URL,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({key:CRM_KEY,action:"save",rows:[row]})}).catch(function(){}); }catch(e){} }
   // the tally added up over a date range, per operative: minutes on recycling, target, units, and the days with a number
-  function tallySummary(from,to){ var out={}; TEAM.forEach(function(w){ out[w]={mins:0,target:0,units:0,days:0,counted:0}; });
+  function tallySummary(from,to){ var out={}; TEAM.forEach(function(w){ out[w]={mins:0,target:0,units:0,days:0,counted:0,cages:0,kg:0,byMat:{}}; });
     for(var d=new Date(from+"T12:00"); iso(d)<=to; d.setDate(d.getDate()+1)){ if(d.getDay()===0||d.getDay()===6) continue; var k=iso(d), L=loadOn(k);
-      TEAM.forEach(function(w){ var rec=(L[w]||{}).rec||0; if(!rec) return; var t=TALLIES[tallyKey(k,w)]; out[w].days++; if(t&&t.units!=null){ out[w].counted++; out[w].mins+=rec; out[w].target+=recTarget(rec); out[w].units+=t.units; } }); }
+      TEAM.forEach(function(w){ var rec=(L[w]||{}).rec||0; if(!rec) return; var t=TALLIES[tallyKey(k,w)]; out[w].days++; if(t&&t.units!=null){ out[w].counted++; out[w].mins+=rec; out[w].target+=recTarget(rec); out[w].units+=t.units; } (t&&t.shredding||[]).forEach(function(x){ out[w].cages+=x.cages||0; out[w].kg+=x.kg||0; out[w].byMat[x.material]=(out[w].byMat[x.material]||0)+(x.kg||0); }); }); }
     return out; }
   var VANS_OFF=[];      // registrations currently off the road
   function vansOnRoad(){ return VEHICLES.filter(function(v){return VANS_OFF.indexOf(v.reg)<0;}).length; }
@@ -1318,9 +1320,10 @@ var SNAP=null, DETAIL={};
     // back, and the percentage. Amber under 80 percent. Days with no number are counted as not yet recorded.
     var tFrom=iso(addDays(TODAY,-27)), tTo=iso(TODAY), TS=tallySummary(tFrom,tTo);
     box.appendChild(el("h2",null,"Recycling tally, last four weeks")); box.appendChild(el("div","sub","100 units a day is the average for a full day on recycling; the target scales with the time each operative actually had. Type the day's number on the Day view."));
-    var thd=el("div","mrow head"); ["Operative","Hours on recycling","Target","Units done","Against target"].forEach(function(t){ thd.appendChild(el("span",null,t)); }); box.appendChild(thd);
+    var thd=el("div","mrow head"); ["Operative","Hours on recycling","Target and units done","Shredding","Against target"].forEach(function(t){ thd.appendChild(el("span",null,t)); }); box.appendChild(thd);
     TEAM.forEach(function(w){ var o=TS[w]; var pct=o.target?Math.round(o.units/o.target*100):null; var cls=pct==null?"":(pct<60?"red":pct<80?"amber":""); var row=el("div","mrow"+(cls?" "+cls:""));
-      row.appendChild(el("span",null,w)); row.appendChild(el("span",null,fmt(o.mins)+(o.days>o.counted?" ("+(o.days-o.counted)+(o.days-o.counted===1?" day":" days")+" not recorded)":""))); row.appendChild(el("span",null,String(o.target))); row.appendChild(el("span",null,String(o.units))); row.appendChild(el("span",null,pct==null?"nothing recorded yet":pct+"%")); box.appendChild(row); });
+      var mats=Object.keys(o.byMat).map(function(m){return m+" "+o.byMat[m]+" kg";}).join(", ");
+      row.appendChild(el("span",null,w)); row.appendChild(el("span",null,fmt(o.mins)+(o.days>o.counted?" ("+(o.days-o.counted)+(o.days-o.counted===1?" day":" days")+" not recorded)":""))); row.appendChild(el("span",null,o.target+" target, "+o.units+" done")); row.appendChild(el("span",null,o.cages||o.kg?o.cages+" cages, "+o.kg+" kg"+(mats?" ("+mats+")":""):"none recorded")); row.appendChild(el("span",null,pct==null?"nothing recorded yet":pct+"%")); box.appendChild(row); });
     var hd=el("div","mrow head"); ["Job","Part","Operatives and time","Items and standard","Against standard"].forEach(function(t){ hd.appendChild(el("span",null,t)); }); box.appendChild(hd);
     if(!rows.length) box.appendChild(el("div","sub","No jobs with time allocated in this window."));
     rows.forEach(function(r){ var cls=r.ratio==null?"":(r.ratio>2?"red":r.ratio>1.5?"amber":""); var row=el("div","mrow"+(cls?" "+cls:""));
@@ -1640,7 +1643,16 @@ var SNAP=null, DETAIL={};
         for(var r=0;r<10;r++){ for(var c=0;c<10;c++){ doc.rect(gx+c*gw,gy+r*gh,gw-1.2,gh-1.2); } doc.setFont("helvetica","bold"); doc.setFontSize(8); doc.setTextColor(120,120,120); doc.text(String((r+1)*10),gx+10*gw+1,gy+r*gh+4.6); }
         y=gy+10*gh+4;
         doc.setFont("helvetica","bold"); doc.setFontSize(11); doc.setTextColor(17,17,17); doc.text("Units processed today:",12,y+5); doc.setDrawColor(51,51,51); doc.setLineWidth(.5); doc.rect(62,y-1,36,10);
-        doc.setFontSize(9.5); doc.text("Notes:",106,y+5); doc.setDrawColor(150,150,150); doc.setLineWidth(.3); doc.line(120,y+5.5,198,y+5.5); doc.line(106,y+12.5,198,y+12.5); y+=18; }
+        doc.setFontSize(9.5); doc.text("Notes:",106,y+5); doc.setDrawColor(150,150,150); doc.setLineWidth(.3); doc.line(120,y+5.5,198,y+5.5); doc.line(106,y+12.5,198,y+12.5); y+=18;
+        // PLASTIC SHREDDING: what went through the shredder, by material, never mixed
+        if(y>215){ doc.addPage(); y=14; }
+        doc.setFont("helvetica","bold"); doc.setFontSize(10); doc.setTextColor(17,17,17); doc.text("Plastic shredding today, by material. Never mix the streams.",12,y+4); y+=7;
+        var cols=[["Material",12,34],["Cages",46,24],["Kg",70,28],["Notes",98,100]]; doc.setFillColor(232,235,239); doc.rect(12,y,186,6,"F"); doc.setFontSize(8); doc.setTextColor(51,51,51); cols.forEach(function(c){ doc.text(c[0],c[1]+1.5,y+4.2); }); y+=6;
+        doc.setDrawColor(150,150,150); doc.setLineWidth(.3); doc.setFont("helvetica","normal"); doc.setFontSize(9.5); doc.setTextColor(17,17,17);
+        SHRED_MATERIALS.forEach(function(m){ doc.rect(12,y,186,8); doc.line(46,y,46,y+8); doc.line(70,y,70,y+8); doc.line(98,y,98,y+8); doc.text(m,13.5,y+5.5); y+=8; }); y+=6;
+        // before you finish (Sam, 14 Sep 2026): tools put back, area left clean and tidy
+        doc.setFont("helvetica","bold"); doc.setFontSize(9.5); doc.setTextColor(17,17,17); doc.text("Before you finish:",12,y+4); doc.setDrawColor(90,90,90); doc.setLineWidth(.35);
+        doc.rect(46,y+.4,4.4,4.4); doc.setFont("helvetica","normal"); doc.text("Tools put back",52,y+4); doc.rect(90,y+.4,4.4,4.4); doc.text("Recycling area left clean and tidy",96,y+4); y+=10; }
       if(y>240){ doc.addPage(); y=14; }
       y=pdfBand(doc,y,"END OF DAY");
       doc.setFont("helvetica","bold"); doc.setFontSize(9.5); doc.setTextColor(17,17,17); doc.text("Started:",12,y+4); doc.text("Finished:",60,y+4); doc.setDrawColor(150,150,150); doc.line(28,y+4.5,54,y+4.5); doc.line(78,y+4.5,106,y+4.5);
@@ -1847,7 +1859,17 @@ var SNAP=null, DETAIL={};
     wk.appendChild(el("span","team","Team: "+fmt(teamRec))); b.appendChild(wk);
     if(view==="day"){ var L0=loadOn(dayCur), tk=el("div","weektot tally"); var th=el("span","n","Recycling today"); th.appendChild(tip("tally")); tk.appendChild(th);
       TEAM.forEach(function(w){ var rec=(L0[w]||{}).rec||0; if(!rec) return; var tgt=recTarget(rec), t=TALLIES[tallyKey(dayCur,w)]||{}, cell=el("span",t.units!=null?(t.units<tgt*0.8?"low":""):"");
-        cell.appendChild(document.createTextNode(w+": "+fmt(rec)+", target "+tgt+", done ")); var inp=el("input"); inp.type="number"; inp.min="0"; inp.step="1"; inp.value=t.units==null?"":String(t.units); inp.setAttribute("aria-label",w+" units processed"); inp.style.width="64px"; inp.onchange=function(){ saveTally(dayCur,w,inp.value,t.notes||""); render(); }; cell.appendChild(inp); tk.appendChild(cell); });
+        cell.appendChild(document.createTextNode(w+": "+fmt(rec)+", target "+tgt+", done ")); var inp=el("input"); inp.type="number"; inp.min="0"; inp.step="1"; inp.value=t.units==null?"":String(t.units); inp.setAttribute("aria-label",w+" units processed"); inp.style.width="64px"; inp.onchange=function(){ saveTally(dayCur,w,inp.value,t.notes||""); render(); }; cell.appendChild(inp);
+        var sh=t.shredding||[], shTot=sh.reduce(function(a,x){return a+(x.cages||0);},0), shKg=sh.reduce(function(a,x){return a+(x.kg||0);},0);
+        var sb=el("button","offbtn"+(SHRED_OPEN===w?" on":""),shTot||shKg?"Shredding: "+shTot+" cages, "+shKg+" kg":"Shredding"); sb.onclick=function(){ SHRED_OPEN=SHRED_OPEN===w?null:w; render(); }; cell.appendChild(sb);
+        tk.appendChild(cell);
+        if(SHRED_OPEN===w){ var form=el("span","shred"); form.appendChild(el("b",null,w+", plastic shredding today, cages and kg by material, never mixed:"));
+          SHRED_MATERIALS.forEach(function(m){ var cur=sh.filter(function(x){return x.material===m;})[0]||{}; var rowm=el("span","shrow"); rowm.appendChild(el("span","mat",m));
+            var ci=el("input"); ci.type="number"; ci.min="0"; ci.step="1"; ci.placeholder="cages"; ci.value=cur.cages?String(cur.cages):""; ci.style.width="60px"; ci.setAttribute("aria-label",m+" cages");
+            var ki=el("input"); ki.type="number"; ki.min="0"; ki.step="1"; ki.placeholder="kg"; ki.value=cur.kg?String(cur.kg):""; ki.style.width="64px"; ki.setAttribute("aria-label",m+" kg");
+            var upd=function(){ var next=SHRED_MATERIALS.map(function(mm){ if(mm===m) return {material:m,cages:Number(ci.value)||0,kg:Number(ki.value)||0}; var o=sh.filter(function(x){return x.material===mm;})[0]; return o?{material:mm,cages:o.cages||0,kg:o.kg||0}:null; }).filter(function(x){return x&&(x.cages||x.kg);}); saveTally(dayCur,w,t.units,t.notes||"",next); render(); };
+            ci.onchange=upd; ki.onchange=upd; rowm.appendChild(ci); rowm.appendChild(ki); form.appendChild(rowm); });
+          tk.appendChild(form); } });
       if(!CRM_KEY) tk.appendChild(el("span","low","Paste the CRM key in the Manager view to save the tally.")); b.appendChild(tk); }
     var mo=openRound?roundModal():modal(); if(mo){ document.body.appendChild(mo); if(window.__keepScroll) mo.scrollTop=window.__keepScroll; }
     $("#prev").onclick=function(){week--;render();}; $("#next").onclick=function(){week++;render();};

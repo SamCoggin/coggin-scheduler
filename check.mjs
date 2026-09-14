@@ -24,7 +24,7 @@ setTimeout(()=>{ const walk=(n,o=[])=>{o.push(n);(n.children||[]).forEach(c=>wal
 setTimeout(()=>{ const out=[]; class FakeDoc{ constructor(){ this.internal={pageSize:{}}; } setFont(){} setFontSize(){} setTextColor(){} setFillColor(){} setDrawColor(){} setLineWidth(){} roundedRect(){} rect(){} line(){} addPage(){} setPage(){} getNumberOfPages(){return 1;} splitTextToSize(t){return String(t).split('\n');} text(t){ out.push(Array.isArray(t)?t.join(' '):String(t)); } save(n){ out.push('SAVED '+n); } }
   global.window.jspdf={jsPDF:FakeDoc}; global.alert=m=>out.push('ALERT '+m);
   try{ global.window.__crewSheetsPdf('2026-09-15'); }catch(e){ console.log('SHEETS THROW',e.stack.split('\n').slice(0,3).join('\n')); }
-  const T=out.join(' | '); console.log('recycling tally on the sheet:',/RECYCLING/.test(T)&&/TARGET UNITS/.test(T)&&/Units processed today:/.test(T)); console.log('job sheets:',/Bart, Tue 15 Sep/.test(T)&&/Skipton - Harrison Drury/.test(T)&&/no time set/.test(T)&&/END OF DAY/.test(T)&&/SAVED job-sheets-2026-09-15\.pdf/.test(T));
+  const T=out.join(' | '); console.log('recycling tally on the sheet:',/RECYCLING/.test(T)&&/TARGET UNITS/.test(T)&&/Units processed today:/.test(T)&&/Plastic shredding today/.test(T)&&/PA66/.test(T)&&/Tools put back/.test(T)); console.log('job sheets:',/Bart, Tue 15 Sep/.test(T)&&/Skipton - Harrison Drury/.test(T)&&/no time set/.test(T)&&/END OF DAY/.test(T)&&/SAVED job-sheets-2026-09-15\.pdf/.test(T));
 },700);
 
 // THE PARTS: a sub-contractor clearance with a labour unload becomes a contractor job plus a labour leg on the due day.
