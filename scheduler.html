@@ -661,7 +661,8 @@ var SNAP=null, DETAIL={};
     return {stops:stops,drive:Math.round(drive),back:back,end:t,isDriver:isDriver,driveBreak:isDriver&&drive>DRIVE_BREAK,longDay:isDriver&&(t-DAY_START)>DRIVER_DAY_MAX};
   }
   function jobTiming(j,k){ if(!j.who.length) return null; var tl=dayTimeline(k,j.who[0]); return tl.stops.filter(function(x){return x.j===j;})[0]||null; }
-  var short=function(j){ return j.title.split(" - ")[0]; };
+  // the town alone was not clear enough in a warning (Sam, 15 Sep 2026: "I think this is meant to be Preston - MJS Groundworks"): the whole title, which is already town and customer
+  var short=function(j){ return j.title; };
   // THE VAN ON THE JOB (Sam, 13 Sep 2026). Each transport job carries which van goes: one of ours, or a hire.
   // A hire needs booking: the tick and reference live on the job, and it nags from five working days out.
   var HIRE_WARN_DAYS=5;
