@@ -171,7 +171,9 @@ function syncCardMembers(cardId,plan,crmKey,inWorkshop){
   var names=pick.filter(function(n,i,a){return CREW.indexOf(n)>=0&&a.indexOf(n)===i;});
   var key=names.slice().sort().join(",");
   if(_memberSync[cardId]===key) return; _memberSync[cardId]=key;
-  try{ fetch(CRM_MEMBERS_URL,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({key:crmKey,card_id:cardId,names:names,crew:CREW})}).catch(function(){}); }catch(e){}
+  // the day and the part go with it, so the comment that tags a new member says something useful
+  var due=inWorkshop?((plan&&plan.prep&&plan.prep.date)||(plan&&plan.date)||""):((plan&&plan.date)||""), mins=inWorkshop?((plan&&plan.prep&&plan.prep.mins)||0):((plan&&plan.mins)||0);
+  try{ fetch(CRM_MEMBERS_URL,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({key:crmKey,card_id:cardId,names:names,crew:CREW,part:inWorkshop?"production":"transport",mins:mins,due:due})}).catch(function(){}); }catch(e){}
 }
 function fmt(m){ if(m==null) return ""; if(m<60) return m+" min"; var h=Math.floor(m/60), r=m%60; return h+"h"+(r?" "+r+"m":""); }
 // what the front of the card says, from the saved plan
