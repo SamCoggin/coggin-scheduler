@@ -73,6 +73,7 @@
   .vbar i{display:block;height:100%;background:var(--green)} .vbar i.near{background:var(--amber)} .vbar i.over{background:var(--red)}
   .vday{padding:10px 12px;border-radius:8px;background:var(--blue-bg);margin-bottom:10px;font-size:13px}
   .vday b{display:block;font-size:14px}
+  .daywarn{position:relative;padding-right:30px} .daywarn .dis{position:absolute;top:5px;right:6px;border:0;background:transparent;color:#fff;opacity:.85;font-size:16px;line-height:1;cursor:pointer;padding:2px 5px;border-radius:4px} .daywarn .dis:hover{background:rgba(255,255,255,.2);opacity:1}
   .rail .iss{position:relative;padding-right:30px} .rail .iss .dis{position:absolute;top:6px;right:6px;border:0;background:transparent;color:var(--muted);font-size:15px;line-height:1;cursor:pointer;padding:2px 5px;border-radius:4px} .rail .iss .dis:hover{background:rgba(0,0,0,.08);color:var(--text)} .rail .iss.dim{opacity:.55} .rail .dis-toggle{border:0;background:transparent;color:var(--muted);font-size:12px;text-decoration:underline;cursor:pointer;padding:6px 2px;text-align:left}
   .weektot.tally .shred{display:flex;flex-wrap:wrap;gap:8px;align-items:center;width:100%;padding:6px 0} .weektot.tally .shrow{display:inline-flex;gap:4px;align-items:center;border:1px solid var(--line);border-radius:6px;padding:3px 6px} .weektot.tally .mat{font-weight:700;min-width:40px}
   .vlist{display:flex;flex-direction:column;border:1px solid var(--line);border-radius:8px;overflow:hidden;margin-bottom:10px}
@@ -698,7 +699,9 @@ var SNAP=null, DETAIL={};
     allJobs().filter(function(j){return onDay(j,k)&&j.site&&!j.isHold&&!j.who.length&&j.by&&j.drive!=null;}).forEach(function(j){ var by=parseHM(j.by), end=DAY_START+j.drive/2+(j.mins||0); if(by!=null&&end>by) add(short(j)+" cannot be done by "+j.by+": leaving at 8:00 it finishes about "+hmStr(end)+".",j); });
     return out;
   }
-  function dayWarnings(k){ return dayIssues(k).map(function(x){return x.text;}); }
+  // dismissed warnings stay out of the day columns and the PDF too (Sam, 15 Sep 2026: "I cant dismiss")
+  function liveIssues(k){ return dayIssues(k).filter(function(x){return !DISMISSED[warnKey(x)];}); }
+  function dayWarnings(k){ return liveIssues(k).map(function(x){return x.text;}); }
   // turn the card text into fields, going by the headings the cards use.
   // a heading line sets the group; every line after it goes in that group
   // until the next heading. items are the "N x thing" lines.
@@ -1065,7 +1068,7 @@ var SNAP=null, DETAIL={};
     cols.forEach(function(g){
       var list=el("div","list"+(isToday?" today":"")); var h=el("h2"); var hl=el(isToday?"em":"span",null,g[1]); hl.appendChild(tip(g[0])); h.appendChild(hl); h.appendChild(el("span",null,g[2].length?g[2].length+(g[2].length===1?" job":" jobs"):"nothing")); list.appendChild(h);
       var cards=el("div","cards");
-      if(g[0]==="road") dayWarnings(k).forEach(function(tx){ cards.appendChild(el("div","daywarn",tx)); });
+      if(g[0]==="road") liveIssues(k).forEach(function(x){ var dw=el("div","daywarn"); dw.appendChild(document.createTextNode(x.text)); var xb=el("button","dis","\u00d7"); xb.title="Dismiss this warning. It comes back if what it says changes."; xb.onclick=function(e){ e.stopPropagation(); DISMISSED[warnKey(x)]=true; persist(); render(); }; dw.appendChild(xb); cards.appendChild(dw); });
       if(g[0]==="road") rounds.forEach(function(r){ cards.appendChild(roundEl(r)); });
       g[2].forEach(function(j){ cards.appendChild(cardEl(j,k,g[0]==="shop",isToday)); });
       if(!g[2].length) cards.appendChild(el("div","hint",NEED?"Nothing outstanding.":"Nothing here today."));
