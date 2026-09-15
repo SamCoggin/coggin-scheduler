@@ -442,7 +442,7 @@ var SNAP=null, DETAIL={};
   // a second production stint, a site visit. each has its own day, people,
   // travel and time, and shows on the board like any other job.
   var LEG_TYPES=[["to_sub","Deliver to subcontractor",true],["from_sub","Collect from subcontractor",true],["production","Production",false],["site","Site visit",true],["labour","Labour",false]];
-  var LEGS=[];
+  var LEGS=[], STALE_LEGS={};   // STALE_LEGS: jobs whose saved plan still carries a labour leg the rule no longer wants; saved clean on the next persist
   function legJobs(){
     return LEGS.map(function(L,i){
       var parent=JOBS.filter(function(j){return j.id===L.parent;})[0]; if(!parent) return null;
@@ -516,7 +516,11 @@ var SNAP=null, DETAIL={};
     // job: it shows under Transport for information, needs no van and no operatives of ours.
     JOBS.forEach(function(j){ var dd=DETAIL[j.id]; if(!dd) return; var P=partsOf(dd.desc); if(!P.known) P=impliedParts(j.labels); j.parts=P;
       var carrier=partsCarrier(P); if(carrier&&!j.contractor&&j.site) j.contractor=carrier;
-      if(P.labour&&j.site&&!LEGS.some(function(L){return L.parent===j.id&&L.type==="labour";})) LEGS.push({parent:j.id,type:"labour",date:j.date,who:[],mins:null,drive:null,where:P.labour}); });
+      // ONLY WHEN SOMEBODY ELSE'S VEHICLE IS INVOLVED (Sam, 15 Sep 2026: "there is a duplication going on"). A stale
+      // labour leg the old rule seeded is dropped again as long as nobody has been put on it.
+      var wanted=carrier?(P.labourLegs||[]):[];
+      for(var li=LEGS.length-1;li>=0;li--){ var L=LEGS[li]; if(L.parent!==j.id||L.type!=="labour") continue; if(!wanted.some(function(x){return x.where===L.where;})&&!(L.who&&L.who.length)&&L.mins==null){ LEGS.splice(li,1); STALE_LEGS[j.id]=true; } }
+      wanted.forEach(function(x){ if(!LEGS.some(function(L){return L.parent===j.id&&L.type==="labour"&&L.where===x.where;})) LEGS.push({parent:j.id,type:"labour",date:x.date||j.date,who:[],mins:null,drive:null,where:x.where}); }); });
     if(SNAP.boardData&&SNAP.boardData.roundDrive){ for(var k in SNAP.boardData.roundDrive) ROUND_DRIVE[k]=SNAP.boardData.roundDrive[k]; }
     if(SNAP.boardData&&SNAP.boardData.vansOff){ VANS_OFF=SNAP.boardData.vansOff.slice(); }
     // CATCH-UP (Sam, 14 Sep 2026: "why are members not attached even though some are assigned?"): jobs planned before
@@ -1876,7 +1880,7 @@ var SNAP=null, DETAIL={};
   }
   if(t){
     $("#src").textContent="Reading the board...";
-    loadBoard().then(function(snap){ buildFromSnap(snap); lastSaved={}; render(); refreshDrive(); setTimeout(refreshRounds,1500); fetchTallies().then(function(){ if(view==="day"||view==="manager") render(); }); }).catch(function(e){ $("#src").textContent="Could not read the board: "+(e&&e.message||e); });
+    loadBoard().then(function(snap){ buildFromSnap(snap); lastSaved={}; render(); if(Object.keys(STALE_LEGS).length){ persist(); STALE_LEGS={}; } refreshDrive(); setTimeout(refreshRounds,1500); fetchTallies().then(function(){ if(view==="day"||view==="manager") render(); }); }).catch(function(e){ $("#src").textContent="Could not read the board: "+(e&&e.message||e); });
   } else { $("#src").textContent="Open this from the Scheduler button on the Trello board."; }
 })();
 </script>

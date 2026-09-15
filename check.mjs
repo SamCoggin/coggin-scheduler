@@ -7,6 +7,7 @@ const lists=[{id:'l1',name:'Workshop Jobs - Not Started'},{id:'l2',name:'Removal
 const cards=[{id:'c1',name:'Skipton - C4B36B - Harrison Drury',idList:'l1',due:'2026-09-15T12:00:00.000Z',start:null,labels:[{name:'Delivery/Installation'}],members:[{fullName:'Bart H'}],desc:'x',customFieldItems:[]},
              {id:'c2',name:'Blackpool - 5FAEDC - James Knowles',idList:'l2',due:'2026-09-14T12:00:00.000Z',labels:[{name:'Removal Job'}],members:[],desc:'**Clearance Details**\n\n**Job**\nRef: **5FAEDC**\n\n**Site Contact**\nMichael Knowles \u2014 **07946508174**\n\n**Collection Address**\n**20 Dickson Road, Blackpool, FY1 2AE**\n\n**Items to Clear**\n{"metal\\_filing\\_cabinets":5}\n\n**Sign-off link:** [Open the sign-off form](https://x.y/z)'},
              {id:'c4',name:'Bath - 1476F6 - Elite Office Furniture - 111321',idList:'l2',due:'2026-09-16T07:00:00.000Z',labels:[{name:'Clearance - Sub-contractor'}],members:[],desc:'**Clearance Details**\n\nRef: **1476F6**\n\n**Items to Clear**\n194 x Swivel chairs\n\n**Parts**\nProduction: no\nSite: no\nTransport: Example Haulage, customer loads\nLabour: unload at Forton',customFieldItems:[]},
+             {id:'c5',name:'Property Compass - F48E55',idList:'l2',due:'2026-09-16T07:00:00.000Z',labels:[{name:'Resale - Customer Collects'}],members:[],desc:'**Parts**\nProduction: yes\nSite: no\nTransport: customer collects\nLabour: no',customFieldItems:[]},
              {id:'c3',name:'Rob (Annual Leave)',idList:'l3',due:'2026-09-18T12:00:00.000Z',labels:[],members:[]}];
 global.window={__TODAY:'2026-09-14T12:00',TrelloPowerUp:{iframe(){return { lists:()=>Promise.resolve(lists), cards:()=>Promise.resolve(cards), board:()=>Promise.resolve({name:'Jobs - Planning Board',members:[]}), get:(a,b,c,d)=>Promise.resolve(d), set:()=>Promise.resolve() };}}};
 global.TrelloPowerUp=global.window.TrelloPowerUp;
@@ -29,7 +30,7 @@ setTimeout(()=>{ const out=[]; class FakeDoc{ constructor(){ this.internal={page
 
 // THE PARTS: a sub-contractor clearance with a labour unload becomes a contractor job plus a labour leg on the due day.
 setTimeout(()=>{ const all=global.window.__allJobs(); const main=all.find(j=>j.id==='c4'), leg=all.find(j=>j.isLeg&&j.leg.type==='labour'&&j.leg.parent==='c4');
-  console.log('job parts:', !!main&&main.contractor==='Example Haulage'&&!!leg&&leg.date==='2026-09-16'&&!leg.site&&leg.movement==='Labour unload');
+  const cc=all.find(j=>j.isLeg&&j.leg.type==='labour'&&j.leg.parent==='c5'); console.log('job parts:', !!main&&main.contractor==='Example Haulage'&&!!leg&&leg.date==='2026-09-16'&&!leg.site&&leg.movement==='Labour unload'&&!cc);
 },800);
 
 setTimeout(()=>{ const rt=new Function(shared+';return recTarget;')(); console.log('rec target:', rt(465)===100 && rt(0)===0 && rt(180)===39); },850);

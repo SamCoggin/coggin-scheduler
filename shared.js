@@ -359,17 +359,19 @@ function partsOf(desc){
     else if(k==="transport"){ P.transport=none?"":v; P.ours=/^our van/i.test(v); }
     else if(k==="labour"||k==="warehouse"||k==="yard") P.labour=none?"":v;
   });
+  // "unload in on 2026-09-16; load out on 2026-09-23" is two legs on two days (a contractor refurb)
+  P.labourLegs=P.labour?P.labour.split(";").map(function(x){ var m=/^(.*?)(?:\s+on\s+(\d{4}-\d{2}-\d{2}))?\s*$/.exec(x.trim()); return m&&m[1]?{where:m[1].trim(),date:m[2]||null}:null; }).filter(Boolean):[];
   return P;
 }
 // the firm named on a transport line: "G&T Express, customer loads" -> "G&T Express"; "our van" and "customer ..." -> ""
 function partsCarrier(P){ if(!P||!P.transport||P.ours) return ""; if(/^(customer|seller)\b/i.test(P.transport)) return ""; return P.transport.split(",")[0].trim(); }
 // No Parts block on the card (made before 14 Sep 2026, or by hand): what the label alone implies for the labour part.
+// Labour only when somebody else's vehicle is involved (Sam, 15 Sep 2026): our crew load and unload their own van
+// as part of the trip, and a customer collection or delivery is itself the labour.
 function impliedParts(labels){
-  var wk=workOf(labels), mv=movementOf(labels), carrier=carrierOf(labels), P={production:false,site:"",transport:"",ours:false,labour:"",known:false};
-  if(wk==="Clearance"||wk==="Recycling"||wk==="Buyback"){ P.labour="unload at Forton"; if(carrier) P.transport=carrier; }
-  else if(mv==="Customer Collects"||mv==="Customer Delivers and Collects") P.labour="load at the collection slot";
-  else if(carrier==="Courier") P.labour="load the courier";
-  else if(carrier==="Sub-contractor"&&wk==="Resale") P.labour="load the sub-contractor";
+  var wk=workOf(labels), carrier=carrierOf(labels), P={production:false,site:"",transport:"",ours:false,labour:"",labourLegs:[],known:false};
+  if(carrier){ P.transport=carrier; if(wk==="Clearance"||wk==="Recycling"||wk==="Buyback") P.labour="unload at Forton"; else if(wk==="Resale"||wk==="Donation") P.labour=carrier==="Courier"?"load the courier":"load the sub-contractor"; else if(wk==="Refurb") P.labour="unload in; load out"; }
+  P.labourLegs=P.labour?P.labour.split(";").map(function(x){return {where:x.trim(),date:null};}):[];
   return P;
 }
 function supportLegs(desc){

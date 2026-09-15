@@ -141,7 +141,11 @@
       // THE LABOUR PART (Sam, 14 Sep 2026): from the card's Parts block, or implied by the label on an older card.
       PARTS=partsOf(card.desc); if(!PARTS.known) PARTS=impliedParts(card.labels);
       d.legs.forEach(function(L){ if(L.type==="warehouse"||L.type==="yard") L.type="labour"; });
-      if(PARTS.labour&&site&&!d.legs.some(function(L){return L.type==="labour";})) d.legs.push({type:"labour",date:card.due?card.due.slice(0,10):null,who:[],mins:null,drive:null,where:PARTS.labour}); if(workshop&&!d.prep) d.prep={who:[],mins:null,start:null,date:null};
+      // ONLY WHEN SOMEBODY ELSE'S VEHICLE IS INVOLVED (Sam, 15 Sep 2026): a stale labour leg nobody is on is dropped.
+      var wantedL=partsCarrier(PARTS)?(PARTS.labourLegs||[]):[], dropped=false;
+      for(var li=d.legs.length-1;li>=0;li--){ var Lx=d.legs[li]; if(Lx.type!=="labour") continue; if(!wantedL.some(function(x){return x.where===Lx.where;})&&!(Lx.who&&Lx.who.length)&&Lx.mins==null){ d.legs.splice(li,1); dropped=true; } }
+      wantedL.forEach(function(x){ if(!d.legs.some(function(L){return L.type==="labour"&&L.where===x.where;})) d.legs.push({type:"labour",date:x.date||(card.due?card.due.slice(0,10):null),who:[],mins:null,drive:null,where:x.where}); });
+      if(dropped) save(); if(workshop&&!d.prep) d.prep={who:[],mins:null,start:null,date:null};
       render();
       // checklists only come through the board-wide cards call, the same way the Scheduler reads them
       var cl=t.cards("id","checklists").then(function(cs){ var me=cs.filter(function(x){return x.id===card.id;})[0]; if(me&&me.checklists) card.checklists=me.checklists; }).catch(function(){});
@@ -295,8 +299,7 @@
     if(vanApplies||(workshop&&loading)||contractorOnly) app.appendChild(ls);
     app.appendChild(ts);
 
-    var W=(d.legs||[]).filter(function(L){return L.type==="labour";})[0];
-    if(W){
+    (d.legs||[]).filter(function(L){return L.type==="labour";}).forEach(function(W){
       var ws=section("labour","Labour",W.date?niceShort(W.date):"");
       ws.appendChild(el("div","who",W.where.charAt(0).toUpperCase()+W.where.slice(1)+(PARTS&&PARTS.transport&&!PARTS.ours?", "+PARTS.transport+" carries it":"")+"."));
       var Lw=loadNow(), wstd=standardFor(/unload|receive/i.test(W.where)?"Labour unload":"Labour load",Lw), overW=wstd?aboveStandard(wstd,W.who,W.mins):null;
@@ -308,7 +311,7 @@
         if(wstd&&wstd.mins!=null){ var sb=el("div","stdbox"); sb.appendChild(el("b",null,"Standard: "+wstd.crew+(wstd.crew===1?" operative":" operatives")+", "+fmt(wstd.mins)+(wstd.crew>1?" each":""))); sb.appendChild(el("div","hint",wstd.why)); ed.appendChild(sb); }
         ed.appendChild(el("div","lbl","Labour time per operative")); ed.appendChild(timeField(W,"")); },W.mins!=null?"":(W.who.length?"bad":"todo")));
       app.appendChild(ws);
-    }
+    });
     var otherLegs=(d.legs||[]).filter(function(L){return L.type!=="labour";});
     if(otherLegs.length){ var ls=section("labour","Legs",""); var lf=fld(""); otherLegs.forEach(function(Lg){ lf.appendChild(el("div",null,Lg.type.replace("_"," ")+(Lg.where?": "+Lg.where:"")+", "+(Lg.date?niceShort(Lg.date):"no date")+(Lg.who&&Lg.who.length?", "+Lg.who.join(", "):", unassigned")+(Lg.mins!=null?", "+fmt(Lg.mins):""))); }); lf.appendChild(el("div","hint","Legs are added and edited in the Scheduler.")); ls.appendChild(lf); app.appendChild(ls); }
     fit();
