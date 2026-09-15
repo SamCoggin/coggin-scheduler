@@ -409,7 +409,9 @@ var SNAP=null, DETAIL={};
         var snap={board:board.name,crew:CREW,cards:cs,boardData:boardData};
         // date holds from the CRM: ghost cards, counted but never booked here
         if(!CRM_KEY) return snap;
-        return fetch(CRM_HOLDS_URL,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({key:CRM_KEY})}).then(function(x){return x.json();}).then(function(h){ snap.holds=(h&&h.ok&&h.holds)||[]; snap.requests=(h&&h.ok&&h.requests)||[]; return snap; }).catch(function(){ snap.holds=[]; snap.requests=[]; return snap; });
+        // the checklists come through the CRM (Trello's client never gives them to a board page), in the same breath as the holds
+        var checksP=fetch(CRM_CHECKLISTS_URL,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({key:CRM_KEY})}).then(function(x){return x.json();}).then(function(r){ if(!(r&&r.ok&&r.cards)) return; cs.forEach(function(c){ var ck=r.cards[c.id]; if(ck&&ck.length){ c.checks=ck; DETAIL[c.id]={desc:c.desc,checks:ck}; } }); }).catch(function(){});
+        return Promise.all([checksP, fetch(CRM_HOLDS_URL,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({key:CRM_KEY})}).then(function(x){return x.json();})]).then(function(rr){ var h=rr[1]; snap.holds=(h&&h.ok&&h.holds)||[]; snap.requests=(h&&h.ok&&h.requests)||[]; return snap; }).catch(function(){ snap.holds=[]; snap.requests=[]; return snap; });
       });
     });
   }
@@ -609,6 +611,7 @@ var SNAP=null, DETAIL={};
   var ROUND_DRIVE={};   // "date|person" -> minutes, when you have changed it
   var CRM_KEY="", HOLDS=[], REQUESTS=[];   // REQUESTS: dates sales have asked for that operations have not answered   // the shared key for the CRM's opsHolds function, saved on the board from the Manager view
   var CRM_HOLDS_URL="https://coggin-sos-os.base44.app/api/apps/69c930a6240fba922f369aa2/functions/opsHolds";
+  var CRM_CHECKLISTS_URL="https://coggin-sos-os.base44.app/api/apps/69c930a6240fba922f369aa2/functions/trelloChecklists";
   // THE RECYCLING TALLY (Sam, 14 Sep 2026). One row per operative per day in the CRM: minutes on recycling, the
   // target for those minutes, and the units that came back on the tally sheet. Read for five weeks back on open,
   // written the moment a number is typed on the Day view.
