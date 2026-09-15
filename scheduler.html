@@ -73,6 +73,7 @@
   .vbar i{display:block;height:100%;background:var(--green)} .vbar i.near{background:var(--amber)} .vbar i.over{background:var(--red)}
   .vday{padding:10px 12px;border-radius:8px;background:var(--blue-bg);margin-bottom:10px;font-size:13px}
   .vday b{display:block;font-size:14px}
+  .rail .iss{position:relative;padding-right:30px} .rail .iss .dis{position:absolute;top:6px;right:6px;border:0;background:transparent;color:var(--muted);font-size:15px;line-height:1;cursor:pointer;padding:2px 5px;border-radius:4px} .rail .iss .dis:hover{background:rgba(0,0,0,.08);color:var(--text)} .rail .iss.dim{opacity:.55} .rail .dis-toggle{border:0;background:transparent;color:var(--muted);font-size:12px;text-decoration:underline;cursor:pointer;padding:6px 2px;text-align:left}
   .weektot.tally .shred{display:flex;flex-wrap:wrap;gap:8px;align-items:center;width:100%;padding:6px 0} .weektot.tally .shrow{display:inline-flex;gap:4px;align-items:center;border:1px solid var(--line);border-radius:6px;padding:3px 6px} .weektot.tally .mat{font-weight:700;min-width:40px}
   .vlist{display:flex;flex-direction:column;border:1px solid var(--line);border-radius:8px;overflow:hidden;margin-bottom:10px}
   .vrow{display:grid;grid-template-columns:1fr auto auto auto;gap:10px;align-items:center;padding:8px 10px;border-top:1px solid var(--line);font-size:14px}
@@ -442,6 +443,10 @@ var SNAP=null, DETAIL={};
   // a second production stint, a site visit. each has its own day, people,
   // travel and time, and shows on the board like any other job.
   var LEG_TYPES=[["to_sub","Deliver to subcontractor",true],["from_sub","Collect from subcontractor",true],["production","Production",false],["site","Site visit",true],["labour","Labour",false]];
+  // DISMISSED WARNINGS (Sam, 15 Sep 2026: "I need to be able to dismiss these notifications"). Keyed on the warning's
+  // own words, saved on the board, so a dismissed warning stays gone until what it says changes.
+  var DISMISSED={}, SHOW_DISMISSED=false;
+  function warnKey(x){ return (x.title||"")+"|"+(x.text||""); }
   var LEGS=[], STALE_LEGS={};   // STALE_LEGS: jobs whose saved plan still carries a labour leg the rule no longer wants; saved clean on the next persist
   function legJobs(){
     return LEGS.map(function(L,i){
@@ -528,6 +533,7 @@ var SNAP=null, DETAIL={};
     // helper skips anything it has already sent this session, so this costs one call per changed card.
     var ck=(SNAP.boardData&&SNAP.boardData.crmKey)||"", todayK=iso(TODAY);
     if(ck){ JOBS.forEach(function(j){ if(j.date<todayK) return; if(!(j.who&&j.who.length)&&!(j.prep&&j.prep.who&&j.prep.who.length)) return; syncCardMembers(j.id,{who:j.who,prep:j.prep},ck,inWorkshop(j)); }); }
+    if(SNAP.boardData&&SNAP.boardData.dismissed){ DISMISSED={}; SNAP.boardData.dismissed.forEach(function(k){ DISMISSED[k]=true; }); }
     if(SNAP.boardData&&SNAP.boardData.off){ OFF=JSON.parse(JSON.stringify(SNAP.boardData.off)); } if(SNAP.boardData&&SNAP.boardData.offWhy){ OFF_WHY=JSON.parse(JSON.stringify(SNAP.boardData.offWhy)); } syncOff();
     // HELD DATES FROM THE CRM (Sam, 13 Sep 2026): a request sales are waiting on. Ghost cards: they sit on
     // their day, count the standard crew and time and the van load, and vanish when the hold lapses.
@@ -576,7 +582,7 @@ var SNAP=null, DETAIL={};
       var js=JSON.stringify(d); if(lastSaved[j.id]===js) return; lastSaved[j.id]=js; t.set(j.id,"shared","sched",d); syncCardMembers(j.id,d,CRM_KEY,inWorkshop(j));
     });
     var extra=CONTRACTORS.filter(function(c){return ["MAK Installations","Courier","Other contractor"].indexOf(c)<0;});
-    var bd=JSON.stringify({roundDrive:ROUND_DRIVE,contractors:extra,vansOff:VANS_OFF,crmKey:CRM_KEY,off:OFF,offWhy:OFF_WHY}); if(lastSaved.__board!==bd){ lastSaved.__board=bd; t.set("board","shared","sched",{roundDrive:ROUND_DRIVE,contractors:extra,vansOff:VANS_OFF,crmKey:CRM_KEY,off:OFF,offWhy:OFF_WHY}); }
+    var bd=JSON.stringify({roundDrive:ROUND_DRIVE,contractors:extra,vansOff:VANS_OFF,crmKey:CRM_KEY,off:OFF,offWhy:OFF_WHY,dismissed:Object.keys(DISMISSED)}); if(lastSaved.__board!==bd){ lastSaved.__board=bd; t.set("board","shared","sched",{roundDrive:ROUND_DRIVE,contractors:extra,vansOff:VANS_OFF,crmKey:CRM_KEY,off:OFF,offWhy:OFF_WHY,dismissed:Object.keys(DISMISSED)}); }
   }
 
   // the bit that opens under a card: who, quick times, minutes, and one extra row
@@ -1850,7 +1856,10 @@ var SNAP=null, DETAIL={};
     var railItems=[]; if(REQUESTS.length){ railItems.push({sep:REQUESTS.length+(REQUESTS.length===1?" date request":" date requests")}); REQUESTS.forEach(function(r){ railItems.push({req:true,title:r.title,url:r.url,amber:true,text:(r.type==="required"&&r.date?"Asks for "+niceDay(r.date):"Asks for the next available slot")+", "+(r.movement||"job").toLowerCase()+(r.service?" ("+r.service+")":"")+"."+(r.note?" "+r.note:"")+" Hold a date on the CRM."}); }); }
     if(ISSUES.length&&(TOPLAN.length||REQUESTS.length||TORECORD.length)) railItems.push({sep:"Warnings"});
     railItems=railItems.concat(ISSUES); if(TOPLAN.length){ railItems.push({sep:TOPLAN.length+" outstanding this week"}); railItems=railItems.concat(TOPLAN); } if(TORECORD.length){ railItems.push({sep:TORECORD.length+" to record"}); railItems=railItems.concat(TORECORD); }
-    railItems.forEach(function(x){ if(x.sep){ rc.appendChild(el("div","sec-h",x.sep)); return; } if(x.req){ var itr=el("button","iss amber"); itr.appendChild(el("b",null,x.title)); itr.appendChild(el("span",null,x.text)); itr.onclick=function(){ window.open(x.url,"_blank"); }; rc.appendChild(itr); return; } if(x.prep){ var itp=el("button","iss amber"); itp.appendChild(el("b",null,shortDay(x.k)+" \u00b7 "+x.title)); itp.appendChild(el("span",null,x.text)); itp.onclick=function(){ open=x.j.id+":prep"; render(); }; rc.appendChild(itp); return; } var it=el("button","iss"+(x.amber?" amber":"")); it.appendChild(el("b",null,shortDay(x.k)+" \u00b7 "+x.title)); it.appendChild(el("span",null,x.text)); if(x.j&&!x.j.isHold){ it.onclick=function(){ open=x.j.id; render(); }; } else { it.onclick=function(){ dayCur=x.k; view="day"; render(); }; } rc.appendChild(it); });
+    var hiddenN=0; railItems=railItems.filter(function(x){ if(x.sep||x.req||!DISMISSED[warnKey(x)]||SHOW_DISMISSED) return true; hiddenN++; return false; });
+    var dismissBtn=function(x){ var xb=el("button","dis",DISMISSED[warnKey(x)]?"Bring back":"\u00d7"); xb.title=DISMISSED[warnKey(x)]?"Show this warning again":"Dismiss this warning. It comes back if what it says changes."; xb.onclick=function(e){ e.stopPropagation(); if(DISMISSED[warnKey(x)]) delete DISMISSED[warnKey(x)]; else DISMISSED[warnKey(x)]=true; persist(); render(); }; return xb; };
+    railItems.forEach(function(x){ if(x.sep){ rc.appendChild(el("div","sec-h",x.sep)); return; } if(x.req){ var itr=el("button","iss amber"); itr.appendChild(el("b",null,x.title)); itr.appendChild(el("span",null,x.text)); itr.onclick=function(){ window.open(x.url,"_blank"); }; rc.appendChild(itr); return; } if(x.prep){ var itp=el("button","iss amber"+(DISMISSED[warnKey(x)]?" dim":"")); itp.appendChild(el("b",null,shortDay(x.k)+" \u00b7 "+x.title)); itp.appendChild(el("span",null,x.text)); itp.appendChild(dismissBtn(x)); itp.onclick=function(){ open=x.j.id+":prep"; render(); }; rc.appendChild(itp); return; } var it=el("button","iss"+(x.amber?" amber":"")+(DISMISSED[warnKey(x)]?" dim":"")); it.appendChild(el("b",null,shortDay(x.k)+" \u00b7 "+x.title)); it.appendChild(el("span",null,x.text)); it.appendChild(dismissBtn(x)); if(x.j&&!x.j.isHold){ it.onclick=function(){ open=x.j.id; render(); }; } else { it.onclick=function(){ dayCur=x.k; view="day"; render(); }; } rc.appendChild(it); });
+    if(hiddenN||SHOW_DISMISSED){ var sd=el("button","dis-toggle",SHOW_DISMISSED?"Hide dismissed":hiddenN+(hiddenN===1?" dismissed warning, show":" dismissed warnings, show")); sd.onclick=function(){ SHOW_DISMISSED=!SHOW_DISMISSED; render(); }; rc.appendChild(sd); }
     rail.appendChild(rc); b.appendChild(rail);
     var strip=$("#strip"); strip.hidden=false; strip.innerHTML="";
     var tile=function(lbl,val,cls,onclick){ var bt=el("button",null); bt.appendChild(el("small",null,lbl)); bt.appendChild(el("b",cls||"",val)); if(onclick) bt.onclick=onclick; strip.appendChild(bt); return bt; };
