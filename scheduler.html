@@ -302,6 +302,7 @@
   .over h4{margin:0 0 4px;font-size:12px;text-transform:uppercase;color:var(--muted);letter-spacing:.03em}
   .items{list-style:none;margin:8px 0 0;padding:0}
   .items li{padding:5px 0;border-top:1px solid var(--line);font-size:13px;display:flex;gap:8px;align-items:flex-start}
+  .items.checks li.done{color:var(--muted);text-decoration:line-through} .items.checks .tick{font-size:15px;line-height:1;text-decoration:none;color:var(--text)}
   .items.plain li{padding-left:14px;position:relative}
   .items.plain li:before{content:"";position:absolute;left:0;top:11px;width:6px;height:6px;border-radius:50%;background:var(--muted)}
   .items li .box{width:16px;height:16px;border:2px solid var(--line);border-radius:4px;flex-shrink:0;margin-top:2px}
@@ -766,6 +767,12 @@ var SNAP=null, DETAIL={};
     if(!box.children.length) box.appendChild(el("div","hint","Nothing written on the card yet."));
     jb.appendChild(box); left.appendChild(jb);
     if(items.length){ var ib=block("Items ("+items.length+")"); var ul=el("ul","items plain"); items.forEach(function(x){ ul.appendChild(el("li",null,x)); }); ib.appendChild(ul); left.appendChild(ib); }
+    // WHAT IS BEING WORKED ON (Sam, 15 Sep 2026: "so I don't have to go back into the Trello card to see what is being
+    // worked on"): the card's checklist, every line with its tick, and the works lines from the description.
+    var checks=(dt&&dt.checks)||[];
+    if(checks.length){ var doneN=checks.filter(function(c){return c.done;}).length; var cb=block("On the card ("+doneN+" of "+checks.length+" done)"); var cl=el("ul","items plain checks");
+      checks.forEach(function(c){ var li=el("li",c.done?"done":""); li.appendChild(el("span","tick",c.done?"\u2611":"\u2610")); li.appendChild(el("span",null,c.n)); cl.appendChild(li); }); cb.appendChild(cl); left.appendChild(cb); }
+    else if(!items.length) left.appendChild(el("div","hint","Nothing on the card's checklist yet. Add the items to the card and they show here."));
 
     // right: the plan
     var oursOn=part.who.length>0, contractorOnly=!o.shop && !!j.contractor && !oursOn;
