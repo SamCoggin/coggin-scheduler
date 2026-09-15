@@ -539,8 +539,9 @@ var SNAP=null, DETAIL={};
     // their day, count the standard crew and time and the van load, and vanish when the hold lapses.
     REQUESTS=(SNAP.requests||[]);
     HOLDS=(SNAP.holds||[]).map(function(h){ var mv=h.movement||"Delivery", load=loadOf(h.items||[]), std=standardFor(mv,load);
-      var j={id:"hold:"+h.id,title:h.title||h.ref,label:mv,movement:mv,work:h.service==="Office Clearance"?"Clearance":h.service==="Refurbishing"?"Refurb":h.service||"",labels:[],who:[],contractor:"",mins:std&&std.mins!=null?std.mins:120,out:h.date,date:h.date,start:null,site:isSiteMove(mv),collect:isCollectMove(mv),
-        stageLabel:"Held until "+niceShort(h.until||h.date),isHold:true,holdUntil:h.until,holdCrew:std?std.crew:2,load:load,cubeSet:null,items:h.items||[],manual:[],ignore:[],allItems:h.items||[],prep:null};
+      // a hold somebody else carries (sub-contractor, haulier) counts no crew of ours; the labour unload comes with the card
+      var j={id:"hold:"+h.id,title:h.title||h.ref,label:mv,movement:mv,work:h.service==="Office Clearance"?"Clearance":h.service==="Refurbishing"?"Refurb":h.service||"",labels:[],who:[],contractor:h.carrier||"",mins:h.carrier?null:(std&&std.mins!=null?std.mins:120),out:h.date,date:h.date,start:null,site:isSiteMove(mv),collect:isCollectMove(mv),
+        stageLabel:"Held until "+niceShort(h.until||h.date),isHold:true,holdUntil:h.until,holdCrew:h.carrier?0:(std?std.crew:2),load:load,cubeSet:null,items:h.items||[],manual:[],ignore:[],allItems:h.items||[],prep:null};
       if(j.site&&h.postcode){ var area=h.postcode.replace(/\d.*$/,"").toUpperCase(); j.drive=DRIVE[area]?Math.round(DRIVE[area].h*2*60*TRAFFIC/5)*5:null; }
       return j; });
     if(SNAP.boardData&&SNAP.boardData.contractors){ SNAP.boardData.contractors.forEach(function(c){ if(CONTRACTORS.indexOf(c)<0) CONTRACTORS.splice(CONTRACTORS.length-1,0,c); }); }
@@ -552,7 +553,7 @@ var SNAP=null, DETAIL={};
     var off=LEAVE.filter(function(l){return l.date===k;}).map(function(l){return l.text.split(" ")[0];});
     var avail=TEAM.filter(function(w){return off.indexOf(w)<0;}).length*DAY_MINS;
     var need=0, trips=0;
-    jobs.forEach(function(j){ if(j.contractor&&!j.who.length) return; var crew=j.isHold?(j.holdCrew||2):Math.max(1,j.who.length); need+=(j.mins||0)*crew+(j.site?(j.drive||0)*crew:0); if(j.site) trips+=1; });
+    jobs.forEach(function(j){ if(j.contractor&&!j.who.length) return; var crew=j.isHold?(j.holdCrew!=null?j.holdCrew:2):Math.max(1,j.who.length); need+=(j.mins||0)*crew+(j.site?(j.drive||0)*crew:0); if(j.site) trips+=1; });
     preps.forEach(function(j){ need+=(j.prep.mins||0)*Math.max(1,j.prep.who.length); });
     var rounds=roundsOn(k,jobs); trips=Math.max(0,trips-rounds.reduce(function(t,r){return t+r.stops.length-1;},0));
     var vans=vansOnRoad();
@@ -995,7 +996,7 @@ var SNAP=null, DETAIL={};
     if(!isPrep&&j.site&&(j.from||j.by)) mid.appendChild(el("span","for",windowText(j).slice(2).replace(/^./,function(ch){return ch.toUpperCase();})));
     if(!isPrep&&j.collect&&(j.from||j.by)) mid.appendChild(el("span","for",(j.from?"Customer arrives after "+j.from:"")+(j.from&&j.by?", ":"")+(j.by?"ready by "+j.by:"").replace(/^r/,j.from?"r":"R")));
     if(!isPrep&&!isShop&&j.site&&/Not Started|In-progress|Not QC/i.test(j.stageLabel||"")) mid.appendChild(el("span","for","Workshop: "+j.stageLabel.replace(/^Workshop:\s*/,"").toLowerCase()));
-    if(j.isHold) mid.appendChild(el("span","for hold","Held for sales until "+niceDay(j.holdUntil||j.date)+". Counts "+j.holdCrew+(j.holdCrew===1?" operative":" operatives")+", "+fmt(j.mins)+" each. Confirm on the deal."));
+    if(j.isHold) mid.appendChild(el("span","for hold","Held for sales until "+niceDay(j.holdUntil||j.date)+(j.contractor?". "+j.contractor+" carries it, nothing on our crew until the card comes over.":". Counts "+j.holdCrew+(j.holdCrew===1?" operative":" operatives")+", "+fmt(j.mins)+" each. Confirm on the deal.")));
     c.appendChild(mid);
     var ft=el("div","foot");
     if(!isPrep&&!j.isLeg&&!(j.contractor&&!j.who.length)){ var stdX=standardFor(j.movement||j.label,j.load); if(aboveStandard(stdX,j.who,j.mins)) ft.appendChild(el("span","bdg now","Above standard")); }
