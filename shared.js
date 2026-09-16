@@ -49,7 +49,7 @@ function matchLoad(line){
   var built=/\bbuilt\b|assembled|made up/i.test(name)||row.t==="Sit-stand desk", each=row.built&&built?row.built:row.m3;
   // THE SIZE ON THE LINE (Sam, 16 Sep 2026: "what about the different sizes?"): the table's figure is for a
   // 1600x800; "1400x800" or "1800 x 900" scales it by width and depth, a bare "1400" by width alone.
-  if(row.w){ var wd=/\b(\d{3,4})\s*(?:x|\u00d7)\s*(\d{3,4})\b/i.exec(name), wm=wd||/\b(\d{3,4})\s*(?:mm|\b)/i.exec(name);
+  if(row.w){ var wd=/(?<!\d)(\d{3,4})\s*(?:x|\u00d7)\s*(\d{3,4})(?!\d)/i.exec(name), wm=wd||/(?<!\d)(\d{3,4})(?!\d)/i.exec(name);
     if(wm){ var w=parseInt(wm[1],10); if(w>=600&&w<=4000) each=each*w/row.w; if(wd&&row.d){ var dd=parseInt(wd[2],10); if(dd>=400&&dd<=1600) each=each*dd/row.d; } } }
   var hm=row.min||0; if(row.t==="Desk"&&built) hm=6; if(row.t==="Sit-stand desk"&&built) hm=8;
   var cleanOnly=row.clean!=null&&/original fabric|clean only|deep clean|as is|wipe/i.test(name), refurb=/refurb|re-?upholster|new fabric|recover/i.test(name);
