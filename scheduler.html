@@ -759,7 +759,13 @@ var SNAP=null, DETAIL={};
     labs.appendChild(el("span","lab stage",j.stageLabel)); ht.appendChild(labs);
     ht.appendChild(el("h3",null,j.title));
     ht.appendChild(el("div","sub",o.shop?"Production for "+niceDay(j.date)+(j.collect?", customer collecting":""):(j.start?niceDay(j.start)+" to "+niceDay(j.date)+", "+daysOf(j).length+" days":niceDay(j.date))));
-    head.appendChild(ht); var x=el("button","close","Close"); x.onclick=function(){open=null;render();}; head.appendChild(x); m.appendChild(head);
+    head.appendChild(ht);
+    // Straight to the card (Sam, 16 Sep 2026: "a button to click into the Trello card from here").
+    // Inside Trello the Power-Up opens it in place; anywhere else the plain card link does.
+    var tc=el("button","close","Open in Trello"); tc.style.marginRight="8px";
+    tc.onclick=function(){ var url="https://trello.com/c/"+j.id; try{ if(t&&typeof t.showCard==="function"){ t.showCard(j.id); return; } }catch(e){} window.open(url,"_blank","noopener"); };
+    head.appendChild(tc);
+    var x=el("button","close","Close"); x.onclick=function(){open=null;render();}; head.appendChild(x); m.appendChild(head);
 
     var cols=el("div","cols"), left=el("div","colL"), right=el("div","colR");
     // left: the job
