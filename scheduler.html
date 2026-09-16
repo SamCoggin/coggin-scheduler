@@ -1036,7 +1036,7 @@ var SNAP=null, DETAIL={};
     rc.onclick=function(){ openRound=r.key; open=null; render(); };
     return rc;
   }
-  var view="week", dayCur=iso(TODAY);
+  var view="day", dayCur=iso(TODAY); // opens on today (Sam, 16 Sep 2026: "open on the day as default not week")
   // TO PLAN (Sam, 13 Sep 2026): a filter that hides everything already planned, so the board only shows what still needs operatives, time or travel
   var NEED=false;   // Sam, 14 Sep 2026: "THE SCHEDULER SHOULD SHOW EVERYTHING". The filter is off on every open and is never remembered.
   // NOT READY (Sam, 13 Sep 2026): a transport job whose workshop side is not finished. Counts in To plan, shows on the card and in the rail.
@@ -1077,6 +1077,7 @@ var SNAP=null, DETAIL={};
   function renderDay(){
     var k=dayCur, d=new Date(k+"T12:00"), isToday=k===iso(TODAY);
     $("#title").textContent=DAYS[d.getDay()]+" "+d.getDate()+" "+MON[d.getMonth()]+" "+d.getFullYear()+(isToday?", today":"");
+    $("#src").textContent=NEED?"FILTER ON: only outstanding jobs are showing. Press Outstanding to show everything.":"Select a job to assign operatives and allocate time."; $("#src").className="src"+(NEED?" filt":"");
     var b=$("#board"); b.innerHTML=""; b.className="board day"; b.style.gridTemplateRows="";
     var jobs=allJobs().filter(function(j){return onDay(j,k);}), preps=JOBS.filter(function(j){return j.prep&&j.prep.date&&daysOf(j.prep).indexOf(k)>=0;});
     var rounds=roundsOn(k,jobs); jobs.forEach(function(j){ j.onRound=rounds.some(function(r){return r.stops.indexOf(j)>=0;}); });
