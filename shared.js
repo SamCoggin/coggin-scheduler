@@ -81,6 +81,7 @@ var HEAD=[
   [/^(access.*|logistics|safety.*)$/i,"access"],
   [/^subcontract work and materials$/i,"support"],
   [/^parts$/i,"parts"],
+  [/^loan chairs$/i,"loan"],
   [/^(job|ref|service|delivery details|clearance details|refurb collection details|buyback drop-off details|delivery info|other items|additional info)$/i,"skip"]
 ];
 function cleanDesc(txt){
@@ -91,7 +92,7 @@ function cleanDesc(txt){
 }
 function parseDesc(txt){
   txt=cleanDesc(txt);
-  var groups={contact:[],where:[],what:[],access:[],notes:[],support:[],parts:[]}, cur="notes";
+  var groups={contact:[],where:[],what:[],access:[],notes:[],support:[],parts:[],loan:[]}, cur="notes";
   txt.split("\n").forEach(function(raw){
     var l=raw.replace(/^\s*[-*_]+\s*/,"").replace(/_+$/,"").trim(); if(!l) return;
     var bare=l.replace(/:$/,"").trim(), hit=null;
@@ -107,6 +108,13 @@ function parseDesc(txt){
   return groups;
 }
 
+// LOAN CHAIRS RIDE IN THE VAN BUT ARE NOT THE JOB (16 Sep 2026). The CRM writes a "Loan chairs" block on a
+// refurb card, one "N x product" line each. They go out with the collection and come back on the return, so
+// they belong in the van load on both legs; they never belong in the items, or the workshop would count them.
+function loanItemsOf(desc){
+  var g=parseDesc(desc||"");
+  return (g.loan||[]).map(function(l){return l.replace(/^[,\s]+/,"");}).filter(function(l){return /^\d+\s*x\s*/i.test(l);});
+}
 // the items on a card: "N x thing" lines from the description and the product checklist
 function itemsOf(desc,checks){
   var g=parseDesc(desc||""), items=g.what.filter(function(l){return /^\d+\s*x\s*/i.test(l);});

@@ -507,13 +507,13 @@ var SNAP=null, DETAIL={};
     j.from=null; j.by=null;   // time window on a transport job: arrive after, finish by (HH:MM)
     var tw=/^(after|from|not before|before|by)\s*(\d{1,2})(?:[:.](\d{2}))?\s*(am|pm)?\s*[-,:]?\s*/i.exec(title||""); if(tw){ var hh=parseInt(tw[2],10); if(/pm/i.test(tw[4]||"")&&hh<12) hh+=12; var hm=(hh<10?"0":"")+hh+":"+(tw[3]||"00"); if(/before|by/i.test(tw[1])) j.by=hm; else j.from=hm; if(title.length>tw[0].length+2){ title=title.slice(tw[0].length); j.title=title; } }
     j.start=c.start&&c.start<c.due?c.start:null;
-    var dd=DETAIL[c.id]; j.allItems=itemsOf(dd?dd.desc:c.desc,dd?dd.checks:c.checks); j.ignore=[]; j.items=j.allItems.slice(); j.manual=[]; j.load=loadOf(j.items); j.cubeSet=null;
+    var dd=DETAIL[c.id]; j.allItems=itemsOf(dd?dd.desc:c.desc,dd?dd.checks:c.checks); j.loanItems=loanItemsOf(dd?dd.desc:c.desc); j.ignore=[]; j.items=j.allItems.slice(); j.manual=[]; j.load=loadOf(j.items.concat(j.loanItems)); j.cubeSet=null;
     return j; });
   // a card with a start date is on the board every working day from start to due
     LEAVE=SNAP.cards.filter(function(c){return c.role==="leave"&&c.due;}).map(function(c){ return {date:c.due,text:c.name.replace(/\s*\(.*$/,"").replace(/BANK HOLIDAY\s*-\s*/i,"")+(/BANK HOLIDAY/i.test(c.name)?" (bank holiday)":" on leave")}; });
     // what was saved on the cards last time
     SNAP.cards.forEach(function(c){ var d=c.saved; if(!d) return; var j=JOBS.filter(function(x){return x.id===c.id;})[0]; if(!j) return;
-      if(d.who) j.who=d.who.slice(); if(d.cube!=null) j.cubeSet=d.cube; if(d.ignore&&d.ignore.length){ j.ignore=d.ignore.slice(); j.items=j.allItems.filter(function(l){return j.ignore.indexOf(l)<0;}); } if(d.items&&d.items.length){ j.manual=d.items.slice(); } j.load=loadOf(j.items.concat(j.manual)); if(d.mins!=null) j.mins=d.mins; if(d.drive!=null) j.drive=d.drive; if(d.driveAuto) j.driveAuto=true; if(d.contractor) j.contractor=d.contractor; if(d.from) j.from=d.from; if(d.by) j.by=d.by; if(d.vehicle) j.vehicle=d.vehicle; if(d.soloOk) j.soloOk=d.soloOk; if(d.qc&&d.qc.by) j.qc=d.qc; if(d.done&&d.done.status) j.done=(d.done.status==="no"&&d.date&&d.date!==j.date)?null:d.done;   // a did-not-go record clears once the card has a new date
+      if(d.who) j.who=d.who.slice(); if(d.cube!=null) j.cubeSet=d.cube; if(d.ignore&&d.ignore.length){ j.ignore=d.ignore.slice(); j.items=j.allItems.filter(function(l){return j.ignore.indexOf(l)<0;}); } if(d.items&&d.items.length){ j.manual=d.items.slice(); } j.load=loadOf(j.items.concat(j.manual).concat(j.loanItems||[])); if(d.mins!=null) j.mins=d.mins; if(d.drive!=null) j.drive=d.drive; if(d.driveAuto) j.driveAuto=true; if(d.contractor) j.contractor=d.contractor; if(d.from) j.from=d.from; if(d.by) j.by=d.by; if(d.vehicle) j.vehicle=d.vehicle; if(d.soloOk) j.soloOk=d.soloOk; if(d.qc&&d.qc.by) j.qc=d.qc; if(d.done&&d.done.status) j.done=(d.done.status==="no"&&d.date&&d.date!==j.date)?null:d.done;   // a did-not-go record clears once the card has a new date
       // DATE MOVED (Sam, 13 Sep 2026): the plan remembers the date it was made for. If sales move the card, the plan flags itself until someone presses Replanned.
       if(d.date&&d.date!==j.date&&((d.who&&d.who.length)||d.mins!=null||d.vehicle)) j.moved={from:d.date}; if(d.hireRef) j.hireRef=d.hireRef; if(d.hireBooked) j.hireBooked=true;
       if(d.prep&&j.prep){ j.prep.who=d.prep.who||[]; j.prep.mins=d.prep.mins; j.prep.start=d.prep.start||null; j.prep.date=d.prep.date||null; if(d.prep.done&&d.prep.done.status) j.prep.done=d.prep.done; }
@@ -883,10 +883,10 @@ var SNAP=null, DETAIL={};
       // one list of items with where each came from
       var autoN=L.rows.length-(j.manual||[]).length;
       if(L.rows.length||L.unmatched.length){ var vl=el("div","vlist");
-        var ignoreLine=function(line){ j.ignore.push(line); j.items=j.allItems.filter(function(l){return j.ignore.indexOf(l)<0;}); j.load=loadOf(j.items.concat(j.manual)); render(); };
+        var ignoreLine=function(line){ j.ignore.push(line); j.items=j.allItems.filter(function(l){return j.ignore.indexOf(l)<0;}); j.load=loadOf(j.items.concat(j.manual).concat(j.loanItems||[])); render(); };
         L.rows.forEach(function(r,i){ var row=el("div","vrow"); var nm=el("b",null,qty(r.n,r.type)+(r.built?" (built)":"")); if(r.name&&r.name.toLowerCase()!==r.type.toLowerCase()) nm.appendChild(el("small",null,"Card says: "+r.n+" x "+r.name)); row.appendChild(nm); row.appendChild(el("span","m",fmtM3(r.m3)+", "+r.kg+" kg"+(r.est?", estimate":"")));
           var fromManual=i>=autoN; row.appendChild(el("span","tag",fromManual?"added":"on card"));
-          if(fromManual){ var x=el("button","rm","Remove"); var mi=i-autoN; x.onclick=function(){ j.manual.splice(mi,1); j.load=loadOf(j.items.concat(j.manual)); render(); }; row.appendChild(x); }
+          if(fromManual){ var x=el("button","rm","Remove"); var mi=i-autoN; x.onclick=function(){ j.manual.splice(mi,1); j.load=loadOf(j.items.concat(j.manual).concat(j.loanItems||[])); render(); }; row.appendChild(x); }
           else { var ig=el("button","rm","Ignore"); var line=j.items[i]; ig.onclick=function(){ ignoreLine(line); }; row.appendChild(ig); }
           vl.appendChild(row); });
         L.unmatched.forEach(function(u){ var row=el("div","vrow bad"); row.appendChild(el("b",null,u)); row.appendChild(el("span","m","not in the table")); row.appendChild(el("span","tag","on card")); var ig2=el("button","rm","Ignore"); ig2.onclick=function(){ ignoreLine(u); }; row.appendChild(ig2); vl.appendChild(row); });
