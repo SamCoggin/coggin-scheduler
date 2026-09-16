@@ -19,9 +19,9 @@ var LOAD=[
   {t:"Meeting chair, stacking", prod:10, min:1, re:/stack/i, m3:0.10, kg:8},
   {t:"Meeting chair", prod:10, clean:10, min:2,    re:/meeting chair|tub chair|cantilever|visitor chair|conference chair|dining chair|breakout chair/i, m3:0.40, kg:10},
   {t:"Stool", prod:10, min:2,            re:/stool/i, m3:0.15, kg:6},
-  {t:"Sit-stand desk", prod:60, two:true, min:20,   re:/sit.?stand|height adjust|electric desk|rise/i, m3:0.30, kg:60, built:1.10, est:true},
+  {t:"Sit-stand desk", prod:60, two:true, min:20,   re:/sit.?stand|height adjust|electric desk|rise/i, m3:0.30, kg:60, built:1.10, w:1600, d:800, est:true},
   {t:"Bench desk position", prod:45, two:true, min:20, re:/bench/i, m3:0.30, kg:30, est:true},
-  {t:"Desk", prod:45, two:true, min:15,             re:/desk(?!\s*(screen|divider|mounted|pedestal|drawer))|workstation/i, m3:0.25, kg:35, built:0.90, w:1600},
+  {t:"Desk", prod:45, two:true, min:15,             re:/desk(?!\s*(screen|divider|mounted|pedestal|drawer))|workstation/i, m3:0.25, kg:35, built:0.90, w:1600, d:800},
   {t:"Meeting table", prod:20, two:true, min:15,    re:/meeting table|boardroom|conference table|table \d{4}/i, m3:1.20, kg:50, w:1800},
   {t:"Folding table", prod:10, min:4,    re:/folding|flip.?top/i, m3:0.15, kg:20},
   {t:"Coffee table", prod:15, min:4,     re:/coffee table|side table|occasional/i, m3:0.30, kg:15},
@@ -47,7 +47,10 @@ function matchLoad(line){
   if(!row) return {n:n,name:name,type:null};
   // SIT-STAND DESKS ARE ALWAYS ASSEMBLED (Sam, 16 Sep 2026). They count at their built size whatever the line says.
   var built=/\bbuilt\b|assembled|made up/i.test(name)||row.t==="Sit-stand desk", each=row.built&&built?row.built:row.m3;
-  if(row.w){ var wm=/\b(\d{3,4})\s*(?:x|mm|\b)/i.exec(name); if(wm){ var w=parseInt(wm[1],10); if(w>=600&&w<=4000) each=each*w/row.w; } }
+  // THE SIZE ON THE LINE (Sam, 16 Sep 2026: "what about the different sizes?"): the table's figure is for a
+  // 1600x800; "1400x800" or "1800 x 900" scales it by width and depth, a bare "1400" by width alone.
+  if(row.w){ var wd=/\b(\d{3,4})\s*(?:x|\u00d7)\s*(\d{3,4})\b/i.exec(name), wm=wd||/\b(\d{3,4})\s*(?:mm|\b)/i.exec(name);
+    if(wm){ var w=parseInt(wm[1],10); if(w>=600&&w<=4000) each=each*w/row.w; if(wd&&row.d){ var dd=parseInt(wd[2],10); if(dd>=400&&dd<=1600) each=each*dd/row.d; } } }
   var hm=row.min||0; if(row.t==="Desk"&&built) hm=6; if(row.t==="Sit-stand desk"&&built) hm=8;
   var cleanOnly=row.clean!=null&&/original fabric|clean only|deep clean|as is|wipe/i.test(name), refurb=/refurb|re-?upholster|new fabric|recover/i.test(name);
   var pm=cleanOnly&&!refurb?row.clean:(row.prod||0);
