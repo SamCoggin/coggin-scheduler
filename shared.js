@@ -85,7 +85,7 @@ var HEAD=[
   [/^(job|ref|service|delivery details|clearance details|refurb collection details|buyback drop-off details|delivery info|other items|additional info)$/i,"skip"]
 ];
 function cleanDesc(txt){
-  txt=(txt||"").replace(/\[([^\]]+)\]\([^)]*\)/g,"$1").replace(/\*\*/g,"").replace(/\\_/g,"_").replace(/[\u200c\u200b]/g,"").replace(/\s*\u2014\s*/g,", ").replace(/\s*\u00b7\s*/g,", ").replace(/\u00d7/g,"x").replace(/^\s*_+\s*$/gm,"");
+  txt=(txt||"").replace(/\[([^\]]+)\]\([^)]*\)/g,"$1").replace(/\*\*/g,"").replace(/\\_/g,"_").replace(/[\u200c\u200b]/g,"").replace(/\s*\u2014\s*/g,", ").replace(/[ \t]*\u00b7[ \t]*/g,", ").replace(/\u00d7/g,"x").replace(/^\s*_+\s*$/gm,"");
   // the clearance form writes items as {"metal_filing_cabinets":5}: turn that into "5 x Metal filing cabinets"
   txt=txt.replace(/\{[^{}]*:\s*\d+[^{}]*\}/g,function(m){ try{ var o=JSON.parse(m); return Object.keys(o).map(function(k){ var n=k.replace(/_/g," "); return o[k]+" x "+n.charAt(0).toUpperCase()+n.slice(1); }).join("\n"); }catch(e){ return m; } });
   return txt.replace(/\n{3,}/g,"\n\n");
@@ -94,7 +94,7 @@ function parseDesc(txt){
   txt=cleanDesc(txt);
   var groups={contact:[],where:[],what:[],access:[],notes:[],support:[],parts:[],loan:[]}, cur="notes";
   txt.split("\n").forEach(function(raw){
-    var l=raw.replace(/^\s*[-*_]+\s*/,"").replace(/_+$/,"").trim(); if(!l) return;
+    var l=raw.replace(/^\s*[-*_,]+\s*/,"").replace(/_+$/,"").trim(); if(!l) return;
     var bare=l.replace(/:$/,"").trim(), hit=null;
     if(bare.length<40 && !/\d/.test(bare)) HEAD.forEach(function(h){ if(!hit && h[0].test(bare)) hit=h[1]; });
     if(hit){ cur=hit==="skip"?(/^(other items|additional info|delivery info)$/i.test(bare)?"notes":cur):hit; if(/:$/.test(l)||hit==="skip"||bare===l) return; }
