@@ -45,9 +45,8 @@ function matchLoad(line){
   var n=parseInt(m[1],10), name=m[2].trim(), row=null;
   for(var i=0;i<LOAD.length;i++){ if(LOAD[i].re.test(name)){ row=LOAD[i]; break; } }
   if(!row) return {n:n,name:name,type:null};
-  // SIT-STAND DESKS GO OUT BUILT (Sam, 16 Sep 2026: "it should be based on being built up"). They are never
-  // flat-packed for a delivery, so they count at their built size unless the line says flat or knocked down.
-  var built=/\bbuilt\b|assembled|made up/i.test(name)||(row.t==="Sit-stand desk"&&!/flat|knock/i.test(name)), each=row.built&&built?row.built:row.m3;
+  // SIT-STAND DESKS ARE ALWAYS ASSEMBLED (Sam, 16 Sep 2026). They count at their built size whatever the line says.
+  var built=/\bbuilt\b|assembled|made up/i.test(name)||row.t==="Sit-stand desk", each=row.built&&built?row.built:row.m3;
   if(row.w){ var wm=/\b(\d{3,4})\s*(?:x|mm|\b)/i.exec(name); if(wm){ var w=parseInt(wm[1],10); if(w>=600&&w<=4000) each=each*w/row.w; } }
   var hm=row.min||0; if(row.t==="Desk"&&built) hm=6; if(row.t==="Sit-stand desk"&&built) hm=8;
   var cleanOnly=row.clean!=null&&/original fabric|clean only|deep clean|as is|wipe/i.test(name), refurb=/refurb|re-?upholster|new fabric|recover/i.test(name);
