@@ -27,6 +27,8 @@
   .people{display:flex;flex-wrap:wrap;gap:8px}
   .p{border:2px solid var(--line);background:var(--card);border-radius:8px;padding:7px 12px;font-weight:700}
   .p.on{border-color:var(--blue);background:var(--blue);color:#fff}
+  .p.off{opacity:.45;cursor:not-allowed;background:#eef0f3}
+  .p .lv{font-style:normal;font-weight:600;font-size:11px;margin-left:6px}
   .p .drv{font-style:normal;font-weight:700;font-size:11px;margin-left:6px;border:1px solid currentColor;border-radius:4px;padding:1px 5px;opacity:.9}
   .row{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
   .row+.row{margin-top:8px}
@@ -164,9 +166,11 @@
   // A TIME CANNOT BE MISSED (Sam, 14 Sep 2026: "force adding a time when the person has been assigned"). When an
   // operative goes on and no time is set, the standard time for that crew goes in by itself; fill() supplies it.
   // Where there is no standard to lean on, the Time row turns red until one is typed.
-  function people(part,transport,fill){
-    var w=el("div","people");
-    CREW.forEach(function(n){ var b=el("button","p"+(part.who.indexOf(n)>=0?" on":""),n); if(transport&&DRIVERS.indexOf(n)>=0) b.appendChild(el("i","drv","driver")); b.onclick=function(){ var i=part.who.indexOf(n); if(i<0) part.who.push(n); else part.who.splice(i,1); if(part.who.length&&part.mins==null&&fill){ var m=fill(); if(m!=null) part.mins=m; } save(); render(); }; w.appendChild(b); });
+  // Someone on leave on any of the part's days is greyed out and cannot be
+  // picked (Sam, 17 Sep 2026). Already picked stays clickable, so it can be removed.
+  function people(part,transport,fill,days){
+    var w=el("div","people"), offOn={}; (days||[]).forEach(function(k){ var L=loadOn(k); CREW.forEach(function(n){ if(L[n]&&L[n].off) offOn[n]=true; }); });
+    CREW.forEach(function(n){ var picked=part.who.indexOf(n)>=0, off=offOn[n]&&!picked; var b=el("button","p"+(picked?" on":"")+(off?" off":""),n); if(off){ b.disabled=true; b.title=n+" is on leave"; b.appendChild(el("i","lv","on leave")); } if(transport&&DRIVERS.indexOf(n)>=0) b.appendChild(el("i","drv","driver")); b.onclick=function(){ var i=part.who.indexOf(n); if(i<0) part.who.push(n); else part.who.splice(i,1); if(part.who.length&&part.mins==null&&fill){ var m=fill(); if(m!=null) part.mins=m; } save(); render(); }; w.appendChild(b); });
     return w;
   }
   function fld(label){ var f=el("div","fld"); if(label) f.appendChild(el("div","lbl",label)); return f; }
@@ -215,7 +219,7 @@
       if(overP) ps.appendChild(banner("Above standard: "+overP+". Standard is "+fmt(pstd.work)+" of work."));
       var planProd=function(){ var crew=pauto.crew, start=d.prep.start||pstart, end=d.prep.date||addWorkDays(start,pauto.days-1); var who=pickCrew(crew,loadOn(start),false,[]); d.prep.who=who; d.prep.mins=prodStandardFor(Lp,who.length,pdaysAvail).mins; if(!d.prep.start){ d.prep.start=start; d.prep.date=end; } OPEN.pwho=false; OPEN.ptime=false; OPEN.pdays=false; save(); render(); };
       if(!d.prep.who.length) OPEN.pwho=OPEN.pwho===undefined?true:OPEN.pwho;
-      ps.appendChild(rowEl("pwho",d.prep.who.length===1?"Operative":"Operatives",d.prep.who.length?d.prep.who.join(", "):"Unassigned",function(ed){ ed.appendChild(people(d.prep,false,function(){ var s2=prodStandardFor(loadNow(),d.prep.who.length,pdaysAvail); return s2&&s2.mins!=null?s2.mins:null; })); ed.appendChild(availability(d.prep.date?workDays(d.prep.start||d.prep.date,d.prep.date):[],d.prep)); },d.prep.who.length?"":"bad"));
+      ps.appendChild(rowEl("pwho",d.prep.who.length===1?"Operative":"Operatives",d.prep.who.length?d.prep.who.join(", "):"Unassigned",function(ed){ ed.appendChild(people(d.prep,false,function(){ var s2=prodStandardFor(loadNow(),d.prep.who.length,pdaysAvail); return s2&&s2.mins!=null?s2.mins:null; },d.prep.date?workDays(d.prep.start||d.prep.date,d.prep.date):[])); ed.appendChild(availability(d.prep.date?workDays(d.prep.start||d.prep.date,d.prep.date):[],d.prep)); },d.prep.who.length?"":"bad"));
       var daysTxt=d.prep.date?(d.prep.start&&d.prep.start!==d.prep.date?niceShort(d.prep.start)+" to "+niceShort(d.prep.date):niceShort(d.prep.date)):"Not set";
       ps.appendChild(rowEl("pdays","Production days",daysTxt,function(ed){ var pr=el("div","row");
         var d1=el("input"); d1.type="date"; d1.value=d.prep.start||""; var d2=el("input"); d2.type="date"; d2.value=d.prep.date||"";
@@ -251,7 +255,7 @@
         if(site){ ed.appendChild(el("div","lbl","Transported by")); var sel=el("select"); [["","Our operatives"]].concat(CONTRACTORS.map(function(c){return [c,c];})).forEach(function(o){ var op=el("option",null,o[1]); op.value=o[0]; if((d.contractor||"")===o[0]) op.selected=true; sel.appendChild(op); }); sel.onchange=function(){ d.contractor=sel.value; save(); render(); }; ed.appendChild(sel);
           var addr=el("div","row"); addr.style.margin="8px 0 12px"; var ai=el("input"); ai.type="text"; ai.placeholder="Add a subcontractor"; ai.style.minWidth="180px"; var ab=el("button","p","Add"); ab.onclick=function(){ var n=ai.value.trim(); if(!n) return; if(CONTRACTORS.indexOf(n)<0) CONTRACTORS.splice(CONTRACTORS.length-1,0,n); d.contractor=n; var extra=CONTRACTORS.filter(function(c){return ["MAK Installations","Courier","Other contractor"].indexOf(c)<0;}); boardData.contractors=extra; t.set("board","shared","sched",boardData); save(); render(); }; addr.appendChild(ai); addr.appendChild(ab); ed.appendChild(addr);
           ed.appendChild(el("div","lbl",d.contractor?"Our operatives going too":"Our operatives")); }
-        ed.appendChild(people(d,site,function(){ var s2=(!workshop&&!contractorOnly)?standardFor(lbl,Lstd):null; return s2&&s2.mins!=null?s2.mins:null; })); ed.appendChild(availability(due?[due]:[],d)); },contractorOnly?"":(d.who.length?"":"bad")));
+        ed.appendChild(people(d,site,function(){ var s2=(!workshop&&!contractorOnly)?standardFor(lbl,Lstd):null; return s2&&s2.mins!=null?s2.mins:null; },due?[due]:[])); ed.appendChild(availability(due?[due]:[],d)); },contractorOnly?"":(d.who.length?"":"bad")));
       if(!contractorOnly){
         // time
         var timeTxt=(d.mins!=null?fmt(d.mins)+(d.who.length>1?" each":"")+" on site":"No site time")+(site?(d.drive!=null?", travel "+fmt(d.drive)+" return":", no travel time"):"");
@@ -306,7 +310,7 @@
       var Lw=loadNow(), wstd=standardFor(/unload|receive/i.test(W.where)?"Labour unload":"Labour load",Lw), overW=wstd?aboveStandard(wstd,W.who,W.mins):null;
       if(!W.who.length) ws.appendChild(banner("Unassigned. Choose who is on it at Forton."));
       if(overW) ws.appendChild(banner("Above standard: "+overW+"."));
-      ws.appendChild(rowEl("wwho",W.who.length===1?"Operative":"Operatives",W.who.length?W.who.join(", "):"Unassigned",function(ed){ ed.appendChild(people(W,false,function(){ var s3=standardFor(/unload|receive/i.test(W.where)?"Labour unload":"Labour load",loadNow()); return s3&&s3.mins!=null?s3.mins:null; })); },W.who.length?"":"bad"));
+      ws.appendChild(rowEl("wwho",W.who.length===1?"Operative":"Operatives",W.who.length?W.who.join(", "):"Unassigned",function(ed){ ed.appendChild(people(W,false,function(){ var s3=standardFor(/unload|receive/i.test(W.where)?"Labour unload":"Labour load",loadNow()); return s3&&s3.mins!=null?s3.mins:null; },W.date?[W.date]:[])); },W.who.length?"":"bad"));
       ws.appendChild(rowEl("wdate","Day",W.date?niceShort(W.date):"Not set",function(ed){ var wr=el("div","row"); var wd=el("input"); wd.type="date"; wd.value=W.date||""; wd.onchange=function(){ W.date=wd.value||null; save(); render(); }; wr.appendChild(wd); ed.appendChild(wr); ed.appendChild(el("div","hint","The day the truck is unloaded or the load is put out. It shows under Labour Operations in the Scheduler.")); },W.date?"":"todo"));
       ws.appendChild(rowEl("wtime",W.who.length>1?"Time per operative":"Time",W.mins!=null?fmt(W.mins)+(W.who.length>1?" each":""):(wstd&&wstd.mins!=null?"Not set, standard "+fmt(wstd.mins):"Not set"),function(ed){
         if(wstd&&wstd.mins!=null){ var sb=el("div","stdbox"); sb.appendChild(el("b",null,"Standard: "+wstd.crew+(wstd.crew===1?" operative":" operatives")+", "+fmt(wstd.mins)+(wstd.crew>1?" each":""))); sb.appendChild(el("div","hint",wstd.why)); ed.appendChild(sb); }
