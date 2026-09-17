@@ -156,7 +156,10 @@
       // THE CARD'S OWN CHECKLIST FIRST (Sam, 17 Sep 2026: 533E11 in New Jobs read "No estimate yet" with four
       // items on it). t.card("checklists") is a documented field; the board-wide read stays as the fallback.
       var fromCards=function(){ return t.cards("id","checklists").then(function(cs){ var me=cs.filter(function(x){return x.id===card.id;})[0]; if(me&&me.checklists&&me.checklists.length) card.checklists=me.checklists; }); };
-      var cl=t.card("checklists").then(function(c2){ if(c2&&c2.checklists&&c2.checklists.length) card.checklists=c2.checklists; else return fromCards(); }).catch(function(){ return fromCards().catch(function(){}); });
+      // Three ways, noting what each gave so the Loading hint can say where it broke (17 Sep 2026).
+      window.__ckTrace=[];
+      var tryAll=function(){ return t.card("all").then(function(c3){ window.__ckTrace.push("all:"+(c3&&c3.checklists?c3.checklists.length:"none")); if(c3&&c3.checklists&&c3.checklists.length) card.checklists=c3.checklists; }).catch(function(e){ window.__ckTrace.push("all:error"); }); };
+      var cl=t.card("checklists").then(function(c2){ window.__ckTrace.push("card:"+(c2&&c2.checklists?c2.checklists.length:"none")); if(c2&&c2.checklists&&c2.checklists.length) card.checklists=c2.checklists; else return fromCards().then(function(){ window.__ckTrace.push("board:"+((card.checklists||[]).length)); if(!(card.checklists||[]).length) return tryAll(); }); }).catch(function(e){ window.__ckTrace.push("card:error"); return fromCards().catch(function(){ window.__ckTrace.push("board:error"); }).then(tryAll); });
       return Promise.all([cl,loadOthers()]).then(render);
     });
   }
@@ -291,7 +294,7 @@
       var vanCls=m3==null||L.unmatched.length||(dayTot&&dayTot.m3>VAN_M3)?"todo":"";
       // WHY THERE IS NO ESTIMATE (Sam, 17 Sep 2026, 533E11): say what the card gave it, so a checklist that is not
       // being read, or a line with no standard, is visible instead of a bare "No estimate yet".
-      if(m3==null){ var cks=checksOf(); ls.appendChild(el("div","hint",!L.rows.length&&!L.unmatched.length?("No item lines read: "+cks.length+" checklist "+(cks.length===1?"line":"lines")+" found on the card"+(cks.length?", none starting with a number and x":"")+"."):(L.unmatched.length?"No standard for: "+L.unmatched.slice(0,3).join("; ")+".":""))); }
+      if(m3==null){ var cks=checksOf(); ls.appendChild(el("div","hint",!L.rows.length&&!L.unmatched.length?("No item lines read: "+cks.length+" checklist "+(cks.length===1?"line":"lines")+" found on the card"+(cks.length?", none starting with a number and x":"")+". ("+((window.__ckTrace||[]).join(", ")||"not read yet")+")"):(L.unmatched.length?"No standard for: "+L.unmatched.slice(0,3).join("; ")+".":""))); }
       if(L.unmatched.length) ls.appendChild(banner("Van load not worked out: "+L.unmatched.length+(L.unmatched.length===1?" item":" items")+" not in the table ("+L.unmatched.join("; ")+")."));
       if(dayTot&&(dayTot.m3>VAN_M3||dayTot.kg>VAN_KG)){ var advB=vehicleAdvice(dayTot.m3,dayTot.kg); ls.appendChild(banner("More than one van going out "+niceShort(due)+": "+fmtM3(dayTot.m3)+(dayTot.kg?", "+Math.round(dayTot.kg)+" kg":"")+". Needs "+advB.text)); }
       ls.appendChild(rowEl("van",forContractor?"Load to carry":"Van load",vanTxt,function(ed){
