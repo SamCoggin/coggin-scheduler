@@ -131,6 +131,7 @@
   .prow .av{margin:0;border:0;width:32px;height:32px;font-size:12px}
   .prow b{display:block;font-size:16px}
   .prow .ld{font-size:12px;font-weight:600}
+  .prow .ld.past{color:#44546f;font-weight:600}
   .prow .ld.free{color:var(--green)} .prow .ld.over{color:var(--red)} .prow .ld.off{color:var(--amber)} .prow .ld.busy{color:var(--muted)}
   .prow ul{margin:6px 0 0;padding-left:16px;font-size:13px;color:var(--muted)}
   .prow li{margin:2px 0}
@@ -1113,12 +1114,17 @@ var SNAP=null, DETAIL={};
       if(!onLeaveCard){ var ob=el("button","offbtn"+(isOff?" on":""),isOff?"Back in":"Mark as off"); ob.title=isOff?"Put "+w+" back on the day":"Mark "+w+" as off for this day: sick, a course, a breakdown. It asks why.";
       if(isOff&&OFF_WHY[k+"|"+w]) nmb.appendChild(el("span","offwhy","off, "+OFF_WHY[k+"|"+w])); ob.onclick=function(){ if(isOff){ toggleOff(k,w); return; } var why=prompt(w+" is off on "+niceDay(k)+". Why? (sick, course, van breakdown)","sick"); if(why===null) return; toggleOff(k,w,why.trim()); }; nmb.appendChild(ob); }
       if(!isOff&&!onLeaveCard) nmb.appendChild(jsb);
-      tx.appendChild(nmb); tx.appendChild(el("span","ld "+load[w].c,load[w].t));
+      // A DAY THAT HAS GONE (Sam, 17 Sep 2026: "the days have passed so this section will need to reflect this"):
+      // nothing is "available" any more. Say what was planned and what was recorded, not free time.
+      var past=k<iso(TODAY), mineP=jobs.filter(function(j){return j.who.indexOf(w)>=0;}), prepsP=preps.filter(function(j){return j.prep.who.indexOf(w)>=0;});
+      var doneOf=function(part){ return part&&part.done?(part.done.status==="no"?" (did not go"+(part.done.reason?": "+part.done.reason:"")+")":" (done)"):" (not recorded)"; };
+      var pastLine=function(){ if(load[w].c==="off") return load[w].t; var n=mineP.length+prepsP.length, m=load[w].mins||0; return n?(fmt(m)+" on "+n+(n===1?" job":" jobs")):"No jobs"; };
+      tx.appendChild(nmb); tx.appendChild(el("span","ld "+(past?"past":load[w].c),past?pastLine():load[w].t));
       var ul=el("ul");
-      preps.filter(function(j){return j.prep.who.indexOf(w)>=0;}).forEach(function(j){ ul.appendChild(el("li",null,"Production: "+j.title+(j.prep.mins!=null?", "+fmt(j.prep.mins):""))); });
+      prepsP.forEach(function(j){ ul.appendChild(el("li",null,"Production: "+j.title+(j.prep.mins!=null?", "+fmt(j.prep.mins):"")+(past?doneOf(j.prep):""))); });
       var r=rounds.filter(function(x){return x.who===w;})[0]; if(r) ul.appendChild(el("li",null,"Delivery round, "+r.stops.length+" stops"+(r.drive?", "+fmt(r.drive)+" travel":"")));
-      jobs.filter(function(j){return j.who.indexOf(w)>=0;}).forEach(function(j){ ul.appendChild(el("li",null,j.title+(j.mins!=null?", "+fmt(j.mins)+(j.site&&!j.onRound&&j.drive?" + "+fmt(j.drive)+" travel":""):""))); });
-      if(load[w].c!=="off"&&load[w].rec>=30) ul.appendChild(el("li","rec","Recycling: "+fmt(load[w].rec)));
+      mineP.forEach(function(j){ ul.appendChild(el("li",null,j.title+(j.mins!=null?", "+fmt(j.mins)+(j.site&&!j.onRound&&j.drive?" + "+fmt(j.drive)+" travel":""):"")+(past?doneOf(j.isLeg?j.leg:j):""))); });
+      if(load[w].c!=="off"&&load[w].rec>=30){ if(past){ var tly=TALLIES[tallyKey(k,w)], tg=recTarget(load[w].rec); ul.appendChild(tly&&tly.units!=null?el("li",tly.units<tg*0.8?"warn":"rec","Recycling: "+tly.units+" of "+tg+" units"):el("li","warn","Recycling: not recorded, target was "+tg+" units")); } else ul.appendChild(el("li","rec","Recycling: "+fmt(load[w].rec))); }
       var tlw=dayTimeline(k,w); if(tlw.isDriver&&tlw.drive) ul.appendChild(el("li",tlw.driveBreak||tlw.longDay?"warn":"","Driving "+fmt(tlw.drive)+", back at Forton about "+hmStr(tlw.back)+(tlw.driveBreak?". Needs a 45 minute break":"")+(tlw.longDay?". Day over 11 hours":"")));
       tx.appendChild(ul); row.appendChild(tx); pc.appendChild(row);
     });
