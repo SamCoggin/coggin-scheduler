@@ -223,12 +223,14 @@
       if(!d.prep) d.prep={who:[],mins:null,start:null,date:null};
       var prodDue=d.prodDue||defaultDue;
       var ps=section("production","Production",prodDue?"Due "+niceShort(prodDue):"");
-      if(!workshop) ps.appendChild(el("div","who",(card.listName&&/Ready/i.test(card.listName))?"In Ready for Delivery / Collection":"Not in the workshop yet"));
-      if(!d.prep.who.length){ if(pauto) ps.appendChild(planBanner("Unassigned.","Plan it: "+pauto.crew+(pauto.crew===1?" operative":" operatives")+", "+fmt(pauto.mins)+(pauto.crew>1?" each":""),planProd)); else ps.appendChild(banner("Unassigned. Choose who is on production.")); }
-      else if(!d.prep.date) ps.appendChild(banner("No production days set."));
-      if(prodDue&&d.prep.date&&d.prep.date>prodDue) ps.appendChild(banner("Finishes "+niceShort(d.prep.date)+", after the production due date."));
+      // worked out BEFORE the banner that offers Plan it (17 Sep 2026: it read pauto before it was set, so the
+      // Production block never offered Plan it)
       var Lp=loadNow(), pstart=nextWorkDay(d.prep.start&&d.prep.start>todayIso()?d.prep.start:todayIso()), pdaysAvail=prodDue?Math.max(1,workDaysBetween(pstart,prodDue)):1;
       var pstd=prodStandardFor(Lp,d.prep.who.length,pdaysAvail), pauto=prodStandardFor(Lp,0,pdaysAvail), overP=aboveProdStandard(pstd,d.prep.who,d.prep.mins,d.prep.start,d.prep.date);
+      if(!workshop) ps.appendChild(el("div","who",(card.listName&&/Ready/i.test(card.listName))?"In Ready for Delivery / Collection":"Not in the workshop yet"));
+      if(!d.prep.who.length){ if(pauto) ps.appendChild(planBanner("Unassigned.","Plan it: "+pauto.crew+(pauto.crew===1?" operative":" operatives")+", "+fmt(pauto.mins)+(pauto.crew>1?" each":""),function(){ planProd(); })); else ps.appendChild(banner("Unassigned. Choose who is on production.")); }
+      else if(!d.prep.date) ps.appendChild(banner("No production days set."));
+      if(prodDue&&d.prep.date&&d.prep.date>prodDue) ps.appendChild(banner("Finishes "+niceShort(d.prep.date)+", after the production due date."));
       if(overP) ps.appendChild(banner("Above standard: "+overP+". Standard is "+fmt(pstd.work)+" of work."));
       var planProd=function(){ var crew=pauto.crew, start=d.prep.start||pstart, end=d.prep.date||addWorkDays(start,pauto.days-1); var who=pickCrew(crew,loadOn(start),false,[]); d.prep.who=who; d.prep.mins=prodStandardFor(Lp,who.length,pdaysAvail).mins; if(!d.prep.start){ d.prep.start=start; d.prep.date=end; } OPEN.pwho=false; OPEN.ptime=false; OPEN.pdays=false; save(); render(); };
       if(!d.prep.who.length) OPEN.pwho=OPEN.pwho===undefined?true:OPEN.pwho;
@@ -253,7 +255,7 @@
     // ── TRANSPORT, LOADING or LABOUR ──
     var L=loadNow(), m3=d.cube!=null?d.cube:(L.complete?L.m3:null), kg=(L.complete||d.cube!=null)?L.kg:0;
     var lbl=movementOf(card.labels,card.desc)||(card.labels||[]).map(function(l){return l.name;}).join(" ");
-    var Lstd=L.rows.length?L:(d.load||L), std=(!workshop&&!contractorOnly)?standardFor(lbl,Lstd):null, over=std?aboveStandard(std,d.who,d.mins):null;
+    var Lstd=L.rows.length?L:(d.load||L), std=(!contractorOnly&&(!workshop||site))?standardFor(lbl,Lstd):null, over=std?aboveStandard(std,d.who,d.mins):null;
     var mvName=movementOf(card.labels,card.desc), jobName=mvName==="Collect and Return"?"Collect and Return":mvName==="Site Visit"?"Site Visit":mvName==="Collection"?"Collection":"Delivery";
     var kind=site?"transport":"labour", name=site?jobName:(loading?"Loading":"Labour");
     var ts=section(kind,name,due?niceShort(due):"");
