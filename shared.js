@@ -82,7 +82,7 @@ var HEAD=[
   [/^subcontract work and materials$/i,"support"],
   [/^parts$/i,"parts"],
   [/^loan chairs$/i,"loan"],
-  [/^(job|ref|service|delivery details|clearance details|refurb collection details|buyback drop-off details|delivery info|other items|additional info)$/i,"skip"]
+  [/^(job|ref|service|delivery details|clearance details|refurb collection details|buyback drop-off details|delivery info|other items|additional info|standard time)$/i,"skip"]
 ];
 function cleanDesc(txt){
   txt=(txt||"").replace(/\[([^\]]+)\]\([^)]*\)/g,"$1").replace(/\*\*/g,"").replace(/\\_/g,"_").replace(/[\u200c\u200b]/g,"").replace(/\s*\u2014\s*/g,", ").replace(/[ \t]*\u00b7[ \t]*/g,", ").replace(/\u00d7/g,"x").replace(/^\s*_+\s*$/gm,"");
