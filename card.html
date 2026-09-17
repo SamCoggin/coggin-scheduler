@@ -150,7 +150,10 @@
       if(dropped) save(); if(workshop&&!d.prep) d.prep={who:[],mins:null,start:null,date:null};
       render();
       // checklists only come through the board-wide cards call, the same way the Scheduler reads them
-      var cl=t.cards("id","checklists").then(function(cs){ var me=cs.filter(function(x){return x.id===card.id;})[0]; if(me&&me.checklists) card.checklists=me.checklists; }).catch(function(){});
+      // THE CARD'S OWN CHECKLIST FIRST (Sam, 17 Sep 2026: 533E11 in New Jobs read "No estimate yet" with four
+      // items on it). t.card("checklists") is a documented field; the board-wide read stays as the fallback.
+      var fromCards=function(){ return t.cards("id","checklists").then(function(cs){ var me=cs.filter(function(x){return x.id===card.id;})[0]; if(me&&me.checklists&&me.checklists.length) card.checklists=me.checklists; }); };
+      var cl=t.card("checklists").then(function(c2){ if(c2&&c2.checklists&&c2.checklists.length) card.checklists=c2.checklists; else return fromCards(); }).catch(function(){ return fromCards().catch(function(){}); });
       return Promise.all([cl,loadOthers()]).then(render);
     });
   }
@@ -232,7 +235,7 @@
           var br=el("div","row"); br.style.marginTop="6px"; var pb=el("button","p","Plan it: "+pauto.crew+(pauto.crew===1?" operative":" operatives")+", "+fmt(pauto.mins)+(pauto.crew>1?" each":"")); pb.onclick=planProd; br.appendChild(pb); if(d.prep.who.length&&d.prep.mins!==pstd.mins){ var ub=el("button","p","Use standard time for the "+d.prep.who.length+" chosen"); ub.onclick=function(){ d.prep.mins=pstd.mins; save(); render(); }; br.appendChild(ub); } sb.appendChild(br); ed.appendChild(sb); }
         else ed.appendChild(el("div","hint","The standard comes from the items on the card. "+(Lp.unmatched.length?"Some items are not in the table: "+Lp.unmatched.join("; ")+".":Lp.rows.length?"":"No items found on the card.")));
         ed.appendChild(el("div","lbl","Production time per operative")); ed.appendChild(timeField(d.prep,"")); },d.prep.mins!=null?"":(d.prep.who.length?"bad":"todo")));
-      ps.appendChild(rowEl("pdue","Production due",(prodDue?niceShort(prodDue):"Not set")+(d.prodDue?"":viewing?", ready for the viewing":", 2 working days before delivery"),function(ed){ var pdr=el("div","row"); var pdi=el("input"); pdi.type="date"; pdi.value=prodDue||""; pdi.onchange=function(){ d.prodDue=pdi.value||null; save(); render(); }; pdr.appendChild(pdi);
+      ps.appendChild(rowEl("pdue","Production due",(prodDue?niceShort(prodDue):"Not set")+(d.prodDue?"":viewing?", ready for the viewing":", "+PRODUCTION_BUFFER_DAYS+" working days before delivery"),function(ed){ var pdr=el("div","row"); var pdi=el("input"); pdi.type="date"; pdi.value=prodDue||""; pdi.onchange=function(){ d.prodDue=pdi.value||null; save(); render(); }; pdr.appendChild(pdi);
         if(d.prodDue){ var rs=el("button","p","Reset"); rs.onclick=function(){ d.prodDue=null; save(); render(); }; pdr.appendChild(rs); } ed.appendChild(pdr); ed.appendChild(el("div","hint","The day production must be finished and checked. "+PRODUCTION_BUFFER_DAYS+" working days before delivery unless you set it.")); }));
       app.appendChild(ps);
     }
