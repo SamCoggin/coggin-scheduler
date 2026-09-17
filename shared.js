@@ -291,7 +291,10 @@ function aboveStandard(std,who,mins){
 }
 
 // ── production standard: how long the workshop should take on the items ──
-var PICK_BASE=15, PICK_EACH=2;   // minutes: pull the picking sheet and set up, then per item to find it and bring it to the bench
+// minutes: pull the picking sheet and set up, then per item to bring it from storage to the prep area.
+// 3 minutes an item and two on the picking from 17 Sep 2026 (Sam: "Picking is just a case of bringing the chairs
+// from storage to the workshop/prep area circa 2/5 mins per item... 3 mins for both, and picking split between two").
+var PICK_BASE=15, PICK_EACH=3, PICK_CREW=2;
 // the work is the total of the items. more operatives divide it, plus 10 percent handover when they share.
 // crew: one operative up to 2 hours of work, two up to 12 hours, three beyond (refurb never needs more than three).
 // daysAvail: working days there are to do it in (to the production due date). the crew is the fewest that finish in time, never more than three.
@@ -304,10 +307,10 @@ function prodStandardFor(load,crewNow,daysAvail){
   var eachFor=function(n){ return Math.ceil(work/n*(n>1?1.1:1)/5)*5; };
   var crew, rule;
   if(crewNow&&crewNow>0){ crew=crewNow; rule="the "+crew+" you chose"; }
-  else { var avail=daysAvail&&daysAvail>0?daysAvail:1; crew=3; for(var n=1;n<=3;n++){ if(eachFor(n)<=avail*DAY_MINS){ crew=n; break; } } rule=avail+(avail===1?" working day":" working days")+" to do it in, so the fewest that finish in time is "+crew; }
+  else { var avail=daysAvail&&daysAvail>0?daysAvail:1; crew=3; for(var n=PICK_CREW;n<=3;n++){ if(eachFor(n)<=avail*DAY_MINS){ crew=n; break; } } rule=avail+(avail===1?" working day":" working days")+" to do it in, so the fewest that finish in time is "+crew; }
   var each=eachFor(crew), days=Math.max(1,Math.ceil(each/DAY_MINS));
   var what=load.rows.filter(function(r){return r.prod;}).map(function(r){return r.n+" "+r.type.toLowerCase()+(r.n>1?"s":"")+(r.cleanOnly?" (clean only)":"")+" at "+(r.prod/r.n)+" min";}).join(", ");
-  var why=fmt(work)+" of work in total. Picking "+fmt(pick)+" ("+PICK_BASE+" min for the picking sheet and set up, "+PICK_EACH+" min an item for "+items+" items). Then "+what+". "+rule.charAt(0).toUpperCase()+rule.slice(1)+"."+(crew>1?" Split with 10 percent for handover, that is "+fmt(each)+" each":" "+fmt(each))+(days>1?", so "+days+" days.":".");
+  var why=fmt(work)+" of work in total. Picking "+fmt(pick)+" ("+PICK_BASE+" min for the picking sheet and set up, "+PICK_EACH+" min an item for "+items+" items, "+PICK_CREW+" on it). Then "+what+". "+rule.charAt(0).toUpperCase()+rule.slice(1)+"."+(crew>1?" Split with 10 percent for handover, that is "+fmt(each)+" each":" "+fmt(each))+(days>1?", so "+days+" days.":".");
   return {work:work,pick:pick,crew:crew,mins:each,days:days,why:why};
 }
 function aboveProdStandard(std,who,mins,start,end){
