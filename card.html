@@ -335,7 +335,10 @@
 
     (d.legs||[]).filter(function(L){return L.type==="labour";}).forEach(function(W){
       var ws=section("labour","Labour",W.date?niceShort(W.date):"");
-      ws.appendChild(el("div","who",W.where.charAt(0).toUpperCase()+W.where.slice(1)+(PARTS&&PARTS.transport&&!PARTS.ours?", "+PARTS.transport+" carries it":"")+"."));
+      // the firm, not the whole Parts line, and never repeated when the line already names them (17 Sep 2026)
+      var whoCarries=PARTS&&!PARTS.ours?partsCarrier(PARTS):"";
+      var wLine=W.where.charAt(0).toUpperCase()+W.where.slice(1);
+      ws.appendChild(el("div","who",wLine+(whoCarries&&wLine.toLowerCase().indexOf(whoCarries.toLowerCase())<0?", "+whoCarries+" carries it":"")+"."));
       var Lw=loadNow(), wstd=standardFor(/unload|receive/i.test(W.where)?"Labour unload":"Labour load",Lw), overW=wstd?aboveStandard(wstd,W.who,W.mins):null;
       if(!W.who.length) ws.appendChild(banner("Unassigned. Choose who is on it at Forton."));
       if(overW) ws.appendChild(banner("Above standard: "+overW+"."));
