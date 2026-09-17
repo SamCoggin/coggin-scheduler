@@ -465,7 +465,8 @@ var SNAP=null, DETAIL={};
       if(L.type==="labour"){ j.movement=/unload|receive/i.test(L.where||"")?"Labour unload":"Labour load"; j.work=parent.work; j.load=parent.load; j.items=parent.items; j.allItems=parent.allItems; j.cubeSet=parent.cubeSet; }
       return j; }).filter(Boolean);
   }
-  function allJobs(){ return JOBS.concat(legJobs()).concat(HOLDS); }
+  // a viewing order is its production and nothing else: its main job never shows as transport or labour (17 Sep 2026)
+  function allJobs(){ return JOBS.filter(function(j){ return !j.viewing; }).concat(legJobs()).concat(HOLDS); }
   window.__allJobs=allJobs; // reachable by check.mjs
   var prevWork=function(k){ var d=new Date(k+"T12:00"); do{ d.setDate(d.getDate()-1); }while(d.getDay()===0||d.getDay()===6); return iso(d); };
   // the list a card sits in says what it is:
@@ -496,7 +497,7 @@ var SNAP=null, DETAIL={};
       // the prep: who is getting it ready, and on which day
       // the prep is not planned until you give it days
       j.prep={who:[],mins:null,start:null,date:null,job:j,isPrep:true};
-      j.prodDue=productionDue("",c.due); j.prodDueSet=false;
+      j.viewing=isViewingLabels(c.labels); j.prodDue=j.viewing?c.due:productionDue("",c.due); j.prodDueSet=false;
     } else {
       j.date=c.due; j.site=isSiteMove(mv); j.collect=isCollectMove(mv);
       j.stageLabel=c.role==="ready"?"Workshop: Ready":c.role==="handed"?"Handed over, not planned":"Booked";
@@ -824,7 +825,7 @@ var SNAP=null, DETAIL={};
     if(!o.shop && j.prep){ var pb=block("Production");
       var pdr=el("div","row"); pdr.style.marginBottom="8px"; pdr.appendChild(el("span",null,"Production due")); var pdi=el("input"); pdi.type="date"; pdi.value=j.prodDue||""; pdi.setAttribute("aria-label","Production due date");
       pdi.onchange=function(){ if(pdi.value){ j.prodDue=pdi.value; j.prodDueSet=true; } render(); }; pdr.appendChild(pdi);
-      if(j.prodDueSet){ var rs=el("button","close","Reset"); rs.onclick=function(){ j.prodDue=productionDue("",j.out); j.prodDueSet=false; render(); }; pdr.appendChild(rs); }
+      if(j.prodDueSet){ var rs=el("button","close","Reset"); rs.onclick=function(){ j.prodDue=j.viewing?j.out:productionDue("",j.out); j.prodDueSet=false; render(); }; pdr.appendChild(rs); }
       pdr.appendChild(el("span","hint",j.prodDueSet?"Set by you.":PRODUCTION_BUFFER_DAYS+" working days before delivery. Change it if this job needs more or less.")); pb.appendChild(pdr);
       if(j.prep.date&&j.prep.date>j.prodDue) pb.appendChild(el("div","hint far","Production is scheduled to finish "+niceDay(j.prep.date)+", after it is due."));
       var pr=el("div","prep"); pr.appendChild(el("div",null,(j.prep.date?niceDay(j.prep.start)+(j.prep.start!==j.prep.date?" to "+niceDay(j.prep.date):""):"Not scheduled")));

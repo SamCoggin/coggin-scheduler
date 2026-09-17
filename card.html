@@ -91,7 +91,7 @@
   var t=TrelloPowerUp.iframe();
   var el=function(tag,c,x){var n=document.createElement(tag);if(c)n.className=c;if(x!=null)n.textContent=x;return n;};
   var PARTS=null;
-  var card=null, d=null, workshop=false, site=false, loading=false, saving=null, defaultDue=null, boardData={}, OTHERS=[], LEAVE=[];
+  var card=null, d=null, viewing=false, workshop=false, site=false, loading=false, saving=null, defaultDue=null, boardData={}, OTHERS=[], LEAVE=[];
   // the other cards on the board, with their plans, so this card can say who is free
   function loadOthers(){
     var cardsP=t.cards("id","name","due","start","idList","labels","desc","checklists").catch(function(){ return t.cards("id","name","due","start","idList","labels","desc"); });
@@ -135,8 +135,8 @@
     return Promise.all([t.card("id","name","labels","idList","due","desc"), t.lists("all"), t.get("card","shared","sched",null), t.get("board","shared","sched",{})]).then(function(r){
       boardData=r[3]||{}; (boardData.contractors||[]).forEach(function(c){ if(CONTRACTORS.indexOf(c)<0) CONTRACTORS.splice(CONTRACTORS.length-1,0,c); });
       card=r[0]; var list=r[1].filter(function(l){return l.id===card.idList;})[0]; workshop=!!(list&&WORKSHOP_LISTS.test(list.name)); card.listName=list?list.name:"";
-      site=isSiteLabels(card.labels); loading=!site&&isCollectLabels(card.labels);
-      defaultDue=productionDue("",(card.due||"").slice(0,10));
+      viewing=isViewingLabels(card.labels); site=!viewing&&isSiteLabels(card.labels); loading=!viewing&&!site&&isCollectLabels(card.labels);
+      defaultDue=viewing?(card.due||"").slice(0,10):productionDue("",(card.due||"").slice(0,10));
       d=r[2]||{who:[],mins:null,drive:null,contractor:"",prep:null,legs:[]}; if(!d.who) d.who=[]; if(!d.legs) d.legs=[];
       // THE LABOUR PART (Sam, 14 Sep 2026): from the card's Parts block, or implied by the label on an older card.
       PARTS=partsOf(card.desc); if(!PARTS.known) PARTS=impliedParts(card.labels);
@@ -228,7 +228,7 @@
           var br=el("div","row"); br.style.marginTop="6px"; var pb=el("button","p","Plan it: "+pauto.crew+(pauto.crew===1?" operative":" operatives")+", "+fmt(pauto.mins)+(pauto.crew>1?" each":"")); pb.onclick=planProd; br.appendChild(pb); if(d.prep.who.length&&d.prep.mins!==pstd.mins){ var ub=el("button","p","Use standard time for the "+d.prep.who.length+" chosen"); ub.onclick=function(){ d.prep.mins=pstd.mins; save(); render(); }; br.appendChild(ub); } sb.appendChild(br); ed.appendChild(sb); }
         else ed.appendChild(el("div","hint","The standard comes from the items on the card. "+(Lp.unmatched.length?"Some items are not in the table: "+Lp.unmatched.join("; ")+".":Lp.rows.length?"":"No items found on the card.")));
         ed.appendChild(el("div","lbl","Production time per operative")); ed.appendChild(timeField(d.prep,"")); },d.prep.mins!=null?"":(d.prep.who.length?"bad":"todo")));
-      ps.appendChild(rowEl("pdue","Production due",(prodDue?niceShort(prodDue):"Not set")+(d.prodDue?"":", 2 working days before delivery"),function(ed){ var pdr=el("div","row"); var pdi=el("input"); pdi.type="date"; pdi.value=prodDue||""; pdi.onchange=function(){ d.prodDue=pdi.value||null; save(); render(); }; pdr.appendChild(pdi);
+      ps.appendChild(rowEl("pdue","Production due",(prodDue?niceShort(prodDue):"Not set")+(d.prodDue?"":viewing?", ready for the viewing":", 2 working days before delivery"),function(ed){ var pdr=el("div","row"); var pdi=el("input"); pdi.type="date"; pdi.value=prodDue||""; pdi.onchange=function(){ d.prodDue=pdi.value||null; save(); render(); }; pdr.appendChild(pdi);
         if(d.prodDue){ var rs=el("button","p","Reset"); rs.onclick=function(){ d.prodDue=null; save(); render(); }; pdr.appendChild(rs); } ed.appendChild(pdr); ed.appendChild(el("div","hint","The day production must be finished and checked. "+PRODUCTION_BUFFER_DAYS+" working days before delivery unless you set it.")); }));
       app.appendChild(ps);
     }
@@ -296,8 +296,9 @@
         set.appendChild(el("div","hint","A Luton box is about "+VAN_M3+" cubic metres, payload about "+VAN_KG+" kg. Desks count flat unless the item says built; sit-stand desks always count built. Chair figures assume double stacking. Small parts ride in the cab.")); ed.appendChild(set);
       },vanCls));
     }
-    if(vanApplies||(workshop&&loading)||contractorOnly) app.appendChild(ls);
-    app.appendChild(ts);
+    // a viewing order is production only: nothing goes on a van and nobody is on labour
+    if(!viewing){ if(vanApplies||(workshop&&loading)||contractorOnly) app.appendChild(ls);
+    app.appendChild(ts); }
 
     (d.legs||[]).filter(function(L){return L.type==="labour";}).forEach(function(W){
       var ws=section("labour","Labour",W.date?niceShort(W.date):"");

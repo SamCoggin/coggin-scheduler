@@ -144,7 +144,10 @@ function qcDone(badges){ return !!(badges&&badges.checkItems>0&&badges.checkItem
 // Sub-contractor say who carries it, so the movement for those follows the work: a resale goes out, a clearance
 // comes in, a refurb goes both ways. The older names (two labels, and the board's original single labels) are
 // still understood so nothing breaks on a card made before the switch.
-var WORK_LABELS=["Resale","Refurb","Clearance","Recycling","Buyback","Donation","Warranty","Job Issue"];
+var WORK_LABELS=["Resale","Refurb","Clearance","Recycling","Buyback","Donation","Warranty","Job Issue","Stock"];
+// A VIEWING ORDER (17 Sep 2026): stock got ready at Forton for a viewing. Production only: no van, no site, no labour,
+// and the card's due date IS the production due date, not delivery minus the buffer.
+function isViewingLabels(labels){ return labelNames(labels).some(function(n){ return /^stock\s*-\s*viewing$/i.test(n.trim()); }); }
 var MOVEMENT_LABELS=["Delivery","Collection","Collect and Return","Customer Delivers","Customer Collects","Customer Delivers and Collects","Site Visit","Labour"];
 var OLD_MOVEMENT={"delivery/installation":"Delivery","removal job":"Collection","collect & return":"Collect and Return","customer collecting":"Customer Collects","courier collecting":"Customer Collects","courier collects":"Customer Collects","recycling delivery":"Customer Delivers","new stock delivery":"Customer Delivers","stock delivery":"Customer Delivers","plastic delivery":"Customer Delivers","plastic collection":"Collection","skip exchange":"Labour","labour":"Labour","warehouse":"Labour","yard":"Labour","warranty/job issue":"Site Visit","donations":"Delivery","charity donation":"Delivery"};
 var OLD_WORK={"delivery/installation":"Resale","removal job":"Clearance","collect & return":"Refurb","recycling delivery":"Recycling","new stock delivery":"Buyback","stock delivery":"Buyback","plastic delivery":"Recycling","plastic collection":"Recycling","skip exchange":"Recycling","warranty/job issue":"Warranty","donations":"Donation","charity donation":"Donation"};
