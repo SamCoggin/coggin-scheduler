@@ -12,6 +12,11 @@
   // templates, supplier orders and completed cards are not, so they get no badges. The board Scheduler page
   // and its card button stay on Jobs - Planning Board, the board it plans.
   var OPS_BOARD=/^operations\s*-\s*planning$/i, OPS_JOB_LISTS=/^(new jobs|transfer to job board)$/i;
+  // ON JOBS - PLANNING BOARD only the lists the Scheduler plans carry badges (Sam, 17 Sep 2026: "Need to remove
+  // the noise here also"). Leave, the transfer lists and undated Other Planned Activity cards get none.
+  var PLANNED_LISTS=/^(Workshop Jobs - (Not Started|In-progress|Ready for Delivery \/ Collection)|Removals \/ Recycling \/ Skips \/ Stock \/ Plastic|Other Planned Activity|Operations Transfer List)$/;
+  var DUE_ONLY_LISTS=/^(Removals \/ Recycling \/ Skips \/ Stock \/ Plastic|Other Planned Activity)$/;
+  function quiet(ops,list,card){ var n=String(list&&list.name||"").trim(); if(ops) return !OPS_JOB_LISTS.test(n); if(!PLANNED_LISTS.test(n)) return true; return DUE_ONLY_LISTS.test(n)&&!card.due; }
   function opsBoard(t){ return t.board("name").then(function(b){ return OPS_BOARD.test(String(b&&b.name||"").trim()); }).catch(function(){ return false; }); }
   TrelloPowerUp.initialize({
     "board-buttons": function(t){
@@ -21,7 +26,7 @@
       return Promise.all([t.card("labels","idList","due","badges","desc"), t.get("card","shared","sched",null), t.lists("all"), opsBoard(t)]).then(function(r){
         var card=r[0], d=r[1], out=[];
         var list=r[2].filter(function(l){return l.id===card.idList;})[0], workshop=!!(list&&WORKSHOP_LISTS.test(list.name));
-        if(r[3]&&!(list&&OPS_JOB_LISTS.test(String(list.name||"").trim()))) return out;
+        if(quiet(r[3],list,card)) return out;
         // A QC sign-off or "not applicable" on the card back clears the badge (Sam, 14 Sep 2026).
         if(list&&READY_LIST.test(list.name)&&!qcDone(card.badges)&&!(d&&d.qc)) out.push({ text:"Not QC'd", color:"red" });
         if(workshop&&card.due){ var pd=(d&&d.prodDue)||productionDueFor(card.labels,card.due.slice(0,10)); var late=!!(d&&d.prep&&d.prep.date&&d.prep.date>pd); out.push({ text:"Production due "+niceShort(pd), color:late?"red":(pd<todayIso()?"red":"blue") }); }
@@ -38,7 +43,7 @@
       return Promise.all([t.card("labels","idList","due","badges","desc"), t.get("card","shared","sched",null), t.lists("all"), opsBoard(t)]).then(function(r){
         var card=r[0], d=r[1], out=[];
         var list=r[2].filter(function(l){return l.id===card.idList;})[0], workshop=!!(list&&WORKSHOP_LISTS.test(list.name));
-        if(r[3]&&!(list&&OPS_JOB_LISTS.test(String(list.name||"").trim()))) return out;
+        if(quiet(r[3],list,card)) return out;
         if(list&&READY_LIST.test(list.name)&&!qcDone(card.badges)&&!(d&&d.qc)) out.push({ title:"QC", text:"Not QC'd: checklist not complete", color:"red" });
         else if(d&&d.qc&&list&&READY_LIST.test(list.name)) out.push({ title:"QC", text:d.qc.na?"Not applicable, "+d.qc.by:"Passed, "+d.qc.by, color:"green" });
         if(workshop&&card.due){ var pd=(d&&d.prodDue)||productionDueFor(card.labels,card.due.slice(0,10)); out.push({ title:"Production due", text:niceShort(pd), color:pd<todayIso()?"red":"blue" }); }
