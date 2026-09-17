@@ -152,6 +152,8 @@
       // something more relevent"). The Parts block says somebody else carries it; who that is comes from the deal,
       // so the card waits for a name rather than calling the firm "Courier".
       var pc0=partsCarrier(PARTS), generic=/^(courier|sub-?contractor|contractor|haulier)$/i.test(pc0||"");
+      // a generic word saved as the firm earlier today is cleared, so the card asks for the real one
+      if(/^(courier|sub-?contractor|contractor|haulier)$/i.test(d.contractor||"")){ d.contractor=""; dropped=true; }
       CARRIER_PENDING=!!pc0&&generic&&!d.contractor&&!(d.who&&d.who.length);
       if(pc0&&!generic&&!d.contractor&&!(d.who&&d.who.length)){ d.contractor=pc0; dropped=true; }
       var wantedL=partsCarrier(PARTS)?(PARTS.labourLegs||[]):[];
