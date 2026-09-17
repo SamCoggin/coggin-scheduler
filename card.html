@@ -92,7 +92,7 @@
 (function(){
   var t=TrelloPowerUp.iframe();
   var el=function(tag,c,x){var n=document.createElement(tag);if(c)n.className=c;if(x!=null)n.textContent=x;return n;};
-  var PARTS=null, CRM_FIRMS=[];
+  var PARTS=null, CRM_FIRMS=[], CARRIER_PENDING=false;
   var card=null, d=null, viewing=false, workshop=false, site=false, loading=false, saving=null, defaultDue=null, boardData={}, OTHERS=[], LEAVE=[];
   // the other cards on the board, with their plans, so this card can say who is free
   function loadOthers(){
@@ -148,7 +148,12 @@
       // a courier is carrying). When the Parts block names a carrier the transport is theirs, so the card opens with
       // that firm on it and asks only for the labour that loads them.
       var dropped=false;
-      var pc0=partsCarrier(PARTS); if(pc0&&!d.contractor&&!(d.who&&d.who.length)){ d.contractor=pc0.charAt(0).toUpperCase()+pc0.slice(1); dropped=true; }
+      // A GENERIC WORD IS NOT A FIRM (Sam, 17 Sep 2026: "We have not picked a courier yet so can this not say
+      // something more relevent"). The Parts block says somebody else carries it; who that is comes from the deal,
+      // so the card waits for a name rather than calling the firm "Courier".
+      var pc0=partsCarrier(PARTS), generic=/^(courier|sub-?contractor|contractor|haulier)$/i.test(pc0||"");
+      CARRIER_PENDING=!!pc0&&generic&&!d.contractor&&!(d.who&&d.who.length);
+      if(pc0&&!generic&&!d.contractor&&!(d.who&&d.who.length)){ d.contractor=pc0; dropped=true; }
       var wantedL=partsCarrier(PARTS)?(PARTS.labourLegs||[]):[];
       for(var li=d.legs.length-1;li>=0;li--){ var Lx=d.legs[li]; if(Lx.type!=="labour"||Lx.src==="support") continue; if(!wantedL.some(function(x){return x.where===Lx.where;})&&!(Lx.who&&Lx.who.length)&&Lx.mins==null){ d.legs.splice(li,1); dropped=true; } }
       wantedL.forEach(function(x){ if(!d.legs.some(function(L){return L.type==="labour"&&L.where===x.where;})) d.legs.push({type:"labour",date:x.date||(card.due?card.due.slice(0,10):null),who:[],mins:null,drive:null,where:x.where}); });
@@ -233,7 +238,7 @@
   function render(){
     var app=document.getElementById("app"); app.innerHTML="";
     var due=(card.due||"").slice(0,10);
-    var contractorOnly=!!d.contractor && !d.who.length;
+    var contractorOnly=(!!d.contractor||CARRIER_PENDING) && !d.who.length;
 
     // ── PRODUCTION (workshop stage) ──
     if(workshop || d.prep){
@@ -282,14 +287,14 @@
     var agreedM=/Agreed crew time on the day ([^,\n]+)/i.exec(String(card.desc||"").replace(/\*\*/g,""));
     if(agreedM) ts.appendChild(el("div","hint","Agreed in the CRM: "+agreedM[1].trim()+" crew time on the day, travel included. Plan the crew and time to fit it."));
     {
-      if(contractorOnly) ts.appendChild(el("div","who",d.contractor+" is carrying out this work"));
+      if(contractorOnly) ts.appendChild(el("div","who",d.contractor?d.contractor+" is carrying out this work":"A "+(partsCarrier(PARTS)||"carrier").toLowerCase()+" is carrying it, not picked yet. Choose the firm below, or on the deal."));
       else if(!d.who.length){ if(std&&std.mins!=null&&due){ ts.appendChild(planBanner("Unassigned.","Plan it: "+std.crew+(std.crew===1?" operative":" operatives")+", "+fmt(std.mins)+(std.crew>1?" each":""),function(){ d.who=pickCrew(std.crew,loadOn(due),site,[]); d.mins=std.mins; OPEN.who=false; OPEN.time=false; save(); render(); })); } else { ts.appendChild(banner("Unassigned. Choose who is on it.")); OPEN.who=OPEN.who===undefined?true:OPEN.who; } }
       else if(site&&!d.who.some(function(w){return DRIVERS.indexOf(w)>=0;})) ts.appendChild(banner("No driver on this job. Rob, Jack or Bart must be on it."));
       if(over) ts.appendChild(banner("Above standard: "+over+". Standard is "+std.crew+(std.crew===1?" operative":" operatives")+(std.mins!=null?", "+fmt(std.mins)+(std.crew>1?" each":""):"")+"."));
       // who
       var whoTxt=contractorOnly?d.contractor:(d.who.length?d.who.join(", ")+(d.contractor?" with "+d.contractor:""):"Unassigned");
       ts.appendChild(rowEl("who",(contractorOnly||d.who.length===1)?"Operative":"Operatives",whoTxt,function(ed){
-        if(site){ ed.appendChild(el("div","lbl","Transported by")); var sel=el("select"); [["","Our operatives"]].concat((CRM_FIRMS.length?CRM_FIRMS.concat(CONTRACTORS.filter(function(c){return CRM_FIRMS.indexOf(c)<0&&/^(Courier|Other contractor)$/i.test(c);})):CONTRACTORS).map(function(c){return [c,c];})).forEach(function(o){ var op=el("option",null,o[1]); op.value=o[0]; if((d.contractor||"")===o[0]) op.selected=true; sel.appendChild(op); }); sel.onchange=function(){ d.contractor=sel.value; save(); render(); }; ed.appendChild(sel);
+        if(site){ ed.appendChild(el("div","lbl","Transported by")); var sel=el("select"); [["","Our operatives"]].concat((CRM_FIRMS.length?CRM_FIRMS.concat(CONTRACTORS.filter(function(c){return CRM_FIRMS.indexOf(c)<0&&/^Other contractor$/i.test(c);})):CONTRACTORS).map(function(c){return [c,c];})).forEach(function(o){ var op=el("option",null,o[1]); op.value=o[0]; if((d.contractor||"")===o[0]) op.selected=true; sel.appendChild(op); }); sel.onchange=function(){ d.contractor=sel.value; save(); render(); }; ed.appendChild(sel);
           var addr=el("div","row"); addr.style.margin="8px 0 12px"; var ai=el("input"); ai.type="text"; ai.placeholder="Add a subcontractor"; ai.style.minWidth="180px"; var ab=el("button","p","Add"); ab.onclick=function(){ var n=ai.value.trim(); if(!n) return; if(CONTRACTORS.indexOf(n)<0) CONTRACTORS.splice(CONTRACTORS.length-1,0,n); d.contractor=n; var extra=CONTRACTORS.filter(function(c){return ["MAK Installations","Courier","Other contractor"].indexOf(c)<0;}); boardData.contractors=extra; t.set("board","shared","sched",boardData); save(); render(); }; addr.appendChild(ai); addr.appendChild(ab); ed.appendChild(addr);
           ed.appendChild(el("div","lbl",d.contractor?"Our operatives going too":"Our operatives")); }
         ed.appendChild(people(d,site,function(){ var s2=(!workshop&&!contractorOnly)?standardFor(lbl,Lstd):null; return s2&&s2.mins!=null?s2.mins:null; },due?[due]:[])); ed.appendChild(availability(due?[due]:[],d)); },contractorOnly?"":(d.who.length?"":"bad")));
@@ -309,11 +314,11 @@
     var vanApplies=(!contractorOnly && (site || (workshop && !loading))) || forContractor;
     var ls=section("loading","Loading",due?niceShort(due):"");
     if(workshop && loading) ls.appendChild(el("div","who","Customer or courier collecting, so nothing goes on our van"));
-    if(contractorOnly){ ls.appendChild(el("div","who",d.contractor+" is carrying out the "+String(name).toLowerCase()+", so nothing goes on our van."+(forContractor?" The load below is what they need room for.":"")+" Change that under "+name+".")); }
+    if(contractorOnly){ ls.appendChild(el("div","who",(d.contractor||"A "+(partsCarrier(PARTS)||"carrier").toLowerCase())+" is carrying out the "+String(name).toLowerCase()+", so nothing goes on our van."+(forContractor?" The load below is what they need room for.":"")+" Change that under "+name+".")); }
     if(vanApplies){
       var dayTot=null, others=[], missing=[], names=[];
       if(due&&!forContractor){ others=OTHERS.filter(function(o){ return o.site && o.due===due && !(o.plan.contractor&&!(o.plan.who||[]).length); }); var om3=0, okg=0; others.forEach(function(o){ if(o.cube==null){ missing.push((o.name||"another job")+" ("+o.why+")"); return; } om3+=o.cube; okg+=o.kg; names.push((o.name||"another job")+" "+fmtM3(o.cube)); }); if(others.length) dayTot={m3:(m3||0)+om3,kg:(kg||0)+okg}; }
-      var pcv=/\b([A-Z]{1,2}\d[A-Z\d]?\s*\d[A-Z]{2})\b/i.exec(card.desc||""), cvs=forContractor&&m3!=null?contractorVehicle(m3,kg,pcv?pcv[1].toUpperCase():""):null; var vanTxt=m3==null?"No estimate yet":(forContractor?fmtM3(m3)+(kg?", "+Math.round(kg)+" kg":"")+(cvs&&cvs.v?", "+cvs.v.t:"")+" for "+d.contractor:fmtM3(m3)+" of "+VAN_M3+(dayTot?", day total "+fmtM3(dayTot.m3):""));
+      var pcv=/\b([A-Z]{1,2}\d[A-Z\d]?\s*\d[A-Z]{2})\b/i.exec(card.desc||""), cvs=forContractor&&m3!=null?contractorVehicle(m3,kg,pcv?pcv[1].toUpperCase():""):null; var vanTxt=m3==null?"No estimate yet":(forContractor?fmtM3(m3)+(kg?", "+Math.round(kg)+" kg":"")+(cvs&&cvs.v?", "+cvs.v.t:"")+(d.contractor?" for "+d.contractor:" for the carrier"):fmtM3(m3)+" of "+VAN_M3+(dayTot?", day total "+fmtM3(dayTot.m3):""));
       var vanCls=m3==null||L.unmatched.length||(dayTot&&dayTot.m3>VAN_M3)?"todo":"";
       // WHY THERE IS NO ESTIMATE (Sam, 17 Sep 2026, 533E11): say what the card gave it, so a checklist that is not
       // being read, or a line with no standard, is visible instead of a bare "No estimate yet".
