@@ -92,7 +92,7 @@
 (function(){
   var t=TrelloPowerUp.iframe();
   var el=function(tag,c,x){var n=document.createElement(tag);if(c)n.className=c;if(x!=null)n.textContent=x;return n;};
-  var PARTS=null;
+  var PARTS=null, CRM_FIRMS=[];
   var card=null, d=null, viewing=false, workshop=false, site=false, loading=false, saving=null, defaultDue=null, boardData={}, OTHERS=[], LEAVE=[];
   // the other cards on the board, with their plans, so this card can say who is free
   function loadOthers(){
@@ -167,9 +167,21 @@
       var cl=t.card("checklists").then(function(c2){ window.__ckTrace.push("card:"+(c2&&c2.checklists?c2.checklists.length:"none")+(c2&&c2.checklists&&c2.checklists[0]?" keys "+Object.keys(c2.checklists[0]).join("/")+(c2.checklists[0].checkItems?" items "+c2.checklists[0].checkItems.length+(c2.checklists[0].checkItems[0]?" itemkeys "+Object.keys(c2.checklists[0].checkItems[0]).join("/"):""):""):"")); if(c2&&c2.checklists&&c2.checklists.length) card.checklists=c2.checklists; else return fromCards().then(function(){ window.__ckTrace.push("board:"+((card.checklists||[]).length)); if(!(card.checklists||[]).length) return tryAll(); }); }).catch(function(e){ window.__ckTrace.push("card:error"); return fromCards().catch(function(){ window.__ckTrace.push("board:error"); }).then(tryAll); });
       // TRELLO GIVES THE POWER-UP EMPTY CHECKLISTS (traced 17 Sep 2026: checkItems 0 on a card with six lines),
       // so the items come from the CRM's Trello access instead, with the board's CRM key.
+      // THE FIRMS COME FROM THE CRM (Sam, 17 Sep 2026: "These drop boxes on the trello scheduler should only be
+      // pulling from the relevent couriers and contractors on the CRM"). Filtered by what the job is, so a
+      // clearance sub-contractor is not offered for a resale delivery.
+      var crmKeyP=boardData.crmKey?Promise.resolve(boardData.crmKey):t.get("member","private","crmKey","").catch(function(){return "";});
+      var viaFirms=crmKeyP.then(function(key){ if(!key) return;
+        return fetch("https://coggin-sos-os.base44.app/api/apps/69c930a6240fba922f369aa2/functions/opsCarriers",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({key:key})}).then(function(x){return x.json();}).then(function(res){
+          if(!res||!res.ok||!res.firms) return;
+          var wk=workOf(card.labels), want=/Clearance|Recycling|Buyback/i.test(wk)?["clearance","recycling","removals"]:/Refurb/i.test(wk)?["refurb_transport","delivery_install","removals"]:["delivery_install","refurb_transport","removals"];
+          var names=res.firms.filter(function(f){ return !f.roles.length||f.roles.some(function(r){return want.indexOf(r)>=0;}); }).map(function(f){return f.name;});
+          CRM_FIRMS=names;
+        }).catch(function(){});
+      });
       var viaCrm=cl.then(function(){ if(checksOf().length) return; return (boardData.crmKey?Promise.resolve(boardData.crmKey):t.get("member","private","crmKey","").catch(function(){return "";})).then(function(key){ if(!key){ window.__ckTrace.push("crm:no key"); window.__noKey=true; return; } window.__noKey=false;
         return fetch("https://coggin-sos-os.base44.app/api/apps/69c930a6240fba922f369aa2/functions/opsCardChecklist",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({key:key,card_id:card.id})}).then(function(x){return x.json();}).then(function(res){ window.__ckTrace.push("crm:"+(res&&res.ok?res.items.length:(res&&res.error)||"failed")); if(res&&res.ok&&res.items.length) card.checklists=[{name:"Products",checkItems:res.items.map(function(i){return {name:i.n,state:i.done?"complete":"incomplete"};})}]; }).catch(function(){ window.__ckTrace.push("crm:failed"); }); }); });
-      return Promise.all([viaCrm,loadOthers()]).then(render);
+      return Promise.all([viaCrm,viaFirms,loadOthers()]).then(render);
     });
   }
   function save(){ clearTimeout(saving); saving=setTimeout(function(){ t.set("card","shared","sched",d); if(card&&card.id) syncCardMembers(card.id,d,boardData.crmKey||"",workshop); },250); }
@@ -277,7 +289,7 @@
       // who
       var whoTxt=contractorOnly?d.contractor:(d.who.length?d.who.join(", ")+(d.contractor?" with "+d.contractor:""):"Unassigned");
       ts.appendChild(rowEl("who",(contractorOnly||d.who.length===1)?"Operative":"Operatives",whoTxt,function(ed){
-        if(site){ ed.appendChild(el("div","lbl","Transported by")); var sel=el("select"); [["","Our operatives"]].concat(CONTRACTORS.map(function(c){return [c,c];})).forEach(function(o){ var op=el("option",null,o[1]); op.value=o[0]; if((d.contractor||"")===o[0]) op.selected=true; sel.appendChild(op); }); sel.onchange=function(){ d.contractor=sel.value; save(); render(); }; ed.appendChild(sel);
+        if(site){ ed.appendChild(el("div","lbl","Transported by")); var sel=el("select"); [["","Our operatives"]].concat((CRM_FIRMS.length?CRM_FIRMS.concat(CONTRACTORS.filter(function(c){return CRM_FIRMS.indexOf(c)<0&&/^(Courier|Other contractor)$/i.test(c);})):CONTRACTORS).map(function(c){return [c,c];})).forEach(function(o){ var op=el("option",null,o[1]); op.value=o[0]; if((d.contractor||"")===o[0]) op.selected=true; sel.appendChild(op); }); sel.onchange=function(){ d.contractor=sel.value; save(); render(); }; ed.appendChild(sel);
           var addr=el("div","row"); addr.style.margin="8px 0 12px"; var ai=el("input"); ai.type="text"; ai.placeholder="Add a subcontractor"; ai.style.minWidth="180px"; var ab=el("button","p","Add"); ab.onclick=function(){ var n=ai.value.trim(); if(!n) return; if(CONTRACTORS.indexOf(n)<0) CONTRACTORS.splice(CONTRACTORS.length-1,0,n); d.contractor=n; var extra=CONTRACTORS.filter(function(c){return ["MAK Installations","Courier","Other contractor"].indexOf(c)<0;}); boardData.contractors=extra; t.set("board","shared","sched",boardData); save(); render(); }; addr.appendChild(ai); addr.appendChild(ab); ed.appendChild(addr);
           ed.appendChild(el("div","lbl",d.contractor?"Our operatives going too":"Our operatives")); }
         ed.appendChild(people(d,site,function(){ var s2=(!workshop&&!contractorOnly)?standardFor(lbl,Lstd):null; return s2&&s2.mins!=null?s2.mins:null; },due?[due]:[])); ed.appendChild(availability(due?[due]:[],d)); },contractorOnly?"":(d.who.length?"":"bad")));
