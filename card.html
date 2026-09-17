@@ -295,11 +295,12 @@
       if(over) ts.appendChild(banner("Above standard: "+over+". Standard is "+std.crew+(std.crew===1?" operative":" operatives")+(std.mins!=null?", "+fmt(std.mins)+(std.crew>1?" each":""):"")+"."));
       // who
       var whoTxt=contractorOnly?d.contractor:(d.who.length?d.who.join(", ")+(d.contractor?" with "+d.contractor:""):"Unassigned");
-      ts.appendChild(rowEl("who",(contractorOnly||d.who.length===1)?"Operative":"Operatives",whoTxt,function(ed){
+      ts.appendChild(rowEl("who",contractorOnly?"Carried by":(d.who.length===1?"Operative":"Operatives"),contractorOnly?(d.contractor||"Not picked yet"):whoTxt,function(ed){
         if(site){ ed.appendChild(el("div","lbl","Transported by")); var sel=el("select"); [["","Our operatives"]].concat((CRM_FIRMS.length?CRM_FIRMS.concat(CONTRACTORS.filter(function(c){return CRM_FIRMS.indexOf(c)<0&&/^Other contractor$/i.test(c);})):CONTRACTORS).map(function(c){return [c,c];})).forEach(function(o){ var op=el("option",null,o[1]); op.value=o[0]; if((d.contractor||"")===o[0]) op.selected=true; sel.appendChild(op); }); sel.onchange=function(){ d.contractor=sel.value; save(); render(); }; ed.appendChild(sel);
-          var addr=el("div","row"); addr.style.margin="8px 0 12px"; var ai=el("input"); ai.type="text"; ai.placeholder="Add a subcontractor"; ai.style.minWidth="180px"; var ab=el("button","p","Add"); ab.onclick=function(){ var n=ai.value.trim(); if(!n) return; if(CONTRACTORS.indexOf(n)<0) CONTRACTORS.splice(CONTRACTORS.length-1,0,n); d.contractor=n; var extra=CONTRACTORS.filter(function(c){return ["MAK Installations","Courier","Other contractor"].indexOf(c)<0;}); boardData.contractors=extra; t.set("board","shared","sched",boardData); save(); render(); }; addr.appendChild(ai); addr.appendChild(ab); ed.appendChild(addr);
-          ed.appendChild(el("div","lbl",d.contractor?"Our operatives going too":"Our operatives")); }
-        ed.appendChild(people(d,site,function(){ var s2=(!workshop&&!contractorOnly)?standardFor(lbl,Lstd):null; return s2&&s2.mins!=null?s2.mins:null; },due?[due]:[])); ed.appendChild(availability(due?[due]:[],d)); },contractorOnly?"":(d.who.length?"":"bad")));
+          // FIRMS COME FROM THE CRM (Sam, 17 Sep 2026: "remove the add a contractor section as this can only be
+          // done from the crm"), and nobody of ours rides with a carrier, so the operatives are hidden then.
+          if(!d.contractor) ed.appendChild(el("div","lbl","Our operatives")); }
+        if(!contractorOnly){ ed.appendChild(people(d,site,function(){ var s2=(!workshop&&!contractorOnly)?standardFor(lbl,Lstd):null; return s2&&s2.mins!=null?s2.mins:null; },due?[due]:[])); ed.appendChild(availability(due?[due]:[],d)); } },contractorOnly?"":(d.who.length?"":"bad")));
       if(!contractorOnly){
         // time
         var timeTxt=(d.mins!=null?fmt(d.mins)+(d.who.length>1?" each":"")+" on site":"No site time")+(site?(d.drive!=null?", travel "+fmt(d.drive)+" return":", no travel time"):"");
