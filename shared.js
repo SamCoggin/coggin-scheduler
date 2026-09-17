@@ -364,7 +364,9 @@ function vehicleAdvice(m3,kg,lutonsOnRoad,opts){
   var lutons=Math.max(Math.ceil(m3/VAN_M3),Math.ceil(kg/VAN_KG),1);
   var wagons=VEHICLE_CLASSES.filter(function(v){return v.licence!=="B"&&v.licence!=="CE"&&(!city||v.kg<=9500);});
   var common=wagons.filter(function(v){return /7\.5|18|26/.test(v.t);});
-  var chairM3=opts.chairM3||0, need=function(v){return v.tall?m3-chairM3*0.25:m3;};
+  // three high in a tall box is a RECYCLING or CLEARANCE rule only (Sam, 17 Sep 2026: "we don't stack resale
+  // three high"). Resale chairs travel as they are sold, so a tall box buys no extra room unless stackTall is set.
+  var chairM3=opts.stackTall?(opts.chairM3||0):0, need=function(v){return v.tall?m3-chairM3*0.25:m3;};
   var single=wagons.filter(function(v){return v.m3>=need(v)&&v.kg>=kg;})[0]||null, pair=null;
   common.forEach(function(a){ common.forEach(function(b){ var needP=(a.tall&&b.tall)?m3-chairM3*0.25:(a.tall||b.tall)?m3-chairM3*0.125:m3; if(a.m3+b.m3>=needP&&a.kg+b.kg>=kg){ if(!pair||a.m3+b.m3<pair.m3) pair=a.m3>=b.m3?{a:a,b:b,m3:a.m3+b.m3}:{a:b,b:a,m3:a.m3+b.m3}; } }); });
   var out={lutons:lutons,fitsOurs:lutons<=on,city:city,hire:single,pair:pair};
