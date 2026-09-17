@@ -25,7 +25,7 @@
     "card-badges": function(t){
       return Promise.all([t.card("labels","idList","due","badges","desc"), t.get("card","shared","sched",null), t.lists("all"), opsBoard(t)]).then(function(r){
         var card=r[0], d=r[1], out=[];
-        var list=r[2].filter(function(l){return l.id===card.idList;})[0], workshop=!!(list&&WORKSHOP_LISTS.test(list.name));
+        var list=r[2].filter(function(l){return l.id===card.idList;})[0], workshop=!!(list&&isWorkshopList(list.name,card.desc));
         if(quiet(r[3],list,card)) return out;
         // A QC sign-off or "not applicable" on the card back clears the badge (Sam, 14 Sep 2026).
         if(list&&READY_LIST.test(list.name)&&!qcDone(card.badges)&&!(d&&d.qc)) out.push({ text:"Not QC'd", color:"red" });
@@ -42,7 +42,7 @@
     "card-detail-badges": function(t){
       return Promise.all([t.card("labels","idList","due","badges","desc"), t.get("card","shared","sched",null), t.lists("all"), opsBoard(t)]).then(function(r){
         var card=r[0], d=r[1], out=[];
-        var list=r[2].filter(function(l){return l.id===card.idList;})[0], workshop=!!(list&&WORKSHOP_LISTS.test(list.name));
+        var list=r[2].filter(function(l){return l.id===card.idList;})[0], workshop=!!(list&&isWorkshopList(list.name,card.desc));
         if(quiet(r[3],list,card)) return out;
         if(list&&READY_LIST.test(list.name)&&!qcDone(card.badges)&&!(d&&d.qc)) out.push({ title:"QC", text:"Not QC'd: checklist not complete", color:"red" });
         else if(d&&d.qc&&list&&READY_LIST.test(list.name)) out.push({ title:"QC", text:d.qc.na?"Not applicable, "+d.qc.by:"Passed, "+d.qc.by, color:"green" });

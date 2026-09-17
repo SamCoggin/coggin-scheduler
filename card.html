@@ -136,7 +136,7 @@
   function load(){
     return Promise.all([t.card("id","name","labels","idList","due","desc"), t.lists("all"), t.get("card","shared","sched",null), t.get("board","shared","sched",{})]).then(function(r){
       boardData=r[3]||{}; (boardData.contractors||[]).forEach(function(c){ if(CONTRACTORS.indexOf(c)<0) CONTRACTORS.splice(CONTRACTORS.length-1,0,c); });
-      card=r[0]; var list=r[1].filter(function(l){return l.id===card.idList;})[0]; workshop=!!(list&&WORKSHOP_LISTS.test(list.name)); card.listName=list?list.name:"";
+      card=r[0]; var list=r[1].filter(function(l){return l.id===card.idList;})[0]; workshop=!!(list&&isWorkshopList(list.name,card.desc)); card.listName=list?list.name:"";
       viewing=isViewingLabels(card.labels); site=!viewing&&isSiteLabels(card.labels,card.desc); loading=!viewing&&!site&&isCollectLabels(card.labels,card.desc);
       defaultDue=productionDueFor(card.labels,(card.due||"").slice(0,10));
       d=r[2]||{who:[],mins:null,drive:null,contractor:"",prep:null,legs:[]}; if(!d.who) d.who=[]; if(!d.legs) d.legs=[];

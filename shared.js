@@ -135,6 +135,11 @@ var SHRED_MATERIALS=["PA6","PA66","PP","Other"];
 function recTarget(mins){ return Math.max(0,Math.round((mins||0)/DAY_MINS*REC_TARGET_DAY)); }
 var QUICK=[[15,"15 min"],[30,"30 min"],[60,"1 hour"],[120,"2 hours"],[240,"Half day"],[DAY_MINS,"Full day"]];
 var WORKSHOP_LISTS=/Workshop Jobs - (Not Started|In-progress)/;
+// NEW JOBS COUNT AS WORKSHOP WHEN THE JOB HAS PRODUCTION (Sam, 17 Sep 2026: the 533E11 card in New Jobs on
+// Operations - Planning showed no Production block). A card waiting in New Jobs or Transfer to Job Board has
+// not been made yet, so its Production block and badge show there too when its Parts say Production: yes.
+var NEW_JOB_LISTS=/^(New Jobs|Transfer to Job Board)$/i;
+function isWorkshopList(listName,desc){ var n=String(listName||"").trim(); if(WORKSHOP_LISTS.test(n)) return true; return NEW_JOB_LISTS.test(n)&&partsOf(desc||"").production; }
 var READY_LIST=/Workshop Jobs - Ready/;
 // QC evidence is the card checklist (photos, labels): all items ticked
 function qcDone(badges){ return !!(badges&&badges.checkItems>0&&badges.checkItemsChecked>=badges.checkItems); }
