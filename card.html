@@ -244,6 +244,11 @@
     var mvName=movementOf(card.labels,card.desc), jobName=mvName==="Collect and Return"?"Collect and Return":mvName==="Site Visit"?"Site Visit":mvName==="Collection"?"Collection":"Delivery";
     var kind=site?"transport":"labour", name=site?jobName:(loading?"Loading":"Labour");
     var ts=section(kind,name,due?niceShort(due):"");
+    // AGREED IN THE CRM (Sam, 17 Sep 2026: "make the crew hours typed in the CRM carry over"): the card's
+    // Standard time section carries hours typed on the deal when they differ from the standard. Shown here
+    // so whoever plans it sees what sales and operations agreed before pressing Plan it.
+    var agreedM=/Agreed crew time on the day ([^,\n]+)/i.exec(String(card.desc||"").replace(/\*\*/g,""));
+    if(agreedM) ts.appendChild(el("div","hint","Agreed in the CRM: "+agreedM[1].trim()+" crew time on the day, travel included. Plan the crew and time to fit it."));
     {
       if(contractorOnly) ts.appendChild(el("div","who",d.contractor+" is carrying out this work"));
       else if(!d.who.length){ if(std&&std.mins!=null&&due){ ts.appendChild(planBanner("Unassigned.","Plan it: "+std.crew+(std.crew===1?" operative":" operatives")+", "+fmt(std.mins)+(std.crew>1?" each":""),function(){ d.who=pickCrew(std.crew,loadOn(due),site,[]); d.mins=std.mins; OPEN.who=false; OPEN.time=false; save(); render(); })); } else { ts.appendChild(banner("Unassigned. Choose who is on it.")); OPEN.who=OPEN.who===undefined?true:OPEN.who; } }
