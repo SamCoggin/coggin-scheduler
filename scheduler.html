@@ -643,6 +643,9 @@ var SNAP=null, DETAIL={};
     });
     return out;
   }
+  // one van, one round: two people on the same stops are one round, not two (Sam, 17 Sep 2026: "Why is delivery round showing twice?")
+  function vanRounds(rs){ var out=[]; rs.forEach(function(r){ var sig=r.stops.map(function(j){return j.id;}).sort().join(","); var same=out.filter(function(x){return x.sig===sig;})[0]; if(same){ same.crew.push(r.who); same.keys.push(r.key); } else out.push({key:r.key,keys:[r.key],who:r.who,crew:[r.who],sig:sig,stops:r.stops,drive:r.drive,def:r.def,legs:r.legs,order:r.order,road:r.road}); }); return out; }
+  function crewText(c){ return c.length<2?c[0]:c.slice(0,-1).join(", ")+" and "+c[c.length-1]; }
   function inRound(j,k){ var rs=roundsOn(k,allJobs().filter(function(x){return onDay(x,k);})); return rs.filter(function(r){return r.stops.indexOf(j)>=0;}); }
   var openRound=null;
   // TIME WINDOWS AND THE DRIVER DAY (Sam, 13 Sep 2026). A transport job can carry "arrive after" and "finish by".
@@ -952,15 +955,15 @@ var SNAP=null, DETAIL={};
   }
   function roundModal(){
     var parts=openRound.split("|"), k=parts[0], w=parts[1];
-    var r=roundsOn(k,JOBS.filter(function(x){return onDay(x,k);})).filter(function(x){return x.who===w;})[0];
+    var r=vanRounds(roundsOn(k,JOBS.filter(function(x){return onDay(x,k);}))).filter(function(x){return x.crew.indexOf(w)>=0;})[0];
     if(!r){ openRound=null; return null; }
     var veil=el("div","veil"); veil.onclick=function(e){ if(e.target===veil){ openRound=null; render(); } };
-    var m=el("div","modal"); var head=el("div","head"); head.appendChild(el("h3",null,"Delivery Round, "+w+", "+niceDay(k))); var x=el("button","close","Close"); x.onclick=function(){openRound=null;render();}; head.appendChild(x); m.appendChild(head);
+    var m=el("div","modal"); var head=el("div","head"); head.appendChild(el("h3",null,"Delivery Round, "+crewText(r.crew)+", "+niceDay(k))); var x=el("button","close","Close"); x.onclick=function(){openRound=null;render();}; head.appendChild(x); m.appendChild(head);
     m.appendChild(el("div","sub",r.stops.length+" stops in one trip. One travel time for the round, then each job's site time."));
     var st=el("div","sec"); st.appendChild(el("div","k","Stops")); var ul=el("ul","items"); r.stops.forEach(function(j){ var li=el("li"); li.appendChild(document.createTextNode(j.title+(j.mins!=null?", "+fmt(j.mins)+" on site":", time on site not set"))); ul.appendChild(li); }); st.appendChild(ul); m.appendChild(st);
     var dv=el("div","sec"); dv.appendChild(el("div","k","Travel Time for the round")); var row=el("div","row");
-    row.appendChild(hmBoxes(function(){return r.drive;},function(v){ ROUND_DRIVE[r.key]=v; },"Round drive"));
-    row.appendChild(el("span","hint",ROUND_DRIVE[r.key]!=null?"You set this.":(r.road?"Road time labour to "+r.stops.length+" stops and back, from OpenStreetMap routing, plus 20 percent for traffic. Change it if you know better.":(r.def!=null?"Longest single journey plus 20 minutes per stop, until the road time arrives. Change it if you know better.":"No postcodes found. Type it in.")))); dv.appendChild(row); m.appendChild(dv);
+    row.appendChild(hmBoxes(function(){return r.drive;},function(v){ r.keys.forEach(function(kk){ ROUND_DRIVE[kk]=v; }); },"Round drive"));
+    row.appendChild(el("span","hint",r.keys.some(function(kk){return ROUND_DRIVE[kk]!=null;})?"You set this.":(r.road?"Road time labour to "+r.stops.length+" stops and back, from OpenStreetMap routing, plus 20 percent for traffic. Change it if you know better.":(r.def!=null?"Longest single journey plus 20 minutes per stop, until the road time arrives. Change it if you know better.":"No postcodes found. Type it in.")))); dv.appendChild(row); m.appendChild(dv);
     var sv=el("div","save"); var lsb2=el("button","alt","Download loading sheet"); lsb2.onclick=function(){ try{ loadingPdf(k,w,r.stops); }catch(e){ alert("The loading sheet could not be built: "+(e&&e.message||e)); } }; sv.appendChild(lsb2); var sb=el("button",null,"Done"); sb.onclick=function(){openRound=null;render();}; sv.appendChild(sb); m.appendChild(sv);
     veil.appendChild(m); return veil;
   }
@@ -1037,7 +1040,7 @@ var SNAP=null, DETAIL={};
   function vs_ok(v){ return !/No van/.test(v); }
   function roundEl(r){
     var rc=el("div","card round"); rc.style.borderLeft="6px solid #1f845a";
-    var mid=el("div","mid"); var tt=el("span","ttl","Delivery Round, "+r.who); tt.appendChild(tip("round")); mid.appendChild(tt); var vsr=[]; r.stops.forEach(function(x){ var vt=vehicleText(x); if(vt&&vs_ok(vt)&&vsr.indexOf(vt)<0) vsr.push(vt); }); mid.appendChild(el("span","for ctx",r.stops.length+" stops"+(vsr.length?" \u00b7 "+vsr.join(", ").replace(/ [A-Z]{3}\b/g,""):""))); mid.appendChild(el("span","for",r.stops.map(function(j){return j.title.split(" - ")[0];}).join(", "))); rc.appendChild(mid);
+    var mid=el("div","mid"); var tt=el("span","ttl","Delivery Round, "+crewText(r.crew||[r.who])); tt.appendChild(tip("round")); mid.appendChild(tt); var vsr=[]; r.stops.forEach(function(x){ var vt=vehicleText(x); if(vt&&vs_ok(vt)&&vsr.indexOf(vt)<0) vsr.push(vt); }); mid.appendChild(el("span","for ctx",r.stops.length+" stops"+(vsr.length?" \u00b7 "+vsr.join(", ").replace(/ [A-Z]{3}\b/g,""):""))); mid.appendChild(el("span","for",r.stops.map(function(j){return j.title.split(" - ")[0];}).join(", "))); rc.appendChild(mid);
     var ft=el("div","foot"); ft.appendChild(el("span","bdg"+(r.drive==null?" todo":""),r.drive==null?"No travel time":fmt(r.drive)+" travel for the round")); rc.appendChild(ft);
     rc.onclick=function(){ openRound=r.key; open=null; render(); };
     return rc;
@@ -1093,7 +1096,7 @@ var SNAP=null, DETAIL={};
       var list=el("div","list"+(isToday?" today":"")); var h=el("h2"); var hl=el(isToday?"em":"span",null,g[1]); hl.appendChild(tip(g[0])); h.appendChild(hl); h.appendChild(el("span",null,g[2].length?g[2].length+(g[2].length===1?" job":" jobs"):"nothing")); list.appendChild(h);
       var cards=el("div","cards");
       if(g[0]==="road") liveIssues(k).forEach(function(x){ var dw=el("div","daywarn"); dw.appendChild(document.createTextNode(x.text)); var xb=el("button","dis","\u00d7"); xb.title="Dismiss this warning. It comes back if what it says changes."; xb.onclick=function(e){ e.stopPropagation(); DISMISSED[warnKey(x)]=true; persist(); render(); }; dw.appendChild(xb); cards.appendChild(dw); });
-      if(g[0]==="road") rounds.forEach(function(r){ cards.appendChild(roundEl(r)); });
+      if(g[0]==="road") vanRounds(rounds).forEach(function(r){ cards.appendChild(roundEl(r)); });
       g[2].forEach(function(j){ cards.appendChild(cardEl(j,k,g[0]==="shop",isToday)); });
       if(!g[2].length) cards.appendChild(el("div","hint",NEED?"Nothing outstanding.":"Nothing here today."));
       list.appendChild(cards); b.appendChild(list);
@@ -1841,7 +1844,7 @@ var SNAP=null, DETAIL={};
       groups.forEach(function(g){
         if(!g[2].length) return;
         var sh=el("div","sec-h"+(g[0]==="shop"?" shop":"")); var shl=el("span",null,g[1]); shl.appendChild(tip(g[0],k)); sh.appendChild(shl); sh.appendChild(el("span",null,String(g[2].length))); cards.appendChild(sh);
-        if(g[0]==="road") rounds.forEach(function(r){ cards.appendChild(roundEl(r)); });
+        if(g[0]==="road") vanRounds(rounds).forEach(function(r){ cards.appendChild(roundEl(r)); });
         g[2].forEach(function(j){ cards.appendChild(cardEl(j,k,g[0]==="shop",isToday)); });
       });
       if(NEED&&!jobs.length&&!preps.length) cards.appendChild(el("div","hint","Nothing outstanding."));
