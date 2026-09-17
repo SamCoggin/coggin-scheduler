@@ -159,7 +159,7 @@
       // Three ways, noting what each gave so the Loading hint can say where it broke (17 Sep 2026).
       window.__ckTrace=[];
       var tryAll=function(){ return t.card("all").then(function(c3){ window.__ckTrace.push("all:"+(c3&&c3.checklists?c3.checklists.length:"none")); if(c3&&c3.checklists&&c3.checklists.length) card.checklists=c3.checklists; }).catch(function(e){ window.__ckTrace.push("all:error"); }); };
-      var cl=t.card("checklists").then(function(c2){ window.__ckTrace.push("card:"+(c2&&c2.checklists?c2.checklists.length:"none")); if(c2&&c2.checklists&&c2.checklists.length) card.checklists=c2.checklists; else return fromCards().then(function(){ window.__ckTrace.push("board:"+((card.checklists||[]).length)); if(!(card.checklists||[]).length) return tryAll(); }); }).catch(function(e){ window.__ckTrace.push("card:error"); return fromCards().catch(function(){ window.__ckTrace.push("board:error"); }).then(tryAll); });
+      var cl=t.card("checklists").then(function(c2){ window.__ckTrace.push("card:"+(c2&&c2.checklists?c2.checklists.length:"none")+(c2&&c2.checklists&&c2.checklists[0]?" keys "+Object.keys(c2.checklists[0]).join("/")+(c2.checklists[0].checkItems?" items "+c2.checklists[0].checkItems.length+(c2.checklists[0].checkItems[0]?" itemkeys "+Object.keys(c2.checklists[0].checkItems[0]).join("/"):""):""):"")); if(c2&&c2.checklists&&c2.checklists.length) card.checklists=c2.checklists; else return fromCards().then(function(){ window.__ckTrace.push("board:"+((card.checklists||[]).length)); if(!(card.checklists||[]).length) return tryAll(); }); }).catch(function(e){ window.__ckTrace.push("card:error"); return fromCards().catch(function(){ window.__ckTrace.push("board:error"); }).then(tryAll); });
       return Promise.all([cl,loadOthers()]).then(render);
     });
   }
@@ -207,7 +207,7 @@
     return r;
   }
   function banner(text){ return el("div","banner",text); }
-  function checksOf(){ var cc=[]; (card.checklists||[]).forEach(function(cl){ (cl.checkItems||[]).forEach(function(it){ cc.push({n:it.name||""}); }); }); return cc; }
+  function checksOf(){ var cc=[]; (card.checklists||[]).forEach(function(cl){ (cl.checkItems||cl.items||cl.checkitems||[]).forEach(function(it){ cc.push({n:it.name||it.text||it.title||""}); }); }); return cc; }
   function loadNow(){ var ign=d.ignore||[]; var all=itemsOf(card.desc,checksOf()), auto=all.filter(function(l){return ign.indexOf(l)<0;}), manual=d.items||[]; var L; var src="card"; if(!all.length&&d.load&&d.load.rows&&!manual.length){ L=d.load; src="scheduler"; } else L=loadOf(auto.concat(manual)); L.src=src; L.manualN=src==="card"?manual.length:0; L.ignored=all.filter(function(l){return ign.indexOf(l)>=0;}); L.autoLines=auto; return L; }
   function render(){
     var app=document.getElementById("app"); app.innerHTML="";
