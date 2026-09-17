@@ -396,6 +396,9 @@ var SNAP=null, DETAIL={};
     return Promise.all([t.lists("all"),cardsP,t.board("name","members"),t.get("board","shared","sched",{})]).then(function(r){
       var lists=r[0], cards=r[1], board=r[2], boardData=r[3];
       CRM_KEY=(boardData&&boardData.crmKey)||"";
+      // THE KEY FOLLOWS THE PERSON (17 Sep 2026): kept in your own private Power-Up data too, so the card back on
+      // Operations - Planning can read checklists without anyone pasting the key there again.
+      if(CRM_KEY) t.set("member","private","crmKey",CRM_KEY).catch(function(){});
       var lm={}; lists.forEach(function(l){ lm[l.id]=l; });
       var out=[];
       cards.forEach(function(c){
