@@ -20,7 +20,10 @@
   function opsBoard(t){ return t.board("name").then(function(b){ return OPS_BOARD.test(String(b&&b.name||"").trim()); }).catch(function(){ return false; }); }
   TrelloPowerUp.initialize({
     "board-buttons": function(t){
-      return opsBoard(t).then(function(ops){ if(ops) return []; return [{ text: "Scheduler", icon: ICON, callback: function(t){ return t.modal({ url: "./scheduler.html?v="+Math.floor(Date.now()/60000), fullscreen: true, title: "Scheduler" }); } }]; });
+      // ON OPERATIONS - PLANNING THE BUTTON GOES TO THE PLANNING BOARD (Sam, 17 Sep 2026: "why isnt the scheduler
+      // showing so I can click on it"). The Scheduler page can only read the board it is opened on, and the jobs it
+      // plans are on Jobs - Planning Board, so here the button takes you there.
+      return opsBoard(t).then(function(ops){ if(ops) return [{ text: "Scheduler", icon: ICON, callback: function(t){ return t.navigate({ url: "https://trello.com/b/2Y4OF3cX" }); } }]; return [{ text: "Scheduler", icon: ICON, callback: function(t){ return t.modal({ url: "./scheduler.html?v="+Math.floor(Date.now()/60000), fullscreen: true, title: "Scheduler" }); } }]; });
     },
     "card-badges": function(t){
       return Promise.all([t.card("labels","idList","due","badges","desc"), t.get("card","shared","sched",null), t.lists("all"), opsBoard(t)]).then(function(r){
