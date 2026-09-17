@@ -17,7 +17,7 @@ var VEHICLES=[{reg:"FX75 BKG",name:"Renault Master Luton FX75 BKG (2025)"},{reg:
 var LOAD=[
   {t:"Swivel chair", prod:30, clean:10, min:3,     re:/swivel|task chair|operator|mesh chair|office chair|executive chair|ergonomic/i, m3:0.40, kg:12},
   {t:"Meeting chair, stacking", prod:10, min:1, re:/stack/i, m3:0.10, kg:8},
-  {t:"Meeting chair", prod:10, clean:10, min:2,    re:/meeting chair|tub chair|cantilever(?!\s*(desk|table|bench))|visitor chair|conference chair|dining chair|breakout chair/i, m3:0.40, kg:10},
+  {t:"Meeting chair", prod:10, clean:10, min:2,    re:/meeting chair|tub chair|cantilever(?!\s*(desk|table|bench|legs?|frames?|base))|visitor chair|conference chair|dining chair|breakout chair/i, m3:0.40, kg:10},
   {t:"Stool", prod:10, min:2,            re:/stool/i, m3:0.15, kg:6},
   {t:"Sit-stand desk", prod:60, two:true, min:20,   re:/sit.?stand|height adjust|electric desk|rise/i, m3:0.30, kg:60, built:1.10, w:1600, d:800, est:true},
   {t:"Bench desk position", prod:45, two:true, min:20, re:/bench/i, m3:0.30, kg:30, est:true},
