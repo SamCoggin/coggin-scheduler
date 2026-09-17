@@ -153,7 +153,7 @@ function isViewingLabels(labels){ return labelNames(labels).some(function(n){ re
 // Customer Collects; our van, or a courier or contractor firm, is a Delivery (a firm on that line becomes the
 // carrier through partsCarrier, exactly as on an ops card). The card is due on the day it must arrive, like an ops
 // delivery card, and the CRM prints the ready-by as the working day before: production is due then.
-var SAMPLE_READY_DAYS=1;
+var SAMPLE_READY_DAYS=3; // 3 from 17 Sep 2026 (Sam): samples follow the production buffer
 function isSampleLabels(labels){ return labelNames(labels).some(function(n){ return /^resale\s*-\s*sample$/i.test(n.trim()); }); }
 function sampleMovement(desc){ var P=partsOf(desc||""); return /^customer\b/i.test(P.transport)?"Customer Collects":"Delivery"; }
 // when production is due for a card: a viewing on its date, a sample the working day before, anything else the buffer

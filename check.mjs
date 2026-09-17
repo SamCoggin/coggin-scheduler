@@ -43,7 +43,7 @@ setTimeout(()=>{ const li=new Function(shared+';return loanItemsOf;')(); const g
 // THE SAMPLE CARD: movement from the Parts transport, the firm as the carrier, the labour leg only for someone else's vehicle, production due the working day before.
 setTimeout(()=>{ const all=global.window.__allJobs(); const j=id=>all.find(x=>x.id===id&&!x.isLeg), leg=id=>all.find(x=>x.isLeg&&x.leg.type==='labour'&&x.leg.parent===id);
   const van=j('s1'), cou=j('s2'), col=j('s3');
-  console.log('sample cards:', !!van&&van.movement==='Delivery'&&van.site&&!van.contractor&&!leg('s1')&&van.prodDue==='2026-09-23'
+  console.log('sample cards:', !!van&&van.movement==='Delivery'&&van.site&&!van.contractor&&!leg('s1')&&van.prodDue==='2026-09-21'
     && !!cou&&cou.movement==='Delivery'&&cou.contractor==='Example Couriers'&&!!leg('s2')&&/load the courier/.test(leg('s2').leg.where)&&cou.prodDue==='2026-09-25'
     && !!col&&col.movement==='Customer Collects'&&!col.site&&col.collect&&!leg('s3')&&col.prodDue==='2026-09-23');
 },950);
