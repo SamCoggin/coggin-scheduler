@@ -147,6 +147,9 @@
       var wantedL=partsCarrier(PARTS)?(PARTS.labourLegs||[]):[], dropped=false;
       for(var li=d.legs.length-1;li>=0;li--){ var Lx=d.legs[li]; if(Lx.type!=="labour"||Lx.src==="support") continue; if(!wantedL.some(function(x){return x.where===Lx.where;})&&!(Lx.who&&Lx.who.length)&&Lx.mins==null){ d.legs.splice(li,1); dropped=true; } }
       wantedL.forEach(function(x){ if(!d.legs.some(function(L){return L.type==="labour"&&L.where===x.where;})) d.legs.push({type:"labour",date:x.date||(card.due?card.due.slice(0,10):null),who:[],mins:null,drive:null,where:x.where}); });
+      // TRAVEL FROM THE POSTCODE (Sam, 17 Sep 2026): a site job with no travel yet gets the return drive from the
+      // description's postcode, the same figure the Scheduler page uses. Typed travel is never overwritten.
+      if(site&&d.drive==null){ var dv=driveFor(card.name,card.desc); if(dv!=null){ d.drive=dv; dropped=true; } }
       if(dropped) save(); if(workshop&&!d.prep) d.prep={who:[],mins:null,start:null,date:null};
       render();
       // checklists only come through the board-wide cards call, the same way the Scheduler reads them
