@@ -1053,7 +1053,10 @@ var SNAP=null, DETAIL={};
     ft.appendChild(badge(partX,isToday)); if(!isPrep&&j.site&&j.by){ var twc=jobTiming(j,k); if(twc&&twc.late) ft.appendChild(el("span","bdg now","Finishes "+hmStr(twc.end)+", after "+j.by)); }
     c.appendChild(ft);
     var pd=partX.done; if(pd){ ft.appendChild(el("span","bdg"+(pd.status==="no"?" now":" ok"),pd.status==="no"?"Did not go: "+(pd.reason||"no reason"):"Done"+(pd.mins!=null?", "+fmt(pd.mins)+(isPrep?" production":" on site"):""))); } else if(needsRecord(j,isPrep)) ft.appendChild(el("span","bdg todo","Record how it went"));
-    if(j.isHold){ c.className+=" hold"; c.onclick=function(){}; var bx=ft.querySelector(".bdg"); if(bx) ft.removeChild(bx); return c; }
+    // A HELD CARD OPENS ITS DEAL (Sam, 17 Sep 2026: "do the same on the scheduler held cards"): a new tab on
+    // the deal's Operations tab, or the donation, where the date is confirmed.
+    if(j.isHold){ c.className+=" hold"; var hid=String(j.id||"").replace(/^hold:/,""), hurl=/^donation:/.test(hid)?"https://crm.coggin-sos.co.uk/donations?donation="+encodeURIComponent(hid.replace(/^donation:/,"")):"https://crm.coggin-sos.co.uk/pipeline?deal="+encodeURIComponent(hid)+"&tab=operations";
+      c.title="Open in the CRM"; c.style.cursor="pointer"; c.onclick=function(e){ if(e) e.stopPropagation(); window.open(hurl,"_blank","noopener"); }; var bx=ft.querySelector(".bdg"); if(bx) ft.removeChild(bx); return c; }
     c.onclick=function(){ open=isPrep?j.id+":prep":j.id; render(); };
     return c;
   }
