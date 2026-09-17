@@ -7,18 +7,18 @@
   // the Power-Up connector: a Scheduler button on the board, a badge on the
   // front of each card, a Scheduling section and a button on the back
   var ICON="https://samcoggin.github.io/coggin-scheduler/icon.png";
-  function isSite(card){ return isSiteLabels(card.labels); }
+  function isSite(card){ return isSiteLabels(card.labels,card.desc); }
   TrelloPowerUp.initialize({
     "board-buttons": function(t){
       return [{ text: "Scheduler", icon: ICON, callback: function(t){ return t.modal({ url: "./scheduler.html?v="+Math.floor(Date.now()/60000), fullscreen: true, title: "Scheduler" }); } }];
     },
     "card-badges": function(t){
-      return Promise.all([t.card("labels","idList","due","badges"), t.get("card","shared","sched",null), t.lists("all")]).then(function(r){
+      return Promise.all([t.card("labels","idList","due","badges","desc"), t.get("card","shared","sched",null), t.lists("all")]).then(function(r){
         var card=r[0], d=r[1], out=[];
         var list=r[2].filter(function(l){return l.id===card.idList;})[0], workshop=!!(list&&WORKSHOP_LISTS.test(list.name));
         // A QC sign-off or "not applicable" on the card back clears the badge (Sam, 14 Sep 2026).
         if(list&&READY_LIST.test(list.name)&&!qcDone(card.badges)&&!(d&&d.qc)) out.push({ text:"Not QC'd", color:"red" });
-        if(workshop&&card.due){ var pd=(d&&d.prodDue)||(isViewingLabels(card.labels)?card.due.slice(0,10):productionDue("",card.due.slice(0,10))); var late=!!(d&&d.prep&&d.prep.date&&d.prep.date>pd); out.push({ text:"Production due "+niceShort(pd), color:late?"red":(pd<todayIso()?"red":"blue") }); }
+        if(workshop&&card.due){ var pd=(d&&d.prodDue)||productionDueFor(card.labels,card.due.slice(0,10)); var late=!!(d&&d.prep&&d.prep.date&&d.prep.date>pd); out.push({ text:"Production due "+niceShort(pd), color:late?"red":(pd<todayIso()?"red":"blue") }); }
         // A card nobody has planned yet is the one that most needs saying so (Sam, 14 Sep 2026: "why does
         // D9D283 not have production not scheduled and transport unassigned?"). No saved plan reads as an empty one.
         var plan=d||{};
@@ -29,12 +29,12 @@
       });
     },
     "card-detail-badges": function(t){
-      return Promise.all([t.card("labels","idList","due","badges"), t.get("card","shared","sched",null), t.lists("all")]).then(function(r){
+      return Promise.all([t.card("labels","idList","due","badges","desc"), t.get("card","shared","sched",null), t.lists("all")]).then(function(r){
         var card=r[0], d=r[1], out=[];
         var list=r[2].filter(function(l){return l.id===card.idList;})[0], workshop=!!(list&&WORKSHOP_LISTS.test(list.name));
         if(list&&READY_LIST.test(list.name)&&!qcDone(card.badges)&&!(d&&d.qc)) out.push({ title:"QC", text:"Not QC'd: checklist not complete", color:"red" });
         else if(d&&d.qc&&list&&READY_LIST.test(list.name)) out.push({ title:"QC", text:d.qc.na?"Not applicable, "+d.qc.by:"Passed, "+d.qc.by, color:"green" });
-        if(workshop&&card.due){ var pd=(d&&d.prodDue)||(isViewingLabels(card.labels)?card.due.slice(0,10):productionDue("",card.due.slice(0,10))); out.push({ title:"Production due", text:niceShort(pd), color:pd<todayIso()?"red":"blue" }); }
+        if(workshop&&card.due){ var pd=(d&&d.prodDue)||productionDueFor(card.labels,card.due.slice(0,10)); out.push({ title:"Production due", text:niceShort(pd), color:pd<todayIso()?"red":"blue" }); }
         var plan2=d||{};
         if(workshop){ var pb2=prodBadgeText(plan2,true); out.push({ title:"Production", text:pb2.text.replace(/^Production:? ?/,""), color:pb2.color }); }
         if(!isViewingLabels(card.labels)){ var b=badgeText(plan2,isSite(card)); out.push({ title:"Scheduling", text:b.text, color:b.color }); }

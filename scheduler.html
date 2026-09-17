@@ -488,7 +488,7 @@ var SNAP=null, DETAIL={};
   function inWorkshop(j){ return /^Workshop: (Not Started|In-progress)$/.test(j.stageLabel||""); }
   function buildFromSnap(SNAP){
     JOBS=SNAP.cards.filter(function(c){return c.due && c.role!=="leave";}).map(function(c){
-    var mv=movementOf(c.labels), wk=workOf(c.labels), lb=mv||c.labels[0]||"", title=nice(c.name), subName=c.who.filter(function(w){return TEAM.indexOf(w)<0;})[0]||"";
+    var mv=movementOf(c.labels,c.desc), wk=workOf(c.labels), lb=mv||c.labels[0]||"", title=nice(c.name), subName=c.who.filter(function(w){return TEAM.indexOf(w)<0;})[0]||"";
     var j={id:c.id,title:title,label:lb,movement:mv,work:wk,labels:c.labels,who:c.who.filter(function(w){return TEAM.indexOf(w)>=0;}),contractor:subName?(subName==="MAK"?"MAK Installations":subName):"",mins:null,out:c.due,notQc:c.role==="ready"&&c.qc===false};
     if(c.role==="waiting"||c.role==="shop"){
       j.stage=c.role==="shop"?"In progress":"Not started"; j.stageLabel=c.role==="shop"?"Workshop: In-progress":"Workshop: Not Started";
@@ -498,7 +498,7 @@ var SNAP=null, DETAIL={};
       // the prep: who is getting it ready, and on which day
       // the prep is not planned until you give it days
       j.prep={who:[],mins:null,start:null,date:null,job:j,isPrep:true};
-      j.viewing=isViewingLabels(c.labels); j.prodDue=j.viewing?c.due:productionDue("",c.due); j.prodDueSet=false;
+      j.viewing=isViewingLabels(c.labels); j.prodDue=productionDueFor(c.labels,c.due); j.prodDueSet=false;
     } else {
       j.date=c.due; j.site=isSiteMove(mv); j.collect=isCollectMove(mv);
       j.stageLabel=c.role==="ready"?"Workshop: Ready":c.role==="handed"?"Handed over, not planned":"Booked";
@@ -826,7 +826,7 @@ var SNAP=null, DETAIL={};
     if(!o.shop && j.prep){ var pb=block("Production");
       var pdr=el("div","row"); pdr.style.marginBottom="8px"; pdr.appendChild(el("span",null,"Production due")); var pdi=el("input"); pdi.type="date"; pdi.value=j.prodDue||""; pdi.setAttribute("aria-label","Production due date");
       pdi.onchange=function(){ if(pdi.value){ j.prodDue=pdi.value; j.prodDueSet=true; } render(); }; pdr.appendChild(pdi);
-      if(j.prodDueSet){ var rs=el("button","close","Reset"); rs.onclick=function(){ j.prodDue=j.viewing?j.out:productionDue("",j.out); j.prodDueSet=false; render(); }; pdr.appendChild(rs); }
+      if(j.prodDueSet){ var rs=el("button","close","Reset"); rs.onclick=function(){ j.prodDue=productionDueFor(j.labels,j.out); j.prodDueSet=false; render(); }; pdr.appendChild(rs); }
       pdr.appendChild(el("span","hint",j.prodDueSet?"Set by you.":PRODUCTION_BUFFER_DAYS+" working days before delivery. Change it if this job needs more or less.")); pb.appendChild(pdr);
       if(j.prep.date&&j.prep.date>j.prodDue) pb.appendChild(el("div","hint far","Production is scheduled to finish "+niceDay(j.prep.date)+", after it is due."));
       var pr=el("div","prep"); pr.appendChild(el("div",null,(j.prep.date?niceDay(j.prep.start)+(j.prep.start!==j.prep.date?" to "+niceDay(j.prep.date):""):"Not scheduled")));

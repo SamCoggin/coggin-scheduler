@@ -148,6 +148,16 @@ var WORK_LABELS=["Resale","Refurb","Clearance","Recycling","Buyback","Donation",
 // A VIEWING ORDER (17 Sep 2026): stock got ready at Forton for a viewing. Production only: no van, no site, no labour,
 // and the card's due date IS the production due date, not delivery minus the buffer.
 function isViewingLabels(labels){ return labelNames(labels).some(function(n){ return /^stock\s*-\s*viewing$/i.test(n.trim()); }); }
+// A SAMPLE CARD (17 Sep 2026): "Resale - Sample", sent from the CRM's Sample to arrange. The label says it is a
+// sample, not how it moves, so the movement comes from the card's Parts transport line: "customer collects" is
+// Customer Collects; our van, or a courier or contractor firm, is a Delivery (a firm on that line becomes the
+// carrier through partsCarrier, exactly as on an ops card). The card is due on the day it must arrive, like an ops
+// delivery card, and the CRM prints the ready-by as the working day before: production is due then.
+var SAMPLE_READY_DAYS=1;
+function isSampleLabels(labels){ return labelNames(labels).some(function(n){ return /^resale\s*-\s*sample$/i.test(n.trim()); }); }
+function sampleMovement(desc){ var P=partsOf(desc||""); return /^customer\b/i.test(P.transport)?"Customer Collects":"Delivery"; }
+// when production is due for a card: a viewing on its date, a sample the working day before, anything else the buffer
+function productionDueFor(labels,due){ if(!due) return null; if(isViewingLabels(labels)) return due; if(isSampleLabels(labels)) return workingDaysBefore(due,SAMPLE_READY_DAYS); return productionDue("",due); }
 var MOVEMENT_LABELS=["Delivery","Collection","Collect and Return","Customer Delivers","Customer Collects","Customer Delivers and Collects","Site Visit","Labour"];
 var OLD_MOVEMENT={"delivery/installation":"Delivery","removal job":"Collection","collect & return":"Collect and Return","customer collecting":"Customer Collects","courier collecting":"Customer Collects","courier collects":"Customer Collects","recycling delivery":"Customer Delivers","new stock delivery":"Customer Delivers","stock delivery":"Customer Delivers","plastic delivery":"Customer Delivers","plastic collection":"Collection","skip exchange":"Labour","labour":"Labour","warehouse":"Labour","yard":"Labour","warranty/job issue":"Site Visit","donations":"Delivery","charity donation":"Delivery"};
 var OLD_WORK={"delivery/installation":"Resale","removal job":"Clearance","collect & return":"Refurb","recycling delivery":"Recycling","new stock delivery":"Buyback","stock delivery":"Buyback","plastic delivery":"Recycling","plastic collection":"Recycling","skip exchange":"Recycling","warranty/job issue":"Warranty","donations":"Donation","charity donation":"Donation"};
@@ -161,14 +171,14 @@ function combinedWork(name){ var p=splitLabel(name); return p?p.work:""; }
 // Courier or Sub-contractor on the label: who the card says is carrying it, "" when it is our crew
 function carrierOf(labels){ var n=labelNames(labels); for(var i=0;i<n.length;i++){ var p=splitLabel(n[i]); if(p&&/^(courier|sub-contractor)$/i.test(p.move)) return p.move; } return ""; }
 function labelNames(labels){ return (labels||[]).map(function(l){return typeof l==="string"?l:(l&&l.name)||"";}).filter(Boolean); }
-function movementOf(labels){ var n=labelNames(labels); for(var c=0;c<n.length;c++){ var cm=combinedMovement(n[c]); if(cm) return cm; } for(var i=0;i<n.length;i++){ if(MOVEMENT_LABELS.indexOf(n[i])>=0) return n[i]; } for(var k=0;k<n.length;k++){ var m=OLD_MOVEMENT[n[k].toLowerCase()]; if(m) return m; } return ""; }
+function movementOf(labels,desc){ if(isSampleLabels(labels)) return sampleMovement(desc); var n=labelNames(labels); for(var c=0;c<n.length;c++){ var cm=combinedMovement(n[c]); if(cm) return cm; } for(var i=0;i<n.length;i++){ if(MOVEMENT_LABELS.indexOf(n[i])>=0) return n[i]; } for(var k=0;k<n.length;k++){ var m=OLD_MOVEMENT[n[k].toLowerCase()]; if(m) return m; } return ""; }
 function workOf(labels){ var n=labelNames(labels); for(var c=0;c<n.length;c++){ var cw=combinedWork(n[c]); if(cw) return cw; } for(var i=0;i<n.length;i++){ if(WORK_LABELS.indexOf(n[i])>=0) return n[i]; } for(var k=0;k<n.length;k++){ var w=OLD_WORK[n[k].toLowerCase()]; if(w) return w; } return ""; }
 // our van goes out: the transport movements
 function isSiteMove(mv){ return mv==="Delivery"||mv==="Collection"||mv==="Collect and Return"||mv==="Site Visit"; }
 // they come to Forton: loading only, no van of ours
 function isCollectMove(mv){ return mv==="Customer Collects"||mv==="Customer Delivers and Collects"; }
-function isSiteLabels(labels){ return isSiteMove(movementOf(labels)); }
-function isCollectLabels(labels){ return isCollectMove(movementOf(labels)); }
+function isSiteLabels(labels,desc){ return isSiteMove(movementOf(labels,desc)); }
+function isCollectLabels(labels,desc){ return isCollectMove(movementOf(labels,desc)); }
 // kept for the old callers
 var SITE_LABELS={ test:function(name){ return isSiteMove(movementOf([name])); } };
 // OPERATIVES BECOME MEMBERS OF THE CARD (Sam, 14 Sep 2026: the crew use the Trello app, where only what is
