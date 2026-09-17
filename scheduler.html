@@ -534,7 +534,7 @@ var SNAP=null, DETAIL={};
       // ONLY WHEN SOMEBODY ELSE'S VEHICLE IS INVOLVED (Sam, 15 Sep 2026: "there is a duplication going on"). A stale
       // labour leg the old rule seeded is dropped again as long as nobody has been put on it.
       var wanted=carrier?(P.labourLegs||[]):[];
-      for(var li=LEGS.length-1;li>=0;li--){ var L=LEGS[li]; if(L.parent!==j.id||L.type!=="labour"||L.src==="support") continue; if(!wanted.some(function(x){return x.where===L.where;})&&!(L.who&&L.who.length)&&L.mins==null){ LEGS.splice(li,1); STALE_LEGS[j.id]=true; } }
+      for(var li=LEGS.length-1;li>=0;li--){ var L=LEGS[li]; if(L.parent!==j.id||L.type!=="labour"||L.src==="support") continue; if(!wanted.some(function(x){return x.where===L.where;})&&((!(L.who&&L.who.length)&&L.mins==null)||(!carrier&&!j.site))){ LEGS.splice(li,1); STALE_LEGS[j.id]=true; } }   // they bring it or fetch it from Forton: the job itself is the labour, so an old leg goes even if somebody was put on it (Spaceline Q2, 17 Sep 2026)
       wanted.forEach(function(x){ if(!LEGS.some(function(L){return L.parent===j.id&&L.type==="labour"&&L.where===x.where;})) LEGS.push({parent:j.id,type:"labour",date:x.date||j.date,who:[],mins:null,drive:null,where:x.where}); }); });
     if(SNAP.boardData&&SNAP.boardData.roundDrive){ for(var k in SNAP.boardData.roundDrive) ROUND_DRIVE[k]=SNAP.boardData.roundDrive[k]; }
     if(SNAP.boardData&&SNAP.boardData.vansOff){ VANS_OFF=SNAP.boardData.vansOff.slice(); }
