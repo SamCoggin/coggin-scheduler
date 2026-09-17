@@ -554,7 +554,7 @@ var SNAP=null, DETAIL={};
       // a hold somebody else carries (sub-contractor, haulier) counts no crew of ours; the labour unload comes with the card
       var j={id:"hold:"+h.id,title:h.title||h.ref,label:mv,movement:mv,work:h.service==="Office Clearance"?"Clearance":h.service==="Refurbishing"?"Refurb":h.service||"",labels:[],who:[],contractor:h.carrier||"",mins:h.carrier?null:(std&&std.mins!=null?std.mins:120),out:h.date,date:h.date,start:null,site:isSiteMove(mv),collect:isCollectMove(mv),
         stageLabel:"Held until "+niceShort(h.until||h.date),isHold:true,holdUntil:h.until,holdCrew:h.carrier?0:(std?std.crew:2),load:load,cubeSet:null,items:h.items||[],manual:[],ignore:[],allItems:h.items||[],prep:null};
-      if(j.site&&h.postcode){ var area=h.postcode.replace(/\d.*$/,"").toUpperCase(); j.drive=DRIVE[area]?Math.round(DRIVE[area].h*2*60*TRAFFIC/5)*5:null; }
+      j.postcode=String(h.postcode||"").toUpperCase(); if(j.site&&h.postcode){ var area=h.postcode.replace(/\d.*$/,"").toUpperCase(); j.drive=DRIVE[area]?Math.round(DRIVE[area].h*2*60*TRAFFIC/5)*5:null; }
       return j; });
     if(SNAP.boardData&&SNAP.boardData.contractors){ SNAP.boardData.contractors.forEach(function(c){ if(CONTRACTORS.indexOf(c)<0) CONTRACTORS.splice(CONTRACTORS.length-1,0,c); }); }
   }
@@ -1027,7 +1027,17 @@ var SNAP=null, DETAIL={};
     if(!isPrep&&j.site&&(j.from||j.by)) mid.appendChild(el("span","for",windowText(j).slice(2).replace(/^./,function(ch){return ch.toUpperCase();})));
     if(!isPrep&&j.collect&&(j.from||j.by)) mid.appendChild(el("span","for",(j.from?"Customer arrives after "+j.from:"")+(j.from&&j.by?", ":"")+(j.by?"ready by "+j.by:"").replace(/^r/,j.from?"r":"R")));
     if(!isPrep&&!isShop&&j.site&&/Not Started|In-progress|Not QC/i.test(j.stageLabel||"")) mid.appendChild(el("span","for","Workshop: "+j.stageLabel.replace(/^Workshop:\s*/,"").toLowerCase()));
-    if(j.isHold) mid.appendChild(el("span","for hold","Held for sales until "+niceDay(j.holdUntil||j.date)+(j.contractor?". "+j.contractor+" carries it, nothing on our crew until the card comes over.":". Counts "+j.holdCrew+(j.holdCrew===1?" operative":" operatives")+", "+fmt(j.mins)+" each. Confirm on the deal.")));
+    // A HELD CARD SAYS WHAT THE JOB IS (Sam, 17 Sep 2026: "not sure that is enough info displaying on the
+    // scheduler"). What is going, where, the time on the day, production and when it lapses.
+    if(j.isHold){
+      var hrows=(j.load&&j.load.rows)||[], what=hrows.map(function(r){return qty(r.n,r.type);}).join(", ");
+      if(what||j.postcode) mid.appendChild(el("span","for",[what,j.postcode].filter(Boolean).join(". ")));
+      if(j.contractor) mid.appendChild(el("span","for",j.contractor+" carries it, nothing on our crew until the card comes over."));
+      else if(j.mins!=null){ var hc=j.holdCrew||0; mid.appendChild(el("span","for",(j.site?"On site ":"")+hc+" x "+fmt(j.mins)+(j.site&&j.drive!=null?", travel "+fmt(j.drive)+" return x "+hc:"")+". "+fmt(j.mins*hc+(j.site&&j.drive?j.drive*hc:0))+" crew time.")); }
+      var hp=(j.load&&j.load.complete)?prodStandardFor(j.load,0,PRODUCTION_BUFFER_DAYS):null;
+      if(hp&&/resale/i.test(j.work||"")) mid.appendChild(el("span","for","Production "+fmt(hp.mins*hp.crew)+", due "+niceDay(productionDue("",j.date))+"."));
+      mid.appendChild(el("span","for hold","Held for sales until "+niceDay(j.holdUntil||j.date)+". Confirm on the deal."));
+    }
     c.appendChild(mid);
     var ft=el("div","foot");
     if(!isPrep&&!j.isLeg&&!(j.contractor&&!j.who.length)){ var stdX=standardFor(j.movement||j.label,j.load); if(aboveStandard(stdX,j.who,j.mins)) ft.appendChild(el("span","bdg now","Above standard")); }
