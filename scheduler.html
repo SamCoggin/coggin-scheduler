@@ -576,7 +576,7 @@ var SNAP=null, DETAIL={};
     var avail=TEAM.filter(function(w){return off.indexOf(w)<0;}).length*DAY_MINS;
     var need=0, trips=0;
     jobs.forEach(function(j){ if(j.contractor&&!j.who.length) return; var crew=j.isHold?(j.holdCrew!=null?j.holdCrew:2):Math.max(1,j.who.length); need+=(j.mins||0)*crew+(j.site?(j.drive||0)*crew:0); if(j.site) trips+=1; });
-    preps.forEach(function(j){ need+=(j.prep.mins||0)*(j.isHold?(j.prep.crew||1):Math.max(1,j.prep.who.length)); });
+    preps.forEach(function(j){ need+=prepShare(j)*(j.isHold?(j.prep.crew||1):Math.max(1,j.prep.who.length)); });
     var rounds=roundsOn(k,jobs); trips=Math.max(0,trips-rounds.reduce(function(t,r){return t+r.stops.length-1;},0));
     var vans=vansOnRoad();
     return {need:need,avail:avail,overTime:need>avail,trips:trips,vans:vans,overVans:trips>vans,holds:jobs.filter(function(j){return j.isHold;}).length};
@@ -587,7 +587,7 @@ var SNAP=null, DETAIL={};
     TEAM.forEach(function(w){
       if(off.indexOf(w)>=0){ var lvw=LEAVE.filter(function(l){return l.date===k&&l.text.split(" ")[0]===w;})[0]; out[w]={t:lvw&&lvw.bh?"bank holiday":lvw&&lvw.off?"off today":"annual leave",c:"off",mins:0,rec:0,avail:0}; return; }
       var mine=jobs.filter(function(j){return j.who.indexOf(w)>=0;}), myPreps=preps.filter(function(j){return j.prep.who.indexOf(w)>=0;}), myRound=rounds.filter(function(r){return r.who===w;})[0];
-      var mins=mine.reduce(function(s,j){return s+(j.mins||0)+(j.site&&!j.onRound?(j.drive||0):0);},0)+(myRound&&myRound.drive?myRound.drive:0)+myPreps.reduce(function(s,j){return s+(j.prep.mins||0);},0);
+      var mins=mine.reduce(function(s,j){return s+(j.mins||0)+(j.site&&!j.onRound?(j.drive||0):0);},0)+(myRound&&myRound.drive?myRound.drive:0)+myPreps.reduce(function(s,j){return s+prepShare(j);},0);
       var n=mine.length+myPreps.length;
       out[w]= !n ? {t:fmt(DAY_MINS)+" available",c:"free"} : mins>DAY_H*60 ? {t:"over capacity by "+fmt(mins-DAY_MINS),c:"over"} : !mins ? {t:n+(n===1?" job":" jobs")+", no time set",c:"busy"} : {t:fmt(Math.max(0,DAY_MINS-mins))+" available"+(n>1?", "+n+" jobs":""),c:"busy"};
       out[w].mins=mins; out[w].rec=Math.max(0,DAY_MINS-mins); out[w].avail=out[w].rec;
@@ -681,7 +681,7 @@ var SNAP=null, DETAIL={};
         stops.push({j:j,arrive:arrive,start:st,end:t,wait:wait,by:by,late:by!=null&&t>by,noDrive:leg==null}); });
       if(realLegs){ var lgb=realLegs[li]||0; t+=lgb; drive+=lgb; } else if(leg!=null){ t+=leg; drive+=leg; }
     }
-    var back=t; other.forEach(function(j){ t+=(j.mins||0); }); preps.forEach(function(j){ t+=(j.prep.mins||0); });
+    var back=t; other.forEach(function(j){ t+=(j.mins||0); }); preps.forEach(function(j){ t+=prepShare(j); });
     var isDriver=DRIVERS.indexOf(w)>=0&&site.length>0;
     return {stops:stops,drive:Math.round(drive),back:back,end:t,isDriver:isDriver,driveBreak:isDriver&&drive>DRIVE_BREAK,longDay:isDriver&&(t-DAY_START)>DRIVER_DAY_MAX};
   }
@@ -1887,7 +1887,7 @@ var SNAP=null, DETAIL={};
         var mine=jobs.filter(function(j){return j.who.indexOf(w)>=0;}), myPreps=preps.filter(function(j){return j.prep.who.indexOf(w)>=0;});
         var myRound=rounds.filter(function(r){return r.who===w;})[0];
         var mins=mine.reduce(function(s,j){return s+(j.mins||0)+(j.site&&!j.onRound?(j.drive||0):0);},0)+(myRound&&myRound.drive?myRound.drive:0);
-        mins+=myPreps.reduce(function(s,j){return s+(j.prep.mins||0);},0);
+        mins+=myPreps.reduce(function(s,j){return s+prepShare(j);},0);
         var unset=mine.filter(function(j){return j.mins==null;}).length+myPreps.filter(function(j){return j.prep.mins==null;}).length;
         mine=mine.concat(myPreps);
         var txt, cls;
