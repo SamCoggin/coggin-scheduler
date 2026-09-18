@@ -17,7 +17,7 @@ const cards=[{id:'c1',name:'Skipton - C4B36B - Harrison Drury',idList:'l1',due:'
 global.window={__TODAY:'2026-09-14T12:00',TrelloPowerUp:{iframe(){return { lists:()=>Promise.resolve(lists), cards:()=>Promise.resolve(cards), board:()=>Promise.resolve({name:'Jobs - Planning Board',members:[]}), get:(a,b,c,d)=>Promise.resolve(d), set:()=>Promise.resolve() };}}};
 global.TrelloPowerUp=global.window.TrelloPowerUp;
 try{ new Function(scripts.join('\n'))(); }catch(e){ console.log('SYNC THROW',e.stack.split('\n').slice(0,3).join('\n')); }
-setTimeout(()=>{ console.log('src:',reg['#src'].textContent); console.log('title:',reg['#title'].textContent); },200);
+setTimeout(()=>{ const src=reg['#src'].textContent; console.log('src:',src); console.log('board loaded:', !/Could not read the board/.test(src)); console.log('title:',reg['#title'].textContent); },200);
 process.on('unhandledRejection',e=>console.log('REJECT',e.stack.split('\n').slice(0,4).join('\n')));
 setTimeout(()=>{ const walk=(n,o=[])=>{o.push(n);(n.children||[]).forEach(c=>walk(c,o));return o;}; const T=walk(reg['#board']).map(x=>x.textContent).filter(Boolean).join(' '); console.log('board has Skipton:',/Skipton/.test(T),'Knowles:',/Knowles/.test(T),'Rob leave:',/Rob on leave/.test(T)); },300);
 
