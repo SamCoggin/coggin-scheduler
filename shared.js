@@ -275,10 +275,18 @@ function standardFor(label,load){
   var crew=st.crew, big=load.m3>12||load.rows.some(function(r){return r.type==="Booth"||r.type==="Pod";});
   var twoHanded=load.rows.some(function(r){return r.two;}), small=load.m3<3&&!twoHanded;
   if(small) crew=1; if(big) crew+=1;
-  var total=st.base+load.min, each=Math.ceil(total/crew/5)*5;
+  // BULK LOADING IS FASTER (Sam, 18 Sep 2026: "1 min per chair for bulk loading"). Handling one item at a time
+  // into an office is the table's own minutes; loading or unloading a wagon of the same thing, stacked and
+  // moved several at a time, is a minute an item from 20 items up. Only the labour parts, never a delivery
+  // where every item is carried in and placed.
+  var BULK_FROM=20, BULK_EACH=1;
+  var items=load.rows.reduce(function(t,r){return t+r.n;},0);
+  var labour=/^labour/i.test(String(mv)), bulk=labour&&items>=BULK_FROM;
+  var handling=bulk?items*BULK_EACH:load.min;
+  var total=st.base+handling, each=Math.ceil(total/crew/5)*5;
   var what=load.rows.map(function(r){return r.n+" "+r.type.toLowerCase()+(r.n>1?"s":"");}).join(", ");
-  var labour=/^labour/i.test(String(mv)), unload=/unload/i.test(String(mv));
-  var why=labour?(st.base+" minutes to set out and clear away, plus "+load.min+" minutes to "+(unload?"unload and put away ":"bring out and load ")+what+"."):(st.base+" minutes for parking, the contact and the sign off, plus "+load.min+" minutes to carry in and place "+what+".");
+  var unload=/unload/i.test(String(mv));
+  var why=labour?(st.base+" minutes to set out and clear away, plus "+handling+" minutes to "+(unload?"unload and put away ":"bring out and load ")+what+(bulk?", at a minute an item in bulk":"")+"."):(st.base+" minutes for parking, the contact and the sign off, plus "+load.min+" minutes to carry in and place "+what+".");
   why+=crew===1?" One operative can manage that alone, so "+Math.max(15,each)+" minutes.":" Shared between "+crew+" operatives that is "+Math.max(15,each)+" minutes each"+(big?". One extra operative because the load is big":(twoHanded?". Two because some items need two to carry":""))+".";
   return {crew:crew,mins:Math.max(15,each),why:why};
 }
