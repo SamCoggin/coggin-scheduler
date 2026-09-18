@@ -1145,7 +1145,7 @@ var SNAP=null, DETAIL={};
       var pastLine=function(){ if(load[w].c==="off") return load[w].t; var n=mineP.length+prepsP.length, m=load[w].mins||0; return n?(fmt(m)+" on "+n+(n===1?" job":" jobs")):"No jobs"; };
       nmRow.appendChild(nmb); tx.appendChild(nmRow); tx.appendChild(el("div","ld "+(past?"past":load[w].c),past?pastLine():load[w].t));
       var ul=el("ul");
-      prepsP.forEach(function(j){ ul.appendChild(el("li",null,"Production: "+j.title+(j.prep.mins!=null?", "+fmt(j.prep.mins):"")+(past?doneOf(j.prep):""))); });
+      prepsP.forEach(function(j){ var nd=daysOf(j.prep).length||1; ul.appendChild(el("li",null,"Production: "+j.title+(j.prep.mins!=null?", "+fmt(Math.round(prepShare(j)))+(nd>1?" today of "+fmt(j.prep.mins)+" over "+nd+" days":""):"")+(past?doneOf(j.prep):""))); });
       var r=rounds.filter(function(x){return x.who===w;})[0]; if(r) ul.appendChild(el("li",null,"Delivery round, "+r.stops.length+" stops"+(r.drive?", "+fmt(r.drive)+" travel":"")));
       mineP.forEach(function(j){ ul.appendChild(el("li",null,j.title+(j.mins!=null?", "+fmt(j.mins)+(j.site&&!j.onRound&&j.drive?" + "+fmt(j.drive)+" travel":""):"")+(past?doneOf(j.isLeg?j.leg:j):""))); });
       if(load[w].c!=="off"&&load[w].rec>=30){ if(past){ var tly=TALLIES[tallyKey(k,w)], tg=recTarget(load[w].rec); ul.appendChild(tly&&tly.units!=null?el("li",tly.units<tg*0.8?"warn":"rec","Recycling: "+tly.units+" of "+tg+" units"):el("li","warn","Recycling: not recorded, target was "+tg+" units")); } else ul.appendChild(el("li","rec","Recycling: "+fmt(load[w].rec))); }
