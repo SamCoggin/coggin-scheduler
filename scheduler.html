@@ -571,7 +571,7 @@ var SNAP=null, DETAIL={};
   // PRODUCTION SPREAD OVER ITS DAYS (Sam, 18 Sep 2026: a 50h job set from Tue 22 to Tue 29 read as 50h on every one
   // of those days, so everyone showed over capacity). The time per operative is for the whole job, so each day
   // carries its share.
-  function prepShare(j){ var n=(j&&j.prep)?(daysOf(j.prep).length||1):1; return ((j&&j.prep&&j.prep.mins)||0)/n; }
+  function prepShare(j,w){ var n=(j&&j.prep)?(daysOf(j.prep).length||1):1; var m=w?minsFor(j.prep,w):((j&&j.prep&&j.prep.mins)||0); return (m||0)/n; }
   function daysOf(j){ if(!j.start||j.start>=j.date) return [j.date]; var out=[]; for(var d=new Date(j.start+"T12:00");iso(d)<=j.date;d.setDate(d.getDate()+1)){ if(d.getDay()!==0&&d.getDay()!==6) out.push(iso(d)); } return out; }
   // what each person already has on a day, in minutes, for the "who could jump on" hints
   // what a day needs against what it has, with holds counted at their standard crew and time
@@ -579,8 +579,8 @@ var SNAP=null, DETAIL={};
     var off=LEAVE.filter(function(l){return l.date===k;}).map(function(l){return l.text.split(" ")[0];});
     var avail=TEAM.filter(function(w){return off.indexOf(w)<0;}).length*DAY_MINS;
     var need=0, trips=0;
-    jobs.forEach(function(j){ if(j.contractor&&!j.who.length) return; var crew=j.isHold?(j.holdCrew!=null?j.holdCrew:2):Math.max(1,j.who.length); need+=(j.mins||0)*crew+(j.site?(j.drive||0)*crew:0); if(j.site) trips+=1; });
-    preps.forEach(function(j){ need+=prepShare(j)*(j.isHold?(j.prep.crew||1):Math.max(1,j.prep.who.length)); });
+    jobs.forEach(function(j){ if(j.contractor&&!j.who.length) return; var crew=j.isHold?(j.holdCrew!=null?j.holdCrew:2):Math.max(1,j.who.length); var own=(!j.isHold&&j.who.length)?j.who.reduce(function(t,w){return t+(minsFor(j,w)||0);},0):(j.mins||0)*crew; need+=own+(j.site?(j.drive||0)*crew:0); if(j.site) trips+=1; });
+    preps.forEach(function(j){ need+=(!j.isHold&&j.prep.who.length)?j.prep.who.reduce(function(t,w){return t+prepShare(j,w);},0):prepShare(j)*(j.isHold?(j.prep.crew||1):1); });
     var rounds=roundsOn(k,jobs); trips=Math.max(0,trips-rounds.reduce(function(t,r){return t+r.stops.length-1;},0));
     var vans=vansOnRoad();
     return {need:need,avail:avail,overTime:need>avail,trips:trips,vans:vans,overVans:trips>vans,holds:jobs.filter(function(j){return j.isHold;}).length};
@@ -591,7 +591,7 @@ var SNAP=null, DETAIL={};
     TEAM.forEach(function(w){
       if(off.indexOf(w)>=0){ var lvw=LEAVE.filter(function(l){return l.date===k&&l.text.split(" ")[0]===w;})[0]; out[w]={t:lvw&&lvw.bh?"bank holiday":lvw&&lvw.off?"off today":"annual leave",c:"off",mins:0,rec:0,avail:0}; return; }
       var mine=jobs.filter(function(j){return j.who.indexOf(w)>=0;}), myPreps=preps.filter(function(j){return j.prep.who.indexOf(w)>=0;}), myRound=rounds.filter(function(r){return r.who===w;})[0];
-      var mins=mine.reduce(function(s,j){return s+(j.mins||0)+(j.site&&!j.onRound?(j.drive||0):0);},0)+(myRound&&myRound.drive?myRound.drive:0)+myPreps.reduce(function(s,j){return s+prepShare(j);},0);
+      var mins=mine.reduce(function(s,j){return s+(minsFor(j,w)||0)+(j.site&&!j.onRound?(j.drive||0):0);},0)+(myRound&&myRound.drive?myRound.drive:0)+myPreps.reduce(function(s,j){return s+prepShare(j,w);},0);
       var n=mine.length+myPreps.length;
       out[w]= !n ? {t:fmt(DAY_MINS)+" available",c:"free"} : mins>DAY_H*60 ? {t:"over capacity by "+fmt(mins-DAY_MINS),c:"over"} : !mins ? {t:n+(n===1?" job":" jobs")+", no time set",c:"busy"} : {t:fmt(Math.max(0,DAY_MINS-mins))+" available"+(n>1?", "+n+" jobs":""),c:"busy"};
       out[w].mins=mins; out[w].rec=Math.max(0,DAY_MINS-mins); out[w].avail=out[w].rec;
@@ -685,7 +685,7 @@ var SNAP=null, DETAIL={};
         stops.push({j:j,arrive:arrive,start:st,end:t,wait:wait,by:by,late:by!=null&&t>by,noDrive:leg==null}); });
       if(realLegs){ var lgb=realLegs[li]||0; t+=lgb; drive+=lgb; } else if(leg!=null){ t+=leg; drive+=leg; }
     }
-    var back=t; other.forEach(function(j){ t+=(j.mins||0); }); preps.forEach(function(j){ t+=prepShare(j); });
+    var back=t; other.forEach(function(j){ t+=(j.mins||0); }); preps.forEach(function(j){ t+=(j.prep.who.length?j.prep.who.reduce(function(x,w){return x+prepShare(j,w);},0):prepShare(j)); });
     var isDriver=DRIVERS.indexOf(w)>=0&&site.length>0;
     return {stops:stops,drive:Math.round(drive),back:back,end:t,isDriver:isDriver,driveBreak:isDriver&&drive>DRIVE_BREAK,longDay:isDriver&&(t-DAY_START)>DRIVER_DAY_MAX};
   }
@@ -1149,7 +1149,7 @@ var SNAP=null, DETAIL={};
       var pastLine=function(){ if(load[w].c==="off") return load[w].t; var n=mineP.length+prepsP.length, m=load[w].mins||0; return n?(fmt(m)+" on "+n+(n===1?" job":" jobs")):"No jobs"; };
       nmRow.appendChild(nmb); tx.appendChild(nmRow); tx.appendChild(el("div","ld "+(past?"past":load[w].c),past?pastLine():load[w].t));
       var ul=el("ul");
-      prepsP.forEach(function(j){ var nd=daysOf(j.prep).length||1; ul.appendChild(el("li",null,"Production: "+j.title+(j.prep.mins!=null?", "+fmt(Math.round(prepShare(j)))+(nd>1?" today of "+fmt(j.prep.mins)+" over "+nd+" days":""):"")+(past?doneOf(j.prep):""))); });
+      prepsP.forEach(function(j){ var nd=daysOf(j.prep).length||1, me=minsFor(j.prep,w); ul.appendChild(el("li",null,"Production: "+j.title+(me!=null?", "+fmt(Math.round(prepShare(j,w)))+(nd>1?" today of "+fmt(me)+" over "+nd+" days":""):"")+(past?doneOf(j.prep):""))); });
       var r=rounds.filter(function(x){return x.who===w;})[0]; if(r) ul.appendChild(el("li",null,"Delivery round, "+r.stops.length+" stops"+(r.drive?", "+fmt(r.drive)+" travel":"")));
       mineP.forEach(function(j){ ul.appendChild(el("li",null,j.title+(j.mins!=null?", "+fmt(j.mins)+(j.site&&!j.onRound&&j.drive?" + "+fmt(j.drive)+" travel":""):"")+(past?doneOf(j.isLeg?j.leg:j):""))); });
       if(load[w].c!=="off"&&load[w].rec>=30){ if(past){ var tly=TALLIES[tallyKey(k,w)], tg=recTarget(load[w].rec); ul.appendChild(tly&&tly.units!=null?el("li",tly.units<tg*0.8?"warn":"rec","Recycling: "+tly.units+" of "+tg+" units"):el("li","warn","Recycling: not recorded, target was "+tg+" units")); } else ul.appendChild(el("li","rec","Recycling: "+fmt(load[w].rec))); }
@@ -1890,8 +1890,8 @@ var SNAP=null, DETAIL={};
       TEAM.forEach(function(w){
         var mine=jobs.filter(function(j){return j.who.indexOf(w)>=0;}), myPreps=preps.filter(function(j){return j.prep.who.indexOf(w)>=0;});
         var myRound=rounds.filter(function(r){return r.who===w;})[0];
-        var mins=mine.reduce(function(s,j){return s+(j.mins||0)+(j.site&&!j.onRound?(j.drive||0):0);},0)+(myRound&&myRound.drive?myRound.drive:0);
-        mins+=myPreps.reduce(function(s,j){return s+prepShare(j);},0);
+        var mins=mine.reduce(function(s,j){return s+(minsFor(j,w)||0)+(j.site&&!j.onRound?(j.drive||0):0);},0)+(myRound&&myRound.drive?myRound.drive:0);
+        mins+=myPreps.reduce(function(s,j){return s+prepShare(j,w);},0);
         var unset=mine.filter(function(j){return j.mins==null;}).length+myPreps.filter(function(j){return j.prep.mins==null;}).length;
         mine=mine.concat(myPreps);
         var txt, cls;

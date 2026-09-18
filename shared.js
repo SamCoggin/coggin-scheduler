@@ -313,6 +313,12 @@ function prodStandardFor(load,crewNow,daysAvail){
   var why=fmt(work)+" of work in total. Picking "+fmt(pick)+" ("+PICK_BASE+" min for the picking sheet and set up, "+PICK_EACH+" min an item for "+items+" items, "+PICK_CREW+" on it). Then "+what+". "+rule.charAt(0).toUpperCase()+rule.slice(1)+"."+(crew>1?" Split with 10 percent for handover, that is "+fmt(each)+" each":" "+fmt(each))+(days>1?", so "+days+" days.":".");
   return {work:work,pick:pick,crew:crew,mins:each,days:days,why:why};
 }
+// SOMEONE BREAKING OFF (Sam, 18 Sep 2026: "an operative might have to break off a job onto something else").
+// A part carries one time for everybody; when that is not true, part.each holds the minutes for the people who
+// differ, and everything reads the time through here.
+function minsFor(part,w){ if(!part) return null; var e=part.each&&part.each[w]; return (e===0||e)?e:(part.mins!=null?part.mins:null); }
+// what the crew are actually giving a production job, in crew minutes
+function plannedProdMins(part){ return ((part&&part.who)||[]).reduce(function(t,w){ var m=minsFor(part,w); return t+(m||0); },0); }
 function aboveProdStandard(std,who,mins,start,end){
   if(!std||!who||!who.length||mins==null) return null; var out=[];
   var allocated=mins*who.length, allowed=std.work*(who.length>1?1.1:1);
