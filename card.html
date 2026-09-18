@@ -240,7 +240,9 @@
   // Standard time section carries "Timed as: 4 x Meeting chair", built from the product categories, so a chair
   // named after its designer still times correctly. Used when the card's own item lines do not all match.
   // a skip exchange is one operative for 15 minutes, whatever part asks (18 Sep 2026)
-  function isSkipCard(){ return (card.labels||[]).some(function(l){ return /skip exchange/i.test(String((l&&l.name)||l||"")); }); }
+  // The TITLE counts as well as the label: "POPS Exchange - 0 tonnes" carries no
+  // Skip exchange label, and it is still one operative for 15 minutes (Sam, 18 Sep 2026).
+  function isSkipCard(){ return EXCHANGE_RE.test(String(card.name||"")) || (card.labels||[]).some(function(l){ return EXCHANGE_RE.test(String((l&&l.name)||l||"")); }); }
   function timedAsLines(){ var m=/Timed as:\s*([^\n]+)/i.exec(String(card.desc||"").replace(/\*\*/g,"")); if(!m) return [];
     return m[1].split(",").map(function(x){ return x.trim(); }).filter(function(x){ return /^\d+\s*x\s*/i.test(x); }); }
   function loadNow(){ var ign=d.ignore||[]; var all=itemsOf(card.desc,checksOf()), auto=all.filter(function(l){return ign.indexOf(l)<0;}), manual=d.items||[]; var L; var src="card"; if(!all.length&&d.load&&d.load.rows&&!manual.length){ L=d.load; src="scheduler"; } else { L=loadOf(auto.concat(manual)); if(!L.complete&&!manual.length){ var ta=timedAsLines(); if(ta.length){ var L2=loadOf(ta); if(L2.complete){ L=L2; src="crm"; } } } } L.src=src; L.fromCrm=(src==="crm"); L.manualN=src==="card"?manual.length:0; L.ignored=all.filter(function(l){return ign.indexOf(l)>=0;}); L.autoLines=auto; return L; }
@@ -306,7 +308,7 @@
     // ── TRANSPORT, LOADING or LABOUR ──
     var L=loadNow(), m3=d.cube!=null?d.cube:(L.complete?L.m3:null), kg=(L.complete||d.cube!=null)?L.kg:0;
     var lbl=movementOf(card.labels,card.desc)||(card.labels||[]).map(function(l){return l.name;}).join(" ");
-    var Lstd=L.rows.length?L:(d.load||L), std=(!contractorOnly&&(!workshop||site))?standardFor(lbl,Lstd):null, over=std?aboveStandard(std,d.who,d.mins):null;
+    var Lstd=L.rows.length?L:(d.load||L), std=(!contractorOnly&&(!workshop||site))?standardFor(isSkipCard()?"Skip Exchange":lbl,Lstd):null, over=std?aboveStandard(std,d.who,d.mins):null;
     var mvName=movementOf(card.labels,card.desc), jobName=mvName==="Collect and Return"?"Collect and Return":mvName==="Site Visit"?"Site Visit":mvName==="Collection"?"Collection":"Delivery";
     var kind=site?"transport":"labour", name=site?jobName:(loading?"Loading":"Labour");
     var ts=section(kind,name,due?niceShort(due):"");
@@ -327,7 +329,7 @@
           // FIRMS COME FROM THE CRM (Sam, 17 Sep 2026: "remove the add a contractor section as this can only be
           // done from the crm"), and nobody of ours rides with a carrier, so the operatives are hidden then.
           if(!d.contractor) ed.appendChild(el("div","lbl","Our operatives")); }
-        if(!contractorOnly){ ed.appendChild(people(d,site,function(){ var s2=(!workshop&&!contractorOnly)?standardFor(lbl,Lstd):null; return s2&&s2.mins!=null?s2.mins:null; },due?[due]:[])); ed.appendChild(availability(due?[due]:[],d)); } },contractorOnly?"":(d.who.length?"":"bad")));
+        if(!contractorOnly){ ed.appendChild(people(d,site,function(){ var s2=(!workshop&&!contractorOnly)?standardFor(isSkipCard()?"Skip Exchange":lbl,Lstd):null; return s2&&s2.mins!=null?s2.mins:null; },due?[due]:[])); ed.appendChild(availability(due?[due]:[],d)); } },contractorOnly?"":(d.who.length?"":"bad")));
       if(!contractorOnly){
         // time
         var timeTxt=(d.mins!=null?fmt(d.mins)+(d.who.length>1?" each":"")+" on site":"No site time")+(site?(d.drive!=null?", travel "+fmt(d.drive)+" return":", no travel time"):"");

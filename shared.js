@@ -252,8 +252,13 @@ function todayIso(){ var d=new Date(); return d.getFullYear()+"-"+String(d.getMo
 // ── standards: how many operatives a job type needs and how long it should take ──
 // crew is the standard crew. base is minutes on site before the items (park, meet the contact, sign off).
 // site time per operative = (base + handling minutes for the items) / crew. fixed jobs have mins instead.
+// AN EXCHANGE IS AN EXCHANGE whatever it is called. "POPS Exchange" is a skip
+// exchange for POPS waste, and the card that prompted this (Sam, 18 Sep 2026:
+// "why has this not updated with 1 operative and 15 mins?") was titled that,
+// not labelled "Skip exchange", so the old label-only match missed it.
+var EXCHANGE_RE=/\b(skip|pops|container|bin)s?\s*exchange\b/i;
 var STANDARD=[
-  {re:/skip exchange/i,            crew:1, mins:15},   // 15 minutes, one operative (Sam, 18 Sep 2026)
+  {re:EXCHANGE_RE,                 crew:1, mins:15},   // 15 minutes, one operative (Sam, 18 Sep 2026)
   {re:/^(labour|warehouse|yard) (load|unload)$/i, crew:2, base:15},
   {re:/^(labour|warehouse|yard)$/i, crew:2, mins:60},
   {re:/customer delivers$/i,       crew:2, mins:60},
@@ -270,7 +275,7 @@ function standardFor(label,load){
   // A SKIP EXCHANGE IS A SKIP EXCHANGE, whatever part of the card asks (Sam, 18 Sep 2026: "if a card is labeled
   // skip exchange it should only estimate 1 operative and 15 mins... now 2 operatives and 1 hour"). The labour
   // part used to fall through to the general labour figure.
-  if(/skip exchange/i.test(String(label))||(Array.isArray(label)&&labelNames(label).some(function(n){return /skip exchange/i.test(n);}))) mv="Skip Exchange";
+  if(EXCHANGE_RE.test(String(label))||(Array.isArray(label)&&labelNames(label).some(function(n){return EXCHANGE_RE.test(n);}))) mv="Skip Exchange";
   var st=null; for(var i=0;i<STANDARD.length;i++){ if(STANDARD[i].re.test(mv||"")){ st=STANDARD[i]; break; } }
   if(!st) return null;
   if(st.mins!=null) return {crew:st.crew,mins:st.mins,why:"A "+String(mv).toLowerCase()+" is a set "+fmt(st.mins)+" for "+st.crew+(st.crew===1?" operative":" operatives")+", whatever is on the card"};
