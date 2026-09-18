@@ -129,7 +129,10 @@
   .mp .ov{color:var(--red);background:var(--red-bg);border-color:var(--red-bg)}
   .prow{display:grid;grid-template-columns:auto 1fr;gap:10px;align-items:start;background:var(--card);border:1px solid var(--line);border-radius:8px;padding:10px 12px;flex-shrink:0}
   .prow .av{margin:0;border:0;width:32px;height:32px;font-size:12px}
-  .prow b{display:block;font-size:16px}
+  .prow b{font-size:16px;line-height:1.2}
+  /* name and its buttons on one line, the load line under it (Sam, 18 Sep 2026: the red over-capacity text sat on top of the name) */
+  .prow .nmrow{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+  .prow .ld{margin-top:2px}
   .prow .ld{font-size:12px;font-weight:600}
   .prow .ld.past{color:#44546f;font-weight:600}
   .prow .ld.free{color:var(--green)} .prow .ld.over{color:var(--red)} .prow .ld.off{color:var(--amber)} .prow .ld.busy{color:var(--muted)}
@@ -1129,18 +1132,18 @@ var SNAP=null, DETAIL={};
     var pc=el("div","cards"); var load=loadOn(k); jobs=allJobsDay; preps=prepJobs().filter(function(j){return j.prep&&j.prep.date&&daysOf(j.prep).indexOf(k)>=0;}); rounds=roundsOn(k,jobs);
     var lv=LEAVE.filter(function(l){return l.date===k;}); leaveLines(lv).forEach(function(tx){ pc.appendChild(el("div","leave",tx)); });
     TEAM.forEach(function(w){
-      var row=el("div","prow"); row.appendChild(el("span","av",ini(w))); var tx=el("div"); var nmb=el("b",null,w);
+      var row=el("div","prow"); row.appendChild(el("span","av",ini(w))); var tx=el("div"); var nmRow=el("div","nmrow"); var nmb=el("b",null,w);
       var isOff=(OFF[k]||[]).indexOf(w)>=0, onLeaveCard=LEAVE.some(function(l){return l.date===k&&!l.off&&l.text.split(" ")[0]===w;});
       var jsb=el("button","offbtn","Job sheet"); jsb.title="Download "+w+"'s job sheet for this day"; jsb.onclick=function(e){ e.stopPropagation(); try{ crewSheetsPdf(dayCur,w); }catch(err){ alert("The job sheet could not be built: "+(err&&err.message||err)); } }; 
       if(!onLeaveCard){ var ob=el("button","offbtn"+(isOff?" on":""),isOff?"Back in":"Mark as off"); ob.title=isOff?"Put "+w+" back on the day":"Mark "+w+" as off for this day: sick, a course, a breakdown. It asks why.";
-      if(isOff&&OFF_WHY[k+"|"+w]) nmb.appendChild(el("span","offwhy","off, "+OFF_WHY[k+"|"+w])); ob.onclick=function(){ if(isOff){ toggleOff(k,w); return; } var why=prompt(w+" is off on "+niceDay(k)+". Why? (sick, course, van breakdown)","sick"); if(why===null) return; toggleOff(k,w,why.trim()); }; nmb.appendChild(ob); }
-      if(!isOff&&!onLeaveCard) nmb.appendChild(jsb);
+      if(isOff&&OFF_WHY[k+"|"+w]) nmb.appendChild(el("span","offwhy","off, "+OFF_WHY[k+"|"+w])); ob.onclick=function(){ if(isOff){ toggleOff(k,w); return; } var why=prompt(w+" is off on "+niceDay(k)+". Why? (sick, course, van breakdown)","sick"); if(why===null) return; toggleOff(k,w,why.trim()); }; nmRow.appendChild(ob); }
+      if(!isOff&&!onLeaveCard) nmRow.appendChild(jsb);
       // A DAY THAT HAS GONE (Sam, 17 Sep 2026: "the days have passed so this section will need to reflect this"):
       // nothing is "available" any more. Say what was planned and what was recorded, not free time.
       var past=k<iso(TODAY), mineP=jobs.filter(function(j){return j.who.indexOf(w)>=0;}), prepsP=preps.filter(function(j){return j.prep.who.indexOf(w)>=0;});
       var doneOf=function(part){ return part&&part.done?(part.done.status==="no"?" (did not go"+(part.done.reason?": "+part.done.reason:"")+")":" (done)"):" (not recorded)"; };
       var pastLine=function(){ if(load[w].c==="off") return load[w].t; var n=mineP.length+prepsP.length, m=load[w].mins||0; return n?(fmt(m)+" on "+n+(n===1?" job":" jobs")):"No jobs"; };
-      tx.appendChild(nmb); tx.appendChild(el("span","ld "+(past?"past":load[w].c),past?pastLine():load[w].t));
+      nmRow.appendChild(nmb); tx.appendChild(nmRow); tx.appendChild(el("div","ld "+(past?"past":load[w].c),past?pastLine():load[w].t));
       var ul=el("ul");
       prepsP.forEach(function(j){ ul.appendChild(el("li",null,"Production: "+j.title+(j.prep.mins!=null?", "+fmt(j.prep.mins):"")+(past?doneOf(j.prep):""))); });
       var r=rounds.filter(function(x){return x.who===w;})[0]; if(r) ul.appendChild(el("li",null,"Delivery round, "+r.stops.length+" stops"+(r.drive?", "+fmt(r.drive)+" travel":"")));
