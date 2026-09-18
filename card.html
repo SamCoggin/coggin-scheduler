@@ -260,7 +260,7 @@
       if(!d.prep.who.length){ if(pauto) ps.appendChild(planBanner("Unassigned.","Plan it: "+pauto.crew+(pauto.crew===1?" operative":" operatives")+", "+fmt(pauto.mins)+(pauto.crew>1?" each":""),function(){ planProd(); })); else ps.appendChild(banner("Unassigned. Choose who is on production.")); }
       else if(!d.prep.date) ps.appendChild(banner("No production days set."));
       if(prodDue&&d.prep.date&&d.prep.date>prodDue) ps.appendChild(banner("Finishes "+niceShort(d.prep.date)+", after the production due date."));
-      if(overP) ps.appendChild(banner("Above standard: "+overP+". Standard is "+fmt(pstd.work)+" of work."));
+      if(overP) ps.appendChild(banner("Above the estimate: "+overP+". The estimate is "+fmt(pstd.work)+" of work."));
       // WILL IT BE READY (Sam, 18 Sep 2026: "the things we need to make sure do not get affected is the due date.
       // If it is looking like the due date is going to be affected it should be prompting sub contractor support").
       // What the crew are giving it against what the items need, and whether the days left can still absorb it.
@@ -282,9 +282,9 @@
         d2.onchange=function(){ d.prep.date=d2.value||null; if(d.prep.date&&(!d.prep.start||d.prep.start>d.prep.date)) d.prep.start=d.prep.date; if(!d.prep.date) d.prep.start=null; save(); render(); };
         pr.appendChild(el("span",null,"From")); pr.appendChild(d1); pr.appendChild(el("span",null,"to")); pr.appendChild(d2); var clr=el("button","p","Clear"); clr.onclick=function(){ d.prep.start=null; d.prep.date=null; save(); render(); }; pr.appendChild(clr); ed.appendChild(pr);
         ed.appendChild(el("div","hint","Set the days and it appears under Production in the Scheduler.")); },d.prep.date?"":"todo"));
-      ps.appendChild(rowEl("ptime",d.prep.who.length>1?"Time per operative":"Time",d.prep.mins!=null?fmt(d.prep.mins)+(d.prep.who.length>1?" each":""):(pstd?"Not set, standard "+fmt(pstd.mins):"Not set"),function(ed){
-        if(pstd){ var sb=el("div","stdbox"); sb.appendChild(el("b",null,"Standard: "+pstd.crew+(pstd.crew===1?" operative":" operatives")+", "+fmt(pstd.mins)+(pstd.crew>1?" each":"")+(pstd.days>1?", "+pstd.days+" days":""))); sb.appendChild(el("div","hint",pstd.why));
-          var br=el("div","row"); br.style.marginTop="6px"; var pb=el("button","p","Plan it: "+pauto.crew+(pauto.crew===1?" operative":" operatives")+", "+fmt(pauto.mins)+(pauto.crew>1?" each":"")); pb.onclick=planProd; br.appendChild(pb); if(d.prep.who.length&&d.prep.mins!==pstd.mins){ var ub=el("button","p","Use standard time for the "+d.prep.who.length+" chosen"); ub.onclick=function(){ d.prep.mins=pstd.mins; save(); render(); }; br.appendChild(ub); } sb.appendChild(br); ed.appendChild(sb); }
+      ps.appendChild(rowEl("ptime",d.prep.who.length>1?"Time per operative":"Time",d.prep.mins!=null?fmt(d.prep.mins)+(d.prep.who.length>1?" each":""):(pstd?"Not set, estimated "+fmt(pstd.mins):"Not set"),function(ed){
+        if(pstd){ var sb=el("div","stdbox"); sb.appendChild(el("b",null,"Estimate: "+pstd.crew+(pstd.crew===1?" operative":" operatives")+", "+fmt(pstd.mins)+(pstd.crew>1?" each":"")+(pstd.days>1?", "+pstd.days+" days":""))); sb.appendChild(el("div","hint",pstd.why));
+          var br=el("div","row"); br.style.marginTop="6px"; var pb=el("button","p","Plan it: "+pauto.crew+(pauto.crew===1?" operative":" operatives")+", "+fmt(pauto.mins)+(pauto.crew>1?" each":"")); pb.onclick=planProd; br.appendChild(pb); if(d.prep.who.length&&d.prep.mins!==pstd.mins){ var ub=el("button","p","Use the estimate for the "+d.prep.who.length+" chosen"); ub.onclick=function(){ d.prep.mins=pstd.mins; save(); render(); }; br.appendChild(ub); } sb.appendChild(br); ed.appendChild(sb); }
         else ed.appendChild(el("div","hint","The standard comes from the items on the card. "+(Lp.unmatched.length?"Some items are not in the table: "+Lp.unmatched.join("; ")+".":Lp.rows.length?"":"No items found on the card.")));
         ed.appendChild(el("div","lbl","Production time per operative")); ed.appendChild(timeField(d.prep,""));
         // SOMEBODY BREAKING OFF (Sam, 18 Sep 2026: "an operative might have to break off a job onto something
@@ -317,7 +317,7 @@
       if(contractorOnly) ts.appendChild(el("div","who",d.contractor?d.contractor+" is carrying out this work":"A "+(partsCarrier(PARTS)||"carrier").toLowerCase()+" is carrying it, not picked yet. Choose the firm below, or on the deal."));
       else if(!d.who.length){ if(std&&std.mins!=null&&due){ ts.appendChild(planBanner("Unassigned.","Plan it: "+std.crew+(std.crew===1?" operative":" operatives")+", "+fmt(std.mins)+(std.crew>1?" each":""),function(){ d.who=pickCrew(std.crew,loadOn(due),site,[]); d.mins=std.mins; OPEN.who=false; OPEN.time=false; save(); render(); })); } else { ts.appendChild(banner("Unassigned. Choose who is on it.")); OPEN.who=OPEN.who===undefined?true:OPEN.who; } }
       else if(site&&!d.who.some(function(w){return DRIVERS.indexOf(w)>=0;})) ts.appendChild(banner("No driver on this job. Rob, Jack or Bart must be on it."));
-      if(over) ts.appendChild(banner("Above standard: "+over+". Standard is "+std.crew+(std.crew===1?" operative":" operatives")+(std.mins!=null?", "+fmt(std.mins)+(std.crew>1?" each":""):"")+"."));
+      if(over) ts.appendChild(banner("Above the estimate: "+over+". The estimate is "+std.crew+(std.crew===1?" operative":" operatives")+(std.mins!=null?", "+fmt(std.mins)+(std.crew>1?" each":""):"")+"."));
       // who
       var whoTxt=contractorOnly?d.contractor:(d.who.length?d.who.join(", ")+(d.contractor?" with "+d.contractor:""):"Unassigned");
       ts.appendChild(rowEl("who",contractorOnly?"Carried by":(d.who.length===1?"Operative":"Operatives"),contractorOnly?(d.contractor||"Not picked yet"):whoTxt,function(ed){
@@ -330,7 +330,7 @@
         // time
         var timeTxt=(d.mins!=null?fmt(d.mins)+(d.who.length>1?" each":"")+" on site":"No site time")+(site?(d.drive!=null?", travel "+fmt(d.drive)+" return":", no travel time"):"");
         ts.appendChild(rowEl("time",site?"Time":"Time",timeTxt,function(ed){
-          if(std){ var sb=el("div","stdbox"); sb.appendChild(el("b",null,"Standard: "+std.crew+(std.crew===1?" operative":" operatives")+(std.mins!=null?", "+fmt(std.mins)+(std.crew>1?" each":""):""))); sb.appendChild(el("div","hint",/[.]$/.test(std.why)?std.why:std.why+"."));
+          if(std){ var sb=el("div","stdbox"); sb.appendChild(el("b",null,"Estimate: "+std.crew+(std.crew===1?" operative":" operatives")+(std.mins!=null?", "+fmt(std.mins)+(std.crew>1?" each":""):""))); sb.appendChild(el("div","hint",/[.]$/.test(std.why)?std.why:std.why+"."));
             if(std.mins!=null){ var br=el("div","row"); br.style.marginTop="6px"; if(due){ var pb=el("button","p","Plan it: "+std.crew+(std.crew===1?" operative":" operatives")+", "+fmt(std.mins)+(std.crew>1?" each":"")); pb.onclick=function(){ d.who=pickCrew(std.crew,loadOn(due),site,[]); d.mins=std.mins; save(); render(); }; br.appendChild(pb); } if(d.mins!==std.mins){ var ub=el("button","p","Use standard time"); ub.onclick=function(){ d.mins=std.mins; save(); render(); }; br.appendChild(ub); } sb.appendChild(br); } ed.appendChild(sb); }
           ed.appendChild(el("div","lbl",site?"Site time per operative":(loading?"Loading time per operative":"Labour time per operative"))); ed.appendChild(timeField(d,""));
           if(site){ ed.appendChild(el("div","lbl","Travel time, return")); ed.appendChild(hm(function(){return d.drive;},function(v){d.drive=v;},"Travel")); ed.appendChild(el("div","hint","There and back. The Scheduler works this out from the postcode. Set it here if you know it.")); if(d.drive!=null&&d.drive>360) ed.appendChild(el("div","warn","More than a day's travel with the job in between. Consider a courier or subcontractor.")); }
@@ -386,11 +386,11 @@
       ws.appendChild(el("div","who",wLine+(whoCarries&&wLine.toLowerCase().indexOf(whoCarries.toLowerCase())<0?", "+whoCarries+" carries it":"")+"."));
       var Lw=loadNow(), wstd=standardFor(/unload|receive/i.test(W.where)?"Labour unload":"Labour load",Lw), overW=wstd?aboveStandard(wstd,W.who,W.mins):null;
       if(!W.who.length) ws.appendChild(banner("Unassigned. Choose who is on it at Forton."));
-      if(overW) ws.appendChild(banner("Above standard: "+overW+"."));
+      if(overW) ws.appendChild(banner("Above the estimate: "+overW+"."));
       ws.appendChild(rowEl("wwho",W.who.length===1?"Operative":"Operatives",W.who.length?W.who.join(", "):"Unassigned",function(ed){ ed.appendChild(people(W,false,function(){ var s3=standardFor(/unload|receive/i.test(W.where)?"Labour unload":"Labour load",loadNow()); return s3&&s3.mins!=null?s3.mins:null; },W.date?[W.date]:[])); },W.who.length?"":"bad"));
       ws.appendChild(rowEl("wdate","Day",W.date?niceShort(W.date):"Not set",function(ed){ var wr=el("div","row"); var wd=el("input"); wd.type="date"; wd.value=W.date||""; wd.onchange=function(){ W.date=wd.value||null; save(); render(); }; wr.appendChild(wd); ed.appendChild(wr); ed.appendChild(el("div","hint","The day the truck is unloaded or the load is put out. It shows under Labour Operations in the Scheduler.")); },W.date?"":"todo"));
-      ws.appendChild(rowEl("wtime",W.who.length>1?"Time per operative":"Time",W.mins!=null?fmt(W.mins)+(W.who.length>1?" each":""):(wstd&&wstd.mins!=null?"Not set, standard "+fmt(wstd.mins):"Not set"),function(ed){
-        if(wstd&&wstd.mins!=null){ var sb=el("div","stdbox"); sb.appendChild(el("b",null,"Standard: "+wstd.crew+(wstd.crew===1?" operative":" operatives")+", "+fmt(wstd.mins)+(wstd.crew>1?" each":""))); sb.appendChild(el("div","hint",wstd.why)); ed.appendChild(sb); }
+      ws.appendChild(rowEl("wtime",W.who.length>1?"Time per operative":"Time",W.mins!=null?fmt(W.mins)+(W.who.length>1?" each":""):(wstd&&wstd.mins!=null?"Not set, estimated "+fmt(wstd.mins):"Not set"),function(ed){
+        if(wstd&&wstd.mins!=null){ var sb=el("div","stdbox"); sb.appendChild(el("b",null,"Estimate: "+wstd.crew+(wstd.crew===1?" operative":" operatives")+", "+fmt(wstd.mins)+(wstd.crew>1?" each":""))); sb.appendChild(el("div","hint",wstd.why)); ed.appendChild(sb); }
         ed.appendChild(el("div","lbl","Labour time per operative")); ed.appendChild(timeField(W,"")); },W.mins!=null?"":(W.who.length?"bad":"todo")));
       app.appendChild(ws);
     });
