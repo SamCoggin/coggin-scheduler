@@ -568,6 +568,10 @@ var SNAP=null, DETAIL={};
       return j; });
     if(SNAP.boardData&&SNAP.boardData.contractors){ SNAP.boardData.contractors.forEach(function(c){ if(CONTRACTORS.indexOf(c)<0) CONTRACTORS.splice(CONTRACTORS.length-1,0,c); }); }
   }
+  // PRODUCTION SPREAD OVER ITS DAYS (Sam, 18 Sep 2026: a 50h job set from Tue 22 to Tue 29 read as 50h on every one
+  // of those days, so everyone showed over capacity). The time per operative is for the whole job, so each day
+  // carries its share.
+  function prepShare(j){ var n=(j&&j.prep)?(daysOf(j.prep).length||1):1; return ((j&&j.prep&&j.prep.mins)||0)/n; }
   function daysOf(j){ if(!j.start||j.start>=j.date) return [j.date]; var out=[]; for(var d=new Date(j.start+"T12:00");iso(d)<=j.date;d.setDate(d.getDate()+1)){ if(d.getDay()!==0&&d.getDay()!==6) out.push(iso(d)); } return out; }
   // what each person already has on a day, in minutes, for the "who could jump on" hints
   // what a day needs against what it has, with holds counted at their standard crew and time
