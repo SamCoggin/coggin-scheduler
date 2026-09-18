@@ -112,7 +112,10 @@
   function todayIso(){ var t=new Date(); t.setHours(12,0,0,0); return t.toISOString().slice(0,10); }
   function nextWorkDay(k){ var x=new Date(k+"T12:00"); while(x.getDay()===0||x.getDay()===6) x.setDate(x.getDate()+1); return x.toISOString().slice(0,10); }
   function addWorkDays(k,n){ var x=new Date(k+"T12:00"); var left=n; while(left>0){ x.setDate(x.getDate()+1); if(x.getDay()!==0&&x.getDay()!==6) left--; } return x.toISOString().slice(0,10); }
-  function planBanner(text,btnText,onPlan){ var b=el("div","banner plan"); b.appendChild(el("span",null,text)); var bt=el("button","planbtn",btnText); bt.onclick=onPlan; b.appendChild(bt); return b; }
+  // PLAN IT IS GONE (Sam, 18 Sep 2026: "remove plan it, this won't be used").
+  // Nobody wanted the Scheduler picking the crew for them. The estimate is
+  // still shown, and "Use the estimate" still sets the time on whoever is
+  // actually chosen.
   function workDays(a,b){ var out=[]; if(!a) return out; for(var x=new Date(a+"T12:00"); ; x.setDate(x.getDate()+1)){ var k=x.toISOString().slice(0,10); if(k>(b||a)) break; if(x.getDay()!==0&&x.getDay()!==6) out.push(k); } return out; }
   function loadOn(k){
     var out={}; CREW.forEach(function(w){ out[w]={mins:0,n:0}; });
@@ -256,12 +259,10 @@
       if(!d.prep) d.prep={who:[],mins:null,start:null,date:null};
       var prodDue=d.prodDue||defaultDue;
       var ps=section("production","Production",prodDue?"Due "+niceShort(prodDue):"");
-      // worked out BEFORE the banner that offers Plan it (17 Sep 2026: it read pauto before it was set, so the
-      // Production block never offered Plan it)
       var Lp=loadNow(), pstart=nextWorkDay(d.prep.start&&d.prep.start>todayIso()?d.prep.start:todayIso()), pdaysAvail=prodDue?Math.max(1,workDaysBetween(pstart,prodDue)):1;
-      var pstd=prodStandardFor(Lp,d.prep.who.length,pdaysAvail), pauto=prodStandardFor(Lp,0,pdaysAvail), overP=aboveProdStandard(pstd,d.prep.who,d.prep.mins,d.prep.start,d.prep.date);
+      var pstd=prodStandardFor(Lp,d.prep.who.length,pdaysAvail), overP=aboveProdStandard(pstd,d.prep.who,d.prep.mins,d.prep.start,d.prep.date);
       if(!workshop) ps.appendChild(el("div","who",(card.listName&&/Ready/i.test(card.listName))?"In Ready for Delivery / Collection":"Not in the workshop yet"));
-      if(!d.prep.who.length){ if(pauto) ps.appendChild(planBanner("Unassigned.","Plan it: "+pauto.crew+(pauto.crew===1?" operative":" operatives")+", "+fmt(pauto.mins)+(pauto.crew>1?" each":""),function(){ planProd(); })); else ps.appendChild(banner("Unassigned. Choose who is on production.")); }
+      if(!d.prep.who.length) ps.appendChild(banner("Unassigned. Choose who is on production."));
       else if(!d.prep.date) ps.appendChild(banner("No production days set."));
       if(prodDue&&d.prep.date&&d.prep.date>prodDue) ps.appendChild(banner("Finishes "+niceShort(d.prep.date)+", after the production due date."));
       if(overP) ps.appendChild(banner("Above the estimate: "+overP+". The estimate is "+fmt(pstd.work)+" of work."));
@@ -276,7 +277,6 @@
           ps.appendChild(banner("Short by "+fmt(shortM)+" of the "+fmt(needM)+" these items need."+(daysLeft<=0?" The production due date has gone: get sub-contractor support or move the delivery.":(shortM>couldAdd?" There is not enough time left before "+niceShort(prodDue)+": get sub-contractor support or move the delivery.":" Add time, add an operative, or add a day before "+niceShort(prodDue)+"."))));
         }
       }
-      var planProd=function(){ var crew=pauto.crew, start=d.prep.start||pstart, end=d.prep.date||addWorkDays(start,pauto.days-1); var who=pickCrew(crew,loadOn(start),false,[]); d.prep.who=who; d.prep.mins=prodStandardFor(Lp,who.length,pdaysAvail).mins; if(!d.prep.start){ d.prep.start=start; d.prep.date=end; } OPEN.pwho=false; OPEN.ptime=false; OPEN.pdays=false; save(); render(); };
       if(!d.prep.who.length) OPEN.pwho=OPEN.pwho===undefined?true:OPEN.pwho;
       ps.appendChild(rowEl("pwho",d.prep.who.length===1?"Operative":"Operatives",d.prep.who.length?d.prep.who.join(", "):"Unassigned",function(ed){ ed.appendChild(people(d.prep,false,function(){ var s2=prodStandardFor(loadNow(),d.prep.who.length,pdaysAvail); return s2&&s2.mins!=null?s2.mins:null; },d.prep.date?workDays(d.prep.start||d.prep.date,d.prep.date):[])); ed.appendChild(availability(d.prep.date?workDays(d.prep.start||d.prep.date,d.prep.date):[],d.prep)); },d.prep.who.length?"":"bad"));
       var daysTxt=d.prep.date?(d.prep.start&&d.prep.start!==d.prep.date?niceShort(d.prep.start)+" to "+niceShort(d.prep.date):niceShort(d.prep.date)):"Not set";
@@ -288,7 +288,7 @@
         ed.appendChild(el("div","hint","Set the days and it appears under Production in the Scheduler.")); },d.prep.date?"":"todo"));
       ps.appendChild(rowEl("ptime",d.prep.who.length>1?"Time per operative":"Time",d.prep.mins!=null?fmt(d.prep.mins)+(d.prep.who.length>1?" each":""):(pstd?"Not set, estimated "+fmt(pstd.mins):"Not set"),function(ed){
         if(pstd){ var sb=el("div","stdbox"); sb.appendChild(el("b",null,"Estimate: "+pstd.crew+(pstd.crew===1?" operative":" operatives")+", "+fmt(pstd.mins)+(pstd.crew>1?" each":"")+(pstd.days>1?", "+pstd.days+" days":""))); sb.appendChild(el("div","hint",pstd.why));
-          var br=el("div","row"); br.style.marginTop="6px"; var pb=el("button","p","Plan it: "+pauto.crew+(pauto.crew===1?" operative":" operatives")+", "+fmt(pauto.mins)+(pauto.crew>1?" each":"")); pb.onclick=planProd; br.appendChild(pb); if(d.prep.who.length&&d.prep.mins!==pstd.mins){ var ub=el("button","p","Use the estimate for the "+d.prep.who.length+" chosen"); ub.onclick=function(){ d.prep.mins=pstd.mins; save(); render(); }; br.appendChild(ub); } sb.appendChild(br); ed.appendChild(sb); }
+          var br=el("div","row"); br.style.marginTop="6px"; if(d.prep.who.length&&d.prep.mins!==pstd.mins){ var ub=el("button","p","Use the estimate for the "+d.prep.who.length+" chosen"); ub.onclick=function(){ d.prep.mins=pstd.mins; save(); render(); }; br.appendChild(ub); } sb.appendChild(br); ed.appendChild(sb); }
         else ed.appendChild(el("div","hint","The estimate comes from the items on the card. "+(Lp.unmatched.length?"Some items are not in the table: "+Lp.unmatched.join("; ")+".":Lp.rows.length?"":"No items found on the card.")));
         ed.appendChild(el("div","lbl","Production time per operative")); ed.appendChild(timeField(d.prep,""));
         // SOMEBODY BREAKING OFF (Sam, 18 Sep 2026: "an operative might have to break off a job onto something
@@ -314,12 +314,12 @@
     var ts=section(kind,name,due?niceShort(due):"");
     // AGREED IN THE CRM (Sam, 17 Sep 2026: "make the crew hours typed in the CRM carry over"): the card's
     // Standard time section carries hours typed on the deal when they differ from the standard. Shown here
-    // so whoever plans it sees what sales and operations agreed before pressing Plan it.
+    // so whoever plans it sees what sales and operations agreed before they choose.
     var agreedM=/Agreed crew time on the day ([^,\n]+)/i.exec(String(card.desc||"").replace(/\*\*/g,""));
     if(agreedM) ts.appendChild(el("div","hint","Agreed in the CRM: "+agreedM[1].trim()+" crew time on the day, travel included. Plan the crew and time to fit it."));
     {
       if(contractorOnly) ts.appendChild(el("div","who",d.contractor?d.contractor+" is carrying out this work":"A "+(partsCarrier(PARTS)||"carrier").toLowerCase()+" is carrying it, not picked yet. Choose the firm below, or on the deal."));
-      else if(!d.who.length){ if(std&&std.mins!=null&&due){ ts.appendChild(planBanner("Unassigned.","Plan it: "+std.crew+(std.crew===1?" operative":" operatives")+", "+fmt(std.mins)+(std.crew>1?" each":""),function(){ d.who=pickCrew(std.crew,loadOn(due),site,[]); d.mins=std.mins; OPEN.who=false; OPEN.time=false; save(); render(); })); } else { ts.appendChild(banner("Unassigned. Choose who is on it.")); OPEN.who=OPEN.who===undefined?true:OPEN.who; } }
+      else if(!d.who.length){ ts.appendChild(banner("Unassigned. Choose who is on it.")); OPEN.who=OPEN.who===undefined?true:OPEN.who; }
       else if(site&&!d.who.some(function(w){return DRIVERS.indexOf(w)>=0;})) ts.appendChild(banner("No driver on this job. Rob, Jack or Bart must be on it."));
       if(over) ts.appendChild(banner("Above the estimate: "+over+". The estimate is "+std.crew+(std.crew===1?" operative":" operatives")+(std.mins!=null?", "+fmt(std.mins)+(std.crew>1?" each":""):"")+"."));
       // who
@@ -335,7 +335,7 @@
         var timeTxt=(d.mins!=null?fmt(d.mins)+(d.who.length>1?" each":"")+" on site":"No site time")+(site?(d.drive!=null?", travel "+fmt(d.drive)+" return":", no travel time"):"");
         ts.appendChild(rowEl("time",site?"Time":"Time",timeTxt,function(ed){
           if(std){ var sb=el("div","stdbox"); sb.appendChild(el("b",null,"Estimate: "+std.crew+(std.crew===1?" operative":" operatives")+(std.mins!=null?", "+fmt(std.mins)+(std.crew>1?" each":""):""))); sb.appendChild(el("div","hint",/[.]$/.test(std.why)?std.why:std.why+"."));
-            if(std.mins!=null){ var br=el("div","row"); br.style.marginTop="6px"; if(due){ var pb=el("button","p","Plan it: "+std.crew+(std.crew===1?" operative":" operatives")+", "+fmt(std.mins)+(std.crew>1?" each":"")); pb.onclick=function(){ d.who=pickCrew(std.crew,loadOn(due),site,[]); d.mins=std.mins; save(); render(); }; br.appendChild(pb); } if(d.mins!==std.mins){ var ub=el("button","p","Use the estimate"); ub.onclick=function(){ d.mins=std.mins; save(); render(); }; br.appendChild(ub); } sb.appendChild(br); } ed.appendChild(sb); }
+            if(std.mins!=null){ var br=el("div","row"); br.style.marginTop="6px"; if(d.mins!==std.mins){ var ub=el("button","p","Use the estimate"); ub.onclick=function(){ d.mins=std.mins; save(); render(); }; br.appendChild(ub); } sb.appendChild(br); } ed.appendChild(sb); }
           ed.appendChild(el("div","lbl",site?"Site time per operative":(loading?"Loading time per operative":"Labour time per operative"))); ed.appendChild(timeField(d,""));
           if(site){ ed.appendChild(el("div","lbl","Travel time, return")); ed.appendChild(hm(function(){return d.drive;},function(v){d.drive=v;},"Travel")); ed.appendChild(el("div","hint","There and back. The Scheduler works this out from the postcode. Set it here if you know it.")); if(d.drive!=null&&d.drive>360) ed.appendChild(el("div","warn","More than a day's travel with the job in between. Consider a courier or subcontractor.")); }
         },(d.mins==null&&d.who.length&&!contractorOnly)?"bad":(d.mins==null||(site&&d.drive==null))?"todo":""));
