@@ -60,7 +60,6 @@
   .stdbox b{display:block;font-size:14px}
   .banner{padding:10px 14px;background:var(--red);color:#fff;font-weight:800;font-size:14px;border-bottom:1px solid var(--line)}
   .banner.plan{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
-  .planbtn{border:0;background:#fff;color:var(--red);border-radius:8px;padding:8px 12px;font-weight:800;font-size:14px}
   .who{font-size:15px}
   .vtot{padding:10px 12px;border-radius:8px;background:var(--list);margin-bottom:10px}
   .vtot .big{font-size:18px;font-weight:800}
@@ -147,7 +146,7 @@
       PARTS=partsOf(card.desc); if(!PARTS.known) PARTS=impliedParts(card.labels);
       d.legs.forEach(function(L){ if(L.type==="warehouse"||L.type==="yard") L.type="labour"; });
       // ONLY WHEN SOMEBODY ELSE'S VEHICLE IS INVOLVED (Sam, 15 Sep 2026): a stale labour leg nobody is on is dropped.
-      // THEIR VEHICLE, NOT OURS (Sam, 17 Sep 2026, DBB053: the card offered "Plan it: 3 operatives" for a delivery
+      // THEIR VEHICLE, NOT OURS (Sam, 17 Sep 2026, DBB053: the card estimated 3 operatives for a delivery
       // a courier is carrying). When the Parts block names a carrier the transport is theirs, so the card opens with
       // that firm on it and asks only for the labour that loads them.
       var dropped=false;

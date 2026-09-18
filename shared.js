@@ -346,15 +346,6 @@ function aboveProdStandard(std,who,mins,start,end){
 
 // working days from a to b inclusive, Monday to Friday
 function workDaysBetween(a,b){ if(!a||!b||b<a) return 0; var n=0; for(var x=new Date(a+"T12:00"); x.toISOString().slice(0,10)<=b; x.setDate(x.getDate()+1)){ if(x.getDay()!==0&&x.getDay()!==6) n++; } return n; }
-// choose n operatives from who is free: most hours available first, a driver first when the job needs one
-function pickCrew(n,loadByName,needDriver,exclude){
-  var names=CREW.filter(function(w){ var l=loadByName[w]; return l && l.c!=="off" && (exclude||[]).indexOf(w)<0; });
-  names.sort(function(a,b){ return (loadByName[b].avail||0)-(loadByName[a].avail||0); });
-  var out=[];
-  if(needDriver){ var drv=names.filter(function(w){return DRIVERS.indexOf(w)>=0;})[0]; if(drv) out.push(drv); }
-  names.forEach(function(w){ if(out.length<n && out.indexOf(w)<0) out.push(w); });
-  return out;
-}
 
 // ── vehicle classes, for advising what a load needs. box volume and typical payload, UK hire trade figures ──
 // licence: B = car licence (up to 3.5t), C1 = 7.5t (only drivers who passed before 1997 have it), C = rigid HGV, CE = artic
