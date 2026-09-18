@@ -236,7 +236,12 @@
   }
   function banner(text){ return el("div","banner",text); }
   function checksOf(){ var cc=[]; (card.checklists||[]).forEach(function(cl){ (cl.checkItems||cl.items||cl.checkitems||[]).forEach(function(it){ cc.push({n:it.name||it.text||it.title||""}); }); }); return cc; }
-  function loadNow(){ var ign=d.ignore||[]; var all=itemsOf(card.desc,checksOf()), auto=all.filter(function(l){return ign.indexOf(l)<0;}), manual=d.items||[]; var L; var src="card"; if(!all.length&&d.load&&d.load.rows&&!manual.length){ L=d.load; src="scheduler"; } else L=loadOf(auto.concat(manual)); L.src=src; L.manualN=src==="card"?manual.length:0; L.ignored=all.filter(function(l){return ign.indexOf(l)>=0;}); L.autoLines=auto; return L; }
+  // THE CRM SAYS WHAT EACH LINE IS (Sam, 18 Sep 2026: "product category is the safest way to do this"). The
+  // Standard time section carries "Timed as: 4 x Meeting chair", built from the product categories, so a chair
+  // named after its designer still times correctly. Used when the card's own item lines do not all match.
+  function timedAsLines(){ var m=/Timed as:\s*([^\n]+)/i.exec(String(card.desc||"").replace(/\*\*/g,"")); if(!m) return [];
+    return m[1].split(",").map(function(x){ return x.trim(); }).filter(function(x){ return /^\d+\s*x\s*/i.test(x); }); }
+  function loadNow(){ var ign=d.ignore||[]; var all=itemsOf(card.desc,checksOf()), auto=all.filter(function(l){return ign.indexOf(l)<0;}), manual=d.items||[]; var L; var src="card"; if(!all.length&&d.load&&d.load.rows&&!manual.length){ L=d.load; src="scheduler"; } else { L=loadOf(auto.concat(manual)); if(!L.complete&&!manual.length){ var ta=timedAsLines(); if(ta.length){ var L2=loadOf(ta); if(L2.complete){ L=L2; src="crm"; } } } } L.src=src; L.fromCrm=(src==="crm"); L.manualN=src==="card"?manual.length:0; L.ignored=all.filter(function(l){return ign.indexOf(l)>=0;}); L.autoLines=auto; return L; }
   function render(){
     var app=document.getElementById("app"); app.innerHTML="";
     var due=(card.due||"").slice(0,10);
