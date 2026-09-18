@@ -239,6 +239,8 @@
   // THE CRM SAYS WHAT EACH LINE IS (Sam, 18 Sep 2026: "product category is the safest way to do this"). The
   // Standard time section carries "Timed as: 4 x Meeting chair", built from the product categories, so a chair
   // named after its designer still times correctly. Used when the card's own item lines do not all match.
+  // a skip exchange is one operative for 15 minutes, whatever part asks (18 Sep 2026)
+  function isSkipCard(){ return (card.labels||[]).some(function(l){ return /skip exchange/i.test(String((l&&l.name)||l||"")); }); }
   function timedAsLines(){ var m=/Timed as:\s*([^\n]+)/i.exec(String(card.desc||"").replace(/\*\*/g,"")); if(!m) return [];
     return m[1].split(",").map(function(x){ return x.trim(); }).filter(function(x){ return /^\d+\s*x\s*/i.test(x); }); }
   function loadNow(){ var ign=d.ignore||[]; var all=itemsOf(card.desc,checksOf()), auto=all.filter(function(l){return ign.indexOf(l)<0;}), manual=d.items||[]; var L; var src="card"; if(!all.length&&d.load&&d.load.rows&&!manual.length){ L=d.load; src="scheduler"; } else { L=loadOf(auto.concat(manual)); if(!L.complete&&!manual.length){ var ta=timedAsLines(); if(ta.length){ var L2=loadOf(ta); if(L2.complete){ L=L2; src="crm"; } } } } L.src=src; L.fromCrm=(src==="crm"); L.manualN=src==="card"?manual.length:0; L.ignored=all.filter(function(l){return ign.indexOf(l)>=0;}); L.autoLines=auto; return L; }
@@ -384,10 +386,10 @@
       var whoCarries=PARTS&&!PARTS.ours?partsCarrier(PARTS):"";
       var wLine=W.where.charAt(0).toUpperCase()+W.where.slice(1);
       ws.appendChild(el("div","who",wLine+(whoCarries&&wLine.toLowerCase().indexOf(whoCarries.toLowerCase())<0?", "+whoCarries+" carries it":"")+"."));
-      var Lw=loadNow(), wstd=standardFor(/unload|receive/i.test(W.where)?"Labour unload":"Labour load",Lw), overW=wstd?aboveStandard(wstd,W.who,W.mins):null;
+      var Lw=loadNow(), wstd=standardFor(isSkipCard()?"Skip Exchange":(/unload|receive/i.test(W.where)?"Labour unload":"Labour load"),Lw), overW=wstd?aboveStandard(wstd,W.who,W.mins):null;
       if(!W.who.length) ws.appendChild(banner("Unassigned. Choose who is on it at Forton."));
       if(overW) ws.appendChild(banner("Above the estimate: "+overW+"."));
-      ws.appendChild(rowEl("wwho",W.who.length===1?"Operative":"Operatives",W.who.length?W.who.join(", "):"Unassigned",function(ed){ ed.appendChild(people(W,false,function(){ var s3=standardFor(/unload|receive/i.test(W.where)?"Labour unload":"Labour load",loadNow()); return s3&&s3.mins!=null?s3.mins:null; },W.date?[W.date]:[])); },W.who.length?"":"bad"));
+      ws.appendChild(rowEl("wwho",W.who.length===1?"Operative":"Operatives",W.who.length?W.who.join(", "):"Unassigned",function(ed){ ed.appendChild(people(W,false,function(){ var s3=standardFor(isSkipCard()?"Skip Exchange":(/unload|receive/i.test(W.where)?"Labour unload":"Labour load"),loadNow()); return s3&&s3.mins!=null?s3.mins:null; },W.date?[W.date]:[])); },W.who.length?"":"bad"));
       ws.appendChild(rowEl("wdate","Day",W.date?niceShort(W.date):"Not set",function(ed){ var wr=el("div","row"); var wd=el("input"); wd.type="date"; wd.value=W.date||""; wd.onchange=function(){ W.date=wd.value||null; save(); render(); }; wr.appendChild(wd); ed.appendChild(wr); ed.appendChild(el("div","hint","The day the truck is unloaded or the load is put out. It shows under Labour Operations in the Scheduler.")); },W.date?"":"todo"));
       ws.appendChild(rowEl("wtime",W.who.length>1?"Time per operative":"Time",W.mins!=null?fmt(W.mins)+(W.who.length>1?" each":""):(wstd&&wstd.mins!=null?"Not set, estimated "+fmt(wstd.mins):"Not set"),function(ed){
         if(wstd&&wstd.mins!=null){ var sb=el("div","stdbox"); sb.appendChild(el("b",null,"Estimate: "+wstd.crew+(wstd.crew===1?" operative":" operatives")+", "+fmt(wstd.mins)+(wstd.crew>1?" each":""))); sb.appendChild(el("div","hint",wstd.why)); ed.appendChild(sb); }

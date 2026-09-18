@@ -253,7 +253,7 @@ function todayIso(){ var d=new Date(); return d.getFullYear()+"-"+String(d.getMo
 // crew is the standard crew. base is minutes on site before the items (park, meet the contact, sign off).
 // site time per operative = (base + handling minutes for the items) / crew. fixed jobs have mins instead.
 var STANDARD=[
-  {re:/skip exchange/i,            crew:1, mins:20},
+  {re:/skip exchange/i,            crew:1, mins:15},   // 15 minutes, one operative (Sam, 18 Sep 2026)
   {re:/^(labour|warehouse|yard) (load|unload)$/i, crew:2, base:15},
   {re:/^(labour|warehouse|yard)$/i, crew:2, mins:60},
   {re:/customer delivers$/i,       crew:2, mins:60},
@@ -267,7 +267,10 @@ var STANDARD=[
 function standardFor(label,load){
   // label may be a movement, an old board label, or a list of labels
   var mv=Array.isArray(label)?movementOf(label):(MOVEMENT_LABELS.indexOf(label)>=0?label:(movementOf([label])||label));
-  if(/skip exchange/i.test(String(label))) mv="Skip Exchange";
+  // A SKIP EXCHANGE IS A SKIP EXCHANGE, whatever part of the card asks (Sam, 18 Sep 2026: "if a card is labeled
+  // skip exchange it should only estimate 1 operative and 15 mins... now 2 operatives and 1 hour"). The labour
+  // part used to fall through to the general labour figure.
+  if(/skip exchange/i.test(String(label))||(Array.isArray(label)&&labelNames(label).some(function(n){return /skip exchange/i.test(n);}))) mv="Skip Exchange";
   var st=null; for(var i=0;i<STANDARD.length;i++){ if(STANDARD[i].re.test(mv||"")){ st=STANDARD[i]; break; } }
   if(!st) return null;
   if(st.mins!=null) return {crew:st.crew,mins:st.mins,why:"A "+String(mv).toLowerCase()+" is a set "+fmt(st.mins)+" for "+st.crew+(st.crew===1?" operative":" operatives")+", whatever is on the card"};
