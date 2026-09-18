@@ -260,8 +260,13 @@ var EXCHANGE_RE=/\b(skip|pops|container|bin)s?\s*exchange\b/i;
 var STANDARD=[
   {re:EXCHANGE_RE,                 crew:1, mins:15},   // 15 minutes, one operative (Sam, 18 Sep 2026)
   {re:/^(labour|warehouse|yard) (load|unload)$/i, crew:2, base:15},
-  {re:/^(labour|warehouse|yard)$/i, crew:2, mins:60},
-  {re:/customer delivers$/i,       crew:2, mins:60},
+  // SOFT: a placeholder, not a measured figure. A plain labour card with no
+  // items listed gets an hour because an hour is the usual ask, so anyone
+  // planning real work will pass it and there is nothing wrong with that.
+  // Never warn against these (Sam, 18 Sep 2026, Spaceline Q2: "what is going
+  // on here? Above the estimate: 2h each, estimated 1h").
+  {re:/^(labour|warehouse|yard)$/i, crew:2, mins:60, soft:true},
+  {re:/customer delivers$/i,       crew:2, mins:60, soft:true},
   {re:/site visit/i,               crew:1, mins:45},
   {re:/customer collects|customer delivers and collects/i, crew:1, base:10},
   {re:/^delivery$/i,               crew:2, base:20},
@@ -278,7 +283,7 @@ function standardFor(label,load){
   if(EXCHANGE_RE.test(String(label))||(Array.isArray(label)&&labelNames(label).some(function(n){return EXCHANGE_RE.test(n);}))) mv="Skip Exchange";
   var st=null; for(var i=0;i<STANDARD.length;i++){ if(STANDARD[i].re.test(mv||"")){ st=STANDARD[i]; break; } }
   if(!st) return null;
-  if(st.mins!=null) return {crew:st.crew,mins:st.mins,why:"A "+String(mv).toLowerCase()+" is a set "+fmt(st.mins)+" for "+st.crew+(st.crew===1?" operative":" operatives")+", whatever is on the card"};
+  if(st.mins!=null) return {crew:st.crew,mins:st.mins,soft:!!st.soft,why:"A "+String(mv).toLowerCase()+" is a set "+fmt(st.mins)+" for "+st.crew+(st.crew===1?" operative":" operatives")+", whatever is on the card"};
   if(!load||!load.complete) return {crew:st.crew,mins:null,why:"The time comes from the items on the card, so add them first"};
   var crew=st.crew, big=load.m3>12||load.rows.some(function(r){return r.type==="Booth"||r.type==="Pod";});
   var twoHanded=load.rows.some(function(r){return r.two;}), small=load.m3<3&&!twoHanded;
@@ -300,8 +305,8 @@ function standardFor(label,load){
 }
 // allocated against standard: an amber flag when the crew or the time is well over
 function aboveStandard(std,who,mins){
-  if(!std) return null; var out=[];
-  if(who&&who.length>std.crew) out.push((who.length)+" operatives, standard is "+std.crew);
+  if(!std||std.soft) return null; var out=[];
+  if(who&&who.length>std.crew) out.push((who.length)+" operatives, estimated "+std.crew);
   if(std.mins!=null&&mins!=null&&mins>std.mins*1.5) out.push(fmt(mins)+(who.length>1?" each":"")+", estimated "+fmt(std.mins));
   return out.length?out.join("; "):null;
 }
