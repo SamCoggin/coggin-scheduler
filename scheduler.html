@@ -812,7 +812,7 @@ var SNAP=null, DETAIL={};
     TEAM.forEach(function(w){ var on=part.who.indexOf(w)>=0; var row=el("button","prow2"+(on?" on":"")+(load[w].c==="off"?" off":"")); row.setAttribute("aria-pressed",on?"true":"false");
       row.appendChild(el("span","av",ini(w))); var nm=el("span","nm",w); if(!o.shop&&j.site&&DRIVERS.indexOf(w)>=0) nm.appendChild(el("i","drv","driver")); row.appendChild(nm); row.appendChild(el("span","ld "+load[w].c,load[w].t)); row.appendChild(el("span","tick",on?"Assigned":"Assign"));
       row.onclick=function(){ var i=part.who.indexOf(w); if(i<0) part.who.push(w); else part.who.splice(i,1);
-        // a time cannot be missed (Sam, 14 Sep 2026): the first operative on brings the standard time with them
+        // a time cannot be missed (Sam, 14 Sep 2026): the first operative on brings the estimated time with them
         if(part.who.length&&part.mins==null){ var sf=o.shop?prodStandardFor(j.load,part.who.length,j.prodDue?Math.max(1,workDaysBetween((part.start&&part.start>iso(TODAY)?part.start:iso(TODAY)),j.prodDue)):1):((!contractorOnly&&!attending(j)&&!j.isLeg)?standardFor(j.movement||j.label,j.load):null); if(sf&&sf.mins!=null) part.mins=sf.mins; }
         render(); }; pl.appendChild(row); });
     var setMins=function(v){ part.mins=v; if(part.leg) part.leg.mins=v; }, setDrive=function(v){ part.drive=v; part.driveAuto=false; if(part.leg) part.leg.drive=v; };
@@ -928,12 +928,12 @@ var SNAP=null, DETAIL={};
       psb.appendChild(el("div","hint",pstd.why));
       var prow=el("div","row"); var plan=el("button","close","Plan it: "+pauto.crew+(pauto.crew===1?" operative":" operatives")+", "+fmt(pauto.mins)+(pauto.crew>1?" each":"")); plan.onclick=function(){ var start=part.start||pstart0; var who=pickCrew(pauto.crew,loadOn(start),false,[]); part.who=who; setMins(prodStandardFor(j.load,who.length,pAvail).mins); if(!part.start){ part.start=start; var e=new Date(start+"T12:00"), left=pauto.days-1; while(left>0){ e.setDate(e.getDate()+1); if(e.getDay()!==0&&e.getDay()!==6) left--; } part.date=iso(e); } render(); }; prow.appendChild(plan);
       if(part.who.length&&part.mins!==pstd.mins){ var pub=el("button","close","Use the estimate for the "+part.who.length+" chosen"); pub.onclick=function(){ setMins(pstd.mins); render(); }; prow.appendChild(pub); } psb.appendChild(prow);
-      right.appendChild(psb); } else if(j.load&&!j.load.complete){ var psb2=block("Estimate for this production","pstandard"); psb2.appendChild(el("div","hint","The standard comes from the items on the card. "+(j.load.unmatched.length?"Some items are not in the table: "+j.load.unmatched.join("; ")+".":"No items found."))); right.appendChild(psb2); } }
+      right.appendChild(psb); } else if(j.load&&!j.load.complete){ var psb2=block("Estimate for this production","pstandard"); psb2.appendChild(el("div","hint","The estimate comes from the items on the card. "+(j.load.unmatched.length?"Some items are not in the table: "+j.load.unmatched.join("; ")+".":"No items found."))); right.appendChild(psb2); } }
     if(!o.shop && !j.isLeg && !contractorOnly && !attending(j)){ var std=standardFor(j.movement||j.label,j.load); if(std){ var sb=block("Estimate for this job","standard");
       sb.appendChild(el("div",null,std.crew+(std.crew===1?" operative":" operatives")+(std.mins!=null?", "+fmt(std.mins)+" each on site":", time needs the items on the card")));
       sb.appendChild(el("div","hint",/[.]$/.test(std.why)?std.why:std.why+"."));
       var srow=el("div","row"); if(std.mins!=null){ var splan=el("button","close","Plan it: "+std.crew+(std.crew===1?" operative":" operatives")+", "+fmt(std.mins)+(std.crew>1?" each":"")); splan.onclick=function(){ part.who=pickCrew(std.crew,loadOn(j.date),!!j.site,[]); setMins(std.mins); render(); }; srow.appendChild(splan); }
-      if(std.mins!=null&&part.mins!==std.mins){ var ub=el("button","close","Use standard time"); ub.onclick=function(){ setMins(std.mins); render(); }; srow.appendChild(ub); } sb.appendChild(srow);
+      if(std.mins!=null&&part.mins!==std.mins){ var ub=el("button","close","Use the estimate"); ub.onclick=function(){ setMins(std.mins); render(); }; srow.appendChild(ub); } sb.appendChild(srow);
       right.appendChild(sb); } }
     if(!o.leg&&!contractorOnly&&dayPassed(partDate(j,!!o.shop))){ var wh=block("What happened","happened"); var dn=part.done;
       if(!dn){ wh.appendChild(el("div","hint","The day has passed. Record how it went so the standards learn from real jobs."));
@@ -1002,7 +1002,7 @@ var SNAP=null, DETAIL={};
     vehicles:"What each class carries: SWB van 8 m3 and 1,000 kg; LWB van 13 m3; our Lutons 18.7 m3 and 1,000 kg; 7.5 tonne box 32 m3 and 2,600 kg (C1 licence, so hire with a driver); 12 tonne 40 m3 and 6,000 kg; 18 tonne 55 m3 and 9,500 kg; 26 tonne 65 m3 and 15,000 kg; artic 85 m3 and 26 tonnes. Anything over 7.5 tonnes is a haulier with a driver, and the bigger it is the more site access matters.",
     manager:"Managers only. Every job with time allocated, against the standard worked out from its items. Amber is over by half, red is double.",
     pstandard:"How long the workshop should take on the items: 30 minutes a swivel chair start to finish, 10 for a clean-only chair, 15 for storage, 45 for a desk. More operatives divide the work, with 10 percent for handover. Use standard sets the time per operative.",
-    standard:"The standard crew and time for this job type, worked out from the items on the card. Above it is not wrong, but it should be a decision. Use standard sets the time to it.",
+    standard:"The estimated crew and time for this job type, worked out from the items on the card. Above it is not wrong, but it should be a decision. Use standard sets the time to it.",
     drivers:"Rob, Jack and Bart drive the van. Jordan and Bradley go along as a second pair of hands, so every transport job needs one of the drivers on it.",
     van:"The load worked out from the items on the card, in cubic metres and kilos, against a "+VAN_M3+" cubic metre Luton and its payload. Overtype it if the crew know better. Two Lutons on the fleet; a van off the road is marked in the Routes view and extra vans are hired in.",
     routes:"Combine Trips finds jobs booked for later that are near a stop already going out this week, and says what it takes to put them on the same van. Below it, where the week's transport jobs are. Each round is drawn from Forton in its day's colour. Nearby jobs on other days could join a round if there is room in the van and production is done.",
@@ -1400,7 +1400,7 @@ var SNAP=null, DETAIL={};
     TEAM.forEach(function(w){ var o=TS[w]; var pct=o.target?Math.round(o.units/o.target*100):null; var cls=pct==null?"":(pct<60?"red":pct<80?"amber":""); var row=el("div","mrow"+(cls?" "+cls:""));
       var mats=Object.keys(o.byMat).map(function(m){return m+" "+o.byMat[m]+" kg";}).join(", ");
       row.appendChild(el("span",null,w)); row.appendChild(el("span",null,fmt(o.mins)+(o.days>o.counted?" ("+(o.days-o.counted)+(o.days-o.counted===1?" day":" days")+" not recorded)":""))); row.appendChild(el("span",null,o.target+" target, "+o.units+" done")); row.appendChild(el("span",null,o.cages||o.kg?o.cages+" cages, "+o.kg+" kg"+(mats?" ("+mats+")":""):"none recorded")); row.appendChild(el("span",null,pct==null?"nothing recorded yet":pct+"%")); box.appendChild(row); });
-    var hd=el("div","mrow head"); ["Job","Part","Operatives and time","Items and standard","Against standard"].forEach(function(t){ hd.appendChild(el("span",null,t)); }); box.appendChild(hd);
+    var hd=el("div","mrow head"); ["Job","Part","Operatives and time","Items and estimate","Against the estimate"].forEach(function(t){ hd.appendChild(el("span",null,t)); }); box.appendChild(hd);
     if(!rows.length) box.appendChild(el("div","sub","No jobs with time allocated in this window."));
     rows.forEach(function(r){ var cls=r.ratio==null?"":(r.ratio>2?"red":r.ratio>1.5?"amber":""); var row=el("div","mrow"+(cls?" "+cls:""));
       var c1=el("span"); c1.appendChild(el("b",null,r.j.title)); c1.appendChild(el("small",null,r.j.label+", "+niceDay(r.date))); row.appendChild(c1);

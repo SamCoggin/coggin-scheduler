@@ -201,7 +201,7 @@
     w.appendChild(h); w.appendChild(el("span",null,"hours")); w.appendChild(m); w.appendChild(el("span",null,"minutes")); return w;
   }
   // A TIME CANNOT BE MISSED (Sam, 14 Sep 2026: "force adding a time when the person has been assigned"). When an
-  // operative goes on and no time is set, the standard time for that crew goes in by itself; fill() supplies it.
+  // operative goes on and no time is set, the estimated time for that crew goes in by itself; fill() supplies it.
   // Where there is no standard to lean on, the Time row turns red until one is typed.
   // Someone on leave on any of the part's days is greyed out and cannot be
   // picked (Sam, 17 Sep 2026). Already picked stays clickable, so it can be removed.
@@ -285,7 +285,7 @@
       ps.appendChild(rowEl("ptime",d.prep.who.length>1?"Time per operative":"Time",d.prep.mins!=null?fmt(d.prep.mins)+(d.prep.who.length>1?" each":""):(pstd?"Not set, estimated "+fmt(pstd.mins):"Not set"),function(ed){
         if(pstd){ var sb=el("div","stdbox"); sb.appendChild(el("b",null,"Estimate: "+pstd.crew+(pstd.crew===1?" operative":" operatives")+", "+fmt(pstd.mins)+(pstd.crew>1?" each":"")+(pstd.days>1?", "+pstd.days+" days":""))); sb.appendChild(el("div","hint",pstd.why));
           var br=el("div","row"); br.style.marginTop="6px"; var pb=el("button","p","Plan it: "+pauto.crew+(pauto.crew===1?" operative":" operatives")+", "+fmt(pauto.mins)+(pauto.crew>1?" each":"")); pb.onclick=planProd; br.appendChild(pb); if(d.prep.who.length&&d.prep.mins!==pstd.mins){ var ub=el("button","p","Use the estimate for the "+d.prep.who.length+" chosen"); ub.onclick=function(){ d.prep.mins=pstd.mins; save(); render(); }; br.appendChild(ub); } sb.appendChild(br); ed.appendChild(sb); }
-        else ed.appendChild(el("div","hint","The standard comes from the items on the card. "+(Lp.unmatched.length?"Some items are not in the table: "+Lp.unmatched.join("; ")+".":Lp.rows.length?"":"No items found on the card.")));
+        else ed.appendChild(el("div","hint","The estimate comes from the items on the card. "+(Lp.unmatched.length?"Some items are not in the table: "+Lp.unmatched.join("; ")+".":Lp.rows.length?"":"No items found on the card.")));
         ed.appendChild(el("div","lbl","Production time per operative")); ed.appendChild(timeField(d.prep,""));
         // SOMEBODY BREAKING OFF (Sam, 18 Sep 2026: "an operative might have to break off a job onto something
         // else"). One time for everybody is the norm; where it is not, set that person's own time here and the
@@ -331,7 +331,7 @@
         var timeTxt=(d.mins!=null?fmt(d.mins)+(d.who.length>1?" each":"")+" on site":"No site time")+(site?(d.drive!=null?", travel "+fmt(d.drive)+" return":", no travel time"):"");
         ts.appendChild(rowEl("time",site?"Time":"Time",timeTxt,function(ed){
           if(std){ var sb=el("div","stdbox"); sb.appendChild(el("b",null,"Estimate: "+std.crew+(std.crew===1?" operative":" operatives")+(std.mins!=null?", "+fmt(std.mins)+(std.crew>1?" each":""):""))); sb.appendChild(el("div","hint",/[.]$/.test(std.why)?std.why:std.why+"."));
-            if(std.mins!=null){ var br=el("div","row"); br.style.marginTop="6px"; if(due){ var pb=el("button","p","Plan it: "+std.crew+(std.crew===1?" operative":" operatives")+", "+fmt(std.mins)+(std.crew>1?" each":"")); pb.onclick=function(){ d.who=pickCrew(std.crew,loadOn(due),site,[]); d.mins=std.mins; save(); render(); }; br.appendChild(pb); } if(d.mins!==std.mins){ var ub=el("button","p","Use standard time"); ub.onclick=function(){ d.mins=std.mins; save(); render(); }; br.appendChild(ub); } sb.appendChild(br); } ed.appendChild(sb); }
+            if(std.mins!=null){ var br=el("div","row"); br.style.marginTop="6px"; if(due){ var pb=el("button","p","Plan it: "+std.crew+(std.crew===1?" operative":" operatives")+", "+fmt(std.mins)+(std.crew>1?" each":"")); pb.onclick=function(){ d.who=pickCrew(std.crew,loadOn(due),site,[]); d.mins=std.mins; save(); render(); }; br.appendChild(pb); } if(d.mins!==std.mins){ var ub=el("button","p","Use the estimate"); ub.onclick=function(){ d.mins=std.mins; save(); render(); }; br.appendChild(ub); } sb.appendChild(br); } ed.appendChild(sb); }
           ed.appendChild(el("div","lbl",site?"Site time per operative":(loading?"Loading time per operative":"Labour time per operative"))); ed.appendChild(timeField(d,""));
           if(site){ ed.appendChild(el("div","lbl","Travel time, return")); ed.appendChild(hm(function(){return d.drive;},function(v){d.drive=v;},"Travel")); ed.appendChild(el("div","hint","There and back. The Scheduler works this out from the postcode. Set it here if you know it.")); if(d.drive!=null&&d.drive>360) ed.appendChild(el("div","warn","More than a day's travel with the job in between. Consider a courier or subcontractor.")); }
         },(d.mins==null&&d.who.length&&!contractorOnly)?"bad":(d.mins==null||(site&&d.drive==null))?"todo":""));
