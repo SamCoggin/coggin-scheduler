@@ -9,7 +9,7 @@ function crewOf(n){ var f=String(n||"").trim().split(/\s+/)[0].toLowerCase(); if
 function normWho(a){ return (a||[]).map(crewOf).filter(function(n,i,x){ return x.indexOf(n)===i; }); }
 function normPlan(d){ if(!d||typeof d!=="object") return d; if(d.who) d.who=normWho(d.who); if(d.prep&&d.prep.who) d.prep.who=normWho(d.prep.who); if(d.legs&&d.legs.length) d.legs.forEach(function(l){ if(l&&l.who) l.who=normWho(l.who); }); return d; }
 // only these three drive the van. the others go along as a second pair of hands.
-var DRIVERS=["Rob","Jack","Bart"];
+var DRIVERS=["Rob D","Jack C","Bart H"]; // the crew entries, so a plan's who (normalised) matches
 var CONTRACTORS=["MAK Installations","Courier","Other contractor"];
 // ── the van and what goes on it ──
 // the vans: two Renault Master 3.5 tonne Lutons (DVLA: FX75 BKG 2025, FX73 CWF 2024, revenue weight 3,500 kg).
@@ -455,3 +455,20 @@ var TOWN={"Blackpool":"FY","Preston":"PR","Skipton":"BD","Sedbergh":"LA","Nottin
 var TRAFFIC=1.2;
 function postcodeArea(desc){ var m=/\b([A-Z]{1,2})\d[A-Z\d]?\s*\d[A-Z]{2}\b/i.exec(String(desc||"").replace(/\*\*/g,"")); return m?m[1].toUpperCase():""; }
 function driveFor(title,desc){ var area=postcodeArea(desc); if(!area||!DRIVE[area]){ var town=String(title||"").split(" - ")[0].trim(); area=TOWN[town]||""; } return area&&DRIVE[area] ? Math.round(DRIVE[area].h*2*60*TRAFFIC/5)*5 : null; }
+
+// ── THE ESTIMATE IS OFF (Sam, 28 Sep 2026: "remove the estimate and operators required
+// logic from the schedule on trello as it is not needed. Same for drive time etc.",
+// then "take the van load out too"). Operations pick who, type the time, set the
+// vehicle; nothing is suggested. The standards, load and drive tables above stay as
+// reference, but every reader gets nothing back, so the estimate boxes, the
+// "Above the estimate" banners, the auto-filled minutes, the van load and the
+// road time never render. Flip ESTIMATE_ON to bring it all back.
+var ESTIMATE_ON=false;
+if(!ESTIMATE_ON){
+  standardFor=function(){ return null; };
+  prodStandardFor=function(){ return null; };
+  aboveStandard=function(){ return null; };
+  aboveProdStandard=function(){ return null; };
+  driveFor=function(){ return null; };
+  loadOf=function(){ return {m3:0,kg:0,rows:[],unmatched:[],min:0,prod:0,chairM3:0,any:false,complete:false}; };
+}

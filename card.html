@@ -345,7 +345,7 @@
     var ls=section("loading","Loading",due?niceShort(due):"");
     if(workshop && loading) ls.appendChild(el("div","who","Customer or courier collecting, so nothing goes on our van"));
     if(contractorOnly){ ls.appendChild(el("div","who",(d.contractor||"A "+(partsCarrier(PARTS)||"carrier").toLowerCase())+" is carrying out the "+String(name).toLowerCase()+", so nothing goes on our van."+(forContractor?" The load below is what they need room for.":"")+" Change that under "+name+".")); }
-    if(vanApplies){
+    if(vanApplies&&ESTIMATE_ON){
       var dayTot=null, others=[], missing=[], names=[];
       if(due&&!forContractor){ others=OTHERS.filter(function(o){ return o.site && o.due===due && !(o.plan.contractor&&!(o.plan.who||[]).length); }); var om3=0, okg=0; others.forEach(function(o){ if(o.cube==null){ missing.push((o.name||"another job")+" ("+o.why+")"); return; } om3+=o.cube; okg+=o.kg; names.push((o.name||"another job")+" "+fmtM3(o.cube)); }); if(others.length) dayTot={m3:(m3||0)+om3,kg:(kg||0)+okg}; }
       var pcv=/\b([A-Z]{1,2}\d[A-Z\d]?\s*\d[A-Z]{2})\b/i.exec(card.desc||""), cvs=forContractor&&m3!=null?contractorVehicle(m3,kg,pcv?pcv[1].toUpperCase():""):null; var vanTxt=m3==null?"No estimate yet":(forContractor?fmtM3(m3)+(kg?", "+Math.round(kg)+" kg":"")+(cvs&&cvs.v?", "+cvs.v.t:"")+(d.contractor?" for "+d.contractor:" for the carrier"):fmtM3(m3)+" of "+VAN_M3+(dayTot?", day total "+fmtM3(dayTot.m3):""));

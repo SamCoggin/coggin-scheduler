@@ -887,7 +887,7 @@ var SNAP=null, DETAIL={};
       cwr.appendChild(mkC("Customer arrives after","from")); cwr.appendChild(mkC("Loaded and ready by","by")); cwb.appendChild(cwr);
       cwb.appendChild(el("div","hint",j.from||j.by?"The labour needs "+(part.who.length?part.who.join(", "):"someone")+" there"+(j.from?" from "+j.from:"")+(j.by?", with it picked and ready by "+j.by:"")+".":"Leave blank when the customer has not given a time. Put it in when they do, so Forton is not empty when they turn up."));
       right.appendChild(cwb); }
-    if(!o.shop && j.site && !contractorOnly && !j.isLeg){ var vb=block("Van Load","van"); var L=j.load||loadOf([]);
+    if(ESTIMATE_ON && !o.shop && j.site && !contractorOnly && !j.isLeg){ var vb=block("Van Load","van"); var L=j.load||loadOf([]);
       var m3=j.cubeSet!=null?j.cubeSet:(L.complete?L.m3:null), kg=L.complete||j.cubeSet!=null?L.kg:0;
       var vt=el("div","vtot"); vt.appendChild(el("div","big",m3==null?"No load estimate yet":fmtM3(m3)+" of "+VAN_M3+" m\u00b3"));
       if(m3!=null){ var vbar=el("div","vbar"); var vf=el("i"); var vpc=Math.min(100,m3/VAN_M3*100); vf.style.width=vpc+"%"; vf.className=m3>VAN_M3||kg>VAN_KG?"over":(vpc>85?"near":""); vbar.appendChild(vf); vt.appendChild(vbar);
@@ -1228,7 +1228,7 @@ var SNAP=null, DETAIL={};
   // REAL DRIVE TIMES (Sam, 13 Sep 2026): road time from Forton to the postcode, from OpenStreetMap routing (OSRM, no key).
   // Cached for 30 days. Only replaces a travel time nobody has typed over. The postcode-area estimate stays as the fallback.
   var ROAD={}; try{ ROAD=JSON.parse(localStorage.getItem("cg-road")||"{}"); }catch(e){ ROAD={}; }
-  function roadTime(pc){
+  function roadTime(pc){ if(!ESTIMATE_ON) return Promise.resolve(null);
     var hit=ROAD[pc]; if(hit&&hit.at>Date.now()-30*864e5) return Promise.resolve(hit.ok?hit:null);
     return geocode([pc]).then(function(){ var pt=GEO[pc]; if(!pt){ ROAD[pc]={ok:false,at:Date.now()}; return null; }
       return fetch("https://router.project-osrm.org/route/v1/driving/"+BASE.lng+","+BASE.lat+";"+pt.lng+","+pt.lat+"?overview=false").then(function(r){return r.json();}).then(function(x){ var r0=x.routes&&x.routes[0]; if(!r0) return null; ROAD[pc]={ok:true,mins:r0.duration/60,miles:r0.distance/1609.34,at:Date.now()}; try{ localStorage.setItem("cg-road",JSON.stringify(ROAD)); }catch(e){} return ROAD[pc]; }).catch(function(){ return null; }); });
