@@ -205,7 +205,10 @@ var _memberSync={};
 // transport operatives. The Scheduler re-sends every open, so a card moved to Ready swaps faces on its own.
 function syncCardMembers(cardId,plan,crmKey,inWorkshop){
   if(!cardId||!crmKey) return;
-  var pick=inWorkshop?((plan&&plan.prep&&plan.prep.who)||[]):((plan&&plan.who)||[]);
+  // THE LABOUR LEGS COUNT TOO (Sam, 28 Sep 2026: three sub-contractor clearances showed no members
+  // although Rob, Jack and Jordan were on them). When a contractor carries the job the transport
+  // operatives are nobody, and the people on it are on the labour leg at Forton.
+  var pick=inWorkshop?((plan&&plan.prep&&plan.prep.who)||[]):((plan&&plan.who)||[]).concat(((plan&&plan.legs)||[]).reduce(function(a,L){ return a.concat((L&&L.who)||[]); },[]));
   var names=pick.map(crewOf).filter(function(n,i,a){return CREW.indexOf(n)>=0&&a.indexOf(n)===i;});
   var key=names.slice().sort().join(",");
   if(_memberSync[cardId]===key) return; _memberSync[cardId]=key;
