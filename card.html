@@ -100,7 +100,7 @@
       var dated=r[0].filter(function(x){ return x.due && x.id!==card.id; }); var nameOf={}; r[0].forEach(function(x){ nameOf[x.id]=(x.name||"").split(" - ").slice(0,2).join(" - "); });
       LEAVE=dated.filter(function(x){ return /Holidays|Leave/i.test(listName[x.idList]||""); }).map(function(x){ return {date:x.due.slice(0,10),who:x.name.split(/\s*\(/)[0].trim()}; });
       var jobs=dated.filter(function(x){ return !/Holidays|Leave|Operations Transfer|^Supplies Request$/i.test(listName[x.idList]||""); });
-      return Promise.all(jobs.map(function(x){ return t.get(x.id,"shared","sched",null).then(function(p){
+      return Promise.all(jobs.map(function(x){ return t.get(x.id,"shared","sched",null).then(function(p){ p=normPlan(p);
         var cc=[]; (x.checklists||[]).forEach(function(cl){ (cl.checkItems||[]).forEach(function(it){ cc.push({n:it.name||""}); }); });
         var L=loadOf(itemsOf(x.desc||"",cc).concat((p&&p.items)||[])); if(!L.any&&p&&p.load) L=p.load;
         var cube=p&&p.cube!=null?p.cube:(L.complete?L.m3:null);
@@ -135,7 +135,7 @@
     return box;
   }
   function load(){
-    return Promise.all([t.card("id","name","labels","idList","due","desc"), t.lists("all"), t.get("card","shared","sched",null), t.get("board","shared","sched",{})]).then(function(r){
+    return Promise.all([t.card("id","name","labels","idList","due","desc"), t.lists("all"), t.get("card","shared","sched",null).then(normPlan), t.get("board","shared","sched",{})]).then(function(r){
       boardData=r[3]||{}; (boardData.contractors||[]).forEach(function(c){ if(CONTRACTORS.indexOf(c)<0) CONTRACTORS.splice(CONTRACTORS.length-1,0,c); });
       card=r[0]; var list=r[1].filter(function(l){return l.id===card.idList;})[0]; workshop=!!(list&&isWorkshopList(list.name,card.desc)); card.listName=list?list.name:"";
       viewing=isViewingLabels(card.labels); site=!viewing&&isSiteLabels(card.labels,card.desc); loading=!viewing&&!site&&isCollectLabels(card.labels,card.desc);

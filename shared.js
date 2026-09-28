@@ -1,5 +1,13 @@
 // shared by the connector, the card back section and the scheduler
-var CREW=["Jack","Jordan","Bart","Rob","Bradley"];
+// Everyone who can be put on a job, first name and surname initial (Sam, 28 Sep 2026:
+// "add everyone as operatives to be able to select from rather then just Jack, Jordan,
+// Bart, Rob and Bradley. We need to include the first initial of their surname also").
+// Plans saved before that day hold the bare first name ("Jack"); crewOf maps either
+// spelling to the list entry, and normPlan runs it over every plan as it is read.
+var CREW=["Sam C", "Ash K", "Jack C", "Jordan I", "Bradley H", "Rob D", "Bart H", "Jess H", "Molly C"];
+function crewOf(n){ var f=String(n||"").trim().split(/\s+/)[0].toLowerCase(); if(!f) return n; for(var i=0;i<CREW.length;i++){ if(CREW[i].split(" ")[0].toLowerCase()===f) return CREW[i]; } return n; }
+function normWho(a){ return (a||[]).map(crewOf).filter(function(n,i,x){ return x.indexOf(n)===i; }); }
+function normPlan(d){ if(!d||typeof d!=="object") return d; if(d.who) d.who=normWho(d.who); if(d.prep&&d.prep.who) d.prep.who=normWho(d.prep.who); if(d.legs&&d.legs.length) d.legs.forEach(function(l){ if(l&&l.who) l.who=normWho(l.who); }); return d; }
 // only these three drive the van. the others go along as a second pair of hands.
 var DRIVERS=["Rob","Jack","Bart"];
 var CONTRACTORS=["MAK Installations","Courier","Other contractor"];
@@ -198,7 +206,7 @@ var _memberSync={};
 function syncCardMembers(cardId,plan,crmKey,inWorkshop){
   if(!cardId||!crmKey) return;
   var pick=inWorkshop?((plan&&plan.prep&&plan.prep.who)||[]):((plan&&plan.who)||[]);
-  var names=pick.filter(function(n,i,a){return CREW.indexOf(n)>=0&&a.indexOf(n)===i;});
+  var names=pick.map(crewOf).filter(function(n,i,a){return CREW.indexOf(n)>=0&&a.indexOf(n)===i;});
   var key=names.slice().sort().join(",");
   if(_memberSync[cardId]===key) return; _memberSync[cardId]=key;
   // the day and the part go with it, so the comment that tags a new member says something useful

@@ -413,7 +413,7 @@ var SNAP=null, DETAIL={};
         var checks=[]; (c.checklists||[]).forEach(function(cl){ (cl.checkItems||[]).forEach(function(it){ checks.push({n:(it.name||"").slice(0,160),done:it.state==="complete"}); }); });
         out.push({id:c.id,qc:qcDone(c.badges),name:c.name.trim(),role:role,due:due,start:start,ready_by:ready,labels:(c.labels||[]).map(function(x){return x.name;}),who:(c.members||[]).map(function(m){return (m.fullName||m.username||"").split(" ")[0];}).filter(Boolean),desc:c.desc||"",checks:checks});
       });
-      return Promise.all(out.map(function(c){ return t.get(c.id,"shared","sched",null).then(function(d){ c.saved=d; return c; }); })).then(function(cs){
+      return Promise.all(out.map(function(c){ return t.get(c.id,"shared","sched",null).then(function(d){ c.saved=normPlan(d); return c; }); })).then(function(cs){
         cs.forEach(function(c){ DETAIL[c.id]={desc:c.desc,checks:c.checks||[]}; });
         var snap={board:board.name,crew:CREW,cards:cs,boardData:boardData};
         // date holds from the CRM: ghost cards, counted but never booked here
