@@ -27,7 +27,7 @@
   .people{display:flex;flex-wrap:wrap;gap:8px}
   .p{border:2px solid var(--line);background:var(--card);border-radius:8px;padding:7px 12px;font-weight:700}
   .p.on{border-color:var(--blue);background:var(--blue);color:#fff}
-  .p.off{opacity:.45;cursor:not-allowed;background:#eef0f3}
+  .p.off{opacity:.45;cursor:not-allowed;background:#eef0f3} .p.away{color:#b45309;background:#fff7ed;border-color:#fed7aa}
   .p .lv{font-style:normal;font-weight:600;font-size:11px;margin-left:6px}
   .p .drv{font-style:normal;font-weight:700;font-size:11px;margin-left:6px;border:1px solid currentColor;border-radius:4px;padding:1px 5px;opacity:.9}
   .row{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
@@ -119,7 +119,7 @@
     var out={}; CREW.forEach(function(w){ out[w]={mins:0,n:0,away:[],forton:0}; });
     LEAVE.forEach(function(l){ if(l.date===k&&out[l.who]) out[l.who].off=true; });
     OTHERS.forEach(function(o){ var p=o.plan;
-      if(workDays(o.start&&o.start<o.due?o.start:o.due,o.due).indexOf(k)>=0){ (p.who||[]).forEach(function(w){ if(!out[w]) return; out[w].n++; out[w].mins+=(p.mins||0)+(o.site?(p.drive||0):0); if(o.site) out[w].away.push(o.name); else out[w].forton++; }); }
+      if(workDays(o.start&&o.start<o.due?o.start:o.due,o.due).indexOf(k)>=0){ (p.who||[]).forEach(function(w){ if(!out[w]) return; out[w].n++; out[w].mins+=(p.mins||0)+(o.site?(p.drive||0):0); if(o.site) out[w].away.push({name:o.name,until:p.at?endOf(p.at,(p.mins||0)+(p.drive||0)):null}); else out[w].forton++; }); }
       if(p.prep&&p.prep.date&&workDays(p.prep.start||p.prep.date,p.prep.date).indexOf(k)>=0){ (p.prep.who||[]).forEach(function(w){ if(!out[w]) return; out[w].n++; out[w].mins+=(p.prep.mins||0); out[w].forton++; }); }
       (p.legs||[]).forEach(function(L){ if(L.date===k) (L.who||[]).forEach(function(w){ if(!out[w]) return; out[w].n++; out[w].mins+=(L.mins||0)+(L.drive||0); out[w].forton++; }); });
     });
@@ -129,7 +129,7 @@
   function availability(days,part){
     var box=el("div","avail"); if(!days.length){ box.appendChild(el("div","hint","Set the days to see who is available.")); return box; }
     days.slice(0,5).forEach(function(k){ var row=el("div","arow"); row.appendChild(el("b",null,niceShort(k))); var free=[], rest=[];
-      var load=loadOn(k); CREW.forEach(function(w){ if(part.who.indexOf(w)>=0) return; var l=load[w]; if(l.c==="off") return; var whereTxt=l.away.length?" \u00b7 out on site: "+l.away.filter(function(n,i,a){return a.indexOf(n)===i;}).join(", "):(l.forton?" \u00b7 at Forton":""); row.appendChild(el("span",l.away.length?"away":l.c,w+": "+(l.c==="free"?fmt(DAY_MINS)+" available":l.c==="off"?"on leave":l.c==="over"?"over capacity":fmt(Math.max(0,DAY_MINS-l.mins))+" available")+whereTxt)); });
+      var load=loadOn(k); CREW.forEach(function(w){ if(part.who.indexOf(w)>=0) return; var l=load[w]; if(l.c==="off") return; var allDay=l.away.some(function(x){return !x.until;}); var whereTxt=l.away.length?(allDay?" \u00b7 out all day: ":" \u00b7 out until "+l.away.map(function(x){return x.until;}).sort().pop()+": ")+l.away.map(function(x){return x.name;}).filter(function(n,i,a){return a.indexOf(n)===i;}).join(", "):(l.forton?" \u00b7 at Forton":""); row.appendChild(el("span",l.away.length?"away":l.c,w+": "+(allDay?"out on site":l.c==="free"?fmt(DAY_MINS)+" available":l.c==="off"?"on leave":l.c==="over"?"over capacity":fmt(Math.max(0,DAY_MINS-l.mins))+" available")+whereTxt)); });
       if(row.children.length===1) row.appendChild(el("span","busy","everyone is on this job")); box.appendChild(row); });
     if(days.length>5) box.appendChild(el("div","hint","First 5 days shown."));
     return box;
@@ -207,8 +207,8 @@
   // Someone on leave on any of the part's days is greyed out and cannot be
   // picked (Sam, 17 Sep 2026). Already picked stays clickable, so it can be removed.
   function people(part,transport,fill,days){
-    var w=el("div","people"), offOn={}; (days||[]).forEach(function(k){ var L=loadOn(k); CREW.forEach(function(n){ if(L[n]&&L[n].off) offOn[n]=true; }); });
-    CREW.forEach(function(n){ var picked=part.who.indexOf(n)>=0, off=offOn[n]&&!picked; var b=el("button","p"+(picked?" on":"")+(off?" off":""),n); if(off){ b.disabled=true; b.title=n+" is on leave"; b.appendChild(el("i","lv","on leave")); } if(transport&&DRIVERS.indexOf(n)>=0) b.appendChild(el("i","drv","driver")); b.onclick=function(){ var i=part.who.indexOf(n); if(i<0) part.who.push(n); else part.who.splice(i,1); if(part.who.length&&part.mins==null&&fill){ var m=fill(); if(m!=null) part.mins=m; } save(); render(); }; w.appendChild(b); });
+    var w=el("div","people"), offOn={}, awayOn={}; (days||[]).forEach(function(k){ var L=loadOn(k); CREW.forEach(function(n){ if(L[n]&&L[n].off) offOn[n]=true; if(L[n]&&L[n].away&&L[n].away.some(function(x){return !x.until;})) awayOn[n]=true; }); });
+    CREW.forEach(function(n){ var picked=part.who.indexOf(n)>=0, off=offOn[n]&&!picked, away=awayOn[n]&&!picked&&!off; var b=el("button","p"+(picked?" on":"")+(off?" off":"")+(away?" away":""),n); if(away) b.title=n+" is out on site all day"; if(off){ b.disabled=true; b.title=n+" is on leave"; b.appendChild(el("i","lv","on leave")); } if(transport&&DRIVERS.indexOf(n)>=0) b.appendChild(el("i","drv","driver")); b.onclick=function(){ var i=part.who.indexOf(n); if(i<0) part.who.push(n); else part.who.splice(i,1); if(part.who.length&&part.mins==null&&fill){ var m=fill(); if(m!=null) part.mins=m; } save(); render(); }; w.appendChild(b); });
     return w;
   }
   function fld(label){ var f=el("div","fld"); if(label) f.appendChild(el("div","lbl",label)); return f; }
@@ -337,6 +337,12 @@
           ed.appendChild(el("div","lbl",site?"Site time per operative":(loading?"Loading time per operative":"Labour time per operative"))); ed.appendChild(timeField(d,""));
           if(site){ ed.appendChild(el("div","lbl","Travel time, return")); ed.appendChild(hm(function(){return d.drive;},function(v){d.drive=v;},"Travel")); ed.appendChild(el("div","hint","There and back. The Scheduler works this out from the postcode. Set it here if you know it.")); if(d.drive!=null&&d.drive>360) ed.appendChild(el("div","warn","More than a day's travel with the job in between. Consider a courier or subcontractor.")); }
         },(d.mins==null&&d.who.length&&!contractorOnly)?"bad":(d.mins==null||(site&&d.drive==null))?"todo":""));
+        // STARTS AT (Sam, 28 Sep 2026: "what happens if it is just a morning or a couple hours"). Optional, site jobs
+        // only. Set, the crew read as out until start + site time + travel and free after; blank, they read as out all day.
+        if(site&&!contractorOnly){ ts.appendChild(rowEl("at","Starts at",d.at?d.at+(d.mins!=null?" to "+endOf(d.at,(d.mins||0)+(d.drive||0)):""):"Not set, out all day",function(ed){
+          var r=el("div","row"); var ti=el("input"); ti.type="time"; ti.step="300"; ti.value=d.at||""; ti.setAttribute("aria-label","Starts at"); ti.onchange=function(){ d.at=ti.value||null; save(); render(); }; r.appendChild(ti);
+          if(d.at){ var cl=el("button","p","Clear"); cl.onclick=function(){ d.at=null; save(); render(); }; r.appendChild(cl); } ed.appendChild(r);
+          ed.appendChild(el("div","hint","Leave it blank and the crew count as out all day. Set it and they are free again after the site time and the travel back.")); },d.at?"":"todo")); }
       }
     }
     // LOADING: what goes in the van, for any job that goes out on our van, including workshop stage

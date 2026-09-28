@@ -216,6 +216,8 @@ function syncCardMembers(cardId,plan,crmKey,inWorkshop){
   var due=inWorkshop?((plan&&plan.prep&&plan.prep.date)||(plan&&plan.date)||""):((plan&&plan.date)||""), mins=inWorkshop?((plan&&plan.prep&&plan.prep.mins)||0):((plan&&plan.mins)||0);
   try{ fetch(CRM_MEMBERS_URL,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({key:crmKey,card_id:cardId,names:names,crew:CREW,part:inWorkshop?"production":"transport",mins:mins,due:due})}).catch(function(){}); }catch(e){}
 }
+// "08:00" plus minutes -> "10:25", for a site job's window (28 Sep 2026)
+function endOf(at,mins){ var m=/^(\d{1,2}):(\d{2})$/.exec(String(at||"")); if(!m) return ""; var t=parseInt(m[1],10)*60+parseInt(m[2],10)+(mins||0); t=Math.max(0,Math.min(23*60+59,t)); return String(Math.floor(t/60)).padStart(2,"0")+":"+String(t%60).padStart(2,"0"); }
 function fmt(m){ if(m==null) return ""; if(m<60) return m+" min"; var h=Math.floor(m/60), r=m%60; return h+"h"+(r?" "+r+"m":""); }
 // what the front of the card says, from the saved plan
 function badgeText(d,site){
