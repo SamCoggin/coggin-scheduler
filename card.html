@@ -98,7 +98,7 @@
     return Promise.all([cardsP, t.lists("all")]).then(function(r){
       var listName={}; r[1].forEach(function(l){ listName[l.id]=l.name; });
       var dated=r[0].filter(function(x){ return x.due && x.id!==card.id; }); var nameOf={}; r[0].forEach(function(x){ nameOf[x.id]=(x.name||"").split(" - ").slice(0,2).join(" - "); });
-      LEAVE=dated.filter(function(x){ return /Holidays|Leave/i.test(listName[x.idList]||""); }).map(function(x){ return {date:x.due.slice(0,10),who:x.name.split(/\s*\(/)[0].trim()}; });
+      LEAVE=dated.filter(function(x){ return /Holidays|Leave/i.test(listName[x.idList]||""); }).map(function(x){ return {date:x.due.slice(0,10),who:crewOf(x.name.split(/\s*\(/)[0].trim())}; });
       var jobs=dated.filter(function(x){ return !/Holidays|Leave|Operations Transfer|^Supplies Request$/i.test(listName[x.idList]||""); });
       return Promise.all(jobs.map(function(x){ return t.get(x.id,"shared","sched",null).then(function(p){ p=normPlan(p);
         var cc=[]; (x.checklists||[]).forEach(function(cl){ (cl.checkItems||[]).forEach(function(it){ cc.push({n:it.name||""}); }); });

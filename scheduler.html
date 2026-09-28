@@ -489,8 +489,8 @@ var SNAP=null, DETAIL={};
   var BANK_HOLIDAYS={"2026-01-01":"New Year's Day","2026-04-03":"Good Friday","2026-04-06":"Easter Monday","2026-05-04":"Early May bank holiday","2026-05-25":"Spring bank holiday","2026-08-31":"Summer bank holiday","2026-12-25":"Christmas Day","2026-12-28":"Boxing Day (substitute)","2027-01-01":"New Year's Day","2027-03-26":"Good Friday","2027-03-29":"Easter Monday","2027-05-03":"Early May bank holiday","2027-05-31":"Spring bank holiday","2027-08-30":"Summer bank holiday","2027-12-27":"Christmas Day (substitute)","2027-12-28":"Boxing Day (substitute)"};
   function isBankHoliday(k){ return !!BANK_HOLIDAYS[k]; }
   function syncOff(){ LEAVE=LEAVE.filter(function(l){return !l.off&&!l.bh;});
-    Object.keys(OFF).forEach(function(k){ (OFF[k]||[]).forEach(function(w){ if(TEAM.indexOf(w)<0) return; if(LEAVE.some(function(l){return l.date===k&&l.text.split(" ")[0]===w;})) return; LEAVE.push({date:k,text:w+" off today"+(OFF_WHY[k+"|"+w]?" ("+OFF_WHY[k+"|"+w]+")":""),off:true}); }); });
-    Object.keys(BANK_HOLIDAYS).forEach(function(k){ TEAM.forEach(function(w){ if(LEAVE.some(function(l){return l.date===k&&l.text.split(" ")[0]===w;})) return; LEAVE.push({date:k,text:w+" bank holiday",bh:true}); }); }); }
+    Object.keys(OFF).forEach(function(k){ (OFF[k]||[]).forEach(function(w){ if(TEAM.indexOf(w)<0) return; if(LEAVE.some(function(l){return l.date===k&&crewOf(l.text.split(" ")[0])===w;})) return; LEAVE.push({date:k,text:w+" off today"+(OFF_WHY[k+"|"+w]?" ("+OFF_WHY[k+"|"+w]+")":""),off:true}); }); });
+    Object.keys(BANK_HOLIDAYS).forEach(function(k){ TEAM.forEach(function(w){ if(LEAVE.some(function(l){return l.date===k&&crewOf(l.text.split(" ")[0])===w;})) return; LEAVE.push({date:k,text:w+" bank holiday",bh:true}); }); }); }
   function leaveLines(lv){ var out=[], bh=lv.filter(function(l){return l.bh;}); if(bh.length){ var d=bh[0].date; out.push("Bank holiday: "+BANK_HOLIDAYS[d]); } lv.filter(function(l){return !l.bh;}).forEach(function(l){ out.push(l.text); }); return out; }
   function toggleOff(k,w,why){ var list=OFF[k]||[]; var i=list.indexOf(w); if(i>=0){ list.splice(i,1); delete OFF_WHY[k+"|"+w]; } else { list.push(w); if(why) OFF_WHY[k+"|"+w]=why; } OFF[k]=list; if(!list.length) delete OFF[k]; syncOff(); persist(); render(); }
   function inWorkshop(j){ return /^Workshop: (Not Started|In-progress)$/.test(j.stageLabel||""); }
@@ -576,7 +576,7 @@ var SNAP=null, DETAIL={};
   // what each person already has on a day, in minutes, for the "who could jump on" hints
   // what a day needs against what it has, with holds counted at their standard crew and time
   function dayCapacity(k,jobs,preps){
-    var off=LEAVE.filter(function(l){return l.date===k;}).map(function(l){return l.text.split(" ")[0];});
+    var off=LEAVE.filter(function(l){return l.date===k;}).map(function(l){return crewOf(l.text.split(" ")[0]);});
     var avail=TEAM.filter(function(w){return off.indexOf(w)<0;}).length*DAY_MINS;
     var need=0, trips=0;
     jobs.forEach(function(j){ if(j.contractor&&!j.who.length) return; var crew=j.isHold?(j.holdCrew!=null?j.holdCrew:2):Math.max(1,j.who.length); var own=(!j.isHold&&j.who.length)?j.who.reduce(function(t,w){return t+(minsFor(j,w)||0);},0):(j.mins||0)*crew; need+=own+(j.site?(j.drive||0)*crew:0); if(j.site) trips+=1; });
@@ -587,9 +587,9 @@ var SNAP=null, DETAIL={};
   }
   function loadOn(k){
     var jobs=allJobs().filter(function(j){return onDay(j,k);}), preps=prepJobs().filter(function(j){return j.prep&&j.prep.date&&daysOf(j.prep).indexOf(k)>=0;}), rounds=roundsOn(k,jobs), out={};
-    var off=LEAVE.filter(function(l){return l.date===k;}).map(function(l){return l.text.split(" ")[0];});
+    var off=LEAVE.filter(function(l){return l.date===k;}).map(function(l){return crewOf(l.text.split(" ")[0]);});
     TEAM.forEach(function(w){
-      if(off.indexOf(w)>=0){ var lvw=LEAVE.filter(function(l){return l.date===k&&l.text.split(" ")[0]===w;})[0]; out[w]={t:lvw&&lvw.bh?"bank holiday":lvw&&lvw.off?"off today":"annual leave",c:"off",mins:0,rec:0,avail:0}; return; }
+      if(off.indexOf(w)>=0){ var lvw=LEAVE.filter(function(l){return l.date===k&&crewOf(l.text.split(" ")[0])===w;})[0]; out[w]={t:lvw&&lvw.bh?"bank holiday":lvw&&lvw.off?"off today":"annual leave",c:"off",mins:0,rec:0,avail:0}; return; }
       var mine=jobs.filter(function(j){return j.who.indexOf(w)>=0;}), myPreps=preps.filter(function(j){return j.prep.who.indexOf(w)>=0;}), myRound=rounds.filter(function(r){return r.who===w;})[0];
       var mins=mine.reduce(function(s,j){return s+(minsFor(j,w)||0)+(j.site&&!j.onRound?(j.drive||0):0);},0)+(myRound&&myRound.drive?myRound.drive:0)+myPreps.reduce(function(s,j){return s+prepShare(j,w);},0);
       var n=mine.length+myPreps.length;
@@ -720,7 +720,7 @@ var SNAP=null, DETAIL={};
     });
     vehicleWarnings(k).forEach(function(v){ add(v.text,v.j,v.who); });
     allJobs().filter(function(j){return onDay(j,k)&&j.moved;}).forEach(function(j){ add(short(j)+" was planned for "+niceDay(j.moved.from)+", the card now says "+niceDay(j.date)+". Check the crew, van, travel and window, then press Replanned on the job.",j); });
-    var offNames=LEAVE.filter(function(l){return l.date===k;}).map(function(l){return l.text.split(" ")[0];});
+    var offNames=LEAVE.filter(function(l){return l.date===k;}).map(function(l){return crewOf(l.text.split(" ")[0]);});
     if(isBankHoliday(k)){ var booked=allJobs().filter(function(j){return onDay(j,k)&&!j.isHold;}).concat(JOBS.filter(function(j){return j.prep&&j.prep.date&&daysOf(j.prep).indexOf(k)>=0;})); if(booked.length) add("Bank holiday, "+BANK_HOLIDAYS[k]+": "+booked.slice(0,3).map(short).join(", ")+(booked.length>3?" and more":"")+" booked. Move "+(booked.length===1?"it":"them")+".",booked[0]); }
     else offNames.forEach(function(w){ allJobs().filter(function(j){return onDay(j,k)&&!j.isHold&&j.who.indexOf(w)>=0;}).forEach(function(j){ add(w+" is off and is on "+short(j)+". Reassign it.",j,w); }); prepJobs().filter(function(j){return j.prep&&j.prep.date&&daysOf(j.prep).indexOf(k)>=0&&j.prep.who.indexOf(w)>=0;}).forEach(function(j){ add(w+" is off and is on "+short(j)+" production. Reassign it.",j,w); }); });
     allJobs().filter(function(j){return onDay(j,k);}).forEach(function(j){ var sc=shortCrew(j); if(sc) add(short(j)+": "+j.who[0]+" alone with two-person items ("+sc.slice(0,3).join(", ")+(sc.length>3?"...":"")+"). Add a second operative.",j); });
@@ -1139,7 +1139,7 @@ var SNAP=null, DETAIL={};
     var lv=LEAVE.filter(function(l){return l.date===k;}); leaveLines(lv).forEach(function(tx){ pc.appendChild(el("div","leave",tx)); });
     TEAM.forEach(function(w){
       var row=el("div","prow"); row.appendChild(el("span","av",ini(w))); var tx=el("div"); var nmRow=el("div","nmrow"); var nmb=el("b",null,w);
-      var isOff=(OFF[k]||[]).indexOf(w)>=0, onLeaveCard=LEAVE.some(function(l){return l.date===k&&!l.off&&l.text.split(" ")[0]===w;});
+      var isOff=(OFF[k]||[]).indexOf(w)>=0, onLeaveCard=LEAVE.some(function(l){return l.date===k&&!l.off&&crewOf(l.text.split(" ")[0])===w;});
       var jsb=el("button","offbtn","Job sheet"); jsb.title="Download "+w+"'s job sheet for this day"; jsb.onclick=function(e){ e.stopPropagation(); try{ crewSheetsPdf(dayCur,w); }catch(err){ alert("The job sheet could not be built: "+(err&&err.message||err)); } }; 
       if(!onLeaveCard){ var ob=el("button","offbtn"+(isOff?" on":""),isOff?"Back in":"Mark as off"); ob.title=isOff?"Put "+w+" back on the day":"Mark "+w+" as off for this day: sick, a course, a breakdown. It asks why.";
       if(isOff&&OFF_WHY[k+"|"+w]) nmb.appendChild(el("span","offwhy","off, "+OFF_WHY[k+"|"+w])); ob.onclick=function(){ if(isOff){ toggleOff(k,w); return; } var why=prompt(w+" is off on "+niceDay(k)+". Why? (sick, course, van breakdown)","sick"); if(why===null) return; toggleOff(k,w,why.trim()); }; nmRow.appendChild(ob); }
@@ -1886,7 +1886,7 @@ var SNAP=null, DETAIL={};
       });
       if(NEED&&!jobs.length&&!preps.length) cards.appendChild(el("div","hint","Nothing outstanding."));
       list.appendChild(cards); jobs=allJobsWeek; preps=allPrepsWeek;
-      var tot=el("div","tot"); var thl=el("span","n","Hours"); thl.appendChild(tip("tot",k)); tot.appendChild(thl); var off=LEAVE.filter(function(l){return l.date===k;}).map(function(l){return l.text.split(" ")[0];});
+      var tot=el("div","tot"); var thl=el("span","n","Hours"); thl.appendChild(tip("tot",k)); tot.appendChild(thl); var off=LEAVE.filter(function(l){return l.date===k;}).map(function(l){return crewOf(l.text.split(" ")[0]);});
       var heldMins=jobs.filter(function(j){return j.isHold;}).reduce(function(t,j){return t+(j.mins||0)*(j.holdCrew||2)+(j.site?(j.drive||0)*(j.holdCrew||2):0);},0);
       var heldChip=heldMins?el("span","chip todo","Held "+fmt(heldMins)):null;
       TEAM.forEach(function(w){
@@ -1897,7 +1897,7 @@ var SNAP=null, DETAIL={};
         var unset=mine.filter(function(j){return j.mins==null;}).length+myPreps.filter(function(j){return j.prep.mins==null;}).length;
         mine=mine.concat(myPreps);
         var txt, cls;
-        if(off.indexOf(w)>=0){ var lvc=LEAVE.filter(function(l){return l.date===k&&l.text.split(" ")[0]===w;})[0]; txt=lvc&&lvc.bh?"bank hol":lvc&&lvc.off?"off":"leave"; cls="free"; }
+        if(off.indexOf(w)>=0){ var lvc=LEAVE.filter(function(l){return l.date===k&&crewOf(l.text.split(" ")[0])===w;})[0]; txt=lvc&&lvc.bh?"bank hol":lvc&&lvc.off?"off":"leave"; cls="free"; }
         else if(!mine.length){ txt="free"; cls="free"; }
         else if(unset&&!mins){ txt="no time"; cls="todo"; }
         else { txt=fmt(mins)+(unset?" +?":"")+(mins>DAY_H*60?" over":""); cls=mins>DAY_H*60?"over":(unset?"todo":"ok"); }
