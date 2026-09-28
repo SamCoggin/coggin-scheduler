@@ -489,14 +489,14 @@ var SNAP=null, DETAIL={};
   var BANK_HOLIDAYS={"2026-01-01":"New Year's Day","2026-04-03":"Good Friday","2026-04-06":"Easter Monday","2026-05-04":"Early May bank holiday","2026-05-25":"Spring bank holiday","2026-08-31":"Summer bank holiday","2026-12-25":"Christmas Day","2026-12-28":"Boxing Day (substitute)","2027-01-01":"New Year's Day","2027-03-26":"Good Friday","2027-03-29":"Easter Monday","2027-05-03":"Early May bank holiday","2027-05-31":"Spring bank holiday","2027-08-30":"Summer bank holiday","2027-12-27":"Christmas Day (substitute)","2027-12-28":"Boxing Day (substitute)"};
   function isBankHoliday(k){ return !!BANK_HOLIDAYS[k]; }
   function syncOff(){ LEAVE=LEAVE.filter(function(l){return !l.off&&!l.bh;});
-    Object.keys(OFF).forEach(function(k){ (OFF[k]||[]).forEach(function(w){ if(TEAM.indexOf(w)<0) return; if(LEAVE.some(function(l){return l.date===k&&crewOf(l.text.split(" ")[0])===w;})) return; LEAVE.push({date:k,text:w+" off today"+(OFF_WHY[k+"|"+w]?" ("+OFF_WHY[k+"|"+w]+")":""),off:true}); }); });
+    Object.keys(OFF).forEach(function(k){ (OFF[k]||[]).forEach(function(w){ if(TEAM.indexOf(crewOf(w))<0) return; if(LEAVE.some(function(l){return l.date===k&&crewOf(l.text.split(" ")[0])===w;})) return; LEAVE.push({date:k,text:w+" off today"+(OFF_WHY[k+"|"+w]?" ("+OFF_WHY[k+"|"+w]+")":""),off:true}); }); });
     Object.keys(BANK_HOLIDAYS).forEach(function(k){ TEAM.forEach(function(w){ if(LEAVE.some(function(l){return l.date===k&&crewOf(l.text.split(" ")[0])===w;})) return; LEAVE.push({date:k,text:w+" bank holiday",bh:true}); }); }); }
   function leaveLines(lv){ var out=[], bh=lv.filter(function(l){return l.bh;}); if(bh.length){ var d=bh[0].date; out.push("Bank holiday: "+BANK_HOLIDAYS[d]); } lv.filter(function(l){return !l.bh;}).forEach(function(l){ out.push(l.text); }); return out; }
   function toggleOff(k,w,why){ var list=OFF[k]||[]; var i=list.indexOf(w); if(i>=0){ list.splice(i,1); delete OFF_WHY[k+"|"+w]; } else { list.push(w); if(why) OFF_WHY[k+"|"+w]=why; } OFF[k]=list; if(!list.length) delete OFF[k]; syncOff(); persist(); render(); }
   function inWorkshop(j){ return /^Workshop: (Not Started|In-progress)$/.test(j.stageLabel||""); }
   function buildFromSnap(SNAP){
     JOBS=SNAP.cards.filter(function(c){return c.due && c.role!=="leave";}).map(function(c){
-    var mv=movementOf(c.labels,c.desc), wk=workOf(c.labels), lb=mv||c.labels[0]||"", title=nice(c.name), subName=c.who.filter(function(w){return TEAM.indexOf(w)<0;})[0]||"";
+    var mv=movementOf(c.labels,c.desc), wk=workOf(c.labels), lb=mv||c.labels[0]||"", title=nice(c.name), subName=c.who.filter(function(w){return TEAM.indexOf(crewOf(w))<0;})[0]||"";
     var j={id:c.id,title:title,label:lb,movement:mv,work:wk,labels:c.labels,who:c.who.filter(function(w){return TEAM.indexOf(w)>=0;}),contractor:subName?(subName==="MAK"?"MAK Installations":subName):"",mins:null,out:c.due,notQc:c.role==="ready"&&c.qc===false};
     if(c.role==="waiting"||c.role==="shop"){
       j.stage=c.role==="shop"?"In progress":"Not started"; j.stageLabel=c.role==="shop"?"Workshop: In-progress":"Workshop: Not Started";
@@ -1139,7 +1139,7 @@ var SNAP=null, DETAIL={};
     var lv=LEAVE.filter(function(l){return l.date===k;}); leaveLines(lv).forEach(function(tx){ pc.appendChild(el("div","leave",tx)); });
     TEAM.forEach(function(w){
       var row=el("div","prow"); row.appendChild(el("span","av",ini(w))); var tx=el("div"); var nmRow=el("div","nmrow"); var nmb=el("b",null,w);
-      var isOff=(OFF[k]||[]).indexOf(w)>=0, onLeaveCard=LEAVE.some(function(l){return l.date===k&&!l.off&&crewOf(l.text.split(" ")[0])===w;});
+      var isOff=(OFF[k]||[]).map(crewOf).indexOf(w)>=0, onLeaveCard=LEAVE.some(function(l){return l.date===k&&!l.off&&crewOf(l.text.split(" ")[0])===w;});
       var jsb=el("button","offbtn","Job sheet"); jsb.title="Download "+w+"'s job sheet for this day"; jsb.onclick=function(e){ e.stopPropagation(); try{ crewSheetsPdf(dayCur,w); }catch(err){ alert("The job sheet could not be built: "+(err&&err.message||err)); } }; 
       if(!onLeaveCard){ var ob=el("button","offbtn"+(isOff?" on":""),isOff?"Back in":"Mark as off"); ob.title=isOff?"Put "+w+" back on the day":"Mark "+w+" as off for this day: sick, a course, a breakdown. It asks why.";
       if(isOff&&OFF_WHY[k+"|"+w]) nmb.appendChild(el("span","offwhy","off, "+OFF_WHY[k+"|"+w])); ob.onclick=function(){ if(isOff){ toggleOff(k,w); return; } var why=prompt(w+" is off on "+niceDay(k)+". Why? (sick, course, van breakdown)","sick"); if(why===null) return; toggleOff(k,w,why.trim()); }; nmRow.appendChild(ob); }
