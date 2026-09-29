@@ -271,10 +271,13 @@ function frontBadges(d,site,round){
   if(d&&d.contractor&&!who.length) return [badgeText(d,site)];
   if(!who.length) return [{text:siteTag(site)+"Unassigned",color:"yellow"}];
   var tag=siteTag(site);
-  // one row (Sam, 29 Sep 2026: "why can't travel and installation be on the same row"): who, time on site, then the driving
-  var travel=!site?"":(round?(round.total==null?", no round travel":" + "+fmt(round.total)+" round"):(d.drive==null?", no travel":" + "+fmt(d.drive)+" travel"));
+  // one row (Sam, 29 Sep 2026: "why can't travel and installation be on the same row"). Trello clips a badge at about
+  // 31 characters, so the front drops the names (the card's members already show them) and uses tight units: "Installation 30m · round 4h35".
+  var tight=function(m){ if(m==null) return ""; var h=Math.floor(m/60), r=m%60; return h?(h+"h"+(r?String(r).padStart(2,"0"):"")):(r+"m"); };
+  var word=tag?tag.replace(/: $/,""):(who.join(", "));
+  var travel=!site?"":(round?(round.total==null?" · no round travel":" · round "+tight(round.total)):(d.drive==null?" · no travel":" · travel "+tight(d.drive)));
   var missing=d.mins==null||(site&&(round?round.total==null:d.drive==null));
-  out.push({text:tag+who.join(", ")+(d.mins==null?", no time":", "+fmt(d.mins)+(who.length>1?" each":""))+travel,color:missing?"yellow":"green"});
+  out.push({text:word+(d.mins==null?" no time":" "+tight(d.mins)+(who.length>1?" each":""))+travel,color:missing?"yellow":"green"});
   return out;
 }
 
