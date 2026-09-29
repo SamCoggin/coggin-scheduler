@@ -442,8 +442,10 @@ var SNAP=null, DETAIL={};
       var lm={}; lists.forEach(function(l){ lm[l.id]=l; });
       var out=[];
       cards.forEach(function(c){
-        var l=lm[c.idList]; if(!l||!ROLE[l.name]) return;
-        var role=ROLE[l.name], due=(c.due||"").slice(0,10), start=(c.start||"").slice(0,10);
+        // A COMPLETED JOB STILL TOOK ITS HOURS (Sam, 29 Sep 2026: "when the job moves into the job completed list it tells me
+        // that operative has all those hours back again"): a card in a completed list keeps its plan on its day, read-only.
+        var l=lm[c.idList]; if(!l) return; var role=ROLE[l.name]||(/complet/i.test(l.name)?"done":null); if(!role) return;
+        var due=(c.due||"").slice(0,10), start=(c.start||"").slice(0,10);
         if((role==="labour"||role==="leave")&&!due) return;
         var ready="";(c.customFieldItems||[]).forEach(function(i){ if(i.value&&i.value.date) ready=i.value.date.slice(0,10); });
         // checklists come through on some reads; use them for the items when they do
@@ -546,7 +548,7 @@ var SNAP=null, DETAIL={};
       j.viewing=isViewingLabels(c.labels); j.prodDue=productionDueFor(c.labels,c.due); j.prodDueSet=false;
     } else {
       j.date=c.due; j.site=isSiteMove(mv); j.collect=isCollectMove(mv);
-      j.stageLabel=c.role==="ready"?"Workshop: Ready":c.role==="handed"?"Handed over, not planned":"Booked";
+      j.stageLabel=c.role==="ready"?"Workshop: Ready":c.role==="handed"?"Handed over, not planned":c.role==="done"?"Completed":"Booked"; j.completed=c.role==="done";
       if(!j.site) j.contractor="";
       if(j.site) j.drive=driveMins(title,c.desc);
     }
@@ -1206,6 +1208,7 @@ var SNAP=null, DETAIL={};
     else if(!isPrep&&j.collect) mid.appendChild(el("span","for","Customer collecting"));
     if(!isPrep&&j.site&&(j.from||j.by)) mid.appendChild(el("span","for",windowText(j).slice(2).replace(/^./,function(ch){return ch.toUpperCase();})));
     if(!isPrep&&j.collect&&(j.from||j.by)) mid.appendChild(el("span","for",(j.from?"Customer arrives after "+j.from:"")+(j.from&&j.by?", ":"")+(j.by?"ready by "+j.by:"").replace(/^r/,j.from?"r":"R")));
+    if(j.completed) mid.appendChild(el("span","for","Completed"));
     if(!isPrep&&!isShop&&j.site&&/Not Started|In-progress|Not QC/i.test(j.stageLabel||"")) mid.appendChild(el("span","for","Workshop: "+j.stageLabel.replace(/^Workshop:\s*/,"").toLowerCase()));
     // A HELD CARD SAYS WHAT THE JOB IS (Sam, 17 Sep 2026: "not sure that is enough info displaying on the
     // scheduler"). What is going, where, the time on the day, production and when it lapses.
@@ -1261,7 +1264,7 @@ var SNAP=null, DETAIL={};
   function dayPassed(k){ return !!k&&k<iso(TODAY); }
   function needsRecord(j,isPrep){ var part=isPrep?j.prep:j; if(!part||j.isHold||j.isLeg) return false; var k=partDate(j,isPrep); if(!dayPassed(k)) return false; if(!isPrep&&j.contractor&&!j.who.length) return false; if(!part.who.length&&part.mins==null) return false; return !part.done; }
   function needsPlan(j,isPrep){
-    if(j.isHold) return false; if(j.isLeg) return !j.who.length||j.mins==null;
+    if(j.isHold||j.completed) return false; if(j.isLeg) return !j.who.length||j.mins==null;
     var part=isPrep?j.prep:j;
     // A contractor job needs nothing from us on the day, but its workshop side can still be unplanned (Harper Interiors, 14 Sep 2026: hidden because G&T Express carry it, while production was not scheduled).
     if(!isPrep&&j.contractor&&!j.who.length) return !!notReady(j);
@@ -2042,7 +2045,7 @@ var SNAP=null, DETAIL={};
       // IF EVERY HOLD LANDS (Sam, 13 Sep 2026): booked plus held time against the operatives on that day, and van trips against the vans.
       var cap=dayCapacity(k,jobs,preps); if(!isBankHoliday(k)&&(cap.overTime||cap.overVans)){ ISSUES.push({k:k,title:"If every hold lands",amber:true,text:(cap.overTime?"Over capacity: "+fmt(cap.need)+" needed, "+fmt(cap.avail)+" available.":"")+(cap.overVans?" "+cap.trips+" van trips, "+cap.vans+(cap.vans===1?" van":" vans")+" on the road.":"")}); }
       dayIssues(k).forEach(function(x){ x.amber=/hire not booked|waits until/.test(x.text); ISSUES.push(x); });
-      jobs.forEach(function(j){ if(needsRecord(j,false)) TORECORD.push({k:k,title:short(j),j:j,amber:true,text:"How did it go? Record the time, who went and any notes."}); if(j.done&&j.done.status==="no") ISSUES.push({k:k,title:short(j),j:j,text:short(j)+" did not go ("+(j.done.reason||"no reason given").toLowerCase()+"). Give it a new date on the card."}); });
+      jobs.forEach(function(j){ if(j.completed) return; if(needsRecord(j,false)) TORECORD.push({k:k,title:short(j),j:j,amber:true,text:"How did it go? Record the time, who went and any notes."}); if(j.done&&j.done.status==="no") ISSUES.push({k:k,title:short(j),j:j,text:short(j)+" did not go ("+(j.done.reason||"no reason given").toLowerCase()+"). Give it a new date on the card."}); });
       preps.forEach(function(j){ if(needsRecord(j,true)) TORECORD.push({k:k,title:short(j),j:j,prep:true,amber:true,text:"Production: how did it go? Record the time and any notes."}); });
       var pfr=planFilter(jobs,preps,true); pfr.preps.forEach(function(j){ var miss=[]; if(!j.prep.who.length) miss.push("no operatives"); if(j.prep.mins==null) miss.push("no production time"); TOPLAN.push({k:k,title:short(j),j:j,amber:true,text:"Production, "+miss.join(", ")+"."}); });
       pfr.jobs.forEach(function(j){ if(j.isHold) return; var miss=[]; if(!j.who.length) miss.push("no operatives"); if(j.mins==null) miss.push(j.site?"no site time":"no time"); if(j.site&&j.drive==null&&!j.onRound) miss.push("no travel time"); if(j.site&&!j.vehicle&&!(j.contractor&&!j.who.length)&&!attending(j)) miss.push("no van"); else if(j.site&&hireDue(j)) miss.push("hire not booked"); var nrr=notReady(j); if(nrr) miss.push(nrr.charAt(0).toLowerCase()+nrr.slice(1)); if(shortCrew(j)) miss.push("one operative with two-person items"); if(j.moved) miss.push("date moved from "+niceDay(j.moved.from)); TOPLAN.push({k:k,title:short(j),j:j,amber:true,text:(j.movement||j.label||"Job")+", "+miss.join(", ")+"."}); });
