@@ -1024,7 +1024,7 @@ var SNAP=null, DETAIL={};
     var sumEl=el("div","plan-sum"); sumBits.forEach(function(t,i){ var sp=el("span",/Unassigned|No van|not booked|no time set/.test(t)?"bad":"",t); sumEl.appendChild(sp); }); ht.appendChild(sumEl);
     cols.appendChild(left); cols.appendChild(right); m.appendChild(cols);
     var sv=el("div","save sticky");
-    if(!o.shop&&!o.leg&&j.site&&!contractorOnly&&!attending(j)&&!j.isHold){ var lsb=el("button","alt","Download loading sheet"); lsb.onclick=function(){ try{ var w=part.who[0]||"Unassigned", dj=allJobs().filter(function(x){return onDay(x,j.date);}), rr=roundsOn(j.date,dj).filter(function(r){return r.who===w;})[0]; loadingPdf(j.date,w,rr?rr.stops:[j]); }catch(e){ alert("The loading sheet could not be built: "+(e&&e.message||e)); } }; sv.appendChild(lsb); }
+    // the loading sheet button went on 29 Sep 2026 (Sam: "not used and is redundant"); loadingPdf stays for the check
     var sb=el("button",null,"Done"); sb.onclick=function(){open=null;render();}; sv.appendChild(sb); m.appendChild(sv);
     veil.appendChild(m); return veil;
   }
@@ -1039,7 +1039,7 @@ var SNAP=null, DETAIL={};
     var dv=el("div","sec"); dv.appendChild(el("div","k","Travel Time for the round")); var row=el("div","row");
     row.appendChild(hmBoxes(function(){return r.drive;},function(v){ r.keys.forEach(function(kk){ ROUND_DRIVE[kk]=v; }); },"Round drive"));
     row.appendChild(el("span","hint",r.keys.some(function(kk){return ROUND_DRIVE[kk]!=null;})?"You set this.":(r.road?"Road time labour to "+r.stops.length+" stops and back, from OpenStreetMap routing, plus 20 percent for traffic. Change it if you know better.":(r.def!=null?"Longest single journey plus 20 minutes per stop, until the road time arrives. Change it if you know better.":"No postcodes found. Type it in.")))); dv.appendChild(row); m.appendChild(dv);
-    var sv=el("div","save"); var lsb2=el("button","alt","Download loading sheet"); lsb2.onclick=function(){ try{ loadingPdf(k,w,r.stops); }catch(e){ alert("The loading sheet could not be built: "+(e&&e.message||e)); } }; sv.appendChild(lsb2); var sb=el("button",null,"Done"); sb.onclick=function(){openRound=null;render();}; sv.appendChild(sb); m.appendChild(sv);
+    var sv=el("div","save"); var sb=el("button",null,"Done"); sb.onclick=function(){openRound=null;render();}; sv.appendChild(sb); m.appendChild(sv);
     veil.appendChild(m); return veil;
   }
   var shortDay=function(k){ var d=new Date(k+"T12:00"); return DAYS[d.getDay()]+" "+d.getDate(); };
