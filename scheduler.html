@@ -444,7 +444,7 @@ var SNAP=null, DETAIL={};
       cards.forEach(function(c){
         // A COMPLETED JOB STILL TOOK ITS HOURS (Sam, 29 Sep 2026: "when the job moves into the job completed list it tells me
         // that operative has all those hours back again"): a card in a completed list keeps its plan on its day, read-only.
-        var l=lm[c.idList]; if(!l) return; var role=ROLE[l.name]||(/complet/i.test(l.name)?"done":null); if(!role) return;
+        var l=lm[c.idList]; if(!l) return; var role=ROLE[l.name]||(/complet|sign-?off/i.test(l.name)?"done":null); if(!role) return;   // Job Completed, then Job Sign-off (Sam): the card passes through one and lands in the other
         var due=(c.due||"").slice(0,10), start=(c.start||"").slice(0,10);
         if((role==="labour"||role==="leave")&&!due) return;
         var ready="";(c.customFieldItems||[]).forEach(function(i){ if(i.value&&i.value.date) ready=i.value.date.slice(0,10); });
