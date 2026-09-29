@@ -55,8 +55,12 @@
   .stop2 .sv{font-size:16px;font-weight:700}
   .srow.bad .sv{color:var(--red)} .srow.todo .sv{color:var(--amber)}
   .chg{border:2px solid var(--line);background:var(--card);border-radius:8px;padding:6px 12px;font-weight:700;font-size:14px}
-  .sed{padding:0 14px 14px;background:var(--list);border-top:1px solid var(--line)}
-  .sed .lbl{margin-top:12px}
+  /* room around an open editor: it used to start flush against the border (Sam, 29 Sep 2026: "I meant the spacing, the padding") */
+  .sed{padding:14px 16px 16px;background:var(--list);border-top:1px solid var(--line)}
+  .sed .lbl{margin-top:14px} .sed>.lbl:first-child{margin-top:0}
+  .sed .seg{margin:0 0 10px} .sed .row{margin-top:2px} .sed .hint{margin-top:10px} .sed .stdbox{margin-bottom:10px}
+  .sed input[type=time],.sed input[type=date],.sed input[type=text],.sed select{min-height:36px;padding:6px 10px}
+  .sed button{min-height:34px}
   .sed .people{margin-top:4px}
   .stdbox{margin-top:12px;padding:10px 12px;border-radius:8px;background:var(--card);border:1px solid var(--line)}
   .stdbox b{display:block;font-size:14px}
