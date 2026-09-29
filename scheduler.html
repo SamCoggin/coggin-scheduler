@@ -716,8 +716,6 @@ var SNAP=null, DETAIL={};
   function opOrder(load){ return TEAM.slice().sort(function(a,b){ return ((load[a]||{}).r||0)-((load[b]||{}).r||0)||TEAM.indexOf(a)-TEAM.indexOf(b); }); }
   function isOffice(w){ return FIELD_CREW.indexOf(w)<0; }
   function freeCount(load){ return FIELD_CREW.filter(function(w){return (load[w]||{}).c==="free";}).length+" of "+FIELD_CREW.length+" free"; }
-  // the dim group heading before the first office person who has nothing on
-  function officeHead(){ return el("div","ogrp","Office, if a job really needs a hand"); }
   function saveTally(k,w,units,notes,shredding){ var rec=(loadOn(k)[w]||{}).rec||0, prev=TALLIES[tallyKey(k,w)]||{}, row={date:k,operative:w,minutes:rec,target:recTarget(rec),units:units===""||units==null?null:Number(units),notes:notes||"",shredding:shredding||prev.shredding||[],recorded_by:"scheduler"};
     TALLIES[tallyKey(k,w)]={units:row.units,notes:row.notes,target:row.target,minutes:row.minutes,shredding:row.shredding};
     if(!CRM_KEY) return; try{ fetch(CRM_TALLY_URL,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({key:CRM_KEY,action:"save",rows:[row]})}).catch(function(){}); }catch(e){} }
@@ -901,9 +899,7 @@ var SNAP=null, DETAIL={};
     var dayK=o.shop?(part.start||iso(TODAY)):(j.start||j.date), load=loadOn(dayK);
     var wb=block("Operatives","who"); var pl=el("div","oplist");
     var freeN=FIELD_CREW.filter(function(w){return load[w].c==="free";}).length; pl.appendChild(el("div","ophead",shortDay(dayK)+" \u00b7 "+freeCount(load)));
-    var headed=false;
     opOrder(load).forEach(function(w){ var on=part.who.indexOf(w)>=0;
-      if(!headed&&load[w].c==="office"){ pl.appendChild(officeHead()); headed=true; }
       var row=opRow(w,load[w],{button:true,on:on,driver:!o.shop&&j.site&&DRIVERS.indexOf(w)>=0,beside:[el("span","tick",on?"Assigned":"Assign")]}); row.setAttribute("aria-pressed",on?"true":"false");
       row.onclick=function(){ var i=part.who.indexOf(w); if(i<0) part.who.push(w); else part.who.splice(i,1);
         // a time cannot be missed (Sam, 14 Sep 2026): the first operative on brings the estimated time with them
@@ -1305,9 +1301,7 @@ var SNAP=null, DETAIL={};
     var pl=el("div","list"+(isToday?" today":"")); var ph=el("h2"); var phl=el(isToday?"em":"span",null,"Operatives"); phl.appendChild(tip("people")); ph.appendChild(phl); var load=loadOn(k); ph.appendChild(el("span",null,(k<iso(TODAY))?FIELD_CREW.length+" operatives":freeCount(load))); pl.appendChild(ph);
     var pc=el("div","cards oplist"); jobs=allJobsDay; preps=prepJobs().filter(function(j){return j.prep&&j.prep.date&&daysOf(j.prep).indexOf(k)>=0;}); rounds=roundsOn(k,jobs);
     var lv=LEAVE.filter(function(l){return l.date===k;}); leaveLines(lv).forEach(function(tx){ pc.appendChild(el("div","leave",tx)); });
-    var headedDay=false;
     opOrder(load).forEach(function(w){ var ob=null;
-      if(!headedDay&&load[w].c==="office"){ pc.appendChild(officeHead()); headedDay=true; }
       var isOff=(OFF[k]||[]).map(crewOf).indexOf(w)>=0, onLeaveCard=LEAVE.some(function(l){return l.date===k&&!l.off&&crewOf(l.text.split(" ")[0])===w;});
       // The job sheet is gone (Sam, 29 Sep 2026: "the job sheet is also now redundant").
       if(!onLeaveCard){ ob=el("button","olink"+(isOff?" on":""),isOff?"Back in":"Mark as off"); ob.title=isOff?"Put "+w+" back on the day":"Mark "+w+" as off for this day: sick, a course, a breakdown. It asks why.";

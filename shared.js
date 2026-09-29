@@ -4,9 +4,9 @@
 // Bart, Rob and Bradley. We need to include the first initial of their surname also").
 // Plans saved before that day hold the bare first name ("Jack"); crewOf maps either
 // spelling to the list entry, and normPlan runs it over every plan as it is read.
-// Molly C came off on 29 Sep 2026 (Sam: part time, not needed). Field crew of five,
-// plus Sam, Ash and Jess from the office when a job really needs a hand.
-var CREW=["Sam C", "Ash K", "Jack C", "Jordan I", "Bradley H", "Rob D", "Bart H", "Jess H"];
+// Molly C came off on 29 Sep 2026 (Sam: part time, not needed). Sam, Ash and Jess came off the same day
+// (Sam: "remove office staff everywhere, it won't work as I wanted it to"). The field crew of five, nobody else.
+var CREW=["Jack C","Jordan I","Bradley H","Rob D","Bart H"];
 function crewOf(n){ var f=String(n||"").trim().split(/\s+/)[0].toLowerCase(); if(!f) return n; for(var i=0;i<CREW.length;i++){ if(CREW[i].split(" ")[0].toLowerCase()===f) return CREW[i]; } return n; }
 function normWho(a){ return (a||[]).map(crewOf).filter(function(n,i,x){ return x.indexOf(n)===i; }); }
 function normPlan(d){ if(!d||typeof d!=="object") return d;
@@ -17,7 +17,7 @@ function normPlan(d){ if(!d||typeof d!=="object") return d;
 // the five who do site work and yard recycling; the other four are on the crew for
 // the odd job but never get a recycling allowance (Sam, 29 Sep 2026: Jess and Molly
 // were showing "Recycling: 7h 45m"). Mirrors CAPACITY_CREW in the CRM's opsCapacity.
-var FIELD_CREW=["Jack C","Jordan I","Bradley H","Rob D","Bart H"];
+var FIELD_CREW=CREW;
 var DRIVERS=["Rob D","Jack C","Bart H"]; // the crew entries, so a plan's who (normalised) matches
 var CONTRACTORS=["MAK Installations","Courier","Other contractor"];
 // ── the van and what goes on it ──
