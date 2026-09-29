@@ -4,7 +4,9 @@
 // Bart, Rob and Bradley. We need to include the first initial of their surname also").
 // Plans saved before that day hold the bare first name ("Jack"); crewOf maps either
 // spelling to the list entry, and normPlan runs it over every plan as it is read.
-var CREW=["Sam C", "Ash K", "Jack C", "Jordan I", "Bradley H", "Rob D", "Bart H", "Jess H", "Molly C"];
+// Molly C came off on 29 Sep 2026 (Sam: part time, not needed). Field crew of five,
+// plus Sam, Ash and Jess from the office when a job really needs a hand.
+var CREW=["Sam C", "Ash K", "Jack C", "Jordan I", "Bradley H", "Rob D", "Bart H", "Jess H"];
 function crewOf(n){ var f=String(n||"").trim().split(/\s+/)[0].toLowerCase(); if(!f) return n; for(var i=0;i<CREW.length;i++){ if(CREW[i].split(" ")[0].toLowerCase()===f) return CREW[i]; } return n; }
 function normWho(a){ return (a||[]).map(crewOf).filter(function(n,i,x){ return x.indexOf(n)===i; }); }
 function normPlan(d){ if(!d||typeof d!=="object") return d; if(d.who) d.who=normWho(d.who); if(d.prep&&d.prep.who) d.prep.who=normWho(d.prep.who); if(d.legs&&d.legs.length) d.legs.forEach(function(l){ if(l&&l.who) l.who=normWho(l.who); }); return d; }
