@@ -343,6 +343,40 @@
           var r=el("div","row"); var ti=el("input"); ti.type="time"; ti.step="300"; ti.value=d.at||""; ti.setAttribute("aria-label","Starts at"); ti.onchange=function(){ d.at=ti.value||null; save(); render(); }; r.appendChild(ti);
           if(d.at){ var cl=el("button","p","Clear"); cl.onclick=function(){ d.at=null; save(); render(); }; r.appendChild(cl); } ed.appendChild(r);
           ed.appendChild(el("div","hint","Leave it blank and the crew count as out all day. Set it and they are free again after the site time and the travel back.")); },d.at?"":"todo")); }
+        // EVERYTHING THE BOARD'S JOB DIALOG HAS, ON THE CARD (Sam, 29 Sep 2026: "I need to be able to
+        // add and edit all this detail on the trello card itself"). Vehicle, time window, QC and legs.
+        if(site&&!contractorOnly){
+          var vTxt=!d.vehicle?"No van":(d.vehicle==="hire"?"Hire"+(d.hireRef?", "+d.hireRef:""):d.vehicle);
+          ts.appendChild(rowEl("veh","Vehicle",vTxt,function(ed){
+            var r=el("div","row"); (typeof VEHICLES!=="undefined"?VEHICLES:[]).concat([{reg:"hire",name:"Hire"}]).forEach(function(v){ var b=el("button",d.vehicle===v.reg?"p":"",v.reg==="hire"?"Hire":v.reg); b.title=v.name; b.onclick=function(){ d.vehicle=d.vehicle===v.reg?null:v.reg; save(); render(); }; r.appendChild(b); }); ed.appendChild(r);
+            if(d.vehicle==="hire"){ var hr=el("div","row"); var hi=el("input"); hi.type="text"; hi.placeholder="Supplier, vehicle and reference"; hi.value=d.hireRef||""; hi.onchange=function(){ d.hireRef=hi.value; save(); render(); }; hr.appendChild(hi); ed.appendChild(hr); }
+            ed.appendChild(el("div","hint","Which van goes out. Tap the same one again to clear it."));
+          },d.vehicle?"":"todo"));
+          var wTxt=(d.from||d.by)?((d.from?"arrive after "+d.from:"")+(d.from&&d.by?", ":"")+(d.by?"finish by "+d.by:"")):"Any time in the working day";
+          ts.appendChild(rowEl("win","Time window",wTxt,function(ed){
+            var r=el("div","row"); var fi=el("input"); fi.type="time"; fi.step="300"; fi.value=d.from||""; fi.setAttribute("aria-label","Arrive after"); fi.onchange=function(){ d.from=fi.value||null; save(); render(); };
+            var bi=el("input"); bi.type="time"; bi.step="300"; bi.value=d.by||""; bi.setAttribute("aria-label","Finish by"); bi.onchange=function(){ d.by=bi.value||null; save(); render(); };
+            r.appendChild(el("span","lbl","Arrive after")); r.appendChild(fi); r.appendChild(el("span","lbl","Finish by")); r.appendChild(bi); ed.appendChild(r);
+            ed.appendChild(el("div","hint","Leave both blank when any time in the working day is fine."));
+          }));
+        }
+        var qTxt=d.qc&&d.qc.na?"Not applicable, "+d.qc.by:d.qc?"Passed, "+d.qc.by+(d.qc.at?" "+niceShort(d.qc.at):""):"Not checked";
+        ts.appendChild(rowEl("qc","QC",qTxt,function(ed){
+          if(d.qc){ var u=el("button","p","Undo"); u.onclick=function(){ d.qc=null; save(); render(); }; ed.appendChild(u); return; }
+          var r=el("div","row"); var sel=el("select"); (typeof CREW!=="undefined"?CREW:[]).forEach(function(w){ var o=el("option",null,w); o.value=w; sel.appendChild(o); }); sel.setAttribute("aria-label","Checked by"); r.appendChild(sel);
+          var today=new Date(), td=today.getFullYear()+"-"+("0"+(today.getMonth()+1)).slice(-2)+"-"+("0"+today.getDate()).slice(-2);
+          var pb=el("button","p","Pass QC"); pb.onclick=function(){ d.qc={by:sel.value,at:td}; save(); render(); }; r.appendChild(pb);
+          var nb=el("button",null,"Not applicable"); nb.onclick=function(){ d.qc={by:sel.value,at:td,na:true}; save(); render(); }; r.appendChild(nb); ed.appendChild(r);
+          ed.appendChild(el("div","hint","Not applicable is for jobs with nothing to check, such as a site visit or a straight collection."));
+        },d.qc?"":"todo"));
+        var LEG_TYPES_CARD=[["to_sub","Deliver to subcontractor"],["from_sub","Collect from subcontractor"],["production","Production"],["site","Site visit"],["labour","Labour"]];
+        ts.appendChild(rowEl("addleg","Legs",(d.legs||[]).length?((d.legs.length)+(d.legs.length===1?" leg":" legs")+" on this job"):"None",function(ed){
+          var r=el("div","row"); var tsel=el("select"); LEG_TYPES_CARD.forEach(function(t2){ var o=el("option",null,t2[1]); o.value=t2[0]; tsel.appendChild(o); }); tsel.setAttribute("aria-label","Leg type"); r.appendChild(tsel);
+          var di=el("input"); di.type="date"; di.value=card.due?card.due.slice(0,10):""; di.setAttribute("aria-label","Leg date"); r.appendChild(di);
+          var wi=el("input"); wi.type="text"; wi.placeholder="Where, or what"; wi.setAttribute("aria-label","Where"); r.appendChild(wi);
+          var ab=el("button","p","Add"); ab.onclick=function(){ if(!di.value) return; d.legs.push({type:tsel.value,date:di.value,who:[],mins:null,drive:null,where:wi.value||""}); save(); OPEN.addleg=false; render(); }; r.appendChild(ab); ed.appendChild(r);
+          ed.appendChild(el("div","hint","A leg is a separate trip or a separate piece of work on this job. Each one gets its own operatives, day and time in the sections below."));
+        }));
       }
     }
     // LOADING: what goes in the van, for any job that goes out on our van, including workshop stage
