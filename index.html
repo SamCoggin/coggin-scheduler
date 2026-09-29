@@ -34,7 +34,7 @@
         var list=r[2].filter(function(l){return l.id===card.idList;})[0], workshop=!!(list&&isWorkshopList(list.name,card.desc));
         if(quiet(r[3],list,card)) return out;
         // A QC sign-off or "not applicable" on the card back clears the badge (Sam, 14 Sep 2026).
-        if(list&&READY_LIST.test(list.name)&&!qcDone(card.badges)&&!(d&&d.qc)) out.push({ text:"Not QC'd", color:"red" });
+        if(list&&READY_LIST.test(list.name)&&/^(Resale|Refurb)/i.test(workOf(card.labels)||"")&&!qcDone(card.badges)&&!(d&&d.qc)) out.push({ text:"Not QC'd", color:"red" });
         if(workshop&&card.due){ var pd=(d&&d.prodDue)||productionDueFor(card.labels,card.due.slice(0,10)); var late=!!(d&&d.prep&&d.prep.date&&d.prep.date>pd); out.push({ text:"Production due "+niceShort(pd), color:late?"red":(pd<todayIso()?"red":"blue") }); }
         // A card nobody has planned yet is the one that most needs saying so (Sam, 14 Sep 2026: "why does
         // D9D283 not have production not scheduled and transport unassigned?"). No saved plan reads as an empty one.
@@ -50,7 +50,7 @@
         var card=r[0], d=r[1], out=[], round=roundFor(r[4],(card.due?card.due.slice(0,10):null)||(d&&d.date),d&&d.who);
         var list=r[2].filter(function(l){return l.id===card.idList;})[0], workshop=!!(list&&isWorkshopList(list.name,card.desc));
         if(quiet(r[3],list,card)) return out;
-        if(list&&READY_LIST.test(list.name)&&!qcDone(card.badges)&&!(d&&d.qc)) out.push({ title:"QC", text:"Not QC'd: checklist not complete", color:"red" });
+        if(list&&READY_LIST.test(list.name)&&/^(Resale|Refurb)/i.test(workOf(card.labels)||"")&&!qcDone(card.badges)&&!(d&&d.qc)) out.push({ title:"QC", text:"Not QC'd: checklist not complete", color:"red" });
         else if(d&&d.qc&&list&&READY_LIST.test(list.name)) out.push({ title:"QC", text:d.qc.na?"Not applicable, "+d.qc.by:"Passed, "+d.qc.by, color:"green" });
         if(workshop&&card.due){ var pd=(d&&d.prodDue)||productionDueFor(card.labels,card.due.slice(0,10)); out.push({ title:"Production due", text:niceShort(pd), color:pd<todayIso()?"red":"blue" }); }
         var plan2=d||{};

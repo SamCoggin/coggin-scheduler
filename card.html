@@ -272,7 +272,8 @@
         ed.appendChild(el("div","hint","Not applicable is for jobs with nothing to check, such as a site visit or a straight collection."));
       },d.qc?"":"todo");
     }
-    var qcPlaced=false;
+    // QC IS FOR RESALE AND REFURB ONLY (Sam, 29 Sep 2026: "qc is not required for clearances"): nothing is checked in the workshop on a clearance, recycling or buyback job.
+    var qcApplies=/^(Resale|Refurb)/i.test(workOf(card.labels)||""), qcPlaced=false;
     if(workshop || d.prep){
       if(!d.prep) d.prep={who:[],mins:null,start:null,date:null};
       var prodDue=d.prodDue||defaultDue;
@@ -320,7 +321,7 @@
         } },d.prep.mins!=null?"":(d.prep.who.length?"bad":"todo")));
       ps.appendChild(rowEl("pdue","Production due",(prodDue?niceShort(prodDue):"Not set")+(d.prodDue?"":viewing?", ready for the viewing":", "+PRODUCTION_BUFFER_DAYS+" working days before delivery"),function(ed){ var pdr=el("div","row"); var pdi=el("input"); pdi.type="date"; pdi.value=prodDue||""; pdi.onchange=function(){ d.prodDue=pdi.value||null; save(); render(); }; pdr.appendChild(pdi);
         if(d.prodDue){ var rs=el("button","p","Reset"); rs.onclick=function(){ d.prodDue=null; save(); render(); }; pdr.appendChild(rs); } ed.appendChild(pdr); ed.appendChild(el("div","hint","The day production must be finished and checked. "+PRODUCTION_BUFFER_DAYS+" working days before delivery unless you set it.")); }));
-      ps.appendChild(qcRow()); qcPlaced=true;
+      if(qcApplies){ ps.appendChild(qcRow()); qcPlaced=true; }
       app.appendChild(ps);
     }
 
@@ -392,7 +393,7 @@
             ed.appendChild(el("div","hint","Leave both blank when any time in the working day is fine."));
           }));
         }
-        if(!qcPlaced) ts.appendChild(qcRow());
+        if(qcApplies&&!qcPlaced) ts.appendChild(qcRow());
         var LEG_TYPES_CARD=[["to_sub","Deliver to subcontractor"],["from_sub","Collect from subcontractor"],["production","Production"],["site","Site visit"],["labour","Labour"]];
         ts.appendChild(rowEl("addleg","Legs",(d.legs||[]).length?((d.legs.length)+(d.legs.length===1?" leg":" legs")+" on this job"):"None",function(ed){
           var r=el("div","row"); var tsel=el("select"); LEG_TYPES_CARD.forEach(function(t2){ var o=el("option",null,t2[1]); o.value=t2[0]; tsel.appendChild(o); }); tsel.setAttribute("aria-label","Leg type"); r.appendChild(tsel);

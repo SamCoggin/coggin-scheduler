@@ -536,7 +536,7 @@ var SNAP=null, DETAIL={};
   function buildFromSnap(SNAP){
     JOBS=SNAP.cards.filter(function(c){return c.due && c.role!=="leave";}).map(function(c){
     var mv=movementOf(c.labels,c.desc), wk=workOf(c.labels), lb=mv||c.labels[0]||"", title=nice(c.name), subName=c.who.filter(function(w){return TEAM.indexOf(crewOf(w))<0;})[0]||"";
-    var j={id:c.id,title:title,label:lb,movement:mv,work:wk,labels:c.labels,who:c.who.filter(function(w){return TEAM.indexOf(w)>=0;}),contractor:subName?(subName==="MAK"?"MAK Installations":subName):"",mins:null,out:c.due,notQc:c.role==="ready"&&c.qc===false};
+    var j={id:c.id,title:title,label:lb,movement:mv,work:wk,labels:c.labels,who:c.who.filter(function(w){return TEAM.indexOf(w)>=0;}),contractor:subName?(subName==="MAK"?"MAK Installations":subName):"",mins:null,out:c.due,notQc:c.role==="ready"&&c.qc===false&&/^(Resale|Refurb)/i.test(wk||"")};   // QC is Resale and Refurb only (29 Sep 2026)
     if(c.role==="waiting"||c.role==="shop"){
       j.stage=c.role==="shop"?"In progress":"Not started"; j.stageLabel=c.role==="shop"?"Workshop: In-progress":"Workshop: Not Started";
       j.date=c.due;   // where the Trello calendar shows it, as the trip out
@@ -956,7 +956,8 @@ var SNAP=null, DETAIL={};
         var ck=el("label","ck"); var cb2=el("input"); cb2.type="checkbox"; cb2.checked=!!j.hireBooked; cb2.onchange=function(){ j.hireBooked=cb2.checked; persist(); render(); }; ck.appendChild(cb2); ck.appendChild(document.createTextNode("Booked")); hr.appendChild(ck); vb.appendChild(hr);
         vb.appendChild(el("div","hint"+(hireDue(j)?" far":""),j.hireBooked?"Booked. The reference prints on the routes sheet.":hireDue(j)?"Not booked and the job is within "+HIRE_WARN_DAYS+" working days. Book it now.":"Tick Booked once the hire company has confirmed.")); }
       right.appendChild(vb); }
-    if(!o.leg && (j.prep||j.notQc||j.qc||/Workshop/.test(j.stageLabel||""))){ var qb=block("QC","qc");
+    // QC is a Resale and Refurb check only (Sam, 29 Sep 2026: "qc is not required for clearances")
+    if(!o.leg && /^(Resale|Refurb)/i.test(j.work||"") && (j.prep||j.notQc||j.qc||/Workshop/.test(j.stageLabel||""))){ var qb=block("QC","qc");
       if(j.qc&&j.qc.na){ qb.appendChild(el("div","hint","QC not applicable, set by "+j.qc.by+" on "+niceDay(j.qc.at)+".")); var qundo2=el("button","close","Undo"); qundo2.onclick=function(){ j.qc=null; persist(); render(); }; qb.appendChild(qundo2); }
       else if(j.qc){ qb.appendChild(el("div","hint ok","QC passed by "+j.qc.by+" on "+niceDay(j.qc.at)+"."+(j.notQc?" The checklist on the card is not all ticked, but this sign-off counts.":""))); var qundo=el("button","close","Undo"); qundo.onclick=function(){ j.qc=null; persist(); render(); }; qb.appendChild(qundo); }
       else { qb.appendChild(el("div","hint"+(j.notQc?" far":""),j.notQc?"Not QC'd. The checklist on the card is not all ticked.":(/Ready/.test(j.stageLabel||"")?"The checklist on the card is complete.":"Sign off when the workshop has checked it.")));
