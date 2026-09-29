@@ -229,16 +229,28 @@ function syncCardMembers(cardId,plan,crmKey,inWorkshop){
 function endOf(at,mins){ var m=/^(\d{1,2}):(\d{2})$/.exec(String(at||"")); if(!m) return ""; var t=parseInt(m[1],10)*60+parseInt(m[2],10)+(mins||0); t=Math.max(0,Math.min(23*60+59,t)); return String(Math.floor(t/60)).padStart(2,"0")+":"+String(t%60).padStart(2,"0"); }
 function fmt(m){ if(m==null) return ""; if(m<60) return m+" min"; var h=Math.floor(m/60), r=m%60; return h+"h"+(r?" "+r+"m":""); }
 // what the front of the card says, from the saved plan
-function badgeText(d,site){
+// THE ROUND ON THE FRONT (Sam, 29 Sep 2026: York said "No travel time" beside Bolton's "Travel 1h 40m return", the same
+// round). Travel lives on the round since 29 Sep, so a badge reads the board's round data for this date and driver
+// before it falls back to the job's own drive. null when the round has never been opened in the editor.
+function roundFor(board,dateIso,who){
+  if(!board||!dateIso) return null; var RL=board.roundLegs||{}, RD=board.roundDrive||{};
+  for(var i=0;i<(who||[]).length;i++){ var key=dateIso+"|"+who[i], r=RL[key];
+    if(r&&r.legs&&r.legs.length&&r.legs.every(function(x){return x!=null;})) return {total:r.legs.reduce(function(a,b){return a+b;},0)};
+    if(RD[key]!=null) return {total:RD[key]};
+    if(r) return {total:null}; }
+  return null; }
+function badgeText(d,site,round){
   d=d||{};
   var who=d.who||[];
   if(d.contractor&&!who.length) return {text:(/courier/i.test(d.contractor)?"Courier: ":"Subcontractor: ")+d.contractor,color:"purple"};
   if(!who.length) return {text:(site?"Transport: ":"")+"Unassigned",color:"yellow"};
   var missing=[];
-  if(site&&d.drive==null) missing.push("no travel time");
+  if(site&&!round&&d.drive==null) missing.push("no travel time");
+  if(site&&round&&round.total==null) missing.push("no travel on the round");
   if(d.mins==null) missing.push(site?"no site time":"no time");
   if(missing.length) return {text:(site?"Transport: ":"")+who.join(", ")+": "+missing.join(", "),color:"yellow"};
-  return {text:(site?"Transport: ":"")+who.join(", ")+": "+(site&&d.drive?fmt(d.drive)+" travel + ":"")+fmt(d.mins)+(who.length>1?" each":""),color:"green"};
+  var travel=site?(round?"round "+fmt(round.total)+" + ":(d.drive?fmt(d.drive)+" travel + ":"")):"";
+  return {text:(site?"Transport: ":"")+who.join(", ")+": "+travel+fmt(d.mins)+(who.length>1?" each":""),color:"green"};
 }
 
 // badge for the production (workshop) part of a workshop-stage card
@@ -251,13 +263,14 @@ function prodBadgeText(d,long){
   return {text:lead+who.join(", ")+", "+fmt(p.mins)+(who.length>1?" each":""),color:"blue"};
 }
 // short badges for the card front: Trello clips badge text at about 30 characters
-function frontBadges(d,site){
+function frontBadges(d,site,round){
   var who=(d&&d.who)||[], out=[];
   if(d&&d.contractor&&!who.length) return [badgeText(d,site)];
   if(!who.length) return [{text:(site?"Transport: ":"")+"Unassigned",color:"yellow"}];
   var tag=site?"Transport: ":"";
   out.push({text:tag+who.join(", ")+(d.mins==null?", no time":", "+fmt(d.mins)+(who.length>1?" each":"")),color:d.mins==null?"yellow":"green"});
-  if(site) out.push(d.drive==null?{text:"No travel time",color:"yellow"}:{text:"Travel "+fmt(d.drive)+" return",color:"green"});
+  if(site&&round) out.push(round.total==null?{text:"Round: no travel yet",color:"yellow"}:{text:"Round: "+fmt(round.total)+" driving",color:"green"});
+  else if(site) out.push(d.drive==null?{text:"No travel time",color:"yellow"}:{text:"Travel "+fmt(d.drive)+" return",color:"green"});
   return out;
 }
 

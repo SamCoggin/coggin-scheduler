@@ -19,7 +19,7 @@ const cards=[{id:'c1',name:'Skipton - C4B36B - Harrison Drury',idList:'l1',due:'
              {id:'c3',name:'Rob (Annual Leave)',idList:'l3',due:'2026-09-18T12:00:00.000Z',labels:[],members:[]}];
 global.window={__TODAY:'2026-09-14T12:00',TrelloPowerUp:{iframe(){return { lists:()=>Promise.resolve(lists), cards:()=>Promise.resolve(cards), board:()=>Promise.resolve({name:'Jobs - Planning Board',members:[]}), get:(a,b,c,d)=>Promise.resolve((a==='c7'||a==='c8')&&c==='sched'?{who:['Bart H'],mins:60,vehicle:'FX75 BKG'}:d), set:()=>Promise.resolve() };}}};
 global.TrelloPowerUp=global.window.TrelloPowerUp;
-try{ new Function(scripts.join('\n'))(); }catch(e){ console.log('SYNC THROW',e.stack.split('\n').slice(0,3).join('\n')); }
+try{ new Function(scripts.join('\n')+'\nglobal.roundFor=roundFor; global.frontBadges=frontBadges; global.badgeText=badgeText;')(); }catch(e){ console.log('SYNC THROW',e.stack.split('\n').slice(0,3).join('\n')); }
 setTimeout(()=>{ const src=reg['#src'].textContent; console.log('src:',src); console.log('board loaded:', !/Could not read the board/.test(src)); console.log('title:',reg['#title'].textContent); },200);
 process.on('unhandledRejection',e=>console.log('REJECT',e.stack.split('\n').slice(0,4).join('\n')));
 setTimeout(()=>{ const walk=(n,o=[])=>{o.push(n);(n.children||[]).forEach(c=>walk(c,o));return o;}; const T=walk(reg['#board']).map(x=>x.textContent).filter(Boolean).join(' '); console.log('board has Skipton:',/Skipton/.test(T),'Knowles:',/Knowles/.test(T),'Rob leave:',/Rob on leave/.test(T)); },300);
@@ -55,3 +55,9 @@ setTimeout(()=>{ const all=global.window.__allJobs(); const j=id=>all.find(x=>x.
 setTimeout(()=>{ reg['#next'].onclick(); const walk0=(n,o=[])=>{o.push(n);(n.children||[]).forEach(c=>walk0(c,o));return o;}; const rc=walk0(reg['#board']).find(n=>/\bround\b/.test(n.className||'')&&typeof n.onclick==='function'); if(rc) rc.onclick(); const v=body.children.filter(n=>n.className==='veil').pop(); const T=v?(function walk(n,o=[]){o.push(n);(n.children||[]).forEach(x=>walk(x,o));return o;})(v).map(x=>x.textContent).filter(Boolean).join(' '):'';
   const legs=v?(function walk(n,o=[]){o.push(n);(n.children||[]).forEach(x=>walk(x,o));return o;})(v).filter(x=>x.className==='hmone').length:0;
   console.log('round editor:', /Bart H's round/.test(T)&&/Sets off/.test(T)&&/Bolton - Example Ltd/.test(T)&&/York - Example College/.test(T)&&/YO23 2BB · 1h on site/.test(T)&&/Back at Forton/.test(T)&&/Swap with next/.test(T)&&/Look up travel/.test(T)&&/Type one total instead/.test(T)&&legs>=3&&!/Delivery Round,/.test(T)); },1000);
+
+// THE ROUND ON THE FRONT (29 Sep 2026): a job on a round reads the round's travel, never its own drive.
+{ const board={roundLegs:{'2026-09-29|Bart H':{legs:[40,130,150],order:['a','b']},'2026-09-30|Rob D':{start:'PR3 1AD'}},roundDrive:{'2026-10-01|Rob D':90}};
+  const on=roundFor(board,'2026-09-29',['Bart H']), open=roundFor(board,'2026-09-30',['Rob D']), tot=roundFor(board,'2026-10-01',['Rob D']), none=roundFor(board,'2026-09-29',['Rob D']);
+  const fb=frontBadges({who:['Bart H'],mins:30,drive:100},true,on).map(b=>b.text).join(' | '), fo=frontBadges({who:['Rob D'],mins:60},true,open).map(b=>b.text).join(' | '), fn=frontBadges({who:['Rob D'],mins:60,drive:100},true,none).map(b=>b.text).join(' | ');
+  console.log('round on the front:', on&&on.total===320 && open&&open.total===null && tot&&tot.total===90 && none===null && fb==='Transport: Bart H, 30 min | Round: 5h 20m driving' && fo==='Transport: Rob D, 1h | Round: no travel yet' && fn==='Transport: Rob D, 1h | Travel 1h 40m return' && badgeText({who:['Bart H'],mins:30,drive:100},true,on).text==='Transport: Bart H: round 5h 20m + 30 min'); }
