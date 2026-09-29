@@ -41,7 +41,7 @@
         var plan=d||{};
         if(workshop){ var pb=prodBadgeText(plan); out.push({ text:pb.text, color:pb.color }); }
         // a viewing order is production only: no transport or labour badge (17 Sep 2026)
-        if(!isViewingLabels(card.labels)) frontBadges(plan,isSite(card),round).forEach(function(b){ out.push({ text:b.text, color:b.color }); });
+        if(!isViewingLabels(card.labels)) frontBadges(plan,isSite(card)?movementOf(card.labels,card.desc):false,round).forEach(function(b){ out.push({ text:b.text, color:b.color }); });
         return out;
       });
     },
@@ -55,7 +55,7 @@
         if(workshop&&card.due){ var pd=(d&&d.prodDue)||productionDueFor(card.labels,card.due.slice(0,10)); out.push({ title:"Production due", text:niceShort(pd), color:pd<todayIso()?"red":"blue" }); }
         var plan2=d||{};
         if(workshop){ var pb2=prodBadgeText(plan2,true); out.push({ title:"Production", text:pb2.text.replace(/^Production:? ?/,""), color:pb2.color }); }
-        if(!isViewingLabels(card.labels)){ var b=badgeText(plan2,isSite(card),round); out.push({ title:"Scheduling", text:b.text, color:b.color }); }
+        if(!isViewingLabels(card.labels)){ var b=badgeText(plan2,isSite(card)?movementOf(card.labels,card.desc):false,round); out.push({ title:"Scheduling", text:b.text, color:b.color }); }
         return out;
       });
     },
