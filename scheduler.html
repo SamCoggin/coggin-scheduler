@@ -293,6 +293,21 @@
   .hm{display:inline-flex;align-items:center;gap:8px}
   .hm input{width:72px}
   .legrow .leglbl{width:150px;color:var(--muted);font-size:13px;flex-shrink:0}
+  /* THE ROUND AS A TRIP (29 Sep 2026): three numbers, then a timeline with the drive on each leg */
+  .rsum{display:grid;grid-template-columns:1fr 1fr 1fr;border:1px solid var(--line);border-radius:10px;overflow:hidden;margin:14px 0 16px}
+  .rsum div{padding:10px 14px;border-right:1px solid var(--line)} .rsum div:last-child{border-right:0}
+  .rsum small{display:block;color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.04em;font-weight:700} .rsum b{display:block;font-size:17px;margin-top:2px} .rsum .warn b{color:var(--amber)}
+  .rtl{position:relative;padding-left:26px} .rtl:before{content:"";position:absolute;left:8px;top:10px;bottom:10px;width:2px;background:var(--line)}
+  .rnode{position:relative} .rnode:before{content:"";position:absolute;left:-23px;top:10px;width:12px;height:12px;border-radius:99px;background:var(--card);border:2px solid var(--blue)} .rnode.rstop:before{background:var(--blue)}
+  .rnode .top{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:6px 0} .rnode .nm{font-weight:700;flex:1;min-width:0} .rnode .t,.rnode .ins{flex-shrink:0} .rnode .nm small{display:block;font-weight:500;color:var(--muted);font-size:12px;margin-top:2px}
+  .rnode .t{font-variant-numeric:tabular-nums;color:var(--muted);font-size:13px;white-space:nowrap} .rnode .t.late{color:var(--red);font-weight:700}
+  .rnode .ins{display:inline-flex;align-items:center;gap:8px;flex-wrap:wrap} .rnode .ins input{border:2px solid var(--line);border-radius:8px;padding:6px 10px;background:var(--card);font-weight:600} .rnode .ins input.pc{width:8em;text-transform:uppercase} .rnode .ins input.tm{width:7.5em}
+  .rleg{display:flex;align-items:center;gap:8px;padding:2px 0 8px;color:var(--muted);font-size:12px;flex-wrap:wrap} .rleg .mi{font-size:12px}
+  input.hmone{border:2px solid var(--line);border-radius:8px;padding:5px 8px;width:5.2em;text-align:center;background:var(--card);font-weight:700;font-variant-numeric:tabular-nums}
+  .modal .close.s{font-size:12px;padding:3px 8px}
+  .rnr{display:flex;justify-content:space-between;gap:10px;padding:7px 0;border-top:1px solid var(--line);font-size:13px} .rnr small{display:block;color:var(--muted);font-size:12px}
+  .rfoot{display:flex;justify-content:space-between;align-items:flex-end;gap:12px;margin-top:20px;padding-top:12px;border-top:1px solid var(--line)}
+  .modal button.link{border:0;background:none;color:var(--blue);font-weight:600;padding:0;text-decoration:underline;font-size:13px}
   .modal button.p{background:var(--blue);color:#fff;border:0;border-radius:8px;padding:8px 14px;font-weight:700} .modal button.p:disabled{opacity:.45;cursor:default}
   .row .hint{color:var(--muted);font-size:13px}
   .facts{border:1px solid var(--line);border-radius:10px;overflow:hidden}
@@ -1042,52 +1057,71 @@ var SNAP=null, DETAIL={};
     var sb=el("button",null,"Done"); sb.onclick=function(){open=null;render();}; sv.appendChild(sb); m.appendChild(sv);
     veil.appendChild(m); return veil;
   }
+  // ONE h:mm BOX (Sam, 29 Sep 2026: "needs a ui upgrade"): a leg is one box, typed as 2:10, 40 or 2h10.
+  function hmBox(get,set,label){ var v=get(); var i=el("input"); i.type="text"; i.inputMode="numeric"; i.className="hmone"; i.placeholder="h:mm"; i.value=v==null?"":clock(v).replace(/^0/,""); i.setAttribute("aria-label",label);
+    i.onchange=function(){ var s=i.value.trim().toLowerCase(); if(!s){ set(null); return; } var m=/^(\d{1,2})[:h](\d{1,2})?m?$/.exec(s), mins=m?parseInt(m[1],10)*60+(parseInt(m[2]||"0",10)):(/^\d+$/.test(s)?parseInt(s,10):null); if(mins==null){ i.value=v==null?"":clock(v).replace(/^0/,""); return; } set(Math.max(5,Math.round(mins/5)*5)); };
+    return i; }
+  var roundTotalOpen=false;
   function roundModal(){
     var parts=openRound.split("|"), k=parts[0], w=parts[1];
     var r=vanRounds(roundsOn(k,JOBS.filter(function(x){return onDay(x,k);}))).filter(function(x){return x.crew.indexOf(w)>=0;})[0];
     if(!r){ openRound=null; return null; }
-    var veil=el("div","veil"); veil.onclick=function(e){ if(e.target===veil){ openRound=null; render(); } };
-    var m=el("div","modal"); var head=el("div","head"); head.appendChild(el("h3",null,"Delivery Round, "+crewText(r.crew)+", "+niceDay(k))); var x=el("button","close","Close"); x.onclick=function(){openRound=null;render();}; head.appendChild(x); m.appendChild(head);
-    m.appendChild(el("div","sub",r.stops.length+" stops in one trip. Where it sets off from, the legs between the stops, and the leg back to Forton. Each job keeps its own site time."));
+    var veil=el("div","veil"); veil.onclick=function(e){ if(e.target===veil){ openRound=null; roundTotalOpen=false; render(); } };
+    var shut=function(){ openRound=null; roundTotalOpen=false; render(); };
     var RL=ROUND_LEGS[r.keys[0]]||{}; var setRL=function(patch){ r.keys.forEach(function(kk){ ROUND_LEGS[kk]=Object.assign({},ROUND_LEGS[kk]||{},patch); }); persist(); };
     var ordered=(function(){ var o=RL.order&&RL.order.length===r.stops.length?RL.order.map(function(id){return r.stops.filter(function(j){return j.id===id;})[0];}).filter(Boolean):null; return o&&o.length===r.stops.length?o:windowOrder(r.stops); })();
-    // STARTS FROM (Sam, 29 Sep 2026: "PR3 1AD as default but then able to edit if different", Bart setting off from Blackburn)
-    var sf=el("div","sec"); sf.appendChild(el("div","k","Starts from")); var sfr=el("div","row"); var pci=el("input"); pci.type="text"; pci.value=RL.start||HOME_PC; pci.placeholder=HOME_PC; pci.setAttribute("aria-label","Set-off postcode"); pci.style.width="9em"; pci.onchange=function(){ setRL({start:pci.value.toUpperCase().trim()||HOME_PC}); render(); }; sfr.appendChild(el("span","hint","Postcode")); sfr.appendChild(pci);
-    var soi=el("input"); soi.type="time"; soi.step="300"; soi.value=RL.setOff||""; soi.setAttribute("aria-label","Set-off time"); soi.onchange=function(){ setRL({setOff:soi.value||""}); render(); }; sfr.appendChild(el("span","hint","Sets off")); sfr.appendChild(soi);
-    if((RL.start||HOME_PC)!==HOME_PC){ var rb=el("button","close","Back to Forton"); rb.onclick=function(){ setRL({start:HOME_PC}); render(); }; sfr.appendChild(rb); }
-    sf.appendChild(sfr); sf.appendChild(el("div","hint","Forton unless the driver sets off from somewhere else that day. Leave the time blank for the usual 8:00 start.")); m.appendChild(sf);
-    var st=el("div","sec"); st.appendChild(el("div","k","Stops, in order")); var ul=el("ul","items"); ordered.forEach(function(j,i){ var li=el("li"); li.appendChild(document.createTextNode((i+1)+". "+j.title+(j.mins!=null?", "+fmt(j.mins)+" on site":", time on site not set")+(pcOf(j)&&!/^area:/.test(pcOf(j))?" ("+pcOf(j)+")":" (no postcode on the card)")));
-      if(i>0){ var up=el("button","close","Up"); up.onclick=function(){ var ids=ordered.map(function(x){return x.id;}); var tmp=ids[i-1]; ids[i-1]=ids[i]; ids[i]=tmp; setRL({order:ids,legs:null}); render(); }; li.appendChild(up); }
-      ul.appendChild(li); }); st.appendChild(ul); m.appendChild(st);
-    // THE LEGS. Typed one by one, or looked up from the postcodes through the CRM (Google Routes, with the
-    // OpenStreetMap route behind it), plus a fifth for traffic, every figure still editable.
-    var dv=el("div","sec"); dv.appendChild(el("div","k","Travel, leg by leg")); var names=[]; var pts=[RL.start||HOME_PC];
-    ordered.forEach(function(j){ pts.push(pcOf(j)&&!/^area:/.test(pcOf(j))?pcOf(j):null); }); pts.push(HOME_PC);
-    var stopName=function(j){ return j.title.split(" - ")[0].trim(); };
-    for(var li=0; li<=ordered.length; li++){ names.push((li===0?(RL.start&&RL.start!==HOME_PC?RL.start:"Forton"):stopName(ordered[li-1]))+" to "+(li===ordered.length?"Forton":stopName(ordered[li]))); }
-    var legsNow=(RL.legs&&RL.legs.length===names.length)?RL.legs.slice():names.map(function(){return null;});
-    names.forEach(function(nm,i){ var lr=el("div","row legrow"); lr.appendChild(el("span","leglbl",nm)); lr.appendChild(hmBoxes(function(){return legsNow[i];},function(v){ legsNow[i]=v; setRL({legs:legsNow.slice(),order:ordered.map(function(x){return x.id;})}); r.keys.forEach(function(kk){ delete ROUND_DRIVE[kk]; }); render(); },"Leg "+(i+1))); dv.appendChild(lr); });
-    var lk=el("div","row"); var lkb=el("button","p","Look up travel"); var canLook=pts.every(Boolean)&&!!CRM_KEY; lkb.disabled=!canLook; lkb.title=canLook?"Road time for each leg from the postcodes, plus a fifth for traffic":(!CRM_KEY?"The board needs its CRM key first":"Every stop needs a postcode on its card");
-    lkb.onclick=function(){ lkb.disabled=true; lkb.textContent="Looking up\u2026"; fetch(CRM_ROUTE_URL,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({key:CRM_KEY,points:pts})}).then(function(x){return x.json();}).then(function(res){ if(!res||!res.ok) throw new Error((res&&res.error)||"no answer"); var legs=res.legs.map(function(L){ return Math.max(5,Math.round(L.mins*TRAFFIC/5)*5); }); setRL({legs:legs,order:ordered.map(function(x){return x.id;}),miles:res.legs.map(function(L){return L.miles;}),source:res.legs[0]&&res.legs[0].source||""}); r.keys.forEach(function(kk){ delete ROUND_DRIVE[kk]; }); render(); }).catch(function(e){ lkb.disabled=false; lkb.textContent="Look up travel"; alert("Could not look the travel up: "+(e&&e.message||e)); }); };
-    lk.appendChild(lkb); if(RL.source) lk.appendChild(el("span","hint",(RL.source==="google"?"Looked up on Google":"Looked up on OpenStreetMap")+", plus a fifth for traffic. Change any leg if you know better.")); dv.appendChild(lk);
+    var start=RL.start||HOME_PC, stopName=function(j){ return j.title.split(" - ")[0].trim(); };
+    var pts=[start]; ordered.forEach(function(j){ pts.push(pcOf(j)&&!/^area:/.test(pcOf(j))?pcOf(j):null); }); pts.push(HOME_PC);
+    var legsNow=(RL.legs&&RL.legs.length===ordered.length+1)?RL.legs.slice():ordered.map(function(){return null;}).concat([null]);
+    var milesNow=(RL.miles&&RL.miles.length===legsNow.length)?RL.miles:null;
     var tot=legsNow.every(function(x){return x!=null;})?legsNow.reduce(function(a,b){return a+b;},0):null;
-    dv.appendChild(el("div","hint",tot!=null?("Driving "+fmt(tot)+" in all"+(tot>270?". Over 4h 30m, so add a 45 minute break to the day.":"")):"Or one total for the whole round, split evenly across the legs:"));
-    var row=el("div","row"); if(tot==null){
-    row.appendChild(hmBoxes(function(){return r.drive;},function(v){ r.keys.forEach(function(kk){ ROUND_DRIVE[kk]=v; }); },"Round drive")); }
-    if(tot==null) row.appendChild(el("span","hint",r.keys.some(function(kk){return ROUND_DRIVE[kk]!=null;})?"You set this.":(r.road?"Road time labour to "+r.stops.length+" stops and back, from OpenStreetMap routing, plus 20 percent for traffic. Change it if you know better.":(r.def!=null?"A rough total from the jobs' own travel times, used until the legs above are typed or looked up. Type over it if you know better.":"No total yet. Type the legs above, or look them up.")))); dv.appendChild(row); m.appendChild(dv);
-    // NEARBY, OTHER DAYS. The one thing the Routes tab did that planned anything (Sam, 29 Sep 2026: retire the tab,
-    // keep this here): site jobs in the next six weeks within twenty road miles of a stop, so they can ride along.
-    var nbSec=el("div","sec"); nbSec.appendChild(el("div","k","Nearby, other days")); var nbBody=el("div","hint","Finding postcodes\u2026"); nbSec.appendChild(nbBody); m.appendChild(nbSec);
+    var oneTotal=tot==null&&r.drive!=null?r.drive:null, perLeg=oneTotal!=null?oneTotal/legsNow.length:null;
+    // THE CLOCK: set off, drive, wait for the window, site time, drive, until a leg is unknown
+    var t0=RL.setOff&&parseHM(RL.setOff)!=null?parseHM(RL.setOff):DAY_START, t=t0, known=true, times=[];
+    ordered.forEach(function(j,i){ var lg=legsNow[i]!=null?legsNow[i]:perLeg; if(lg==null) known=false; if(known){ t+=lg; var f=parseHM(j.from); if(f!=null&&t<f) t=f; var a=t; t+=(j.mins||0); times.push({arrive:a,leave:t,late:parseHM(j.by)!=null&&t>parseHM(j.by)}); } else times.push(null); });
+    var lastLeg=legsNow[ordered.length]!=null?legsNow[ordered.length]:perLeg; var back=known&&lastLeg!=null?t+lastLeg:null;
+    var driving=tot!=null?tot:oneTotal, needBreak=driving!=null&&driving>DRIVE_BREAK;
+    var veh=(ordered.map(function(j){return j.vehicle&&j.vehicle!=="hire"?j.vehicle:(j.vehicle==="hire"?"Hire":"");}).filter(Boolean))[0]||"";
+    var m=el("div","modal round");
+    var head=el("div","head"); var hd=el("div"); hd.appendChild(el("h3",null,crewText(r.crew)+(r.crew.length<2?"'s round":": their round"))); hd.appendChild(el("div","hint",niceDay(k)+" · "+ordered.length+" stops"+(veh?" · "+veh:""))); hd.style.flex="1"; head.appendChild(hd);
+    var x=el("button","close","Close"); x.onclick=shut; head.appendChild(x); m.appendChild(head);
+    var sum=el("div","rsum"); var cell=function(lbl,val,cls){ var c=el("div",cls||null); c.appendChild(el("small",null,lbl)); c.appendChild(el("b",null,val)); sum.appendChild(c); };
+    cell("Driving",driving!=null?fmt(driving):"Not set",driving==null?"warn":null); cell(needBreak?"Back, with the break":"Back at Forton",back!=null?clock(back+(needBreak?45:0)):"Unknown",back==null?"warn":null); cell("Break",needBreak?"45 min needed":(driving!=null?"None needed":"Unknown"),needBreak?"warn":null); m.appendChild(sum);
+    var tl=el("div","rtl");
+    // SET OFF: postcode and time on one line (Sam, 29 Sep 2026: PR3 1AD unless the driver sets off from somewhere else)
+    var n0=el("div","rnode"); var n0t=el("div","top"); var n0n=el("span","nm","Sets off"); n0n.appendChild(el("small",null,start===HOME_PC?"Forton":"Not Forton today")); n0t.appendChild(n0n);
+    var n0r=el("span","ins"); var pci=el("input"); pci.type="text"; pci.value=start; pci.placeholder=HOME_PC; pci.setAttribute("aria-label","Set-off postcode"); pci.className="pc"; pci.onchange=function(){ setRL({start:pci.value.toUpperCase().trim()||HOME_PC,legs:null,miles:null}); render(); }; n0r.appendChild(pci);
+    var soi=el("input"); soi.type="time"; soi.step="300"; soi.value=RL.setOff||""; soi.setAttribute("aria-label","Set-off time"); soi.className="tm"; soi.onchange=function(){ setRL({setOff:soi.value||""}); render(); }; n0r.appendChild(soi);
+    if(start!==HOME_PC){ var rb=el("button","close","Forton"); rb.title="Back to setting off from Forton"; rb.onclick=function(){ setRL({start:HOME_PC,legs:null,miles:null}); render(); }; n0r.appendChild(rb); }
+    n0t.appendChild(n0r); n0.appendChild(n0t); tl.appendChild(n0);
+    var legRow=function(i){ var lr=el("div","rleg"); lr.appendChild(el("span",null,"drive")); lr.appendChild(hmBox(function(){return legsNow[i];},function(v){ legsNow[i]=v; setRL({legs:legsNow.slice(),order:ordered.map(function(x){return x.id;})}); r.keys.forEach(function(kk){ delete ROUND_DRIVE[kk]; }); render(); },"Drive to "+(i<ordered.length?stopName(ordered[i]):"Forton")));
+      if(legsNow[i]==null&&perLeg!=null) lr.appendChild(el("span","mi","about "+fmt(Math.round(perLeg/5)*5)+" from the total")); else if(milesNow&&milesNow[i]!=null) lr.appendChild(el("span","mi",Math.round(milesNow[i])+" mi"));
+      if(i>0&&i<ordered.length){ var sw=el("button","close s","Swap with next"); sw.onclick=function(){ var ids=ordered.map(function(x){return x.id;}); var tmp=ids[i-1]; ids[i-1]=ids[i]; ids[i]=tmp; setRL({order:ids,legs:null,miles:null}); render(); }; lr.appendChild(sw); }
+      return lr; };
+    ordered.forEach(function(j,i){ tl.appendChild(legRow(i)); var n=el("div","rnode rstop"); var top=el("div","top"); var nm=el("span","nm",j.title); var pc=pcOf(j)&&!/^area:/.test(pcOf(j))?pcOf(j):""; nm.appendChild(el("small",null,(pc||"no postcode on the card")+" · "+(j.mins!=null?fmt(j.mins)+" on site":"site time not set")+(j.from?" · after "+j.from:"")+(j.by?" · by "+j.by:""))); top.appendChild(nm);
+      var tm=times[i]; top.appendChild(el("span","t"+(tm&&tm.late?" late":""),tm?clock(tm.arrive)+" to "+clock(tm.leave)+(tm.late?", past the window":""):"")); n.appendChild(top); tl.appendChild(n); });
+    tl.appendChild(legRow(ordered.length)); var nb=el("div","rnode"); var nbt=el("div","top"); nbt.appendChild(el("span","nm","Back at Forton")); nbt.appendChild(el("span","t",back!=null?clock(back)+(needBreak?", "+clock(back+45)+" after the break":""):"")); nb.appendChild(nbt); tl.appendChild(nb);
+    m.appendChild(tl);
+    var lk=el("div","row"); var lkb=el("button","p","Look up travel"); var canLook=pts.every(Boolean)&&!!CRM_KEY; lkb.disabled=!canLook; lkb.title=canLook?"Road time for each leg from the postcodes, plus a fifth for traffic":(!CRM_KEY?"The board needs its CRM key first":"Every stop needs a postcode on its card");
+    lkb.onclick=function(){ lkb.disabled=true; lkb.textContent="Looking up…"; fetch(CRM_ROUTE_URL,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({key:CRM_KEY,points:pts})}).then(function(x){return x.json();}).then(function(res){ if(!res||!res.ok) throw new Error((res&&res.error)||"no answer"); var legs=res.legs.map(function(L){ return Math.max(5,Math.round(L.mins*TRAFFIC/5)*5); }); setRL({legs:legs,order:ordered.map(function(x){return x.id;}),miles:res.legs.map(function(L){return L.miles;}),source:res.legs[0]&&res.legs[0].source||""}); r.keys.forEach(function(kk){ delete ROUND_DRIVE[kk]; }); render(); }).catch(function(e){ lkb.disabled=false; lkb.textContent="Look up travel"; alert("Could not look the travel up: "+(e&&e.message||e)); }); };
+    lk.appendChild(lkb); lk.appendChild(el("span","hint",RL.source&&tot!=null?((RL.source==="google"?"Looked up on Google":"Looked up on OpenStreetMap")+", plus a fifth for traffic. Type over any leg."):(canLook?"Road time for each leg, plus a fifth for traffic. Or type the legs.":(!CRM_KEY?"Needs the board's CRM key. Type the legs instead.":"A stop has no postcode on its card. Type the legs instead.")))); m.appendChild(lk);
+    // NEARBY, OTHER DAYS: site jobs in the next six weeks within twenty road miles of a stop, so they can ride along
+    var nbSec=el("div","sec"); nbSec.appendChild(el("div","k","Nearby, other days")); var nbBody=el("div","hint","Finding postcodes…"); nbSec.appendChild(nbBody); m.appendChild(nbSec);
     (function(){ var horizon=iso(addDays(new Date(k+"T12:00"),42)); var pool=allJobs().filter(function(j){ return j.site&&!(j.contractor&&!j.who.length)&&j.date!==k&&j.date>=k&&j.date<=horizon&&r.stops.indexOf(j)<0; });
       var want=r.stops.concat(pool); want.forEach(function(j){ j.pc=pcOf(j); });
       geocode(want.map(function(j){return j.pc;})).then(function(){ want.forEach(function(j){ j.pt=j.pc&&GEO[j.pc]?GEO[j.pc]:null; });
         var near=[]; pool.forEach(function(o){ if(!o.pt) return; var best=null; r.stops.forEach(function(x){ if(!x.pt) return; var mi=roadMiles(miles(x.pt,o.pt)); if(best==null||mi<best.m) best={m:mi,x:x}; }); if(best&&best.m<=20) near.push({o:o,m:best.m,x:best.x}); });
-        near.sort(function(a,b){return a.m-b.m;}); nbBody.innerHTML="";
-        if(!near.length){ nbBody.textContent="Nothing within twenty miles of these stops in the next six weeks."; return; }
-        near.slice(0,6).forEach(function(n){ var o=n.o; nbBody.appendChild(el("div",null,o.title+", "+niceDay(o.date)+", "+n.m+" miles from "+n.x.title.split(" - ")[0]+(o.prep&&o.prodDue?". Still in production, due "+niceDay(o.prodDue):"")+".")); });
-      }).catch(function(){ nbBody.textContent="Could not place the postcodes just now."; });
+        near.sort(function(a,b){return a.m-b.m;}); nbBody.innerHTML=""; nbBody.className="";
+        if(!near.length){ nbBody.className="hint"; nbBody.textContent="Nothing within twenty miles of these stops in the next six weeks."; return; }
+        near.slice(0,6).forEach(function(n){ var o=n.o, row=el("div","rnr"); var L=el("span",null,o.title); L.appendChild(el("small",null,niceDay(o.date)+" · "+n.m+" miles from "+stopName(n.x)+(o.prep&&o.prodDue?" · in production, due "+niceDay(o.prodDue):""))); row.appendChild(L); nbBody.appendChild(row); });
+      }).catch(function(){ nbBody.className="hint"; nbBody.textContent="Could not place the postcodes just now."; });
     })();
-    var sv=el("div","save"); var sb=el("button",null,"Done"); sb.onclick=function(){openRound=null;render();}; sv.appendChild(sb); m.appendChild(sv);
+    // THE FOOT: the one-total fallback folded behind a link, and Done
+    var sv=el("div","rfoot"); var left=el("div");
+    if(tot==null){ var tl2=el("button","link",roundTotalOpen?"Hide the total":"Not sure of the legs? Type one total instead"); tl2.onclick=function(){ roundTotalOpen=!roundTotalOpen; render(); }; left.appendChild(tl2);
+      if(roundTotalOpen){ var tr=el("div","row"); tr.appendChild(hmBox(function(){return r.drive;},function(v){ r.keys.forEach(function(kk){ if(v==null) delete ROUND_DRIVE[kk]; else ROUND_DRIVE[kk]=v; }); render(); },"Whole round drive")); tr.appendChild(el("span","hint","for the whole round, split evenly across the legs")); left.appendChild(tr); } }
+    else left.appendChild(el("span","hint","Driving "+fmt(tot)+" in all"));
+    sv.appendChild(left); var sb=el("button","p","Done"); sb.onclick=shut; sv.appendChild(sb); m.appendChild(sv);
     veil.appendChild(m); return veil;
   }
   var shortDay=function(k){ var d=new Date(k+"T12:00"); return DAYS[d.getDay()]+" "+d.getDate(); };
