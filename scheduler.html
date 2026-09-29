@@ -292,6 +292,8 @@
   .row input[type=number]{width:90px}
   .hm{display:inline-flex;align-items:center;gap:8px}
   .hm input{width:72px}
+  .legrow .leglbl{width:150px;color:var(--muted);font-size:13px;flex-shrink:0}
+  .modal button.p{background:var(--blue);color:#fff;border:0;border-radius:8px;padding:8px 14px;font-weight:700} .modal button.p:disabled{opacity:.45;cursor:default}
   .row .hint{color:var(--muted);font-size:13px}
   .facts{border:1px solid var(--line);border-radius:10px;overflow:hidden}
   .fld{display:grid;grid-template-columns:96px 1fr;gap:12px;padding:10px 14px;border-top:1px solid var(--line);font-size:14px;line-height:1.45}
@@ -1064,7 +1066,7 @@ var SNAP=null, DETAIL={};
     var stopName=function(j){ return j.title.split(" - ")[0].trim(); };
     for(var li=0; li<=ordered.length; li++){ names.push((li===0?(RL.start&&RL.start!==HOME_PC?RL.start:"Forton"):stopName(ordered[li-1]))+" to "+(li===ordered.length?"Forton":stopName(ordered[li]))); }
     var legsNow=(RL.legs&&RL.legs.length===names.length)?RL.legs.slice():names.map(function(){return null;});
-    names.forEach(function(nm,i){ var lr=el("div","row"); lr.appendChild(el("span","hint",nm)); lr.appendChild(hmBoxes(function(){return legsNow[i];},function(v){ legsNow[i]=v; setRL({legs:legsNow.slice(),order:ordered.map(function(x){return x.id;})}); r.keys.forEach(function(kk){ delete ROUND_DRIVE[kk]; }); render(); },"Leg "+(i+1))); dv.appendChild(lr); });
+    names.forEach(function(nm,i){ var lr=el("div","row legrow"); lr.appendChild(el("span","leglbl",nm)); lr.appendChild(hmBoxes(function(){return legsNow[i];},function(v){ legsNow[i]=v; setRL({legs:legsNow.slice(),order:ordered.map(function(x){return x.id;})}); r.keys.forEach(function(kk){ delete ROUND_DRIVE[kk]; }); render(); },"Leg "+(i+1))); dv.appendChild(lr); });
     var lk=el("div","row"); var lkb=el("button","p","Look up travel"); var canLook=pts.every(Boolean)&&!!CRM_KEY; lkb.disabled=!canLook; lkb.title=canLook?"Road time for each leg from the postcodes, plus a fifth for traffic":(!CRM_KEY?"The board needs its CRM key first":"Every stop needs a postcode on its card");
     lkb.onclick=function(){ lkb.disabled=true; lkb.textContent="Looking up\u2026"; fetch(CRM_ROUTE_URL,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({key:CRM_KEY,points:pts})}).then(function(x){return x.json();}).then(function(res){ if(!res||!res.ok) throw new Error((res&&res.error)||"no answer"); var legs=res.legs.map(function(L){ return Math.max(5,Math.round(L.mins*TRAFFIC/5)*5); }); setRL({legs:legs,order:ordered.map(function(x){return x.id;}),miles:res.legs.map(function(L){return L.miles;}),source:res.legs[0]&&res.legs[0].source||""}); r.keys.forEach(function(kk){ delete ROUND_DRIVE[kk]; }); render(); }).catch(function(e){ lkb.disabled=false; lkb.textContent="Look up travel"; alert("Could not look the travel up: "+(e&&e.message||e)); }); };
     lk.appendChild(lkb); if(RL.source) lk.appendChild(el("span","hint",(RL.source==="google"?"Looked up on Google":"Looked up on OpenStreetMap")+", plus a fifth for traffic. Change any leg if you know better.")); dv.appendChild(lk);
@@ -1072,7 +1074,7 @@ var SNAP=null, DETAIL={};
     dv.appendChild(el("div","hint",tot!=null?("Driving "+fmt(tot)+" in all"+(tot>270?". Over 4h 30m, so add a 45 minute break to the day.":"")):"Or one total for the whole round, split evenly across the legs:"));
     var row=el("div","row"); if(tot==null){
     row.appendChild(hmBoxes(function(){return r.drive;},function(v){ r.keys.forEach(function(kk){ ROUND_DRIVE[kk]=v; }); },"Round drive")); }
-    if(tot==null) row.appendChild(el("span","hint",r.keys.some(function(kk){return ROUND_DRIVE[kk]!=null;})?"You set this.":(r.road?"Road time labour to "+r.stops.length+" stops and back, from OpenStreetMap routing, plus 20 percent for traffic. Change it if you know better.":(r.def!=null?"Longest single journey plus 20 minutes per stop, until the road time arrives. Change it if you know better.":"No postcodes found. Type it in.")))); dv.appendChild(row); m.appendChild(dv);
+    if(tot==null) row.appendChild(el("span","hint",r.keys.some(function(kk){return ROUND_DRIVE[kk]!=null;})?"You set this.":(r.road?"Road time labour to "+r.stops.length+" stops and back, from OpenStreetMap routing, plus 20 percent for traffic. Change it if you know better.":(r.def!=null?"A rough total from the jobs' own travel times, used until the legs above are typed or looked up. Type over it if you know better.":"No total yet. Type the legs above, or look them up.")))); dv.appendChild(row); m.appendChild(dv);
     // NEARBY, OTHER DAYS. The one thing the Routes tab did that planned anything (Sam, 29 Sep 2026: retire the tab,
     // keep this here): site jobs in the next six weeks within twenty road miles of a stop, so they can ride along.
     var nbSec=el("div","sec"); nbSec.appendChild(el("div","k","Nearby, other days")); var nbBody=el("div","hint","Finding postcodes\u2026"); nbSec.appendChild(nbBody); m.appendChild(nbSec);
