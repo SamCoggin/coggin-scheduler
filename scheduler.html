@@ -748,7 +748,9 @@ var SNAP=null, DETAIL={};
   var openRound=null;
   // TIME WINDOWS AND THE DRIVER DAY (Sam, 13 Sep 2026). A transport job can carry "arrive after" and "finish by".
   // The day is walked from 8:00: legs out, wait for the window, site time, legs back, then labour and production work.
-  var DAY_START=8*60, DAY_END=16*60+30, DRIVE_BREAK=270, DRIVER_DAY_MAX=11*60;
+  // 3.5 tonne vans, no tachograph (Sam, 29 Sep 2026): GB domestic rules, not the EU 4h30/45 rule. A day over six hours of
+  // work gets a 30 minute break; driving is capped at 10 hours; duty at 11.
+  var DAY_START=8*60, DAY_END=16*60+30, WORK_BREAK_AFTER=6*60, WORK_BREAK=30, DRIVE_MAX=10*60, DRIVER_DAY_MAX=11*60;
   function parseHM(t){ if(!t) return null; var m=/^(\d{1,2}):(\d{2})$/.exec(t); return m?parseInt(m[1],10)*60+parseInt(m[2],10):null; }
   function hmStr(m){ m=Math.round(m/5)*5; var h=Math.floor(m/60), mm=m%60; return h+":"+(mm<10?"0":"")+mm; }
   function windowText(j){ if(!j||(!j.from&&!j.by)) return ""; if(j.collect) return (j.from?", customer arrives after "+j.from:"")+(j.by?", ready by "+j.by:""); return (j.from?", arrive after "+j.from:"")+(j.by?", finish by "+j.by:""); }
@@ -770,7 +772,7 @@ var SNAP=null, DETAIL={};
     }
     var back=t; other.forEach(function(j){ t+=(j.mins||0); }); preps.forEach(function(j){ t+=(j.prep.who.length?j.prep.who.reduce(function(x,w){return x+prepShare(j,w);},0):prepShare(j)); });
     var isDriver=DRIVERS.indexOf(w)>=0&&site.length>0;
-    return {stops:stops,drive:Math.round(drive),back:back,end:t,isDriver:isDriver,driveBreak:isDriver&&drive>DRIVE_BREAK,longDay:isDriver&&(t-DAY_START)>DRIVER_DAY_MAX};
+    return {stops:stops,drive:Math.round(drive),back:back,end:t,isDriver:isDriver,workBreak:(t-DAY_START)>WORK_BREAK_AFTER,driveOver:isDriver&&drive>DRIVE_MAX,longDay:isDriver&&(t-DAY_START)>DRIVER_DAY_MAX};
   }
   function jobTiming(j,k){ if(!j.who.length) return null; var tl=dayTimeline(k,j.who[0]); return tl.stops.filter(function(x){return x.j===j;})[0]||null; }
   // the town alone was not clear enough in a warning (Sam, 15 Sep 2026: "I think this is meant to be Preston - MJS Groundworks"): the whole title, which is already town and customer
@@ -798,7 +800,7 @@ var SNAP=null, DETAIL={};
     var out=[], seen={}; var add=function(text,j,who){ out.push({k:k,text:text,j:j||null,title:j?short(j):(who||((/^(FX\d\d \w{3})/.exec(text)||[])[1])||"Day")}); };
     TEAM.forEach(function(w){ var tl=dayTimeline(k,w);
       tl.stops.forEach(function(x){ if(seen[x.j.id]) return; if(x.late){ seen[x.j.id]=1; add(short(x.j)+" finishes about "+hmStr(x.end)+", after the "+x.j.by+" cut-off. Move it earlier in the day or to another day.",x.j); } else if(x.wait>=30){ seen[x.j.id]=1; add(short(x.j)+": "+w+" arrives about "+hmStr(x.arrive)+" and waits until "+x.j.from+". Put another stop first.",x.j); } });
-      if(tl.driveBreak) add(w+": "+fmt(tl.drive)+" driving. Over 4h 30m, so add a 45 minute break to the day.",null,w);
+      if(tl.driveOver) add(w+": "+fmt(tl.drive)+" driving. Over the 10 hour limit. Split it or move a job.",null,w);
       if(tl.longDay) add(w+": "+fmt(tl.end-DAY_START)+" day from 8:00, over 11 hours for a driver. Split it or move a job.",null,w);
     });
     vehicleWarnings(k).forEach(function(v){ add(v.text,v.j,v.who); });
@@ -972,7 +974,7 @@ var SNAP=null, DETAIL={};
       twb.appendChild(el("div","hint","Leave both blank when any time in the working day is fine."));
       if(part.who.length){ var tlm=dayTimeline(j.date,part.who[0]), stp=tlm.stops.filter(function(x){return x.j===j;})[0];
         if(stp&&!stp.noDrive) twb.appendChild(el("div","hint"+(stp.late?" far":""),"Plan: leave Forton 8:00, arrive about "+hmStr(stp.arrive)+(stp.wait?", wait until "+j.from:"")+", leave site "+hmStr(stp.end)+", back at Forton "+hmStr(tlm.back)+"."+(stp.late?" That is after the "+j.by+" cut-off.":"")));
-        if(tlm.driveBreak) twb.appendChild(el("div","hint far",part.who[0]+" has "+fmt(tlm.drive)+" driving that day. Over 4h 30m, so add a 45 minute break."));
+        if(tlm.driveOver) twb.appendChild(el("div","hint far",part.who[0]+" has "+fmt(tlm.drive)+" driving that day. Over the 10 hour limit."));
         if(tlm.longDay) twb.appendChild(el("div","hint far",part.who[0]+"'s day runs "+fmt(tlm.end-DAY_START)+" from 8:00, over 11 hours for a driver.")); }
       right.appendChild(twb); }
     if(!o.shop && j.collect && !o.leg){ var cwb=block("Collection Slot","slot"); var cwr=el("div","row tw");
@@ -1087,13 +1089,13 @@ var SNAP=null, DETAIL={};
     var t0=RL.setOff&&parseHM(RL.setOff)!=null?parseHM(RL.setOff):DAY_START, t=t0, known=true, times=[];
     ordered.forEach(function(j,i){ var lg=legsNow[i]!=null?legsNow[i]:perLeg; if(lg==null) known=false; if(known){ t+=lg; var f=parseHM(j.from); if(f!=null&&t<f) t=f; var a=t; t+=(j.mins||0); times.push({arrive:a,leave:t,late:parseHM(j.by)!=null&&t>parseHM(j.by)}); } else times.push(null); });
     var lastLeg=legsNow[ordered.length]!=null?legsNow[ordered.length]:perLeg; var back=known&&lastLeg!=null?t+lastLeg:null;
-    var driving=tot!=null?tot:oneTotal, needBreak=driving!=null&&driving>DRIVE_BREAK;
+    var driving=tot!=null?tot:oneTotal, needBreak=back!=null&&(back-t0)>WORK_BREAK_AFTER, driveOver=driving!=null&&driving>DRIVE_MAX;
     var veh=(ordered.map(function(j){return j.vehicle&&j.vehicle!=="hire"?j.vehicle:(j.vehicle==="hire"?"Hire":"");}).filter(Boolean))[0]||"";
     var m=el("div","modal round");
     var head=el("div","head"); var hd=el("div"); hd.appendChild(el("h3",null,crewText(r.crew)+(r.crew.length<2?"'s round":": their round"))); hd.appendChild(el("div","hint",niceDay(k)+" · "+ordered.length+" stops"+(veh?" · "+veh:""))); hd.style.flex="1"; head.appendChild(hd);
     var x=el("button","close","Close"); x.onclick=shut; head.appendChild(x); m.appendChild(head);
     var sum=el("div","rsum"); var cell=function(lbl,val,cls){ var c=el("div",cls||null); c.appendChild(el("small",null,lbl)); c.appendChild(el("b",null,val)); sum.appendChild(c); };
-    cell("Driving",driving!=null?((tot==null?"about ":"")+fmt(driving)):"Not set",driving==null||tot==null?"warn":null); cell(needBreak?"Back, with the break":"Back at Forton",back!=null?((tot==null?"about ":"")+clock(back+(needBreak?45:0))):"Unknown",back==null||tot==null?"warn":null); cell("Break",needBreak?"45 min needed":(driving!=null?"None needed":"Unknown"),needBreak?"warn":null); m.appendChild(sum);
+    cell("Driving",driving!=null?((tot==null?"about ":"")+fmt(driving)):"Not set",driving==null||tot==null?"warn":null); cell(needBreak?"Back, with the break":"Back at Forton",back!=null?((tot==null?"about ":"")+clock(back+(needBreak?WORK_BREAK:0))):"Unknown",back==null||tot==null?"warn":null); cell(driveOver?"Driving":"Break",driveOver?"Over 10 hours":(needBreak?"30 min, day over 6h":(back!=null?"None needed":"Unknown")),(needBreak||driveOver)?"warn":null); m.appendChild(sum);
     var tl=el("div","rtl");
     // SET OFF: postcode and time on one line (Sam, 29 Sep 2026: PR3 1AD unless the driver sets off from somewhere else)
     var n0=el("div","rnode"); var n0t=el("div","top"); var n0n=el("span","nm","Sets off"); n0n.appendChild(el("small",null,placeName(start)+(start!==HOME_PC?", "+start:""))); n0t.appendChild(n0n);
@@ -1120,7 +1122,7 @@ var SNAP=null, DETAIL={};
       return lr; };
     ordered.forEach(function(j,i){ tl.appendChild(legRow(i)); var n=el("div","rnode rstop"); var top=el("div","top"); var nm=el("span","nm",j.title); var pc=pcOf(j)&&!/^area:/.test(pcOf(j))?pcOf(j):""; nm.appendChild(el("small",null,(pc||"no postcode on the card")+" · "+(j.mins!=null?fmt(j.mins)+" on site":"site time not set")+(j.from?" · after "+j.from:"")+(j.by?" · by "+j.by:""))); top.appendChild(nm);
       var tm=times[i]; top.appendChild(el("span","t"+(tm&&tm.late?" late":""),tm?clock(tm.arrive)+" to "+clock(tm.leave)+(tm.late?", past the window":""):"")); n.appendChild(top); tl.appendChild(n); });
-    tl.appendChild(legRow(ordered.length)); var nb=el("div","rnode"); var nbt=el("div","top"); nbt.appendChild(el("span","nm","Back at Forton")); nbt.appendChild(el("span","t",back!=null?clock(back)+(needBreak?", "+clock(back+45)+" after the break":""):"")); nb.appendChild(nbt); tl.appendChild(nb);
+    tl.appendChild(legRow(ordered.length)); var nb=el("div","rnode"); var nbt=el("div","top"); nbt.appendChild(el("span","nm","Back at Forton")); nbt.appendChild(el("span","t",back!=null?clock(back)+(needBreak?", "+clock(back+WORK_BREAK)+" after the break":""):"")); nb.appendChild(nbt); tl.appendChild(nb);
     m.appendChild(tl);
     var lk=el("div","row"); var lkb=el("button","p","Look up travel"); var canLook=pts.every(Boolean)&&!!CRM_KEY; lkb.disabled=!canLook; lkb.title=canLook?"Road time for each leg from the postcodes, plus a fifth for traffic":(!CRM_KEY?"The board needs its CRM key first":"Every stop needs a postcode on its card");
     lkb.onclick=function(){ lkb.disabled=true; lkb.textContent="Looking up…"; fetch(CRM_ROUTE_URL,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({key:CRM_KEY,points:pts})}).then(function(x){return x.json();}).then(function(res){ if(!res||!res.ok) throw new Error((res&&res.error)||"no answer"); var legs=res.legs.map(function(L){ return Math.max(5,Math.round(L.mins*TRAFFIC/5)*5); }); setRL({legs:legs,order:ordered.map(function(x){return x.id;}),miles:res.legs.map(function(L){return L.miles;}),source:res.legs[0]&&res.legs[0].source||""}); r.keys.forEach(function(kk){ delete ROUND_DRIVE[kk]; }); render(); }).catch(function(e){ lkb.disabled=false; lkb.textContent="Look up travel"; var old=lk.querySelector(".hint.far"); if(old) lk.removeChild(old); lk.appendChild(el("span","hint far","Could not look the travel up. "+String(e&&e.message||e).replace(/\.?$/,".")+" Type the legs for now.")); }); };
@@ -1318,7 +1320,7 @@ var SNAP=null, DETAIL={};
       var r=rounds.filter(function(x){return x.who===w;})[0]; if(r) bits.push(piece("Delivery round",r.stops.length+" stops"+(r.drive?", "+fmt(r.drive)+" travel":"")));
       mineP.forEach(function(j){ bits.push(piece(j.title.split(" - ")[0],j.title.split(" - ").slice(1).join(" - ")+(j.mins!=null?", "+fmt(j.mins)+(j.site&&!j.onRound&&j.drive?" + "+fmt(j.drive)+" travel":""):"")+(past?doneOf(j.isLeg?j.leg:j):""))); });
       if(load[w].c!=="off"&&load[w].c!=="office"&&load[w].rec>=30){ if(past){ var tly=TALLIES[tallyKey(k,w)], tg=recTarget(load[w].rec); bits.push(piece("Recycling",tly&&tly.units!=null?tly.units+" of "+tg+" units":"not recorded, target was "+tg+" units",tly&&tly.units!=null&&tly.units>=tg*0.8?null:"warn")); } else bits.push(piece("Recycling",fmt(load[w].rec))); }
-      var tlw=dayTimeline(k,w); if(tlw.isDriver&&tlw.drive) bits.push(piece("Driving",fmt(tlw.drive)+", back at Forton about "+hmStr(tlw.back)+(tlw.driveBreak?". Needs a 45 minute break":"")+(tlw.longDay?". Day over 11 hours":""),tlw.driveBreak||tlw.longDay?"warn":null));
+      var tlw=dayTimeline(k,w); if(tlw.isDriver&&tlw.drive) bits.push(piece("Driving",fmt(tlw.drive)+", back at Forton about "+hmStr(tlw.back)+(tlw.workBreak?". Add a 30 minute break, day over 6 hours":"")+(tlw.driveOver?". Driving over 10 hours":"")+(tlw.longDay?". Day over 11 hours":""),tlw.driveOver||tlw.longDay?"warn":null));
       bits.forEach(function(b2,i){ if(i) det.appendChild(document.createTextNode(" \u00b7 ")); det.appendChild(b2); });
       var row=opRow(w,load[w],{driver:DRIVERS.indexOf(w)>=0,past:past,status:past?pastLine():null,detail:bits.length?det:"",actions:ob?[ob]:[]});
       pc.appendChild(row);
@@ -1845,7 +1847,7 @@ var SNAP=null, DETAIL={};
       var recToday=(loadOn(k)[w]||{}).rec||0, finishAt=Math.max(tl.end,recToday>0?DAY_END:tl.end);
       var sub=[tl.stops.length?(tl.stops.length===1?"1 stop":tl.stops.length+" stops")+", leave Forton 08:00, back about "+clock(tl.back):(recToday>0&&!jobs.length&&!preps.length?"Recycling all day":"No driving today"), vans.length?"Van: "+vans.join(", "):"", mateList.length?"With: "+mateList.join(", "):"", "Finish about "+clock(finishAt)];
       doc.text(sub.filter(Boolean).join(".  ")+".",12,23); var y=30;
-      if(tl.driveBreak||tl.longDay){ doc.setFont("helvetica","bold"); doc.setTextColor(PDF_RED[0],PDF_RED[1],PDF_RED[2]); doc.text((tl.driveBreak?"Take a 45 minute break before 4h 30m of driving. ":"")+(tl.longDay?"Long day: over 11 hours.":""),12,y); y+=6; }
+      if(tl.workBreak||tl.driveOver||tl.longDay){ doc.setFont("helvetica","bold"); doc.setTextColor(PDF_RED[0],PDF_RED[1],PDF_RED[2]); doc.text((tl.workBreak?"Take a 30 minute break, the day is over 6 hours. ":"")+(tl.driveOver?"Driving over 10 hours. ":"")+(tl.longDay?"Long day: over 11 hours.":""),12,y); y+=6; }
       var block=function(title,right){ y=pdfBand(doc,y,title+(right?"    "+right:"")); };
       var facts=function(j,site){
         var lines=[]; var f=siteFacts(j), pc=pcOf(j);
