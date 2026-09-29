@@ -259,6 +259,20 @@
     var contractorOnly=(!!d.contractor||CARRIER_PENDING) && !d.who.length;
 
     // ── PRODUCTION (workshop stage) ──
+    // QC IS A WORKSHOP CHECK (Sam, 29 Sep 2026: "QC needs to be in the production section not the delivery section surely"):
+    // it sits under Production when the card has one, and only falls back to the transport section when it does not.
+    function qcRow(){
+      var qTxt=d.qc&&d.qc.na?"Not applicable, "+d.qc.by:d.qc?"Passed, "+d.qc.by+(d.qc.at?" "+niceShort(d.qc.at):""):"Not checked";
+      return rowEl("qc","QC",qTxt,function(ed){
+        if(d.qc){ var u=el("button","p","Undo"); u.onclick=function(){ d.qc=null; save(); render(); }; ed.appendChild(u); return; }
+        var r=el("div","row"); var sel=el("select"); (typeof CREW!=="undefined"?CREW:[]).forEach(function(w){ var o=el("option",null,w); o.value=w; sel.appendChild(o); }); sel.setAttribute("aria-label","Checked by"); r.appendChild(sel);
+        var today=new Date(), td=today.getFullYear()+"-"+("0"+(today.getMonth()+1)).slice(-2)+"-"+("0"+today.getDate()).slice(-2);
+        var pb=el("button","p","Pass QC"); pb.onclick=function(){ d.qc={by:sel.value,at:td}; save(); render(); }; r.appendChild(pb);
+        var nb=el("button",null,"Not applicable"); nb.onclick=function(){ d.qc={by:sel.value,at:td,na:true}; save(); render(); }; r.appendChild(nb); ed.appendChild(r);
+        ed.appendChild(el("div","hint","Not applicable is for jobs with nothing to check, such as a site visit or a straight collection."));
+      },d.qc?"":"todo");
+    }
+    var qcPlaced=false;
     if(workshop || d.prep){
       if(!d.prep) d.prep={who:[],mins:null,start:null,date:null};
       var prodDue=d.prodDue||defaultDue;
@@ -306,6 +320,7 @@
         } },d.prep.mins!=null?"":(d.prep.who.length?"bad":"todo")));
       ps.appendChild(rowEl("pdue","Production due",(prodDue?niceShort(prodDue):"Not set")+(d.prodDue?"":viewing?", ready for the viewing":", "+PRODUCTION_BUFFER_DAYS+" working days before delivery"),function(ed){ var pdr=el("div","row"); var pdi=el("input"); pdi.type="date"; pdi.value=prodDue||""; pdi.onchange=function(){ d.prodDue=pdi.value||null; save(); render(); }; pdr.appendChild(pdi);
         if(d.prodDue){ var rs=el("button","p","Reset"); rs.onclick=function(){ d.prodDue=null; save(); render(); }; pdr.appendChild(rs); } ed.appendChild(pdr); ed.appendChild(el("div","hint","The day production must be finished and checked. "+PRODUCTION_BUFFER_DAYS+" working days before delivery unless you set it.")); }));
+      ps.appendChild(qcRow()); qcPlaced=true;
       app.appendChild(ps);
     }
 
@@ -377,15 +392,7 @@
             ed.appendChild(el("div","hint","Leave both blank when any time in the working day is fine."));
           }));
         }
-        var qTxt=d.qc&&d.qc.na?"Not applicable, "+d.qc.by:d.qc?"Passed, "+d.qc.by+(d.qc.at?" "+niceShort(d.qc.at):""):"Not checked";
-        ts.appendChild(rowEl("qc","QC",qTxt,function(ed){
-          if(d.qc){ var u=el("button","p","Undo"); u.onclick=function(){ d.qc=null; save(); render(); }; ed.appendChild(u); return; }
-          var r=el("div","row"); var sel=el("select"); (typeof CREW!=="undefined"?CREW:[]).forEach(function(w){ var o=el("option",null,w); o.value=w; sel.appendChild(o); }); sel.setAttribute("aria-label","Checked by"); r.appendChild(sel);
-          var today=new Date(), td=today.getFullYear()+"-"+("0"+(today.getMonth()+1)).slice(-2)+"-"+("0"+today.getDate()).slice(-2);
-          var pb=el("button","p","Pass QC"); pb.onclick=function(){ d.qc={by:sel.value,at:td}; save(); render(); }; r.appendChild(pb);
-          var nb=el("button",null,"Not applicable"); nb.onclick=function(){ d.qc={by:sel.value,at:td,na:true}; save(); render(); }; r.appendChild(nb); ed.appendChild(r);
-          ed.appendChild(el("div","hint","Not applicable is for jobs with nothing to check, such as a site visit or a straight collection."));
-        },d.qc?"":"todo"));
+        if(!qcPlaced) ts.appendChild(qcRow());
         var LEG_TYPES_CARD=[["to_sub","Deliver to subcontractor"],["from_sub","Collect from subcontractor"],["production","Production"],["site","Site visit"],["labour","Labour"]];
         ts.appendChild(rowEl("addleg","Legs",(d.legs||[]).length?((d.legs.length)+(d.legs.length===1?" leg":" legs")+" on this job"):"None",function(ed){
           var r=el("div","row"); var tsel=el("select"); LEG_TYPES_CARD.forEach(function(t2){ var o=el("option",null,t2[1]); o.value=t2[0]; tsel.appendChild(o); }); tsel.setAttribute("aria-label","Leg type"); r.appendChild(tsel);
