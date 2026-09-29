@@ -356,6 +356,10 @@
   .oprow .pill.free{background:var(--green-bg);color:var(--green)} .oprow .pill.busy{background:var(--amber-bg);color:var(--amber)} .oprow .pill.over{background:var(--red-bg);color:var(--red)} .oprow .pill.off,.oprow .pill.office,.oprow .pill.past{background:var(--list);color:var(--muted)}
   .oprow .odet{font-size:11.5px;color:var(--muted);margin-top:3px;line-height:1.5} .oprow .odet b{font-weight:600;color:#334155} .oprow .odet .warn{color:var(--red)} .oprow .odet .warn b{color:var(--red)}
   .oprow .oacts{margin-top:4px}
+  .oprow .obar{display:flex;height:7px;border-radius:99px;overflow:hidden;background:#eef1f5;margin:7px 0 5px} .oprow .obar i{display:block;height:100%} .oprow .obar .p{background:#5b8def} .oprow .obar .s{background:#1f845a} .oprow .obar .r{background:#c3cad4} .oprow .obar .o{background:var(--red)}
+  .oprow .oln{display:grid;grid-template-columns:68px 1fr auto;gap:8px;padding:2px 0;font-size:12px;align-items:baseline;color:#334155} .oprow .oln .k{font-size:10px;text-transform:uppercase;letter-spacing:.04em;font-weight:700} .oprow .oln .k.p{color:#3b6fd6} .oprow .oln .k.s{color:#1f845a} .oprow .oln .k.r{color:var(--muted)} .oprow .oln .t{font-variant-numeric:tabular-nums;color:var(--muted);white-space:nowrap} .oprow .oln .sub2{color:var(--muted)}
+  .oprow .oln.round{background:var(--green-bg);margin:2px -6px;padding:3px 6px;border-radius:6px} .oprow .oln.round .k{color:#1f845a}
+  .oprow .oacts{display:flex;gap:12px;align-items:center} .oprow .owarn{font-size:11px;font-weight:700;color:var(--red)}
   .olink{font:inherit;font-size:11px;font-weight:700;color:var(--blue);background:none;border:0;padding:0;cursor:pointer} .olink.on{color:var(--red)}
   .oprow .tick{font-size:12px;font-weight:700;color:var(--blue);border:1px solid var(--blue);border-radius:6px;padding:3px 0;width:76px;text-align:center}
   .oprow.on{background:var(--blue-bg)} .oprow.on .tick{background:var(--blue);color:#fff}
@@ -1312,19 +1316,25 @@ var SNAP=null, DETAIL={};
       var past=k<iso(TODAY), mineP=jobs.filter(function(j){return j.who.indexOf(w)>=0;}), prepsP=preps.filter(function(j){return j.prep.who.indexOf(w)>=0;});
       var doneOf=function(part){ return part&&part.done?(part.done.status==="no"?" (did not go"+(part.done.reason?": "+part.done.reason:"")+")":" (done)"):" (not recorded)"; };
       var pastLine=function(){ if(load[w].c==="off") return load[w].t; var n=mineP.length+prepsP.length, m=load[w].mins||0; return n?(fmt(m)+" on "+n+(n===1?" job":" jobs")):"No jobs"; };
-      // ONE GREY LINE for the day: the jobs with their names in darker text, then the
-      // recycling and the driving, joined with a dot (v2 mock, 29 Sep 2026).
-      var det=el("span"); var bits=[];
-      var piece=function(lead,rest,cls){ var sp=el("span",cls||null); if(lead){ sp.appendChild(el("b",null,lead)); } if(rest) sp.appendChild(document.createTextNode((lead?" ":"")+rest)); return sp; };
-      if(isOff&&OFF_WHY[k+"|"+w]) bits.push(piece("",OFF_WHY[k+"|"+w]));
-      if(!past&&load[w].d) bits.push(piece("",load[w].d.replace(/ \u00b7 /g,", ")));
-      prepsP.forEach(function(j){ var nd=daysOf(j.prep).length||1, me=minsFor(j.prep,w); bits.push(piece("Production",j.title+(me!=null?", "+fmt(Math.round(prepShare(j,w)))+(nd>1?" today of "+fmt(me)+" over "+nd+" days":""):"")+(past?doneOf(j.prep):""))); });
-      var r=rounds.filter(function(x){return x.who===w;})[0]; if(r) bits.push(piece("Delivery round",r.stops.length+" stops"+(r.drive?", "+fmt(r.drive)+" travel":"")));
-      mineP.forEach(function(j){ bits.push(piece(j.title.split(" - ")[0],j.title.split(" - ").slice(1).join(" - ")+(j.mins!=null?", "+fmt(j.mins)+(j.site&&!j.onRound&&j.drive?" + "+fmt(j.drive)+" travel":""):"")+(past?doneOf(j.isLeg?j.leg:j):""))); });
-      if(load[w].c!=="off"&&load[w].c!=="office"&&load[w].rec>=30){ if(past){ var tly=TALLIES[tallyKey(k,w)], tg=recTarget(load[w].rec); bits.push(piece("Recycling",tly&&tly.units!=null?tly.units+" of "+tg+" units":"not recorded, target was "+tg+" units",tly&&tly.units!=null&&tly.units>=tg*0.8?null:"warn")); } else bits.push(piece("Recycling",fmt(load[w].rec))); }
-      var tlw=dayTimeline(k,w); if(tlw.isDriver&&tlw.drive) bits.push(piece("Driving",fmt(tlw.drive)+", back at Forton about "+hmStr(tlw.back)+" with breaks"+(tlw.driveOver?". Driving over 10 hours":"")+(tlw.longDay?". Day over 11 hours":""),tlw.driveOver||tlw.longDay?"warn":null));
-      bits.forEach(function(b2,i){ if(i) det.appendChild(document.createTextNode(" \u00b7 ")); det.appendChild(b2); });
-      var row=opRow(w,load[w],{driver:DRIVERS.indexOf(w)>=0,past:past,status:past?pastLine():null,detail:bits.length?det:"",actions:ob?[ob]:[]});
+      // A SMALL DAY PER PERSON (v3 mock, 29 Sep 2026: "we need to do a better job of the UI here"): a bar of the 7h45
+      // day, then one line per job in three columns (kind, job, time), the round as one green line, warnings at the foot.
+      var det=el("div"), bar=el("div","obar"), segs=[], lines=[], warns=[];
+      var line=function(kind,cls,what,sub,time){ var ln=el("div","oln"+(cls==="round"?" round":"")); ln.appendChild(el("span","k "+cls,kind)); var mid=el("span",null,what); if(sub) mid.appendChild(el("span","sub2"," "+sub)); ln.appendChild(mid); ln.appendChild(el("span","t",time||"")); lines.push(ln); };
+      var seg=function(cls,mins){ if(mins>0) segs.push({cls:cls,mins:mins}); };
+      if(isOff&&OFF_WHY[k+"|"+w]) line("Off","r",OFF_WHY[k+"|"+w],"","");
+      if(!past&&load[w].c==="off") line("Off","r",load[w].d||load[w].t,"","");
+      prepsP.forEach(function(j){ var nd=daysOf(j.prep).length||1, me=minsFor(j.prep,w), today=Math.round(prepShare(j,w)); seg("p",today); line("Production","p",j.title.split(" - ").slice(1).join(" - ")||j.title,(nd>1?"day "+(daysOf(j.prep).indexOf(k)+1)+" of "+nd:"")+(past?doneOf(j.prep):""),me!=null?fmt(today):"no time"); });
+      var r=rounds.filter(function(x){return x.who===w;})[0], tlw=dayTimeline(k,w);
+      if(r){ seg("s",r.drive||0); line("Round","round",r.stops.map(function(j){return j.title.split(" - ")[0];}).join(", ")+(r.start&&r.start!==HOME_PC?" \u00b7 from "+placeName(r.start):"")+(tlw.back?" \u00b7 back "+hmStr(tlw.back)+" with breaks":""),"",r.drive?fmt(r.drive)+" driving":"no travel yet"); }
+      mineP.forEach(function(j){ var m=minsFor(j,w); var tm=jobTiming(j,k); if(j.site){ seg("s",(m||0)+(j.onRound?0:(j.drive||0))); line(j.movement||"Site","s",j.title.split(" - ").slice(1).join(" - ")||j.title,(tm&&j.onRound?hmStr(tm.arrive):"")+(past?doneOf(j.isLeg?j.leg:j):""),(m!=null?fmt(m):"no time")+(j.site&&!j.onRound&&j.drive?" + "+fmt(j.drive):"")); }
+        else { seg("p",m||0); line(j.isLeg?"Labour":"Production","p",j.title.split(" - ").slice(1).join(" - ")||j.title,past?doneOf(j.isLeg?j.leg:j):"",m!=null?fmt(m):"no time"); } });
+      if(load[w].c!=="off"&&load[w].c!=="office"&&load[w].rec>=30){ seg("r",load[w].rec); if(past){ var tly=TALLIES[tallyKey(k,w)], tg=recTarget(load[w].rec); line("Recycling","r",tly&&tly.units!=null?tly.units+" of "+tg+" units":"not recorded, target was "+tg+" units","",fmt(load[w].rec)); } else line("Recycling","r",r?"after the round":(lines.length?"the rest of the day":"nothing planned, so the day is on the tally"),"",fmt(load[w].rec)); }
+      var planned=segs.reduce(function(t,x){return t+x.mins;},0), over=Math.max(0,planned-DAY_MINS), scale=Math.max(DAY_MINS,planned);
+      if(over) warns.push(fmt(over)+" over the day"); if(tlw.driveOver) warns.push("Driving over 10 hours"); if(tlw.longDay) warns.push("Day over 11 hours");
+      if(load[w].c!=="off"&&load[w].c!=="office"&&!past){ segs.forEach(function(x){ var i=el("i",x.cls); i.style.width=(x.mins/scale*100)+"%"; bar.appendChild(i); }); if(over){ var oi=el("i","o"); oi.style.width=(over/scale*100)+"%"; bar.appendChild(oi); } det.appendChild(bar); }
+      lines.forEach(function(ln){ det.appendChild(ln); });
+      var foot=[]; warns.forEach(function(t){ foot.push(el("span","owarn",t)); }); if(ob) foot.push(ob);
+      var row=opRow(w,load[w],{driver:DRIVERS.indexOf(w)>=0,past:past,status:past?pastLine():null,detail:(lines.length||bar.children.length)?det:"",actions:foot});
       pc.appendChild(row);
     });
     pl.appendChild(pc); b.appendChild(pl);
