@@ -383,7 +383,10 @@
       },vanCls));
     }
     // a viewing order is production only: nothing goes on a van and nobody is on labour
-    if(!viewing){ if(vanApplies||(workshop&&loading)||contractorOnly) app.appendChild(ls);
+    // The Loading section's body was the van-load estimate. With the estimate off it only
+    // has something to say when somebody else carries the load (Sam, 29 Sep 2026: "Why is
+    // loading not displaying details anymore?"). An empty heading is not a section.
+    if(!viewing){ if((vanApplies&&ESTIMATE_ON)||(workshop&&loading)||contractorOnly) app.appendChild(ls);
     app.appendChild(ts); }
 
     (d.legs||[]).filter(function(L){return L.type==="labour";}).forEach(function(W){

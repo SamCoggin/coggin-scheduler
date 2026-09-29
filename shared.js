@@ -9,7 +9,10 @@
 var CREW=["Sam C", "Ash K", "Jack C", "Jordan I", "Bradley H", "Rob D", "Bart H", "Jess H"];
 function crewOf(n){ var f=String(n||"").trim().split(/\s+/)[0].toLowerCase(); if(!f) return n; for(var i=0;i<CREW.length;i++){ if(CREW[i].split(" ")[0].toLowerCase()===f) return CREW[i]; } return n; }
 function normWho(a){ return (a||[]).map(crewOf).filter(function(n,i,x){ return x.indexOf(n)===i; }); }
-function normPlan(d){ if(!d||typeof d!=="object") return d; if(d.who) d.who=normWho(d.who); if(d.prep&&d.prep.who) d.prep.who=normWho(d.prep.who); if(d.legs&&d.legs.length) d.legs.forEach(function(l){ if(l&&l.who) l.who=normWho(l.who); }); return d; }
+function normPlan(d){ if(!d||typeof d!=="object") return d;
+  // a drive that routing filled in before the estimate came off (28 Sep 2026) is not a typed time: drop it on read, in both views
+  if(typeof ESTIMATE_ON!=="undefined"&&!ESTIMATE_ON&&d.driveAuto){ d.drive=null; d.driveAuto=false; }
+  if(d.legs&&d.legs.length&&typeof ESTIMATE_ON!=="undefined"&&!ESTIMATE_ON) d.legs.forEach(function(l){ if(l&&l.driveAuto){ l.drive=null; l.driveAuto=false; } }); if(d.who) d.who=normWho(d.who); if(d.prep&&d.prep.who) d.prep.who=normWho(d.prep.who); if(d.legs&&d.legs.length) d.legs.forEach(function(l){ if(l&&l.who) l.who=normWho(l.who); }); return d; }
 // only these three drive the van. the others go along as a second pair of hands.
 // the five who do site work and yard recycling; the other four are on the crew for
 // the odd job but never get a recycling allowance (Sam, 29 Sep 2026: Jess and Molly
