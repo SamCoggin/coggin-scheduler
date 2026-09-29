@@ -1086,12 +1086,12 @@ var SNAP=null, DETAIL={};
     var head=el("div","head"); var hd=el("div"); hd.appendChild(el("h3",null,crewText(r.crew)+(r.crew.length<2?"'s round":": their round"))); hd.appendChild(el("div","hint",niceDay(k)+" · "+ordered.length+" stops"+(veh?" · "+veh:""))); hd.style.flex="1"; head.appendChild(hd);
     var x=el("button","close","Close"); x.onclick=shut; head.appendChild(x); m.appendChild(head);
     var sum=el("div","rsum"); var cell=function(lbl,val,cls){ var c=el("div",cls||null); c.appendChild(el("small",null,lbl)); c.appendChild(el("b",null,val)); sum.appendChild(c); };
-    cell("Driving",driving!=null?fmt(driving):"Not set",driving==null?"warn":null); cell(needBreak?"Back, with the break":"Back at Forton",back!=null?clock(back+(needBreak?45:0)):"Unknown",back==null?"warn":null); cell("Break",needBreak?"45 min needed":(driving!=null?"None needed":"Unknown"),needBreak?"warn":null); m.appendChild(sum);
+    cell("Driving",driving!=null?((tot==null?"about ":"")+fmt(driving)):"Not set",driving==null||tot==null?"warn":null); cell(needBreak?"Back, with the break":"Back at Forton",back!=null?((tot==null?"about ":"")+clock(back+(needBreak?45:0))):"Unknown",back==null||tot==null?"warn":null); cell("Break",needBreak?"45 min needed":(driving!=null?"None needed":"Unknown"),needBreak?"warn":null); m.appendChild(sum);
     var tl=el("div","rtl");
     // SET OFF: postcode and time on one line (Sam, 29 Sep 2026: PR3 1AD unless the driver sets off from somewhere else)
     var n0=el("div","rnode"); var n0t=el("div","top"); var n0n=el("span","nm","Sets off"); n0n.appendChild(el("small",null,start===HOME_PC?"Forton":"Not Forton today")); n0t.appendChild(n0n);
     var n0r=el("span","ins"); var pci=el("input"); pci.type="text"; pci.value=start; pci.placeholder=HOME_PC; pci.setAttribute("aria-label","Set-off postcode"); pci.className="pc"; pci.onchange=function(){ setRL({start:pci.value.toUpperCase().trim()||HOME_PC,legs:null,miles:null}); render(); }; n0r.appendChild(pci);
-    var soi=el("input"); soi.type="time"; soi.step="300"; soi.value=RL.setOff||""; soi.setAttribute("aria-label","Set-off time"); soi.className="tm"; soi.onchange=function(){ setRL({setOff:soi.value||""}); render(); }; n0r.appendChild(soi);
+    var soi=el("input"); soi.type="time"; soi.step="300"; soi.value=RL.setOff||clock(DAY_START); soi.setAttribute("aria-label","Set-off time"); soi.className="tm"; soi.onchange=function(){ setRL({setOff:soi.value===clock(DAY_START)?"":(soi.value||"")}); render(); }; n0r.appendChild(soi);
     if(start!==HOME_PC){ var rb=el("button","close","Forton"); rb.title="Back to setting off from Forton"; rb.onclick=function(){ setRL({start:HOME_PC,legs:null,miles:null}); render(); }; n0r.appendChild(rb); }
     n0t.appendChild(n0r); n0.appendChild(n0t); tl.appendChild(n0);
     var legRow=function(i){ var lr=el("div","rleg"); lr.appendChild(el("span",null,"drive")); lr.appendChild(hmBox(function(){return legsNow[i];},function(v){ legsNow[i]=v; setRL({legs:legsNow.slice(),order:ordered.map(function(x){return x.id;})}); r.keys.forEach(function(kk){ delete ROUND_DRIVE[kk]; }); render(); },"Drive to "+(i<ordered.length?stopName(ordered[i]):"Forton")));
@@ -1113,7 +1113,7 @@ var SNAP=null, DETAIL={};
         var near=[]; pool.forEach(function(o){ if(!o.pt) return; var best=null; r.stops.forEach(function(x){ if(!x.pt) return; var mi=roadMiles(miles(x.pt,o.pt)); if(best==null||mi<best.m) best={m:mi,x:x}; }); if(best&&best.m<=20) near.push({o:o,m:best.m,x:best.x}); });
         near.sort(function(a,b){return a.m-b.m;}); nbBody.innerHTML=""; nbBody.className="";
         if(!near.length){ nbBody.className="hint"; nbBody.textContent="Nothing within twenty miles of these stops in the next six weeks."; return; }
-        near.slice(0,6).forEach(function(n){ var o=n.o, row=el("div","rnr"); var L=el("span",null,o.title); L.appendChild(el("small",null,niceDay(o.date)+" · "+n.m+" miles from "+stopName(n.x)+(o.prep&&o.prodDue?" · in production, due "+niceDay(o.prodDue):""))); row.appendChild(L); nbBody.appendChild(row); });
+        near.slice(0,6).forEach(function(n){ var o=n.o, row=el("div","rnr"); var L=el("span",null,o.title); L.appendChild(el("small",null,niceDay(o.date)+" · "+(n.m<1?"same postcode as ":n.m+" miles from ")+stopName(n.x)+(o.prep&&o.prodDue?" · in production, due "+niceDay(o.prodDue):""))); row.appendChild(L); nbBody.appendChild(row); });
       }).catch(function(){ nbBody.className="hint"; nbBody.textContent="Could not place the postcodes just now."; });
     })();
     // THE FOOT: the one-total fallback folded behind a link, and Done
