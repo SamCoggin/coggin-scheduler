@@ -1,5 +1,4 @@
 <title>Coggin Scheduler</title>
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
 <style>
   :root{ --board:#cfd6e0; --list:#eef0f3; --card:#fff; --text:#172b4d; --muted:#5e6c84; --line:#b8c0cc; --blue:#0c66e4; --blue-bg:#e9f2ff; --red:#c9372c; --red-bg:#ffeceb; --green:#1f845a; --green-bg:#e3fcef; --amber:#974f0c; --amber-bg:#fff7d6; --shadow:0 1px 1px rgba(9,30,66,.25),0 0 1px rgba(9,30,66,.31); }
   @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){ --board:#1d2125; --list:#101204; --card:#22272b; --text:#b6c2cf; --muted:#8c9bab; --line:#4a5661; --blue:#579dff; --blue-bg:#1c2b41; --red:#f87168; --red-bg:#42221f; --green:#4bce97; --green-bg:#1c3329; --amber:#f5cd47; --amber-bg:#3d2e00; --shadow:0 1px 1px rgba(0,0,0,.5); }}
@@ -384,7 +383,7 @@
 <div class="hdr">
   <h1>Scheduler</h1>
   <span class="src" id="src"></span>
-  <span class="views"><button id="vday">Day</button><button id="vweek" class="on">Week</button><button id="vmonth">Month</button><button id="vroutes">Routes</button><button id="vmanager">Manager</button></span>
+  <span class="views"><button id="vday">Day</button><button id="vweek" class="on">Week</button><button id="vmonth">Month</button></span>
   <button id="need" title="Show only the jobs still missing operatives, time, travel or a van">Outstanding</button><button id="prev">Back</button><span class="t" id="title"></span><button id="next">Next</button><button id="pdf" title="Download as a PDF file">Download schedule</button><button id="sheets" title="One page per operative for the day in view, to hand out in the morning and hand back at night" hidden>Job sheets</button><button id="guide" title="How to use the Scheduler">Guide</button>
 </div>
 <div class="strip" id="strip" hidden></div>
@@ -396,7 +395,6 @@ var SNAP=null, DETAIL={};
 </script>
 
 <script src="https://p.trellocdn.com/power-up.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
 <script>document.write('<script src="./shared.js?v='+Math.floor(Date.now()/60000)+'"><\/script>');</script>
@@ -1075,6 +1073,18 @@ var SNAP=null, DETAIL={};
     var row=el("div","row"); if(tot==null){
     row.appendChild(hmBoxes(function(){return r.drive;},function(v){ r.keys.forEach(function(kk){ ROUND_DRIVE[kk]=v; }); },"Round drive")); }
     if(tot==null) row.appendChild(el("span","hint",r.keys.some(function(kk){return ROUND_DRIVE[kk]!=null;})?"You set this.":(r.road?"Road time labour to "+r.stops.length+" stops and back, from OpenStreetMap routing, plus 20 percent for traffic. Change it if you know better.":(r.def!=null?"Longest single journey plus 20 minutes per stop, until the road time arrives. Change it if you know better.":"No postcodes found. Type it in.")))); dv.appendChild(row); m.appendChild(dv);
+    // NEARBY, OTHER DAYS. The one thing the Routes tab did that planned anything (Sam, 29 Sep 2026: retire the tab,
+    // keep this here): site jobs in the next six weeks within twenty road miles of a stop, so they can ride along.
+    var nbSec=el("div","sec"); nbSec.appendChild(el("div","k","Nearby, other days")); var nbBody=el("div","hint","Finding postcodes\u2026"); nbSec.appendChild(nbBody); m.appendChild(nbSec);
+    (function(){ var horizon=iso(addDays(new Date(k+"T12:00"),42)); var pool=allJobs().filter(function(j){ return j.site&&!(j.contractor&&!j.who.length)&&j.date!==k&&j.date>=k&&j.date<=horizon&&r.stops.indexOf(j)<0; });
+      var want=r.stops.concat(pool); want.forEach(function(j){ j.pc=pcOf(j); });
+      geocode(want.map(function(j){return j.pc;})).then(function(){ want.forEach(function(j){ j.pt=j.pc&&GEO[j.pc]?GEO[j.pc]:null; });
+        var near=[]; pool.forEach(function(o){ if(!o.pt) return; var best=null; r.stops.forEach(function(x){ if(!x.pt) return; var mi=roadMiles(miles(x.pt,o.pt)); if(best==null||mi<best.m) best={m:mi,x:x}; }); if(best&&best.m<=20) near.push({o:o,m:best.m,x:best.x}); });
+        near.sort(function(a,b){return a.m-b.m;}); nbBody.innerHTML="";
+        if(!near.length){ nbBody.textContent="Nothing within twenty miles of these stops in the next six weeks."; return; }
+        near.slice(0,6).forEach(function(n){ var o=n.o; nbBody.appendChild(el("div",null,o.title+", "+niceDay(o.date)+", "+n.m+" miles from "+n.x.title.split(" - ")[0]+(o.prep&&o.prodDue?". Still in production, due "+niceDay(o.prodDue):"")+".")); });
+      }).catch(function(){ nbBody.textContent="Could not place the postcodes just now."; });
+    })();
     var sv=el("div","save"); var sb=el("button",null,"Done"); sb.onclick=function(){openRound=null;render();}; sv.appendChild(sb); m.appendChild(sv);
     veil.appendChild(m); return veil;
   }
@@ -1934,20 +1944,20 @@ var SNAP=null, DETAIL={};
   }
   function render(){
     persist();
-    $("#pdf").onclick=function(){ try{ if(view==="routes") routesPdf(); else schedulePdf(); }catch(e){ alert("The PDF could not be built: "+(e&&e.message||e)); } };
-    $("#pdf").textContent=view==="routes"?"Download routes":"Download schedule"; $("#sheets").hidden=true; $("#guide").onclick=function(){ location.href="./guide.html"; };
+    $("#pdf").onclick=function(){ try{ schedulePdf(); }catch(e){ alert("The PDF could not be built: "+(e&&e.message||e)); } };
+    $("#pdf").textContent="Download schedule"; $("#sheets").hidden=true; $("#guide").onclick=function(){ location.href="./guide.html"; };
     if(t&&view!=="manager"&&view!=="month") setTimeout(refreshRounds,0);
     $("#need").hidden=(view==="week"); $("#need").className=NEED?"on":""; var nTP=toPlanCount(); $("#need").textContent="Outstanding"+(nTP?" ("+nTP+")":""); $("#need").title=nTP?nTP+(nTP===1?" job still needs":" jobs still need")+" operatives, time, travel or a van on the "+(view==="day"?"day":view==="month"?"month":"week")+" in view":"Everything in view is planned"; $("#need").onclick=function(){ NEED=!NEED; render(); };
     document.body.onclick=function(){ if(tipOpen){ tipOpen=null; render(); } };
-    $("#vday").className=view==="day"?"on":""; $("#vweek").className=view==="week"?"on":""; $("#vmonth").className=view==="month"?"on":""; $("#vroutes").className=view==="routes"?"on":""; $("#vroutes").onclick=function(){view="routes";render();}; $("#vmanager").className=view==="manager"?"on":""; $("#vmanager").onclick=function(){view="manager";render();};
+    $("#vday").className=view==="day"?"on":""; $("#vweek").className=view==="week"?"on":""; $("#vmonth").className=view==="month"?"on":"";
     $("#vday").onclick=function(){view="day";render();}; $("#vweek").onclick=function(){view="week";render();}; $("#vmonth").onclick=function(){view="month";render();};
     var oldV=document.querySelector(".veil"), keepScroll=0; if(oldV){ keepScroll=oldV.scrollTop||0; oldV.parentNode.removeChild(oldV); }
     window.__keepScroll=keepScroll;
     $("#strip").hidden=true;
     if(view==="day") return renderDay();
     if(view==="month") return renderMonth();
-    if(view==="routes") return renderRoutes();
-    if(view==="manager") return renderManager();
+    // Routes and Manager retired 29 Sep 2026 (Sam). The nearby-jobs idea lives on the round editor.
+    if(view==="routes"||view==="manager") view="day";
     $("#board").className="board week"; $("#board").style.gridTemplateRows="";
     var mon=addDays(monday(TODAY),week*7); var ISSUES=[], TOPLAN=[], TORECORD=[], HOURS={need:0,avail:0}, DAYH={};
     $("#title").textContent="Week of "+mon.getDate()+" "+MON[mon.getMonth()]+" "+mon.getFullYear();
@@ -2032,7 +2042,7 @@ var SNAP=null, DETAIL={};
     var tile=function(lbl,val,cls,onclick){ var bt=el("button",null); bt.appendChild(el("small",null,lbl)); bt.appendChild(el("b",cls||"",val)); if(onclick) bt.onclick=onclick; strip.appendChild(bt); return bt; };
     var nTP=toPlanCount(); var tp=tile("Outstanding this week",String(nTP),nTP?"bad":"",function(){ NEED=!NEED; render(); }); if(NEED) tp.className="on";
     var reds=ISSUES.filter(function(x){return !x.amber;}).length; tile("Warnings this week",ISSUES.length?String(ISSUES.length):"0",reds?"bad":(ISSUES.length?"warn":""));
-    tile("Vans on the road",vansOnRoad()+" of "+VEHICLES.length,vansOnRoad()<VEHICLES.length?"warn":"",function(){ view="routes"; render(); });
+    tile("Vans on the road",vansOnRoad()+" of "+VEHICLES.length,vansOnRoad()<VEHICLES.length?"warn":"",function(){ view="day"; render(); });
     tile("Hours planned",fmt(HOURS.need)+" of "+fmt(HOURS.avail),HOURS.need>HOURS.avail?"bad":"");
     var wk=el("div","weektot"); var wh=el("span","n","Recycling this week"); wh.appendChild(tip("recycling")); wk.appendChild(wh); var teamRec=0;
     TEAM.forEach(function(w){ var m=WEEK_REC[w]||0; teamRec+=m; wk.appendChild(el("span",m<DAY_MINS?"low":"",w+": "+fmt(m))); });
