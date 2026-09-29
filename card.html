@@ -38,6 +38,8 @@
   .seg{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:8px}
   .seg button{border:2px solid var(--line);background:var(--card);border-radius:6px;padding:8px 4px;font-weight:700}
   .seg button.on{border-color:var(--blue);background:var(--blue);color:#fff}
+  .vseg button{display:flex;flex-direction:column;align-items:center;gap:2px;padding:9px 4px;line-height:1.1}
+  .vseg button b{font-size:14px} .vseg button small{font-size:10.5px;font-weight:500;color:var(--muted)} .vseg button.on small{color:rgba(255,255,255,.85)}
   .hint{color:var(--muted);font-size:13px;margin-top:6px}
   .avail{margin-top:10px;display:flex;flex-direction:column;gap:6px}
   .arow{display:flex;flex-wrap:wrap;gap:6px;align-items:center;font-size:13px}
@@ -348,9 +350,12 @@
         if(site&&!contractorOnly){
           var vTxt=!d.vehicle?"No van":(d.vehicle==="hire"?"Hire"+(d.hireRef?", "+d.hireRef:""):d.vehicle);
           ts.appendChild(rowEl("veh","Vehicle",vTxt,function(ed){
-            var r=el("div","row"); (typeof VEHICLES!=="undefined"?VEHICLES:[]).concat([{reg:"hire",name:"Hire"}]).forEach(function(v){ var b=el("button",d.vehicle===v.reg?"p":"",v.reg==="hire"?"Hire":v.reg); b.title=v.name; b.onclick=function(){ d.vehicle=d.vehicle===v.reg?null:v.reg; save(); render(); }; r.appendChild(b); }); ed.appendChild(r);
-            if(d.vehicle==="hire"){ var hr=el("div","row"); var hi=el("input"); hi.type="text"; hi.placeholder="Supplier, vehicle and reference"; hi.value=d.hireRef||""; hi.onchange=function(){ d.hireRef=hi.value; save(); render(); }; hr.appendChild(hi); ed.appendChild(hr); }
-            ed.appendChild(el("div","hint","Which van goes out. Tap the same one again to clear it."));
+            // a segmented picker: the reg on top, what it is underneath, the chosen one filled (Sam, 29 Sep 2026: "UI upgrade needed here")
+            var sg=el("div","seg vseg"); (typeof VEHICLES!=="undefined"?VEHICLES:[]).concat([{reg:"hire",name:"Hire a van"}]).forEach(function(v){
+              var b=el("button",d.vehicle===v.reg?"on":""); b.appendChild(el("b",null,v.reg==="hire"?"Hire":v.reg)); b.appendChild(el("small",null,v.reg==="hire"?"supplier below":String(v.name||"").replace(/\s*\(.*$/,"").replace(/^Renault Master /,"")+(/(20\d\d)/.test(v.name||"")?", "+/(20\d\d)/.exec(v.name)[1]:"")));
+              b.setAttribute("aria-pressed",d.vehicle===v.reg?"true":"false"); b.onclick=function(){ d.vehicle=d.vehicle===v.reg?null:v.reg; save(); render(); }; sg.appendChild(b); }); ed.appendChild(sg);
+            if(d.vehicle==="hire"){ var hr=el("div","row"); var hi=el("input"); hi.type="text"; hi.placeholder="Supplier, vehicle and reference"; hi.setAttribute("aria-label","Hire details"); hi.value=d.hireRef||""; hi.onchange=function(){ d.hireRef=hi.value; save(); render(); }; hr.appendChild(hi); ed.appendChild(hr); }
+            ed.appendChild(el("div","hint",d.vehicle?"Tap it again to clear.":"Which van goes out."));
           },d.vehicle?"":"todo"));
           var wTxt=(d.from||d.by)?((d.from?"arrive after "+d.from:"")+(d.from&&d.by?", ":"")+(d.by?"finish by "+d.by:"")):"Any time in the working day";
           ts.appendChild(rowEl("win","Time window",wTxt,function(ed){
