@@ -9,6 +9,10 @@ function crewOf(n){ var f=String(n||"").trim().split(/\s+/)[0].toLowerCase(); if
 function normWho(a){ return (a||[]).map(crewOf).filter(function(n,i,x){ return x.indexOf(n)===i; }); }
 function normPlan(d){ if(!d||typeof d!=="object") return d; if(d.who) d.who=normWho(d.who); if(d.prep&&d.prep.who) d.prep.who=normWho(d.prep.who); if(d.legs&&d.legs.length) d.legs.forEach(function(l){ if(l&&l.who) l.who=normWho(l.who); }); return d; }
 // only these three drive the van. the others go along as a second pair of hands.
+// the five who do site work and yard recycling; the other four are on the crew for
+// the odd job but never get a recycling allowance (Sam, 29 Sep 2026: Jess and Molly
+// were showing "Recycling: 7h 45m"). Mirrors CAPACITY_CREW in the CRM's opsCapacity.
+var FIELD_CREW=["Jack C","Jordan I","Bradley H","Rob D","Bart H"];
 var DRIVERS=["Rob D","Jack C","Bart H"]; // the crew entries, so a plan's who (normalised) matches
 var CONTRACTORS=["MAK Installations","Courier","Other contractor"];
 // ── the van and what goes on it ──
