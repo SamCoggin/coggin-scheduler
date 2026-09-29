@@ -40,7 +40,7 @@
   .seg button.on{border-color:var(--blue);background:var(--blue);color:#fff}
   .vseg button{display:flex;flex-direction:column;align-items:center;gap:2px;padding:9px 4px;line-height:1.1}
   .vseg button b{font-size:14px} .vseg button small{font-size:10.5px;font-weight:500;color:var(--muted)} .vseg button.on small{color:rgba(255,255,255,.85)}
-  .hint{color:var(--muted);font-size:13px;margin-top:6px}
+  .hint{color:var(--muted);font-size:13px;margin-top:6px} .hint.far{color:var(--red);font-weight:700}
   .avail{margin-top:10px;display:flex;flex-direction:column;gap:6px}
   .arow{display:flex;flex-wrap:wrap;gap:6px;align-items:center;font-size:13px}
   .arow b{font-size:13px;min-width:64px}
@@ -289,7 +289,7 @@
         d1.onchange=function(){ d.prep.start=d1.value||null; if(d.prep.start&&(!d.prep.date||d.prep.date<d.prep.start)) d.prep.date=d.prep.start; if(!d.prep.start) d.prep.date=null; save(); render(); };
         d2.onchange=function(){ d.prep.date=d2.value||null; if(d.prep.date&&(!d.prep.start||d.prep.start>d.prep.date)) d.prep.start=d.prep.date; if(!d.prep.date) d.prep.start=null; save(); render(); };
         pr.appendChild(el("span",null,"From")); pr.appendChild(d1); pr.appendChild(el("span",null,"to")); pr.appendChild(d2); var clr=el("button","p","Clear"); clr.onclick=function(){ d.prep.start=null; d.prep.date=null; save(); render(); }; pr.appendChild(clr); ed.appendChild(pr);
-        ed.appendChild(el("div","hint","Set the days and it appears under Production in the Scheduler.")); },d.prep.date?"":"todo"));
+        ed.appendChild(el("div","hint","Set the days and it appears under Production in the Scheduler.")); var pf=prodFit(d.prep.mins,d.prep.date?workDays(d.prep.start||d.prep.date,d.prep.date).length:0); if(pf) ed.appendChild(el("div","hint far",pf)); },d.prep.date?"":(prodFit(d.prep.mins,d.prep.date?workDays(d.prep.start||d.prep.date,d.prep.date).length:0)?"todo":"")));
       ps.appendChild(rowEl("ptime",d.prep.who.length>1?"Time per operative":"Time",d.prep.mins!=null?fmt(d.prep.mins)+(d.prep.who.length>1?" each":""):(pstd?"Not set, estimated "+fmt(pstd.mins):"Not set"),function(ed){
         if(pstd){ var sb=el("div","stdbox"); sb.appendChild(el("b",null,"Estimate: "+pstd.crew+(pstd.crew===1?" operative":" operatives")+", "+fmt(pstd.mins)+(pstd.crew>1?" each":"")+(pstd.days>1?", "+pstd.days+" days":""))); sb.appendChild(el("div","hint",pstd.why));
           var br=el("div","row"); br.style.marginTop="6px"; if(d.prep.who.length&&d.prep.mins!==pstd.mins){ var ub=el("button","p","Use the estimate for the "+d.prep.who.length+" chosen"); ub.onclick=function(){ d.prep.mins=pstd.mins; save(); render(); }; br.appendChild(ub); } sb.appendChild(br); ed.appendChild(sb); }

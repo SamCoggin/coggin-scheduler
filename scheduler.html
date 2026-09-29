@@ -927,7 +927,8 @@ var SNAP=null, DETAIL={};
       var d1=el("input"); d1.type="date"; d1.value=part.start||""; d1.setAttribute("aria-label","From"); d1.onchange=function(){ part.start=d1.value||null; if(part.start&&(!part.date||part.date<part.start)) part.date=part.start; if(!part.start) part.date=null; render(); };
       var d2=el("input"); d2.type="date"; d2.value=part.date||""; d2.setAttribute("aria-label","To"); d2.onchange=function(){ part.date=d2.value||null; if(part.date&&(!part.start||part.start>part.date)) part.start=part.date; if(!part.date) part.start=null; render(); };
       r.appendChild(d1); r.appendChild(el("span",null,"to")); r.appendChild(d2); var clr=el("button","close","Clear"); clr.onclick=function(){ part.start=null; part.date=null; render(); }; r.appendChild(clr); db.appendChild(r);
-      var nd=part.date?daysOf(part).length:0; db.appendChild(el("div","hint",!part.date?"Not scheduled. Set the production dates and it appears under Production.":nd>1?nd+" days. Time below is per day, per person.":"One day. Set the second date later if it needs more."));
+      var nd=part.date?daysOf(part).length:0; db.appendChild(el("div","hint",!part.date?"Not scheduled. Set the production dates and it appears under Production.":nd>1?nd+" days. Time below is the total per person, spread over the days.":"One day. Set the second date later if it needs more."));
+      var pf=prodFit(part.mins,nd); if(pf) db.appendChild(el("div","hint far",pf));
       if(j.prodDue) db.appendChild(el("div","hint"+(part.date&&part.date>j.prodDue?" far":""),"Production due "+niceDay(j.prodDue)+(part.date&&part.date>j.prodDue?". This finishes after that.":".")));
       right.appendChild(db); }
     if(!o.shop && j.prep){ var pb=block("Production");

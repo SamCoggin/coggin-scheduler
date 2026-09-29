@@ -142,6 +142,11 @@ function itemsOf(desc,checks){
 // the working week is 38 hours 45 minutes Monday to Friday: 7 hours 45 minutes a day
 // (8am to 4:30pm with 30 minutes for lunch and a 15 minute break)
 var WEEK_MINS=38*60+45, DAY_MINS=WEEK_MINS/5, DAY_H=DAY_MINS/60;
+// DOES THE PRODUCTION FIT ITS DAYS? (Sam, 29 Sep 2026: Sketch Studios, 72h each over 9 days is 8h a day, 15 min over the
+// 7h45 day for Jack and Jordan every day. "How do we make it so when they are scheduling it tells them this?")
+// mins is the total per person, nd the working days. Empty string when it fits.
+function prodFit(mins,nd){ if(mins==null||!nd) return ""; var perDay=mins/nd; if(perDay<=DAY_MINS) return ""; var over=perDay-DAY_MINS, need=Math.ceil(mins/DAY_MINS), fits=Math.floor(nd*DAY_MINS/5)*5;
+  return fmt(Math.round(perDay))+" a day over "+nd+(nd===1?" day":" days")+" is "+fmt(Math.round(over))+" over the "+fmt(DAY_MINS)+" day. Make it "+need+" days ("+fmt(Math.round(mins/need/5)*5)+" a day) or "+fmt(fits)+" in all."; }
 // THE RECYCLING TARGET (Sam, 14 Sep 2026): "one operative should be processing 100 units a day on average subject
 // to how much time they have been on the job". A unit is one item of any kind; some go faster, 100 is the average.
 // The target follows the time: 100 for a full day, pro rata for the minutes actually on recycling.
