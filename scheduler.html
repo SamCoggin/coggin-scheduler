@@ -741,6 +741,8 @@ var SNAP=null, DETAIL={};
   }
   // one van, one round: two people on the same stops are one round, not two (Sam, 17 Sep 2026: "Why is delivery round showing twice?")
   function vanRounds(rs){ var out=[]; rs.forEach(function(r){ var sig=r.stops.map(function(j){return j.id;}).sort().join(","); var same=out.filter(function(x){return x.sig===sig;})[0]; if(same){ same.crew.push(r.who); same.keys.push(r.key); } else out.push({key:r.key,keys:[r.key],who:r.who,crew:[r.who],sig:sig,stops:r.stops,drive:r.drive,def:r.def,legs:r.legs,order:r.order,road:r.road}); }); return out; }
+  // the van of the round a job is on: the first stop with one (Sam, 29 Sep 2026: one round, one van)
+  function roundVanOf(j,rs){ var r=rs.filter(function(x){return x.stops.indexOf(j)>=0;})[0]; if(!r) return ""; var v=""; r.stops.forEach(function(x){ if(!v&&x.vehicle&&x.vehicle!=="hire") v=x.vehicle; }); return v; }
   function crewText(c){ return c.length<2?c[0]:c.slice(0,-1).join(", ")+" and "+c[c.length-1]; }
   function inRound(j,k){ var rs=roundsOn(k,allJobs().filter(function(x){return onDay(x,k);})); return rs.filter(function(r){return r.stops.indexOf(j)>=0;}); }
   var openRound=null;
@@ -831,7 +833,7 @@ var SNAP=null, DETAIL={};
     if(part.isPrep){ if(part.mins==null) return el("span",cls,"No production time"); return el("span","bdg",fmt(part.mins)+(part.who.length>1?" each":"")); }
     var missing=[];
     if(part.site&&part.drive==null&&!part.onRound) missing.push("No travel time");
-    if(part.site&&!part.vehicle&&!attending(part)) missing.push("No van"); else if(part.site&&hireDue(part)) missing.push("Hire not booked");
+    if(part.site&&!part.vehicle&&!part.roundVan&&!attending(part)) missing.push("No van"); else if(part.site&&hireDue(part)) missing.push("Hire not booked");
     if(part.mins==null) missing.push(part.site?"No site time":"No labour time");
     var nr=notReady(part); if(nr) missing.push(nr);
     if(shortCrew(part)) missing.push("Needs 2 operatives");
@@ -1267,7 +1269,7 @@ var SNAP=null, DETAIL={};
     if(view==="month"){ for(var w=monday(monthCur); w.getMonth()===monthCur.getMonth()||addDays(w,4).getMonth()===monthCur.getMonth(); w=addDays(w,7)){ for(var i=0;i<5;i++){ var d=addDays(w,i); if(d.getMonth()===monthCur.getMonth()) out.push(iso(d)); } } return out; }
     var mon=addDays(monday(TODAY),week*7); for(var i2=0;i2<5;i2++) out.push(iso(addDays(mon,i2))); return out; }
   function toPlanCount(days){ days=days||viewDays(); var n=0;
-    days.forEach(function(k){ var jobs=allJobs().filter(function(j){return onDay(j,k);}), rs=roundsOn(k,jobs); jobs.forEach(function(x){ x.onRound=rs.some(function(r){return r.stops.indexOf(x)>=0;}); });
+    days.forEach(function(k){ var jobs=allJobs().filter(function(j){return onDay(j,k);}), rs=roundsOn(k,jobs); jobs.forEach(function(x){ x.onRound=rs.some(function(r){return r.stops.indexOf(x)>=0;}); x.roundVan=roundVanOf(x,rs); });
       var pf=planFilter(jobs,prepJobs().filter(function(j){return j.prep&&j.prep.date&&daysOf(j.prep).indexOf(k)>=0;}),true); n+=pf.jobs.filter(function(j){return !j.isHold;}).length+pf.preps.length; });
     return n; }
   function planFilter(jobs,preps,force){ if(!NEED&&!force) return {jobs:jobs,preps:preps}; return {jobs:jobs.filter(function(j){return needsPlan(j,false);}),preps:preps.filter(function(j){return needsPlan(j,true);})}; }
@@ -1277,7 +1279,7 @@ var SNAP=null, DETAIL={};
     $("#src").textContent=NEED?"FILTER ON: only outstanding jobs are showing. Press Outstanding to show everything.":"Select a job to assign operatives and allocate time."; $("#src").className="src"+(NEED?" filt":"");
     var b=$("#board"); b.innerHTML=""; b.className="board day"; b.style.gridTemplateRows="";
     var jobs=allJobs().filter(function(j){return onDay(j,k);}), preps=prepJobs().filter(function(j){return j.prep&&j.prep.date&&daysOf(j.prep).indexOf(k)>=0;});
-    var rounds=roundsOn(k,jobs); jobs.forEach(function(j){ j.onRound=rounds.some(function(r){return r.stops.indexOf(j)>=0;}); });
+    var rounds=roundsOn(k,jobs); jobs.forEach(function(j){ j.onRound=rounds.some(function(r){return r.stops.indexOf(j)>=0;}); j.roundVan=roundVanOf(j,rounds); });
     var pf=planFilter(jobs,preps); var allJobsDay=jobs; jobs=pf.jobs; preps=pf.preps; if(NEED) rounds=[];
     var cols=[["shop","Production",preps.concat(jobs.filter(function(j){return j.isLeg&&j.leg.type==="production";}))],["road","Transport",jobs.filter(function(j){return j.site;})],["labour","Labour Operations",jobs.filter(function(j){return !j.site&&!(j.isLeg&&j.leg.type==="production");})]];
     cols.forEach(function(g){
@@ -2036,7 +2038,7 @@ var SNAP=null, DETAIL={};
       h.appendChild(el("span",null,n?n+(NEED?" outstanding":(n===1?" job":" jobs")):"")); list.appendChild(h);
       var cards=el("div","cards");
       var lv=LEAVE.filter(function(l){return l.date===k;}); if(lv.length){ var lh=el("div","sec-h"); var lhl=el("span",null,lv.some(function(l){return l.bh;})?"Bank Holiday":"Off"); lhl.appendChild(tip("leave",k)); lh.appendChild(lhl); cards.appendChild(lh); leaveLines(lv).forEach(function(tx){ cards.appendChild(el("div","leave",tx)); }); }
-      var rounds=roundsOn(k,jobs); jobs.forEach(function(j){ j.onRound=rounds.some(function(r){return r.stops.indexOf(j)>=0;}); });
+      var rounds=roundsOn(k,jobs); jobs.forEach(function(j){ j.onRound=rounds.some(function(r){return r.stops.indexOf(j)>=0;}); j.roundVan=roundVanOf(j,rounds); });
       var pfw=planFilter(jobs,preps); var allJobsWeek=jobs, allPrepsWeek=preps; jobs=pfw.jobs; preps=pfw.preps; if(NEED) rounds=[];
       var groups=[["shop","Production",preps],["road","Transport",jobs.filter(function(j){return j.site;})],["labour","Labour Operations",jobs.filter(function(j){return !j.site&&!(j.isLeg&&j.leg.type==="production");})]];
       var prodLegs=jobs.filter(function(j){return j.isLeg&&j.leg.type==="production";}); prodLegs.forEach(function(j){ groups[0][2]=groups[0][2].concat([j]); });
