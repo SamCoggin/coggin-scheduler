@@ -67,3 +67,7 @@ setTimeout(()=>{ reg['#next'].onclick(); const walk0=(n,o=[])=>{o.push(n);(n.chi
 // the completed card: still on Rob's day, counted, labelled Completed, never in To plan
 setTimeout(()=>{ const walk=(n,o=[])=>{o.push(n);(n.children||[]).forEach(c=>walk(c,o));return o;}; reg['#prev'].onclick(); const T=walk(reg['#board']).map(x=>x.textContent).filter(Boolean).join(' ');
   console.log('completed keeps hours:', /Lancaster - AB12CG/.test(T)&&/Completed/.test(T)&&/Rob D Driver Out all day/.test(T)&&/2h \+ 1h/.test(T)); },1100);
+
+// A PRODUCTION'S OPERATIVES ARE READ ACROSS ITS DAYS (30 Sep 2026: "it is saying operatives are free on the 22nd?"):
+// every working day still to come, never the start day alone.
+console.log('production reads every day:', /prodDays=o\.shop\?rangeDaysFrom\(part\.start,part\.date\)/.test(html) && /var load=o\.shop\?rangeLoad\(prodDays\):loadOn\(dayK\)/.test(html) && /function rangeLoad\(days\)/.test(html) && /ahead\.length\?ahead:all/.test(html));

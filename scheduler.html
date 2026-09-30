@@ -654,6 +654,33 @@ var SNAP=null, DETAIL={};
     return out;
   }
   function onDay(j,k){ return daysOf(j).indexOf(k)>=0; }
+  // The working days of a production still to come: from today or the start, whichever is later, to the end.
+  // A production wholly in the past reads its whole span, so an old card still explains itself.
+  function rangeDaysFrom(start,end){
+    var a=start||end||iso(TODAY), b=end&&end>=a?end:a, all=daysOf({start:a,date:b});
+    var ahead=all.filter(function(k){return k>=iso(TODAY);});
+    return ahead.length?ahead:all;
+  }
+  // One status per person across several days: free throughout, busy on some, over on some, or off.
+  function rangeLoad(days){
+    if(days.length===1) return loadOn(days[0]);
+    var per=days.map(function(k){ return {k:k,l:loadOn(k)}; }), out={};
+    var list=function(ks){ return ks.length<=3?ks.map(shortDay).join(", "):ks.length+" days"; };
+    TEAM.forEach(function(w){
+      var es=per.map(function(p){ return {k:p.k,e:p.l[w]||{c:"free"}}; });
+      var off=es.filter(function(x){return x.e.c==="off";}).map(function(x){return x.k;});
+      var over=es.filter(function(x){return x.e.c==="over";}), busy=es.filter(function(x){return x.e.c==="busy";}).map(function(x){return x.k;});
+      var office=es.every(function(x){return x.e.c==="office"||x.e.c==="off";})&&isOffice(w);
+      var offTxt=off.length?"off "+list(off):"";
+      if(off.length===days.length) out[w]={c:"off",s:"Off",d:"off all "+days.length+" days",r:3};
+      else if(office) out[w]={c:"office",s:"Office",d:"",r:4};
+      else if(over.length){ var by=Math.max.apply(null,over.map(function(x){return (x.e.mins||0)-DAY_MINS;}));
+        out[w]={c:"over",s:"Over by "+fmt(by)+(over.length===1?" "+shortDay(over[0].k):" on "+over.length+" days"),d:[over.length>1?list(over.map(function(x){return x.k;})):"",offTxt].filter(Boolean).join(" \u00b7 "),r:2}; }
+      else if(busy.length) out[w]={c:"busy",s:busy.length===days.length-off.length?"Busy every day":"Busy "+list(busy),d:[(days.length-off.length-busy.length)?"free "+(days.length-off.length-busy.length)+" of "+days.length+" days":"",offTxt].filter(Boolean).join(" \u00b7 "),r:1};
+      else out[w]={c:off.length?"busy":"free",s:off.length?"Free, "+offTxt:"Free all "+days.length+" days",d:"",r:off.length?1:0};
+    });
+    return out;
+  }
   // save what changed back onto the cards
   var lastSaved={};
   function persist(){
@@ -898,9 +925,13 @@ var SNAP=null, DETAIL={};
     if(!o.shop && j.moved){ var mvb=el("div","banner"); mvb.appendChild(document.createTextNode("Date moved. This was planned for "+niceDay(j.moved.from)+" and the card now says "+niceDay(j.date)+". Check the crew, van, travel and window still work. ")); var rpb=el("button","close","Replanned"); rpb.onclick=function(){ j.moved=null; persist(); render(); }; mvb.appendChild(rpb); m.appendChild(mvb); }
     if(!o.shop && !j.isLeg && !contractorOnly && !attending(j)){ var stdB=standardFor(j.movement||j.label,j.load), overB=aboveStandard(stdB,part.who,part.mins); if(overB) m.appendChild(el("div","banner","Above the estimate: "+overB+". The estimate is "+stdB.crew+(stdB.crew===1?" operative":" operatives")+(stdB.mins!=null?", "+fmt(stdB.mins)+" each":"")+".")); }
     if(o.shop){ var pstdB=prodStandardFor(j.load,part.who.length), overP=aboveProdStandard(pstdB,part.who,part.mins,part.start,part.date); if(overP) m.appendChild(el("div","banner","Above the estimate: "+overP+". The estimate is "+fmt(pstdB.work)+" of work.")); }
-    var dayK=o.shop?(part.start||iso(TODAY)):(j.start||j.date), load=loadOn(dayK);
+    // A PRODUCTION IS READ ACROSS ITS DAYS (Sam, 30 Sep 2026: "it is saying operatives are free on the 22nd?").
+    // It used to show the start day only, which on a nine-day job that started last week told you nothing.
+    // Now it reads every working day still to come, from today or the start, whichever is later, to the end.
+    var dayK=o.shop?(part.start||iso(TODAY)):(j.start||j.date), prodDays=o.shop?rangeDaysFrom(part.start,part.date):[dayK];
+    var load=o.shop?rangeLoad(prodDays):loadOn(dayK);
     var wb=block("Operatives","who"); var pl=el("div","oplist");
-    var freeN=FIELD_CREW.filter(function(w){return load[w].c==="free";}).length; pl.appendChild(el("div","ophead",shortDay(dayK)+" \u00b7 "+freeCount(load)));
+    var freeN=FIELD_CREW.filter(function(w){return load[w].c==="free";}).length; pl.appendChild(el("div","ophead",(prodDays.length>1?shortDay(prodDays[0])+" to "+shortDay(prodDays[prodDays.length-1]):shortDay(prodDays[0]||dayK))+" \u00b7 "+freeCount(load)));
     opOrder(load).forEach(function(w){ var on=part.who.indexOf(w)>=0;
       var row=opRow(w,load[w],{button:true,on:on,driver:!o.shop&&j.site&&DRIVERS.indexOf(w)>=0,beside:[el("span","tick",on?"Assigned":"Assign")]}); row.setAttribute("aria-pressed",on?"true":"false");
       row.onclick=function(){ var i=part.who.indexOf(w); if(i<0) part.who.push(w); else part.who.splice(i,1);
@@ -909,7 +940,7 @@ var SNAP=null, DETAIL={};
         render(); }; pl.appendChild(row); });
     var setMins=function(v){ part.mins=v; if(part.leg) part.leg.mins=v; }, setDrive=function(v){ part.drive=v; part.driveAuto=false; if(part.leg) part.leg.drive=v; };
     wb.appendChild(pl);
-    if(!freeN) wb.appendChild(el("div","hint","No operative is free all day on "+shortDay(dayK)+". The office can be put on a job if it really needs a hand."));
+    if(!freeN) wb.appendChild(el("div","hint","No operative is free "+(prodDays.length>1?"on every day from "+shortDay(prodDays[0])+" to "+shortDay(prodDays[prodDays.length-1]):"all day on "+shortDay(prodDays[0]||dayK))+". The office can be put on a job if it really needs a hand."));
     if(!o.shop&&j.site&&!contractorOnly&&part.who.length&&!(attending(j)&&!j.vehicle)&&!part.who.some(function(w){return DRIVERS.indexOf(w)>=0;})) wb.appendChild(el("div","hint far","No driver on this job. Rob, Jack or Bart must be on it to drive the van."));
     if(!o.shop&&attending(j)) wb.appendChild(el("div","hint",part.who.join(", ")+(part.who.length>1?" are":" is")+" attending. "+j.contractor+" carries the load. Time here is their time on site: keys, meeting the truck, the sign-off."));
     if(!o.shop&&!contractorOnly){ var tpi=twoPersonItems(j); if(tpi.length){
