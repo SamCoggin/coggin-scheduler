@@ -529,11 +529,11 @@ function prodStatusOf(P,due,today,inShop){
   if(!P||!due) return null; var who=P.who||[];
   // STILL IN THE WORKSHOP AFTER ITS DAYS (Sam, 1 Oct 2026, CUBE HR: "it clearly says it is still in progress and surely
   // it could pick this up"). Booked days gone by and the card not moved on from Not Started or In-progress means the
-  // production is not finished, so it is not on track: it needs the rest booked, and it goes back on Needs planning.
+  // production is not finished, so it is not on track: move its production days on, and it goes back on Needs planning.
   if(inShop&&P.date&&P.date<today){ var pastDue=due<today;
     // the earliest it can carry on: today while the working day lasts, otherwise the next working day
     var carry=today; if(typeof minsLeftOn==="function"&&minsLeftOn(today)===0){ var nx=new Date(today+"T12:00"); do{ nx.setDate(nx.getDate()+1); }while(nx.getDay()===0||nx.getDay()===6); carry=nx.toISOString().slice(0,10); }
-    return {cls:pastDue?"late":"soon",text:"Booked to finish "+niceShort(P.date)+" but still in the workshop. Book the rest of the production"+(pastDue?", it was due "+niceShort(due):", it is due "+niceShort(due))+".",full:"Booked to finish "+niceShort(P.date)+" but still in the workshop. Book the rest of the production"+(pastDue?", it was due "+niceShort(due):", it is due "+niceShort(due))+".",start:carry,need:null,planned:false,unfinished:true}; }
+    return {cls:pastDue?"late":"soon",text:"Booked to finish "+niceShort(P.date)+" but still in the workshop. Move the production days on to when it will be finished"+(pastDue?", it was due "+niceShort(due):", it is due "+niceShort(due))+".",full:"Booked to finish "+niceShort(P.date)+" but still in the workshop. Move the production days on to when it will be finished"+(pastDue?", it was due "+niceShort(due):", it is due "+niceShort(due))+".",start:carry,need:null,planned:false,unfinished:true}; }
   // START ON THIS DATE TO FINISH ON TIME (Sam, 1 Oct 2026: "It should be telling me start on this date to complete on
   // time for the due date"). The start date comes from the time typed per operative: each full 7h45 of it is a
   // working day, so 18h each needs 3 days and starts 2 working days before it is due; a one-day job starts on its due
