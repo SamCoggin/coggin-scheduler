@@ -890,7 +890,7 @@ var SNAP=null, DETAIL={};
   function findOpen(){ if(!open) return null; var parts=open.split(":"); if(parts[1]&&parts[1].indexOf("leg")===0){ var lj=legJobs().filter(function(x){return x.id===open;})[0]; return lj?{job:lj,part:lj,shop:false,leg:true}:null; } var j=JOBS.filter(function(x){return x.id===parts[0];})[0]; if(!j) return null; return parts[1]==="prep"?{job:j,part:j.prep,shop:true}:{job:j,part:j,shop:false}; }
 
   // THE CARD BACK ORDER (Sam, 13 Sep 2026): blocks appear in the order you decide them. Anything at 20 or more folds under "More".
-  var BLOCK_ORDER={"This leg":0,"Estimate for this job":1,"Estimate for this production":1,"Operatives":2,"Production Dates":3,"Transported By":4,"Vehicle":5,"Travel Time, return":6,"Time Window":7,"Collection Slot":7,"QC":7.5,"What happened":0.5,"Production Time per Operative":2.5,"Site Time per Operative":8,"Labour Time per Operative":8,"Production":20,"Van Load":21,"Legs":22};
+  var BLOCK_ORDER={"This leg":0,"Estimate for this job":1,"Estimate for this production":1,"Operatives":2,"Production Dates":1.4,"Transported By":4,"Vehicle":5,"Travel Time, return":6,"Time Window":7,"Collection Slot":7,"QC":7.5,"What happened":0.5,"Production Time per Operative":1.2,"Site Time per Operative":8,"Labour Time per Operative":8,"Production":20,"Van Load":21,"Legs":22};
   function block(title,tipKey){ var d=el("div","blk"); d.dataset.order=BLOCK_ORDER[title]!=null?BLOCK_ORDER[title]:15; var h=el("div","bh"); h.appendChild(el("span",null,title)); if(tipKey) h.appendChild(tip(tipKey)); d.appendChild(h); return d; }
   function modal(){
     var o=findOpen(); if(!o) return null;
@@ -969,7 +969,8 @@ var SNAP=null, DETAIL={};
       r.appendChild(d1); r.appendChild(el("span",null,"to")); r.appendChild(d2); var clr=el("button","close","Clear"); clr.onclick=function(){ part.start=null; part.date=null; render(); }; r.appendChild(clr); db.appendChild(r);
       var nd=part.date?daysOf(part).length:0; db.appendChild(el("div","hint",!part.date?"Not scheduled. Set the production dates and it appears under Production.":nd>1?nd+" days. Time below is the total per person, spread over the days.":"One day. Set the second date later if it needs more."));
       var pf=prodFit(part.mins,nd); if(pf) db.appendChild(el("div","hint far",pf));
-      if(j.prodDue) db.appendChild(el("div","hint"+(part.date&&part.date>j.prodDue?" far":""),"Production due "+niceDay(j.prodDue)+(part.date&&part.date>j.prodDue?". This finishes after that.":".")));
+      // the same on-time line as the card's Production section, so the two mirror
+      if(j.prodDue){ var dst=prodStatus(j); if(dst) db.appendChild(el("div","for "+dst.cls,dst.text)); else db.appendChild(el("div","hint","Production due "+niceDay(j.prodDue)+".")); }
       right.appendChild(db); }
     if(!o.shop && j.prep){ var pb=block("Production");
       var pdr=el("div","row"); pdr.style.marginBottom="8px"; pdr.appendChild(el("span",null,"Production due")); var pdi=el("input"); pdi.type="date"; pdi.value=j.prodDue||""; pdi.setAttribute("aria-label","Production due date");
