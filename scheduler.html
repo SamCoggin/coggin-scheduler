@@ -2018,7 +2018,10 @@ var SNAP=null, DETAIL={};
       var sect=function(title,rows){ if(!rows.length) return; bar(title,rows.length+(rows.length===1?" job":" jobs"));
         for(var i=0;i<rows.length;i+=2){ var h=Math.max(need(rows[i]),rows[i+1]?need(rows[i+1]):0); box(rows[i],L,y,h); if(rows[i+1]) box(rows[i+1],L+CW+G,y,h); y+=h+3.5; } y+=1; };
       sect("Production",prod); sect("Transport",road); sect("Labour operations",lab);
-      if(rec.length){ bar("Recycling, the rest of the day",""); doc.setFont("helvetica","normal"); doc.setFontSize(10.5); var rl=doc.splitTextToSize(rec.join("   ·   "),W); doc.text(rl,L,y+1); y+=rl.length*4.4+3; }
+      // AVAILABLE TIME, NOT RECYCLING (Sam, 1 Oct 2026): time left over goes to production support first; if that is
+      // not needed they report to the operations manager for recycling, warehousing or maintenance.
+      if(rec.length){ bar("Available time",""); doc.setFont("helvetica","normal"); doc.setFontSize(10.5); var rl=doc.splitTextToSize(rec.join("   ·   "),W); doc.text(rl,L,y+1); y+=rl.length*4.4+1.5;
+        doc.setFontSize(9); doc.setTextColor(70); var il=doc.splitTextToSize("First, production support. If it is not needed, report to the operations manager for your next task: recycling, warehousing, or facility, machinery or vehicle maintenance.",W); doc.text(il,L,y+1.5); doc.setTextColor(0); y+=il.length*3.8+3; }
       var fits=y<268;
       if(fits){ doc.setLineWidth(0.4); doc.line(L,y+2,L+W,y+2); doc.setFont("helvetica","bold"); doc.setFontSize(8.5); doc.setTextColor(90); doc.text("NOTES",L,y+6.5); doc.setTextColor(0); doc.setDrawColor(190); doc.setLineWidth(0.25); for(var ly=y+14;ly<=278;ly+=8) doc.line(L,ly,L+W,ly); doc.setDrawColor(0); }
       doc.setFont("helvetica","normal"); doc.setFontSize(8); doc.setTextColor(90); doc.text("Tick each job when done. Scan a code to open the job in Trello. Hand the sheet back at the end of the day.",L,287); doc.text("Coggin SOS",L+W,287,{align:"right"}); doc.setTextColor(0);
