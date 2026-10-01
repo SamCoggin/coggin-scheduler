@@ -394,7 +394,7 @@
         // this card's operatives makes a round; this card then shows the round and points at it.
         var rdDay=due?due.slice(0,10):""; var rdWith=(site&&!contractorOnly&&d.who.length&&rdDay)?OTHERS.filter(function(o){ return o.site&&o.due===rdDay&&(o.plan.who||[]).some(function(w){return d.who.indexOf(w)>=0;}); }):[];
         var onRound=rdWith.length>0, rdDriver=onRound?d.who.filter(function(w){return rdWith.some(function(o){return (o.plan.who||[]).indexOf(w)>=0;});})[0]||d.who[0]:null;
-        var timeTxt=(d.mins!=null?fmt(d.mins)+(d.who.length>1?" each":"")+" on site":"No site time")+(site?(onRound?", travel on the round":(d.drive!=null?", travel "+fmt(d.drive)+" return":", no travel time")):"");
+        var timeTxt=(d.mins!=null?fmt(d.mins)+(d.who.length>1?" each":"")+(site?" on site":""):(site?"No site time":"No time set"))+(site?(onRound?", travel on the round":(d.drive!=null?", travel "+fmt(d.drive)+" return":", no travel time")):"");
         ts.appendChild(rowEl("time",site?"Time":"Time",timeTxt,function(ed){
           if(std){ var sb=el("div","stdbox"); sb.appendChild(el("b",null,"Estimate: "+std.crew+(std.crew===1?" operative":" operatives")+(std.mins!=null?", "+fmt(std.mins)+(std.crew>1?" each":""):""))); sb.appendChild(el("div","hint",/[.]$/.test(std.why)?std.why:std.why+"."));
             if(std.mins!=null){ var br=el("div","row"); br.style.marginTop="6px"; if(d.mins!==std.mins){ var ub=el("button","p","Use the estimate"); ub.onclick=function(){ d.mins=std.mins; save(); render(); }; br.appendChild(ub); } sb.appendChild(br); } ed.appendChild(sb); }
@@ -431,6 +431,15 @@
             ed.appendChild(el("div","hint","Leave both blank when any time in the working day is fine."));
           }));
         }
+        // THE COLLECTION SLOT ON THE CARD (Sam, 1 Oct 2026: "Why does it not show the collection slot on this view?").
+        // The same two times the Scheduler's Collection Slot block saves, so either view sets them.
+        if(loading&&!contractorOnly){ var sTxt=(d.from||d.by)?((d.from?"customer after "+d.from:"")+(d.from&&d.by?", ":"")+(d.by?"ready by "+d.by:"")):"No time from the customer yet";
+          ts.appendChild(rowEl("slot","Collection slot",sTxt,function(ed){
+            var r=el("div","row"); var fi=el("input"); fi.type="time"; fi.step="300"; fi.value=d.from||""; fi.setAttribute("aria-label","Customer arrives after"); fi.onchange=function(){ d.from=fi.value||null; save(); render(); };
+            var bi=el("input"); bi.type="time"; bi.step="300"; bi.value=d.by||""; bi.setAttribute("aria-label","Loaded and ready by"); bi.onchange=function(){ d.by=bi.value||null; save(); render(); };
+            r.appendChild(el("span","lbl","Customer arrives after")); r.appendChild(fi); r.appendChild(el("span","lbl","Loaded and ready by")); r.appendChild(bi); ed.appendChild(r);
+            ed.appendChild(el("div","hint","Leave blank until the customer gives a time. Put it in when they do, so Forton is not empty when they turn up."));
+          },(d.from||d.by)?"":"todo")); }
         if(qcApplies&&!qcPlaced) ts.appendChild(qcRow());
         var LEG_TYPES_CARD=[["to_sub","Deliver to subcontractor"],["from_sub","Collect from subcontractor"],["production","Production"],["site","Site visit"],["labour","Labour"]];
         ts.appendChild(rowEl("addleg","Legs",(d.legs||[]).length?((d.legs.length)+(d.legs.length===1?" leg":" legs")+" on this job"):"None",function(ed){
