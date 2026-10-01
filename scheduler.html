@@ -767,6 +767,9 @@ var SNAP=null, DETAIL={};
   // AVAILABLE TIME, NOT RECYCLING (Sam, 1 Oct 2026: "available time everywhere"). Spare time goes to production support
   // first, then whatever the operations manager gives them. The tally keeps the minutes actually spent recycling, as
   // entered, and the target comes only from those.
+  // THE TALLY IS OFF (Sam, 1 Oct 2026: "I dont want the tally"): no tally strip on the Day view and no four-week tally
+  // in the Manager view. Rows already saved stay in the CRM; flip TALLY_ON to bring it back.
+  var TALLY_ON=false;
   function saveTally(k,w,units,notes,shredding,recMins){ var prev=TALLIES[tallyKey(k,w)]||{}, rec=recMins!==undefined?(recMins===""||recMins==null?null:Number(recMins)):(prev.minutes!=null?prev.minutes:null), row={date:k,operative:w,minutes:rec,target:rec?recTarget(rec):null,units:units===""||units==null?null:Number(units),notes:notes||"",shredding:shredding||prev.shredding||[],recorded_by:"scheduler"};
     TALLIES[tallyKey(k,w)]={units:row.units,notes:row.notes,target:row.target,minutes:row.minutes,shredding:row.shredding};
     if(!CRM_KEY) return; try{ fetch(CRM_TALLY_URL,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({key:CRM_KEY,action:"save",rows:[row]})}).catch(function(){}); }catch(e){} }
@@ -1440,7 +1443,7 @@ var SNAP=null, DETAIL={};
       var arriveOf=function(j){ var tm=jobTiming(j,k); return tm?tm.arrive:1e9; }; mineP=mineP.slice().sort(function(a,b){ return (a.site?0:1)-(b.site?0:1)||arriveOf(a)-arriveOf(b); });
       mineP.forEach(function(j){ var m=minsFor(j,w); var tm=jobTiming(j,k); if(j.site){ seg("s",(m||0)+(j.onRound?0:(j.drive||0))); line("Transport","s",j.title.split(" - ").slice(1).join(" - ")||j.title,(tm&&j.onRound?hmStr(tm.arrive):"")+(past?doneOf(j.isLeg?j.leg:j):""),(m!=null?fmt(m):"no time")+(j.site&&!j.onRound&&j.drive?" + "+fmt(j.drive):"")); }
         else { seg("p",m||0); line(j.isLeg&&j.leg&&j.leg.type==="production"?"Production":"Labour Operations","p",j.title.split(" - ").slice(1).join(" - ")||j.title,past?doneOf(j.isLeg?j.leg:j):"",m!=null?fmt(m):"no time"); } });
-      if(load[w].c!=="off"&&load[w].c!=="office"&&load[w].rec>=30){ seg("r",load[w].rec); if(past){ var tly=TALLIES[tallyKey(k,w)]; line("Available","r",tly&&tly.minutes?"recycled "+fmt(tly.minutes)+(tly.units!=null?", "+tly.units+" of "+recTarget(tly.minutes)+" units":""):"nothing recorded","",fmt(load[w].rec)); } else line("Available","r",r?"after the round":(lines.length?"the rest of the day":"nothing booked, available all day"),"",fmt(load[w].rec)); }
+      if(load[w].c!=="off"&&load[w].c!=="office"&&load[w].rec>=30){ seg("r",load[w].rec); if(past){ line("Available","r","the rest of the day","",fmt(load[w].rec)); } else line("Available","r",r?"after the round":(lines.length?"the rest of the day":"nothing booked, available all day"),"",fmt(load[w].rec)); }
       var planned=segs.reduce(function(t,x){return t+x.mins;},0), over=Math.max(0,planned-DAY_MINS), scale=Math.max(DAY_MINS,planned);
       if(over) warns.push(fmt(over)+" over the day"); if(tlw.driveOver) warns.push("Driving over 10 hours"); if(tlw.longDay) warns.push("Day over 11 hours");
       // NO BAR FOR THE BACKUP (Sam, 1 Oct 2026: "Why is it showing a capacity bar for me?!"): Sam's day is not crew
@@ -1693,12 +1696,14 @@ var SNAP=null, DETAIL={};
     box.appendChild(el("div","sub","By operative, all their jobs added up:")); box.appendChild(sum);
     // THE RECYCLING TALLY, four weeks back to today: hours on recycling, the target for them, the units that came
     // back, and the percentage. Amber under 80 percent. Days with no number are counted as not yet recorded.
+    if(TALLY_ON){
     var tFrom=iso(addDays(TODAY,-27)), tTo=iso(TODAY), TS=tallySummary(tFrom,tTo);
     box.appendChild(el("h2",null,"Recycling tally, last four weeks")); box.appendChild(el("div","sub","100 units a day is the average for a full day on recycling; the target scales with the minutes each operative records on recycling. Enter the minutes and units on the Day view."));
     var thd=el("div","mrow head"); ["Operative","Hours on recycling","Target and units done","Shredding","Against target"].forEach(function(t){ thd.appendChild(el("span",null,t)); }); box.appendChild(thd);
     FIELD_CREW.forEach(function(w){ var o=TS[w]; var pct=o.target?Math.round(o.units/o.target*100):null; var cls=pct==null?"":(pct<60?"red":pct<80?"amber":""); var row=el("div","mrow"+(cls?" "+cls:""));
       var mats=Object.keys(o.byMat).map(function(m){return m+" "+o.byMat[m]+" kg";}).join(", ");
       row.appendChild(el("span",null,w)); row.appendChild(el("span",null,fmt(o.mins)+(o.days>o.counted?" ("+(o.days-o.counted)+(o.days-o.counted===1?" day":" days")+" not recorded)":""))); row.appendChild(el("span",null,o.target+" target, "+o.units+" done")); row.appendChild(el("span",null,o.cages||o.kg?o.cages+" cages, "+o.kg+" kg"+(mats?" ("+mats+")":""):"none recorded")); row.appendChild(el("span",null,pct==null?"nothing recorded yet":pct+"%")); box.appendChild(row); });
+    }
     var hd=el("div","mrow head"); ["Job","Part","Operatives and time","Items and estimate","Against the estimate"].forEach(function(t){ hd.appendChild(el("span",null,t)); }); box.appendChild(hd);
     if(!rows.length) box.appendChild(el("div","sub","No jobs with time allocated in this window."));
     rows.forEach(function(r){ var cls=r.ratio==null?"":(r.ratio>2?"red":r.ratio>1.5?"amber":""); var row=el("div","mrow"+(cls?" "+cls:""));
@@ -2309,7 +2314,7 @@ var SNAP=null, DETAIL={};
     var wk=el("div","weektot"); var wh=el("span","n","Available this week"); wh.appendChild(tip("recycling")); wk.appendChild(wh); var teamRec=0;
     FIELD_CREW.forEach(function(w){ var m=WEEK_REC[w]||0; teamRec+=m; wk.appendChild(el("span",m<DAY_MINS?"low":"",w+": "+fmt(m))); });
     wk.appendChild(el("span","team","Team: "+fmt(teamRec))); b.appendChild(wk);
-    if(view==="day"){ var L0=loadOn(dayCur), tk=el("div","weektot tally"); var th=el("span","n","Recycling tally today"); th.appendChild(tip("tally")); tk.appendChild(th);
+    if(TALLY_ON&&view==="day"){ var L0=loadOn(dayCur), tk=el("div","weektot tally"); var th=el("span","n","Recycling tally today"); th.appendChild(tip("tally")); tk.appendChild(th);
       TEAM.forEach(function(w){ var rec=(L0[w]||{}).rec||0; if(!rec) return; var t=TALLIES[tallyKey(dayCur,w)]||{}, tgt=t.minutes?recTarget(t.minutes):null, cell=el("span",t.units!=null&&tgt?(t.units<tgt*0.8?"low":""):"");
         cell.appendChild(document.createTextNode(w+": "+fmt(rec)+" available. Recycled ")); var mi=el("input"); mi.type="number"; mi.min="0"; mi.step="5"; mi.placeholder="min"; mi.value=t.minutes==null?"":String(t.minutes); mi.setAttribute("aria-label",w+" minutes on recycling"); mi.style.width="60px"; mi.onchange=function(){ saveTally(dayCur,w,t.units,t.notes||"",undefined,mi.value); render(); }; cell.appendChild(mi);
         cell.appendChild(document.createTextNode(" min, units ")); var inp=el("input"); inp.type="number"; inp.min="0"; inp.step="1"; inp.value=t.units==null?"":String(t.units); inp.setAttribute("aria-label",w+" units processed"); inp.style.width="64px"; inp.onchange=function(){ saveTally(dayCur,w,inp.value,t.notes||""); render(); }; cell.appendChild(inp);
