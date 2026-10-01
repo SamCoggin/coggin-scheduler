@@ -530,10 +530,16 @@ function prodStatusOf(P,due,today){
   if(P.date&&who.length&&P.mins!=null){
     if(P.date>due){ var late=workDaysBetween(due,P.date)-1; return {cls:"late",planned:true,text:"Due "+niceShort(due)+". Finishes "+niceShort(P.date)+", "+late+(late===1?" working day":" working days")+" late"}; }
     return {cls:"ok",planned:true,text:"Due "+niceShort(due)+". On track, finishes "+niceShort(P.date)}; }
+  // WHEN TO START (Sam, 1 Oct 2026: "where does it tell me when I should start production?"). From the time typed per
+  // operative: each full 7h45 day of it is a working day, so 18h each needs 3 days and must start 2 working days
+  // before it is due. No time typed, no start date: it asks for the time.
   var missing=!P.date?"no production days":!who.length?"no operatives":"no time";
-  if(due<today) return {cls:"late",text:"Due "+niceShort(due)+", now past. Not planned: "+missing};
-  if(due===today) return {cls:"late",text:"Due today. Not planned: "+missing};
-  var tm=new Date(today+"T12:00"); tm.setDate(tm.getDate()+1); var n=workDaysBetween(tm.toISOString().slice(0,10),due);
-  if(n<=PLAN_AHEAD_DAYS) return {cls:"soon",text:"Due "+niceShort(due)+", "+n+(n===1?" working day":" working days")+" away. Plan it: "+missing};
-  return {cls:"",text:"Due "+niceShort(due)+". Plan by "+niceShort(workingDaysBefore(due,PLAN_AHEAD_DAYS))};
+  var need=P.mins!=null?Math.max(1,Math.ceil(P.mins/DAY_MINS)):null, start=need==null?null:(need>1?workingDaysBefore(due,need-1):due);
+  var key=start||due, lead=(start?"Start by "+niceShort(start):"Due "+niceShort(due));
+  var tail=start?" ("+(need===1?"1 day":need+" days")+" of work, due "+niceShort(due)+")":". Set the time to see when to start";
+  if(key<today) return {cls:"late",text:lead+", now past"+tail+". Not planned: "+missing};
+  if(key===today) return {cls:"late",text:(start?"Start today":"Due today")+tail+". Not planned: "+missing};
+  var tm=new Date(today+"T12:00"); tm.setDate(tm.getDate()+1); var n=workDaysBetween(tm.toISOString().slice(0,10),key);
+  if(n<=PLAN_AHEAD_DAYS) return {cls:"soon",text:lead+", "+n+(n===1?" working day":" working days")+" away"+tail+". Plan it: "+missing};
+  return {cls:"",text:lead+tail+". Plan by "+niceShort(workingDaysBefore(key,PLAN_AHEAD_DAYS))};
 }

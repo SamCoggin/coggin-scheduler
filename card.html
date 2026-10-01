@@ -335,7 +335,8 @@
           ps.appendChild(banner("Short by "+fmt(shortM)+" of the "+fmt(needM)+" these items need."+(daysLeft<=0?" The production due date has gone: get sub-contractor support or move the delivery.":(shortM>couldAdd?" There is not enough time left before "+niceShort(prodDue)+": get sub-contractor support or move the delivery.":" Add time, add an operative, or add a day before "+niceShort(prodDue)+"."))));
         }
       }
-      if(!d.prep.who.length) OPEN.pwho=OPEN.pwho===undefined?true:OPEN.pwho;
+      // EVERY ROW OPENS CLOSED (Sam, 1 Oct 2026: "I want these sections all closed like this on view and not open as
+      // default"). The red banner already says nobody is on it; Change opens the picker.
       var pwhoRow=ps.appendChild(rowEl("pwho",d.prep.who.length===1?"Operative":"Operatives",d.prep.who.length?d.prep.who.join(", "):"Unassigned",function(ed){ ed.appendChild(people(d.prep,false,function(){ var s2=prodStandardFor(loadNow(),d.prep.who.length,pdaysAvail); return s2&&s2.mins!=null?s2.mins:null; },d.prep.date?workDays(d.prep.start||d.prep.date,d.prep.date):[])); ed.appendChild(availability(d.prep.date?workDays(d.prep.start||d.prep.date,d.prep.date):[],d.prep)); },d.prep.who.length?"":"bad"));
       var daysTxt=d.prep.date?(d.prep.start&&d.prep.start!==d.prep.date?niceShort(d.prep.start)+" to "+niceShort(d.prep.date):niceShort(d.prep.date)):"Not set";
       var pdaysRow=ps.appendChild(rowEl("pdays","Production days",daysTxt,function(ed){ var pr=el("div","row");
@@ -384,7 +385,7 @@
     if(agreedM) ts.appendChild(el("div","hint","Agreed in the CRM: "+agreedM[1].trim()+" crew time on the day, travel included. Plan the crew and time to fit it."));
     {
       if(contractorOnly) ts.appendChild(el("div","who",d.contractor?d.contractor+" is carrying out this work":"A "+(partsCarrier(PARTS)||"carrier").toLowerCase()+" is carrying it, not picked yet. Choose the firm below, or on the deal."));
-      else if(!d.who.length){ ts.appendChild(banner("Unassigned. Choose who is on it.")); OPEN.who=OPEN.who===undefined?true:OPEN.who; }
+      else if(!d.who.length){ ts.appendChild(banner("Unassigned. Choose who is on it.")); }
       else if(site&&!d.who.some(function(w){return CAN_DRIVE.indexOf(w)>=0;})) ts.appendChild(banner("No driver on this job. Rob, Jack or Bart must be on it."));
       if(over) ts.appendChild(banner("Above the estimate: "+over+". The estimate is "+std.crew+(std.crew===1?" operative":" operatives")+(std.mins!=null?", "+fmt(std.mins)+(std.crew>1?" each":""):"")+"."));
       // who
