@@ -357,7 +357,7 @@
   .oprow .odet{font-size:11.5px;color:var(--muted);margin-top:3px;line-height:1.5} .oprow .odet b{font-weight:600;color:#334155} .oprow .odet .warn{color:var(--red)} .oprow .odet .warn b{color:var(--red)}
   .oprow .oacts{margin-top:4px}
   .oprow .obar{display:flex;height:7px;border-radius:99px;overflow:hidden;background:#eef1f5;margin:7px 0 5px} .oprow .obar i{display:block;height:100%} .oprow .obar .p{background:#5b8def} .oprow .obar .s{background:#1f845a} .oprow .obar .r{background:#c3cad4} .oprow .obar .o{background:var(--red)}
-  .oprow .oln{display:grid;grid-template-columns:68px 1fr auto;gap:8px;padding:2px 0;font-size:12px;align-items:baseline;color:#334155} .oprow .oln .k{font-size:10px;text-transform:uppercase;letter-spacing:.04em;font-weight:700} .oprow .oln .k.p{color:#3b6fd6} .oprow .oln .k.s{color:#1f845a} .oprow .oln .k.r{color:var(--muted)} .oprow .oln .t{font-variant-numeric:tabular-nums;color:var(--muted);white-space:nowrap} .oprow .oln .sub2{color:var(--muted)}
+  .oprow .oln{display:grid;grid-template-columns:minmax(68px,max-content) 1fr auto;gap:8px;padding:2px 0;font-size:12px;align-items:baseline;color:#334155} .oprow .oln .k{font-size:10px;text-transform:uppercase;letter-spacing:.04em;font-weight:700} .oprow .oln .k.p{color:#3b6fd6} .oprow .oln .k.s{color:#1f845a} .oprow .oln .k.r{color:var(--muted)} .oprow .oln .t{font-variant-numeric:tabular-nums;color:var(--muted);white-space:nowrap} .oprow .oln .sub2{color:var(--muted)}
   .oprow .oln.round{background:var(--green-bg);margin:2px -6px;padding:3px 6px;border-radius:6px} .oprow .oln.round .k{color:#1f845a}
   .oprow .oacts{display:flex;gap:12px;align-items:center} .oprow .owarn{font-size:11px;font-weight:700;color:var(--red)}
   .olink{font:inherit;font-size:11px;font-weight:700;color:var(--blue);background:none;border:0;padding:0;cursor:pointer} .olink.on{color:var(--red)}
@@ -493,7 +493,15 @@ var SNAP=null, DETAIL={};
   // travel and time, and shows on the board like any other job.
   // THE LINE SAYS WHAT THE WORK IS (Sam, 1 Oct 2026: "it is saying production for a donation collection which is
   // misleading"). Workshop time on a Resale job is production; on anything else it is named after the job's work.
-  function prepKind(j){ var w=String((j&&j.work)||"").split(" - ")[0].trim(); return (!w||/^resale/i.test(w))?"Production":w; }
+  // MIRRORS THE CARD'S LABEL (Sam, 1 Oct 2026: "can we not match the labels we update on the crm app schedule to mirror
+  // across here?"). The line reads the card's own "Work - Movement" label as set from the CRM, e.g. "Donation -
+  // Collection". Without one it builds it from the work and movement it can read, and only a card with neither says Job.
+  function prepKind(j){
+    var labs=labelNames((j&&(j.labels||(j.parentJob&&j.parentJob.labels)))||[]);
+    for(var i=0;i<labs.length;i++){ if(/\S\s-\s\S/.test(labs[i])) return labs[i].replace(/\s-\s/," "); }
+    var w=String((j&&j.work)||"").trim(), mv=String((j&&j.movement)||"").trim();
+    return [w,mv].filter(Boolean).join(" ")||"Job";
+  }
   var LEG_TYPES=[["to_sub","Deliver to subcontractor",true],["from_sub","Collect from subcontractor",true],["production","Production",false],["site","Site visit",true],["labour","Labour",false]];
   // DISMISSED WARNINGS (Sam, 15 Sep 2026: "I need to be able to dismiss these notifications"). Keyed on the warning's
   // own words, saved on the board, so a dismissed warning stays gone until what it says changes.
