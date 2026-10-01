@@ -338,7 +338,15 @@
       // EVERY ROW OPENS CLOSED (Sam, 1 Oct 2026: "I want these sections all closed like this on view and not open as
       // default"). The red banner already says nobody is on it; Change opens the picker.
       var pwhoRow=ps.appendChild(rowEl("pwho",d.prep.who.length===1?"Operative":"Operatives",d.prep.who.length?d.prep.who.join(", "):"Unassigned",function(ed){ ed.appendChild(people(d.prep,false,function(){ var s2=prodStandardFor(loadNow(),d.prep.who.length,pdaysAvail); return s2&&s2.mins!=null?s2.mins:null; },d.prep.date?workDays(d.prep.start||d.prep.date,d.prep.date):[])); ed.appendChild(availability(d.prep.date?workDays(d.prep.start||d.prep.date,d.prep.date):[],d.prep)); },d.prep.who.length?"":"bad"));
-      var daysTxt=d.prep.date?(d.prep.start&&d.prep.start!==d.prep.date?niceShort(d.prep.start)+" to "+niceShort(d.prep.date):niceShort(d.prep.date)):"Not set";
+      // DAY AND DUE ARE ONE ROW (Sam, 1 Oct 2026: "production day and production due feels like it is doing the same
+      // thing"). The due date is in the header; the row says the day booked, or by when it must be. Moving the due
+      // date sits in the same row's Change, under the day.
+      var pst0=(d.prep.done&&d.prep.done.status==="done")?null:prodStatusOf(d.prep,prodDue,todayIso());
+      var dueEd=function(ed){ ed.appendChild(el("div","lbl","Must be done by")); var pdr=el("div","row"); var pdi=el("input"); pdi.type="date"; pdi.value=prodDue||""; pdi.setAttribute("aria-label","Must be done by"); pdi.onchange=function(){ d.prodDue=pdi.value||null; save(); render(); }; pdr.appendChild(pdi);
+        if(d.prodDue){ var rs=el("button","p","Reset"); rs.onclick=function(){ d.prodDue=null; save(); render(); }; pdr.appendChild(rs); } ed.appendChild(pdr);
+        ed.appendChild(el("div","hint",d.prodDue?"Set by you.":(viewing?"Ready for the viewing.":PRODUCTION_BUFFER_DAYS+" working days before delivery. Change it if this job needs more or less."))); };
+      var notSetTxt="Not set"+(prodDue?(pst0&&pst0.need>1&&pst0.start?", start by "+niceShort(pst0.start):", by "+niceShort(prodDue)):"");
+      var daysTxt=d.prep.date?(d.prep.start&&d.prep.start!==d.prep.date?niceShort(d.prep.start)+" to "+niceShort(d.prep.date):niceShort(d.prep.date)):notSetTxt;
       // ONE DAY FOR A SHORT JOB (Sam, 1 Oct 2026: "Production days is not relevant for a job that only takes 30 mins").
       // When the time fits in one working day it is one date, Production day; a range only for longer work, or one
       // already set as a range.
@@ -346,12 +354,12 @@
       var pdaysRow=ps.appendChild(rowEl("pdays",oneDay?"Production day":"Production days",daysTxt,oneDay?function(ed){ var pr=el("div","row");
         var d0=el("input"); d0.type="date"; d0.value=d.prep.date||""; d0.setAttribute("aria-label","Production day"); d0.onchange=function(){ d.prep.date=d0.value||null; d.prep.start=d.prep.date; save(); render(); };
         pr.appendChild(d0); var clr0=el("button","p","Clear"); clr0.onclick=function(){ d.prep.start=null; d.prep.date=null; save(); render(); }; pr.appendChild(clr0); ed.appendChild(pr);
-        ed.appendChild(el("div","hint","Pick the day and it appears under Production in the Scheduler.")); }:function(ed){ var pr=el("div","row");
+        ed.appendChild(el("div","hint","Pick the day and it appears under Production in the Scheduler.")); dueEd(ed); }:function(ed){ var pr=el("div","row");
         var d1=el("input"); d1.type="date"; d1.value=d.prep.start||""; var d2=el("input"); d2.type="date"; d2.value=d.prep.date||"";
         d1.onchange=function(){ d.prep.start=d1.value||null; if(d.prep.start&&(!d.prep.date||d.prep.date<d.prep.start)) d.prep.date=d.prep.start; if(!d.prep.start) d.prep.date=null; save(); render(); };
         d2.onchange=function(){ d.prep.date=d2.value||null; if(d.prep.date&&(!d.prep.start||d.prep.start>d.prep.date)) d.prep.start=d.prep.date; if(!d.prep.date) d.prep.start=null; save(); render(); };
         pr.appendChild(el("span",null,"From")); pr.appendChild(d1); pr.appendChild(el("span",null,"to")); pr.appendChild(d2); var clr=el("button","p","Clear"); clr.onclick=function(){ d.prep.start=null; d.prep.date=null; save(); render(); }; pr.appendChild(clr); ed.appendChild(pr);
-        ed.appendChild(el("div","hint","Set the days and it appears under Production in the Scheduler.")); var pf=prodFit(d.prep.mins,d.prep.date?workDays(d.prep.start||d.prep.date,d.prep.date).length:0); if(pf) ed.appendChild(el("div","hint far",pf)); },d.prep.date?"":(prodFit(d.prep.mins,d.prep.date?workDays(d.prep.start||d.prep.date,d.prep.date).length:0)?"todo":"")));
+        ed.appendChild(el("div","hint","Set the days and it appears under Production in the Scheduler.")); dueEd(ed); var pf=prodFit(d.prep.mins,d.prep.date?workDays(d.prep.start||d.prep.date,d.prep.date).length:0); if(pf) ed.appendChild(el("div","hint far",pf)); },d.prep.date?"":(prodFit(d.prep.mins,d.prep.date?workDays(d.prep.start||d.prep.date,d.prep.date).length:0)?"todo":"")));
       ps.appendChild(rowEl("ptime",d.prep.who.length>1?"Time per operative":"Time",d.prep.mins!=null?fmt(d.prep.mins)+(d.prep.who.length>1?" each":""):(pstd?"Not set, estimated "+fmt(pstd.mins):"Not set"),function(ed){
         if(pstd){ var sb=el("div","stdbox"); sb.appendChild(el("b",null,"Estimate: "+pstd.crew+(pstd.crew===1?" operative":" operatives")+", "+fmt(pstd.mins)+(pstd.crew>1?" each":"")+(pstd.days>1?", "+pstd.days+" days":""))); sb.appendChild(el("div","hint",pstd.why));
           var br=el("div","row"); br.style.marginTop="6px"; if(d.prep.who.length&&d.prep.mins!==pstd.mins){ var ub=el("button","p","Use the estimate for the "+d.prep.who.length+" chosen"); ub.onclick=function(){ d.prep.mins=pstd.mins; save(); render(); }; br.appendChild(ub); } sb.appendChild(br); ed.appendChild(sb); }
@@ -367,12 +375,8 @@
           ed.appendChild(el("div","hint","Leave these alone unless one of them is on it for less. The job's remaining work is worked out from what is set here."));
         } },d.prep.mins!=null?"":(d.prep.who.length?"bad":"todo")));
       ps.insertBefore(ps.lastChild,pdaysRow);   // time before days
-      ps.appendChild(rowEl("pdue","Production due",(prodDue?niceShort(prodDue):"Not set")+(d.prodDue?"":viewing?", ready for the viewing":", "+PRODUCTION_BUFFER_DAYS+" working days before delivery"),function(ed){ var pdr=el("div","row"); var pdi=el("input"); pdi.type="date"; pdi.value=prodDue||""; pdi.onchange=function(){ d.prodDue=pdi.value||null; save(); render(); }; pdr.appendChild(pdi);
-        if(d.prodDue){ var rs=el("button","p","Reset"); rs.onclick=function(){ d.prodDue=null; save(); render(); }; pdr.appendChild(rs); } ed.appendChild(pdr); ed.appendChild(el("div","hint","The day production must be finished and checked. "+PRODUCTION_BUFFER_DAYS+" working days before delivery unless you set it.")); }));
       // ON TIME OR NOT, the same line the Scheduler's production card shows (Sam, 1 Oct 2026: "add it to the trello card too")
       var pst=(d.prep.done&&d.prep.done.status==="done")?null:prodStatusOf(d.prep,prodDue,todayIso());
-      // START BY, ITS OWN ROW (Sam, 1 Oct 2026: "yes give start by its own row"): worked out, not typed, so no Change
-      if(prodDue&&!(pst&&pst.need===1)) ps.appendChild(rowEl("pstart","Start by",pst&&pst.start?niceShort(pst.start)+", "+(pst.need===1?"1 day":pst.need+" days")+" of work":"Set the time first",null,pst&&pst.start?"":"todo"));
       if(pst) ps.appendChild(el("div","pst "+pst.cls,pst.text));
       // TIME, DAYS, DUE, THEN WHO (Sam, 1 Oct 2026: "I wanted time at the top of the list and then production day/s"),
       // the same order as the Scheduler's production editor so the two mirror.
