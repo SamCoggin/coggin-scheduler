@@ -1985,26 +1985,41 @@ var SNAP=null, DETAIL={};
     // is coarse, low error correction because print is clean, and a white margin of 4 mm or more on every side.
     var qrAt=function(doc,url,x,y,size){ if(typeof qrcode!=="function") return; var q=qrcode(0,"L"); q.addData(url); q.make(); var n=q.getModuleCount(), m=size/n; doc.setFillColor(0,0,0);
       for(var r=0;r<n;r++) for(var c=0;c<n;c++) if(q.isDark(r,c)) doc.rect(x+c*m,y+r*m,m+0.01,m+0.01,"F"); };
-    // TWO COLUMNS OF JOB BOXES (1 Oct 2026): one row per job with a code each would not fit a page once the codes had
-    // room to scan, so each job is a box with its code on the left, two boxes across. Same sections, who, time, tick.
+    // THE V3 SHEET (Sam, 1 Oct 2026: "I am sure we can do better with the UI of this", mock approved): a crew strip
+    // with each person's booked time, black section bars with a count, boxes with the code left, the job, who and a bold
+    // time, the tick box on the right edge, and lines for notes in the space left. Black and white, prints anywhere.
+    var crew=FIELD_CREW.map(function(w){ var l=load[w]||{}; if(l.c==="off"){ var why=OFF_WHY[k+"|"+w]; return {w:w,off:true,t:"Off"+(why?", "+why:LEAVE.some(function(x){ return x.date===k&&!x.off&&!x.bh&&crewOf(x.text.split(" ")[0])===w; })?", annual leave":"")}; }
+      var m=Math.round(l.mins||0); return {w:w,t:m?fmt(m)+" booked":"Nothing booked",over:m>DAY_MINS}; });
+    TEAM.filter(function(w){ return !field(w)&&load[w]&&load[w].c!=="office"&&load[w].c!=="off"; }).forEach(function(w){ crew.push({w:w,t:"Backup"}); });
+    crew.sort(function(a,b){ return (a.off?1:0)-(b.off?1:0); });   // anyone off goes at the end of the strip
     var build=function(sc){
-      var doc=new J({orientation:"portrait",unit:"mm",format:"a4"}), y=16, L=14, W=182, G=6, CW=(W-G)/2, fs=10*sc, qs=Math.max(11,16*sc);
-      doc.setFont("helvetica","bold"); doc.setFontSize(17); doc.text("Day sheet · "+niceDay(k),L,y);
-      doc.setFont("helvetica","normal"); doc.setFontSize(8.5); doc.setTextColor(90); var pr=new Date(); doc.text("8:00 to 16:30 · printed "+niceShort(iso(pr))+" "+String(pr.getHours()).padStart(2,"0")+":"+String(pr.getMinutes()).padStart(2,"0"),L+W,y,{align:"right"});
-      doc.setTextColor(0); doc.setLineWidth(0.6); doc.line(L,y+2.5,L+W,y+2.5); y+=9;
-      if(off.length){ doc.setFontSize(10); doc.text("Off: "+off.join(", "),L,y); y+=6; }
-      var box=function(r,x,y0,h){ doc.setDrawColor(200); doc.setLineWidth(0.25); doc.roundedRect(x,y0,CW,h,1.2,1.2); doc.setDrawColor(0);
+      var doc=new J({orientation:"portrait",unit:"mm",format:"a4"}), L=14, W=182, G=5, CW=(W-G)/2, fs=10.5*sc, qs=Math.max(11,15*sc), y=17;
+      doc.setFont("helvetica","bold"); doc.setFontSize(21); doc.text(niceDay(k),L,y);
+      doc.setFont("helvetica","normal"); doc.setFontSize(8.5); doc.setTextColor(90); var pr=new Date();
+      doc.text("Day sheet · 8:00 to 16:30",L+W,y-4.5,{align:"right"}); doc.text("Printed "+niceShort(iso(pr))+" "+String(pr.getHours()).padStart(2,"0")+":"+String(pr.getMinutes()).padStart(2,"0"),L+W,y,{align:"right"}); doc.setTextColor(0); y+=5;
+      // the crew strip
+      var n=crew.length, tw=(W-(n-1)*3)/n;
+      crew.forEach(function(c,i){ var x=L+i*(tw+3); doc.setLineWidth(c.off?0.25:0.5); doc.setDrawColor(c.off?170:17); doc.roundedRect(x,y,tw,12,1,1); doc.setDrawColor(0);
+        doc.setTextColor(c.off?140:17); doc.setFont("helvetica","bold"); doc.setFontSize(10); doc.text(c.w+(c.over?"  over":""),x+2.5,y+5);
+        doc.setFont("helvetica","normal"); doc.setFontSize(8.5); doc.text(doc.splitTextToSize(c.t,tw-4)[0],x+2.5,y+9.5); doc.setTextColor(0); });
+      y+=17;
+      var bar=function(title,count){ doc.setFillColor(17,17,17); doc.roundedRect(L,y,W,6.5,0.8,0.8,"F"); doc.setTextColor(255); doc.setFont("helvetica","bold"); doc.setFontSize(8.5); doc.text(title.toUpperCase(),L+3,y+4.5); if(count) doc.text(count,L+W-3,y+4.5,{align:"right"}); doc.setTextColor(0); y+=9.5; };
+      var tx0=function(x){ return x+qs+6; }, tw0=CW-qs-15;
+      var need=function(r){ var h=3.5; doc.setFont("helvetica","bold"); doc.setFontSize(fs+1); h+=doc.splitTextToSize(r[0],tw0).length*(fs+1)*0.4; doc.setFont("helvetica","normal"); doc.setFontSize(fs-1.5); if(r[1]) h+=doc.splitTextToSize(r[1],tw0).length*(fs-1.5)*0.4+0.6; h+=fs*0.45+2.5; return Math.max(qs+6,h+2); };
+      var box=function(r,x,y0,h){ doc.setDrawColor(150); doc.setLineWidth(0.3); doc.roundedRect(x,y0,CW,h,1.2,1.2); doc.setDrawColor(0);
         if(r[4]) qrAt(doc,"https://trello.com/c/"+r[4],x+3,y0+3,qs);
-        var tx=x+qs+7, tw=CW-qs-10, ty=y0+4.5; doc.setLineWidth(0.3); doc.setDrawColor(40); doc.rect(tx,ty-3,3.4,3.4); doc.setDrawColor(0);
-        doc.setFont("helvetica","bold"); doc.setFontSize(fs); var nl=doc.splitTextToSize(r[0],tw-5); doc.text(nl,tx+5,ty); ty+=nl.length*fs*0.4;
-        doc.setFont("helvetica","normal"); doc.setFontSize(fs-1); doc.setTextColor(80); if(r[1]){ var sl=doc.splitTextToSize(r[1],tw); doc.text(sl,tx,ty+0.8); ty+=sl.length*(fs-1)*0.4+0.8; }
-        doc.setTextColor(0); doc.setFontSize(fs-0.5); var wl=doc.splitTextToSize(r[2]+(r[3]?" · "+r[3]:""),tw); doc.text(wl,tx,ty+1.2); ty+=wl.length*(fs-0.5)*0.4+1.2; return ty-y0+2; };
-      var need=function(r){ var tw=CW-qs-10, h=4.5; doc.setFontSize(fs); h+=doc.splitTextToSize(r[0],tw-5).length*fs*0.4; doc.setFontSize(fs-1); if(r[1]) h+=doc.splitTextToSize(r[1],tw).length*(fs-1)*0.4+0.8; doc.setFontSize(fs-0.5); h+=doc.splitTextToSize(r[2]+(r[3]?" · "+r[3]:""),tw).length*(fs-0.5)*0.4+1.2; return Math.max(qs+6,h+2); };
-      var sect=function(title,rows,empty){ if(!rows.length) return;   /* an empty section is left off (Sam, 1 Oct 2026) */ doc.setFont("helvetica","bold"); doc.setFontSize(8); doc.setTextColor(90); doc.text(title.toUpperCase(),L,y+3); doc.setTextColor(0); y+=6;
-        for(var i=0;i<rows.length;i+=2){ var h=Math.max(need(rows[i]),rows[i+1]?need(rows[i+1]):0); box(rows[i],L,y,h); if(rows[i+1]) box(rows[i+1],L+CW+G,y,h); y+=h+G*0.6; } y+=1; };
-      sect("Production",prod,"No production"); sect("Transport",road,"Nothing going out"); sect("Labour operations",lab,"Nothing booked");
-      if(rec.length){ doc.setFont("helvetica","bold"); doc.setFontSize(8); doc.setTextColor(90); doc.text("RECYCLING, THE REST OF THE DAY",L,y+3); doc.setTextColor(0); y+=7.5; doc.setFont("helvetica","normal"); doc.setFontSize(10); var rl=doc.splitTextToSize(rec.join("  ·  "),W); doc.text(rl,L,y); y+=rl.length*4.2+2; }
-      doc.setFontSize(8); doc.setTextColor(90); doc.text("Tick each job when done. Scan a code to open the job in Trello. Hand the sheet back at the end of the day.",L,287); doc.text("Coggin SOS",L+W,287,{align:"right"}); doc.setTextColor(0);
+        doc.setLineWidth(0.45); doc.setDrawColor(17); doc.roundedRect(x+CW-8,y0+3,5,5,0.6,0.6); doc.setDrawColor(0);
+        var tx=tx0(x), ty=y0+3.5+(fs+1)*0.33; doc.setFont("helvetica","bold"); doc.setFontSize(fs+1); var nl=doc.splitTextToSize(r[0],tw0); doc.text(nl,tx,ty); ty+=(nl.length-1)*(fs+1)*0.4+1;
+        if(r[1]){ doc.setFont("helvetica","normal"); doc.setFontSize(fs-1.5); doc.setTextColor(85); var sl=doc.splitTextToSize(r[1],tw0); doc.text(sl,tx,ty+(fs-1.5)*0.35); ty+=sl.length*(fs-1.5)*0.4+0.6; doc.setTextColor(0); }
+        var by=y0+h-3; doc.setFont("helvetica","normal"); doc.setFontSize(fs-0.5); doc.text(doc.splitTextToSize(r[2],CW-qs-6-30)[0],tx,by);
+        if(r[3]){ doc.setFont("helvetica","bold"); doc.setFontSize(fs+0.5); doc.text(r[3],x+CW-3,by,{align:"right"}); } };
+      var sect=function(title,rows){ if(!rows.length) return; bar(title,rows.length+(rows.length===1?" job":" jobs"));
+        for(var i=0;i<rows.length;i+=2){ var h=Math.max(need(rows[i]),rows[i+1]?need(rows[i+1]):0); box(rows[i],L,y,h); if(rows[i+1]) box(rows[i+1],L+CW+G,y,h); y+=h+3.5; } y+=1; };
+      sect("Production",prod); sect("Transport",road); sect("Labour operations",lab);
+      if(rec.length){ bar("Recycling, the rest of the day",""); doc.setFont("helvetica","normal"); doc.setFontSize(10.5); var rl=doc.splitTextToSize(rec.join("   ·   "),W); doc.text(rl,L,y+1); y+=rl.length*4.4+3; }
+      var fits=y<268;
+      if(fits){ doc.setLineWidth(0.4); doc.line(L,y+2,L+W,y+2); doc.setFont("helvetica","bold"); doc.setFontSize(8.5); doc.setTextColor(90); doc.text("NOTES",L,y+6.5); doc.setTextColor(0); doc.setDrawColor(190); doc.setLineWidth(0.25); for(var ly=y+14;ly<=278;ly+=8) doc.line(L,ly,L+W,ly); doc.setDrawColor(0); }
+      doc.setFont("helvetica","normal"); doc.setFontSize(8); doc.setTextColor(90); doc.text("Tick each job when done. Scan a code to open the job in Trello. Hand the sheet back at the end of the day.",L,287); doc.text("Coggin SOS",L+W,287,{align:"right"}); doc.setTextColor(0);
       return {doc:doc,fits:y<281};
     };
     var r=null; for(var sc=1;sc>=0.6;sc-=0.05){ r=build(sc); if(r.fits) break; }
