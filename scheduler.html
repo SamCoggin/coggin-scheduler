@@ -970,7 +970,7 @@ var SNAP=null, DETAIL={};
       var nd=part.date?daysOf(part).length:0; db.appendChild(el("div","hint",!part.date?"Not scheduled. Set the production dates and it appears under Production.":nd>1?nd+" days. Time below is the total per person, spread over the days.":"One day. Set the second date later if it needs more."));
       var pf=prodFit(part.mins,nd); if(pf) db.appendChild(el("div","hint far",pf));
       // the same on-time line as the card's Production section, so the two mirror
-      if(j.prodDue){ var dst=prodStatus(j); if(dst) db.appendChild(el("div","for "+dst.cls,dst.text)); else db.appendChild(el("div","hint","Production due "+niceDay(j.prodDue)+".")); }
+      if(j.prodDue){ var dst=prodStatus(j); if(dst) db.appendChild(el("div","for "+dst.cls,dst.full)); else db.appendChild(el("div","hint","Production due "+niceDay(j.prodDue)+".")); }
       right.appendChild(db); }
     if(!o.shop && j.prep){ var pb=block("Production");
       var pdr=el("div","row"); pdr.style.marginBottom="8px"; pdr.appendChild(el("span",null,"Production due")); var pdi=el("input"); pdi.type="date"; pdi.value=j.prodDue||""; pdi.setAttribute("aria-label","Production due date");
@@ -1247,7 +1247,7 @@ var SNAP=null, DETAIL={};
     if(!isPrep&&j.contractor&&!j.who.length) ctx.push(j.contractor); else if(!isPrep&&attending(j)) ctx.push(j.contractor+" \u00b7 "+partX.who.join(", ")+" attending"); else if(partX.who.length) ctx.push(partX.who.join(", "));
     if(!isPrep&&ourJob(j)&&j.vehicle) ctx.push(j.vehicle==="hire"?"Hire":j.vehicle.split(" ")[0]);
     mid.appendChild(el("span","for ctx",ctx.join(" \u00b7 ")));
-    if(isPrep){ var pdays=daysOf(j.prep); mid.appendChild(el("span","for",(pdays.length>1?"Day "+(pdays.indexOf(k)+1)+" of "+pdays.length+". ":"")+"Required for "+niceDay(j.date)+(j.collect?", customer collecting":""))); var pst=prodStatus(j); if(pst) mid.appendChild(el("span","for "+pst.cls,pst.text)); }
+    if(isPrep){ var pdays=daysOf(j.prep); mid.appendChild(el("span","for",(pdays.length>1?"Day "+(pdays.indexOf(k)+1)+" of "+pdays.length+". ":"")+"Required for "+niceDay(j.date)+(j.collect?", customer collecting":""))); var pst=prodStatus(j); if(pst) mid.appendChild(el("span","for "+pst.cls,pst.full)); }
     if(j.start){ var ds=daysOf(j); mid.appendChild(el("span","for","Day "+(ds.indexOf(k)+1)+" of "+ds.length+", "+niceDay(j.start)+" to "+niceDay(j.date))); }
     if(!isPrep&&j.prodDue){ var nrc=notReady(j); mid.appendChild(el("span","for"+(nrc?" late":""),nrc?nrc:"Production due "+niceDay(j.prodDue)+(j.collect?", customer collecting":""))); }
     else if(!isPrep&&j.collect) mid.appendChild(el("span","for","Customer collecting"));
@@ -1356,7 +1356,7 @@ var SNAP=null, DETAIL={};
       // NEEDS PLANNING: production with no days, people or time, due within 5 working days or past it. At the top of
       // Production on every day from today, so it is seen before it is late. Select one to plan it.
       if(g[0]==="shop"&&k>=iso(TODAY)) JOBS.filter(function(j){ var st=prodStatus(j); return st&&!st.planned&&(st.cls==="soon"||st.cls==="late"); }).sort(function(a,b){ return a.prodDue<b.prodDue?-1:1; }).forEach(function(j){
-        var st=prodStatus(j), nc=el("div","card needplan "+st.cls); nc.appendChild(el("b",null,j.title)); nc.appendChild(el("span","for "+st.cls,st.text)); nc.title="Plan the production"; nc.onclick=function(){ open=j.id+":prep"; render(); }; cards.appendChild(nc); });
+        var st=prodStatus(j), nc=el("div","card needplan "+st.cls); nc.appendChild(el("b",null,j.title)); nc.appendChild(el("span","for "+st.cls,st.full)); nc.title="Plan the production"; nc.onclick=function(){ open=j.id+":prep"; render(); }; cards.appendChild(nc); });
       if(g[0]==="road") liveIssues(k).filter(function(x){ return !x.j; }).forEach(function(x){ var dw=el("div","daywarn"); dw.appendChild(document.createTextNode(x.text)); var xb=el("button","dis","\u00d7"); xb.title="Dismiss this warning. It comes back if what it says changes."; xb.onclick=function(e){ e.stopPropagation(); DISMISSED[warnKey(x)]=true; persist(); render(); }; dw.appendChild(xb); cards.appendChild(dw); });
       if(g[0]==="road") vanRounds(rounds).forEach(function(r){ cards.appendChild(roundEl(r)); });
       g[2].forEach(function(j){ cards.appendChild(cardEl(j,k,g[0]==="shop",isToday)); });

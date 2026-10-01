@@ -276,8 +276,8 @@
   var OPEN={};   // which editor rows are open, kept across redraws
   function rowEl(key,label,value,editor,cls){
     var r=el("div","srow"+(cls?" "+cls:"")); var top=el("div","stop2"); top.appendChild(el("span","sl",label)); var v=el("span","sv"); if(typeof value==="string") v.textContent=value; else v.appendChild(value); top.appendChild(v);
-    var bt=el("button","chg",OPEN[key]?"Done":"Change"); bt.onclick=function(){ OPEN[key]=!OPEN[key]; render(); }; top.appendChild(bt); r.appendChild(top);
-    if(OPEN[key]){ var ed=el("div","sed"); editor(ed); r.appendChild(ed); }
+    if(editor){ var bt=el("button","chg",OPEN[key]?"Done":"Change"); bt.onclick=function(){ OPEN[key]=!OPEN[key]; render(); }; top.appendChild(bt); } r.appendChild(top);
+    if(editor&&OPEN[key]){ var ed=el("div","sed"); editor(ed); r.appendChild(ed); }
     return r;
   }
   function banner(text){ return el("div","banner",text); }
@@ -363,7 +363,10 @@
       ps.appendChild(rowEl("pdue","Production due",(prodDue?niceShort(prodDue):"Not set")+(d.prodDue?"":viewing?", ready for the viewing":", "+PRODUCTION_BUFFER_DAYS+" working days before delivery"),function(ed){ var pdr=el("div","row"); var pdi=el("input"); pdi.type="date"; pdi.value=prodDue||""; pdi.onchange=function(){ d.prodDue=pdi.value||null; save(); render(); }; pdr.appendChild(pdi);
         if(d.prodDue){ var rs=el("button","p","Reset"); rs.onclick=function(){ d.prodDue=null; save(); render(); }; pdr.appendChild(rs); } ed.appendChild(pdr); ed.appendChild(el("div","hint","The day production must be finished and checked. "+PRODUCTION_BUFFER_DAYS+" working days before delivery unless you set it.")); }));
       // ON TIME OR NOT, the same line the Scheduler's production card shows (Sam, 1 Oct 2026: "add it to the trello card too")
-      var pst=(d.prep.done&&d.prep.done.status==="done")?null:prodStatusOf(d.prep,prodDue,todayIso()); if(pst) ps.appendChild(el("div","pst "+pst.cls,pst.text));
+      var pst=(d.prep.done&&d.prep.done.status==="done")?null:prodStatusOf(d.prep,prodDue,todayIso());
+      // START BY, ITS OWN ROW (Sam, 1 Oct 2026: "yes give start by its own row"): worked out, not typed, so no Change
+      if(prodDue) ps.appendChild(rowEl("pstart","Start by",pst&&pst.start?niceShort(pst.start)+", "+(pst.need===1?"1 day":pst.need+" days")+" of work":"Set the time first",null,pst&&pst.start?"":"todo"));
+      if(pst) ps.appendChild(el("div","pst "+pst.cls,pst.text));
       // TIME, DAYS, DUE, THEN WHO (Sam, 1 Oct 2026: "I wanted time at the top of the list and then production day/s"),
       // the same order as the Scheduler's production editor so the two mirror.
       ps.appendChild(pwhoRow);
