@@ -655,7 +655,7 @@ var SNAP=null, DETAIL={};
       // office staff not operatives but can still help in areas if really needed").
       // With nothing on, they read "Office" and never count as free; put one on a
       // job and that day they show their time like anyone else.
-      if(FIELD_CREW.indexOf(w)<0&&n){ out[w].t=fmt(mins)+" on jobs"; out[w].s=fmt(mins)+" on jobs"; }   // backup: his time on jobs, never his free time
+      if(FIELD_CREW.indexOf(w)<0&&n){ out[w].t="backup"; out[w].s="Backup"; out[w].d=""; }   // backup: no time against him at all (Sam, 1 Oct 2026: "I don't need a time against me on this stuff!")
       if(FIELD_CREW.indexOf(w)<0&&!n){ out[w].c="office"; out[w].t="office"; out[w].s="Office"; out[w].d=""; out[w].r=4; out[w].rec=0; out[w].avail=0; }
       out[w].mins=mins; out[w].rec=FIELD_CREW.indexOf(w)>=0?Math.max(0,DAY_MINS-mins):0; out[w].avail=FIELD_CREW.indexOf(w)>=0?Math.max(0,DAY_MINS-mins):0;
     });
@@ -1373,7 +1373,7 @@ var SNAP=null, DETAIL={};
       // A SMALL DAY PER PERSON (v3 mock, 29 Sep 2026: "we need to do a better job of the UI here"): a bar of the 7h45
       // day, then one line per job in three columns (kind, job, time), the round as one green line, warnings at the foot.
       var det=el("div"), bar=el("div","obar"), segs=[], lines=[], warns=[];
-      var line=function(kind,cls,what,sub,time){ var ln=el("div","oln"+(cls==="round"?" round":"")); ln._kind=kind; ln._cls=cls; var mid=el("span",null,what); if(sub) mid.appendChild(el("span","sub2"," "+sub)); ln.appendChild(mid); ln.appendChild(el("span","t",time||"")); lines.push(ln); };
+      var line=function(kind,cls,what,sub,time){ if(FIELD_CREW.indexOf(w)<0) time=""; var ln=el("div","oln"+(cls==="round"?" round":"")); ln._kind=kind; ln._cls=cls; var mid=el("span",null,what); if(sub) mid.appendChild(el("span","sub2"," "+sub)); ln.appendChild(mid); ln.appendChild(el("span","t",time||"")); lines.push(ln); };
       var seg=function(cls,mins){ if(mins>0) segs.push({cls:cls,mins:mins}); };
       if(isOff&&OFF_WHY[k+"|"+w]) line("Off","r",OFF_WHY[k+"|"+w],"","");
       if(!past&&load[w].c==="off") line("Off","r",load[w].d||load[w].t,"","");
