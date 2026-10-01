@@ -1387,7 +1387,10 @@ var SNAP=null, DETAIL={};
       if(load[w].c!=="off"&&load[w].c!=="office"&&load[w].rec>=30){ seg("r",load[w].rec); if(past){ var tly=TALLIES[tallyKey(k,w)], tg=recTarget(load[w].rec); line("Recycling","r",tly&&tly.units!=null?tly.units+" of "+tg+" units":"not recorded, target was "+tg+" units","",fmt(load[w].rec)); } else line("Recycling","r",r?"after the round":(lines.length?"the rest of the day":"nothing planned, so the day is on the tally"),"",fmt(load[w].rec)); }
       var planned=segs.reduce(function(t,x){return t+x.mins;},0), over=Math.max(0,planned-DAY_MINS), scale=Math.max(DAY_MINS,planned);
       if(over) warns.push(fmt(over)+" over the day"); if(tlw.driveOver) warns.push("Driving over 10 hours"); if(tlw.longDay) warns.push("Day over 11 hours");
-      if(load[w].c!=="off"&&load[w].c!=="office"&&!past){ segs.forEach(function(x){ var i=el("i",x.cls); i.style.width=(x.mins/scale*100)+"%"; bar.appendChild(i); }); if(over){ var oi=el("i","o"); oi.style.width=(over/scale*100)+"%"; bar.appendChild(oi); } det.appendChild(bar); }
+      // NO BAR FOR THE BACKUP (Sam, 1 Oct 2026: "Why is it showing a capacity bar for me?!"): Sam's day is not crew
+      // capacity, so his row is his jobs and their time, nothing measured against a day. No Mark as off either.
+      if(FIELD_CREW.indexOf(w)<0) ob=null;
+      if(load[w].c!=="off"&&load[w].c!=="office"&&!past&&FIELD_CREW.indexOf(w)>=0){ segs.forEach(function(x){ var i=el("i",x.cls); i.style.width=(x.mins/scale*100)+"%"; bar.appendChild(i); }); if(over){ var oi=el("i","o"); oi.style.width=(over/scale*100)+"%"; bar.appendChild(oi); } det.appendChild(bar); }
       // GROUPED UNDER THE THREE TIERS (Sam, 1 Oct 2026: "the UI is fucked here on normal view"): a long name in a
       // column of its own squeezed the job to one word a line, so the tier is a heading and the job gets the width.
       var order=[]; lines.forEach(function(ln){ if(order.indexOf(ln._kind)<0) order.push(ln._kind); });
