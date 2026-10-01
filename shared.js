@@ -528,8 +528,10 @@ var PLAN_AHEAD_DAYS=5;
 function prodStatusOf(P,due,today){
   if(!P||!due) return null; var who=P.who||[];
   if(P.date&&who.length&&P.mins!=null){
-    if(P.date>due){ var late=workDaysBetween(due,P.date)-1; return {cls:"late",planned:true,text:"Due "+niceShort(due)+". Finishes "+niceShort(P.date)+", "+late+(late===1?" working day":" working days")+" late"}; }
-    return {cls:"ok",planned:true,text:"Due "+niceShort(due)+". On track, finishes "+niceShort(P.date)}; }
+    // the start by date goes on the planned card too (Sam, 1 Oct 2026: "add the start by date to the scheduler production cards")
+    var pn=Math.max(1,Math.ceil(P.mins/DAY_MINS)), ps=pn>1?workingDaysBefore(due,pn-1):due, pl="Start by "+niceShort(ps)+", due "+niceShort(due)+". ";
+    if(P.date>due){ var late=workDaysBetween(due,P.date)-1; return {cls:"late",planned:true,text:pl+"Finishes "+niceShort(P.date)+", "+late+(late===1?" working day":" working days")+" late"}; }
+    return {cls:"ok",planned:true,text:pl+"On track, finishes "+niceShort(P.date)}; }
   // WHEN TO START (Sam, 1 Oct 2026: "where does it tell me when I should start production?"). From the time typed per
   // operative: each full 7h45 day of it is a working day, so 18h each needs 3 days and must start 2 working days
   // before it is due. No time typed, no start date: it asks for the time.
