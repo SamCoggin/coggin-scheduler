@@ -42,6 +42,12 @@
   .vseg button b{font-size:14px} .vseg button small{font-size:10.5px;font-weight:500;color:var(--muted)} .vseg button.on small{color:rgba(255,255,255,.85)}
   .hint{color:var(--muted);font-size:13px;margin-top:6px} .hint.far{color:var(--red);font-weight:700}
   .avail{margin-top:10px;display:flex;flex-direction:column;gap:6px}
+  .wday{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:8px 12px}
+  .whead{font-size:13px;font-weight:700;margin-bottom:4px}
+  .wrow{display:grid;grid-template-columns:minmax(84px,max-content) minmax(40px,1fr) max-content;gap:12px;align-items:center;padding:6px 0;border-top:1px solid var(--line);font-size:13px}
+  .wname{font-weight:700;white-space:nowrap} .wname i{font-style:normal;font-weight:400;font-size:11px;color:var(--muted);margin-left:5px}
+  .wbar{height:8px;border-radius:4px;background:var(--line);overflow:hidden;display:flex} .wf{background:#378add} .wo{background:var(--red)}
+  .wtxt{text-align:right;white-space:nowrap} .wtxt.g{color:var(--green);font-weight:700} .wtxt.d{color:var(--red);font-weight:700} .wtxt.m{color:var(--muted)}
   .arow{display:flex;flex-wrap:wrap;gap:6px;align-items:center;font-size:13px}
   .arow b{font-size:13px;min-width:64px}
   .arow span{border-radius:6px;padding:3px 8px;font-weight:700;background:var(--list);border:1px solid var(--line)}
@@ -145,11 +151,11 @@
   // THIS CARD'S OTHER PARTS COUNT TOO: Jack and Jordan in production on this card are not free for its loading.
   function loadOn(k,skip){
     var out={}; CREW.forEach(function(w){ out[w]={mins:0,n:0,away:[],forton:0}; });
-    LEAVE.forEach(function(l){ if(l.date===k&&out[l.who]) out[l.who].off=true; });
+    LEAVE.forEach(function(l){ if(l.date===k&&out[l.who]){ out[l.who].off=true; out[l.who].why="annual leave"; } });
     var cd=CAP?CAP[k]:null; if(cd){ (cd.off||[]).forEach(function(n){ var w=crewOf(n); if(!out[w]) return; out[w].off=true; var why=(cd.offWhy||{})[n]||(cd.offWhy||{})[w]; if(why) out[w].why=why; });
       (cd.jobs||[]).forEach(function(j){ if(card&&String(j.id||"").indexOf(card.id)===0) return; (j.who||[]).forEach(function(n){ var w=crewOf(n); if(!out[w]) return; out[w].n++; out[w].mins+=(j.mins||0)+(j.drive||0); out[w].forton++; }); }); }
     var offW=CAP?[]:((boardData.off||{})[k]||[]), offWhy=boardData.offWhy||{};
-    offW.forEach(function(n){ var w=crewOf(n); if(!out[w]) return; out[w].off=true; if(offWhy[k+"|"+n]) out[w].why=offWhy[k+"|"+n]; });
+    offW.forEach(function(n){ var w=crewOf(n); if(!out[w]) return; out[w].off=true; var why=offWhy[k+"|"+n]||offWhy[k+"|"+w]; if(!why) Object.keys(offWhy).forEach(function(key){ var p=key.split("|"); if(p[0]===k&&crewOf(p[1])===w) why=offWhy[key]; }); if(why) out[w].why=why; });
     var mine=[]; if(card&&d&&card.due){ mine.push({name:"this job",due:card.due.slice(0,10),start:null,site:site,plan:{who:skip===d?[]:(d.who||[]),mins:d.mins,drive:d.drive,at:d.at,each:d.each,prep:skip===d.prep?null:d.prep,legs:(d.legs||[]).filter(function(L){return L!==skip;})}}); }
     OTHERS.concat(mine).forEach(function(o){ var p=o.plan;
       if(workDays(o.start&&o.start<o.due?o.start:o.due,o.due).indexOf(k)>=0){ (p.who||[]).forEach(function(w){ if(!out[w]) return; out[w].n++; out[w].mins+=(minsFor(p,w)||0)+(o.site?(p.drive||0):0); if(o.site) out[w].away.push({name:o.name,until:p.at?endOf(p.at,(p.mins||0)+(p.drive||0)):null}); else out[w].forton++; }); }
@@ -168,10 +174,25 @@
     if(CAP&&days.some(function(k){ return !CAP[k]; })){ box.appendChild(el("div","hint","Who is free shows for the next six weeks only.")); days=days.filter(function(k){ return CAP[k]; }); if(!days.length) return box; }
     if(OTHERS_OK===false){ box.appendChild(el("div","hint far","Could not read the other jobs on the board, so who is free is not shown. Close the card and open it again.")); return box; }
     if(MISSED) box.appendChild(el("div","hint far","Could not read "+MISSED+(MISSED===1?" other job":" other jobs")+", so some times below may be too high."));
-    days.slice(0,5).forEach(function(k){ var row=el("div","arow"); row.appendChild(el("b",null,niceShort(k))); var free=[], rest=[];
-      var load=loadOn(k,part); CREW.forEach(function(w){ if(part.who.indexOf(w)>=0) return; var l=load[w]; if(l.c==="off"){ if(FIELD_CREW.indexOf(w)>=0) row.appendChild(el("span","off",w+": off"+(l.why?" ("+l.why+")":""))); return; }
-        if(FIELD_CREW.indexOf(w)<0&&!l.n) return; /* Sam in the office is not a free operative */ var allDay=l.away.some(function(x){return !x.until;}); var whereTxt=l.away.length?(allDay?" \u00b7 out all day: ":" \u00b7 out until "+l.away.map(function(x){return x.until;}).sort().pop()+": ")+l.away.map(function(x){return x.name;}).filter(function(n,i,a){return a.indexOf(n)===i;}).join(", "):(l.forton?" \u00b7 at Forton":""); row.appendChild(el("span",l.away.length?"away":l.c,w+": "+(allDay?"out on site":l.c==="free"?fmt(DAY_MINS)+" available":l.c==="off"?"on leave":l.c==="over"?"over capacity":fmt(Math.max(0,DAY_MINS-l.mins))+" available")+whereTxt)); });
-      if(row.children.length===1) row.appendChild(el("span","busy","everyone is on this job")); box.appendChild(row); });
+    // ONE LINE A PERSON (Sam, 1 Oct 2026: "this UI is shit", the chip wall). A bar of their 7h45 day, the words on
+    // the right, most free first, then full, then the office, then anyone off. "at Forton" is gone; out on site stays.
+    days.slice(0,5).forEach(function(k){ var load=loadOn(k,part), wk=el("div","wday"); wk.appendChild(el("div","whead","Who is free on "+niceShort(k)));
+      var rows=CREW.map(function(w){ var l=load[w], field=FIELD_CREW.indexOf(w)>=0, on=part.who.indexOf(w)>=0, used=Math.round(l.mins||0), allDay=l.away.some(function(x){return !x.until;});
+        var until=l.away.filter(function(x){return x.until;}).map(function(x){return x.until;}).sort().pop();
+        var txt, cls, rank;
+        if(on){ txt="On this job"; cls="m"; rank=5; }
+        else if(l.off){ txt="Off"+(l.why?", "+l.why:""); cls="m"; rank=4; }
+        else if(!field) return null;
+        else if(allDay){ txt="Out on site all day"; cls="d"; rank=2; }
+        else if(used>DAY_MINS){ txt="Full, "+fmt(used-DAY_MINS)+" over"; cls="d"; rank=2; }
+        else if(l.n&&!used){ txt=l.n+(l.n===1?" job":" jobs")+", no time set"; cls="m"; rank=1; }
+        else { txt=fmt(DAY_MINS-used)+" free"+(until?", back "+until:""); cls="g"; rank=0; }
+        return {w:w,txt:txt,cls:cls,rank:rank,free:l.off?-1:DAY_MINS-used,used:l.off?0:used}; }).filter(Boolean);
+      rows.sort(function(a,b){ return a.rank-b.rank||b.free-a.free||CREW.indexOf(a.w)-CREW.indexOf(b.w); });
+      rows.forEach(function(r){ var row=el("div","wrow"); var nm=el("span","wname",r.w); if(DRIVERS.indexOf(r.w)>=0) nm.appendChild(el("i",null,"driver")); row.appendChild(nm);
+        var bar=el("div","wbar"); if(r.used>0){ var f=el("div","wf"); f.style.width=Math.min(100,r.used/DAY_MINS*100)+"%"; bar.appendChild(f); if(r.used>DAY_MINS){ f.style.width=(DAY_MINS/r.used*100)+"%"; var o=el("div","wo"); o.style.width=((r.used-DAY_MINS)/r.used*100)+"%"; bar.appendChild(o); } } row.appendChild(bar);
+        row.appendChild(el("span","wtxt "+r.cls,r.txt)); wk.appendChild(row); });
+      box.appendChild(wk); });
     if(days.length>5) box.appendChild(el("div","hint","First 5 days shown."));
     return box;
   }
@@ -375,7 +396,7 @@
     {
       if(contractorOnly) ts.appendChild(el("div","who",d.contractor?d.contractor+" is carrying out this work":"A "+(partsCarrier(PARTS)||"carrier").toLowerCase()+" is carrying it, not picked yet. Choose the firm below, or on the deal."));
       else if(!d.who.length){ ts.appendChild(banner("Unassigned. Choose who is on it.")); OPEN.who=OPEN.who===undefined?true:OPEN.who; }
-      else if(site&&!d.who.some(function(w){return DRIVERS.indexOf(w)>=0;})) ts.appendChild(banner("No driver on this job. Rob, Jack or Bart must be on it."));
+      else if(site&&!d.who.some(function(w){return CAN_DRIVE.indexOf(w)>=0;})) ts.appendChild(banner("No driver on this job. Rob, Jack or Bart must be on it."));
       if(over) ts.appendChild(banner("Above the estimate: "+over+". The estimate is "+std.crew+(std.crew===1?" operative":" operatives")+(std.mins!=null?", "+fmt(std.mins)+(std.crew>1?" each":""):"")+"."));
       // who
       var whoTxt=contractorOnly?d.contractor:(d.who.length?d.who.join(", ")+(d.contractor?" with "+d.contractor:""):"Unassigned");

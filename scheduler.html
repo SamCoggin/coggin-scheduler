@@ -663,6 +663,7 @@ var SNAP=null, DETAIL={};
       // office staff not operatives but can still help in areas if really needed").
       // With nothing on, they read "Office" and never count as free; put one on a
       // job and that day they show their time like anyone else.
+      if(FIELD_CREW.indexOf(w)<0&&n){ out[w].t=fmt(mins)+" on jobs"; out[w].s=fmt(mins)+" on jobs"; }   // backup: his time on jobs, never his free time
       if(FIELD_CREW.indexOf(w)<0&&!n){ out[w].c="office"; out[w].t="office"; out[w].s="Office"; out[w].d=""; out[w].r=4; out[w].rec=0; out[w].avail=0; }
       out[w].mins=mins; out[w].rec=FIELD_CREW.indexOf(w)>=0?Math.max(0,DAY_MINS-mins):0; out[w].avail=FIELD_CREW.indexOf(w)>=0?Math.max(0,DAY_MINS-mins):0;
     });
@@ -819,7 +820,7 @@ var SNAP=null, DETAIL={};
       if(realLegs){ var lgb=realLegs[li]||0; t+=lgb; drive+=lgb; } else if(leg!=null){ t+=leg; drive+=leg; }
     }
     if(site.length) t+=BREAKS; var back=t; other.forEach(function(j){ t+=(j.mins||0); }); preps.forEach(function(j){ t+=(j.prep.who.length?j.prep.who.reduce(function(x,w){return x+prepShare(j,w);},0):prepShare(j)); });
-    var isDriver=DRIVERS.indexOf(w)>=0&&site.length>0;
+    var isDriver=CAN_DRIVE.indexOf(w)>=0&&site.length>0;
     return {stops:stops,drive:Math.round(drive),back:back,end:t,isDriver:isDriver,driveOver:isDriver&&drive>DRIVE_MAX,longDay:isDriver&&(t-DAY_START)>DRIVER_DAY_MAX};
   }
   function jobTiming(j,k){ if(!j.who.length) return null; var tl=dayTimeline(k,j.who[0]); return tl.stops.filter(function(x){return x.j===j;})[0]||null; }
@@ -835,9 +836,9 @@ var SNAP=null, DETAIL={};
   function hireDue(j){ return j.vehicle==="hire"&&!j.hireBooked&&j.date>=iso(TODAY)&&workDaysBetween(iso(TODAY),j.date)<=HIRE_WARN_DAYS+1; }
   function vehicleWarnings(k){
     var out=[], jobs=allJobs().filter(function(j){return onDay(j,k)&&ourJob(j);});
-    var byVan={}; jobs.forEach(function(j){ if(!j.vehicle||j.vehicle==="hire") return; var d=j.who.filter(function(w){return DRIVERS.indexOf(w)>=0;})[0]||j.who[0]||"unassigned"; (byVan[j.vehicle]=byVan[j.vehicle]||{}); byVan[j.vehicle][d]=1; });
+    var byVan={}; jobs.forEach(function(j){ if(!j.vehicle||j.vehicle==="hire") return; var d=j.who.filter(function(w){return CAN_DRIVE.indexOf(w)>=0;})[0]||j.who[0]||"unassigned"; (byVan[j.vehicle]=byVan[j.vehicle]||{}); byVan[j.vehicle][d]=1; });
     Object.keys(byVan).forEach(function(v){ var ds=Object.keys(byVan[v]); if(ds.length>1) out.push({text:v+" is on "+ds.join(" and ")+"'s jobs. One van, "+ds.length+" drivers. Move one to the other van or a hire.",who:v}); if(VANS_OFF.indexOf(v)>=0) out.push({text:v+" is off the road and still on a job. Swap the van.",who:v}); });
-    var drivers={}; jobs.forEach(function(j){ if(j.vehicle==="hire") return; j.who.forEach(function(w){ if(DRIVERS.indexOf(w)>=0) drivers[w]=1; }); });
+    var drivers={}; jobs.forEach(function(j){ if(j.vehicle==="hire") return; j.who.forEach(function(w){ if(CAN_DRIVE.indexOf(w)>=0) drivers[w]=1; }); });
     var need=Object.keys(drivers).length; if(need>vansOnRoad()) out.push({text:need+" drivers out on our vans with "+vansOnRoad()+(vansOnRoad()===1?" van":" vans")+" on the road. Put one on a hire or move a job.",who:"Vans"});
     jobs.forEach(function(j){ if(hireDue(j)) out.push({j:j,text:short(j)+": hire not booked, "+(function(){var d=workDaysBetween(iso(TODAY),j.date)-1; return d<=0?"it is today":d===1?"it is tomorrow":d+" working days away";})()+". Book it and tick it on the job."}); });
     var dayM3=jobs.reduce(function(t,j){return t+(cubeOn(j)||0);},0), dayKg=jobs.reduce(function(t,j){return t+kgOn(j);},0), adv=dayM3?vehicleAdvice(dayM3,dayKg,vansOnRoad()):null;
@@ -956,7 +957,7 @@ var SNAP=null, DETAIL={};
     var setMins=function(v){ part.mins=v; if(part.leg) part.leg.mins=v; }, setDrive=function(v){ part.drive=v; part.driveAuto=false; if(part.leg) part.leg.drive=v; };
     wb.appendChild(pl);
     if(!freeN) wb.appendChild(el("div","hint","No operative is free "+(prodDays.length>1?"on every day from "+shortDay(prodDays[0])+" to "+shortDay(prodDays[prodDays.length-1]):"all day on "+shortDay(prodDays[0]||dayK))+". The office can be put on a job if it really needs a hand."));
-    if(!o.shop&&j.site&&!contractorOnly&&part.who.length&&!(attending(j)&&!j.vehicle)&&!part.who.some(function(w){return DRIVERS.indexOf(w)>=0;})) wb.appendChild(el("div","hint far","No driver on this job. Rob, Jack or Bart must be on it to drive the van."));
+    if(!o.shop&&j.site&&!contractorOnly&&part.who.length&&!(attending(j)&&!j.vehicle)&&!part.who.some(function(w){return CAN_DRIVE.indexOf(w)>=0;})) wb.appendChild(el("div","hint far","No driver on this job. Rob, Jack or Bart must be on it to drive the van."));
     if(!o.shop&&attending(j)) wb.appendChild(el("div","hint",part.who.join(", ")+(part.who.length>1?" are":" is")+" attending. "+j.contractor+" carries the load. Time here is their time on site: keys, meeting the truck, the sign-off."));
     if(!o.shop&&!contractorOnly){ var tpi=twoPersonItems(j); if(tpi.length){
       if(j.soloOk){ var okr=el("div","hint"); okr.textContent="One operative agreed for the two-person items: "+j.soloOk+" "; var undo=el("button","close","Needs two after all"); undo.onclick=function(){ j.soloOk=""; persist(); render(); }; okr.appendChild(undo); wb.appendChild(okr); }
@@ -1218,7 +1219,7 @@ var SNAP=null, DETAIL={};
     manager:"Managers only. Every job with time allocated, against the standard worked out from its items. Amber is over by half, red is double.",
     pstandard:"How long the workshop should take on the items: 30 minutes a swivel chair start to finish, 10 for a clean-only chair, 15 for storage, 45 for a desk. More operatives divide the work, with 10 percent for handover. Use standard sets the time per operative.",
     standard:"The estimated crew and time for this job type, worked out from the items on the card. Above it is not wrong, but it should be a decision. Use standard sets the time to it.",
-    drivers:"Rob, Jack, Bart and Sam drive the van. Jordan and Bradley go along as a second pair of hands, so every transport job needs one of the drivers on it.",
+    drivers:"Rob, Jack and Bart drive the van. Jordan and Bradley go along as a second pair of hands, so every transport job needs one of the drivers on it.",
     van:"The load worked out from the items on the card, in cubic metres and kilos, against a "+VAN_M3+" cubic metre Luton and its payload. Overtype it if the crew know better. Two Lutons on the fleet; a van off the road is marked in the Routes view and extra vans are hired in.",
     routes:"Combine Trips finds jobs booked for later that are near a stop already going out this week, and says what it takes to put them on the same van. Below it, where the week's transport jobs are. Each round is drawn from Forton in its day's colour. Nearby jobs on other days could join a round if there is room in the van and production is done.",
     vehicle:"Which van goes. Our two Lutons, or a hire when the load needs more than a Luton or both vans are out. A hire is a job in itself: put the supplier and reference on it and tick Booked, and it nags from five working days out until you do.",
@@ -1351,7 +1352,7 @@ var SNAP=null, DETAIL={};
     var pl=el("div","list"+(isToday?" today":"")); var ph=el("h2"); var phl=el(isToday?"em":"span",null,"Operatives"); phl.appendChild(tip("people")); ph.appendChild(phl); var load=loadOn(k); ph.appendChild(el("span",null,(k<iso(TODAY))?FIELD_CREW.length+" operatives":freeCount(load))); pl.appendChild(ph);
     var pc=el("div","cards oplist"); jobs=allJobsDay; preps=prepJobs().filter(function(j){return j.prep&&j.prep.date&&daysOf(j.prep).indexOf(k)>=0;}); rounds=roundsOn(k,jobs);
     var lv=LEAVE.filter(function(l){return l.date===k;}); leaveLines(lv).forEach(function(tx){ pc.appendChild(el("div","leave",tx)); });
-    opOrder(load).forEach(function(w){ var ob=null;
+    opOrder(load).forEach(function(w){ if((load[w]||{}).c==="office") return; var ob=null;
       var isOff=(OFF[k]||[]).map(crewOf).indexOf(w)>=0, onLeaveCard=LEAVE.some(function(l){return l.date===k&&!l.off&&crewOf(l.text.split(" ")[0])===w;});
       // The job sheet is gone (Sam, 29 Sep 2026: "the job sheet is also now redundant").
       if(!onLeaveCard){ ob=el("button","olink"+(isOff?" on":""),isOff?"Back in":"Mark as off"); ob.title=isOff?"Put "+w+" back on the day":"Mark "+w+" as off for this day: sick, a course, a breakdown. It asks why.";
@@ -1550,7 +1551,7 @@ var SNAP=null, DETAIL={};
         var none=jobs.filter(function(j){return !j.who.length;}); if(none.length) groups.push({name:"Unassigned",jobs:none,unassigned:true});
         var dayM3=jobs.reduce(function(t,j){return t+(cubeOn(j)||0);},0), dayKg=jobs.reduce(function(t,j){return t+kgOn(j);},0), advD=vehicleAdvice(dayM3,dayKg,vansOnRoad());
         if(advD&&dayM3){ day.appendChild(el("div",advD.fitsOurs?"rnote":"rwarn","Whole day: "+fmtM3(dayM3)+(dayKg?", "+Math.round(dayKg)+" kg":"")+". Needs "+advD.text)); }
-        var driving=groups.filter(function(g){return !g.unassigned && DRIVERS.indexOf(g.name)>=0;}).length;
+        var driving=groups.filter(function(g){return !g.unassigned && CAN_DRIVE.indexOf(g.name)>=0;}).length;
         dayWarnings(k).forEach(function(tx){ day.appendChild(el("div","rwarn",tx)); });
         groups.forEach(function(g){
           var placed=g.jobs.filter(function(j){return j.pt;}), lost=g.jobs.filter(function(j){return !j.pt;});
@@ -1566,7 +1567,7 @@ var SNAP=null, DETAIL={};
           day.appendChild(grp);
           var vanLine=el("div","rnote","Van load: "+(vanQ?fmtLoad(vanQ,kgQ):"nothing to add up")+(vanUnknown?" ("+vanUnknown+(vanUnknown===1?" job":" jobs")+" with no items listed)":"")); day.appendChild(vanLine);
           if(vanQ>VAN_M3||kgQ>VAN_KG){ var advR=vehicleAdvice(vanQ,kgQ,vansOnRoad()); day.appendChild(el("div","rwarn",(vanQ>VAN_M3?"Over one van by volume":"Over the payload by weight")+". Needs "+advR.text+" Or split the round.")); }
-          if(!g.unassigned && DRIVERS.indexOf(g.name)<0){ var withDriver=g.jobs.every(function(j){return j.who.some(function(w){return DRIVERS.indexOf(w)>=0;});}); if(!withDriver) day.appendChild(el("div","rwarn",g.name+" cannot drive transport. Add a driver: Rob, Jack or Bart.")); }
+          if(!g.unassigned && CAN_DRIVE.indexOf(g.name)<0){ var withDriver=g.jobs.every(function(j){return j.who.some(function(w){return CAN_DRIVE.indexOf(w)>=0;});}); if(!withDriver) day.appendChild(el("div","rwarn",g.name+" cannot drive transport. Add a driver: Rob, Jack or Bart.")); }
           // jobs on other days close to this round
           if(stops.length){
             var room=VAN_M3-vanQ, kgRoom=VAN_KG-kgQ, near=[];
@@ -1738,7 +1739,7 @@ var SNAP=null, DETAIL={};
           td(tr,"nowrap",x.legMiles+" mi"+(x.backMiles!=null?", "+x.backMiles+" back":"")); tb.appendChild(tr); });
         lost.forEach(function(j){ var tr=el("tr"); td(tr,"num","?"); var c=td(tr); c.appendChild(el("b",null,j.title)); c.appendChild(el("small",null,"Not on the plan: no postcode on the card")); var pc=td(tr,"need"); pc.appendChild(el("span","blank")); td(tr,"nowrap",j.mins!=null?fmt(j.mins):"not set"); td(tr,null,cubeOf(j)!=null?fmtM3(cubeOf(j)):"—"); td(tr,null,""); tb.appendChild(tr); });
         if(vanQ>VAN_M3||kgQ>VAN_KG){ var wr=el("tr"); var advW=vehicleAdvice(vanQ,kgQ,vansOnRoad()).text; var wc=el("td","need",(vanQ>VAN_M3?"Over one van by volume":"Over the payload by weight")+". Needs "+advW.charAt(0).toLowerCase()+advW.slice(1)); wc.colSpan=6; wr.appendChild(wc); tb.appendChild(wr); }
-        if(!g.unassigned&&DRIVERS.indexOf(g.name)<0&&!g.jobs.every(function(j){return j.who.some(function(w){return DRIVERS.indexOf(w)>=0;});})){ var dr=el("tr"); var dc=el("td","need",g.name+" cannot drive. Add Rob, Jack or Bart."); dc.colSpan=6; dr.appendChild(dc); tb.appendChild(dr); }
+        if(!g.unassigned&&CAN_DRIVE.indexOf(g.name)<0&&!g.jobs.every(function(j){return j.who.some(function(w){return CAN_DRIVE.indexOf(w)>=0;});})){ var dr=el("tr"); var dc=el("td","need",g.name+" cannot drive. Add Rob, Jack or Bart."); dc.colSpan=6; dr.appendChild(dc); tb.appendChild(dr); }
       });
       box.appendChild(tab);
       var load=loadOn(k), crew=el("div","pops"); TEAM.forEach(function(w){ var sp=el("span"); sp.appendChild(el("b",null,w+(DRIVERS.indexOf(w)>=0?" (driver)":"")+": ")); sp.appendChild(document.createTextNode(load[w].c==="off"?"annual leave":load[w].c==="free"?"available all day":fmt(load[w].rec)+" available")); crew.appendChild(sp); }); box.appendChild(crew);
@@ -2043,7 +2044,7 @@ var SNAP=null, DETAIL={};
           var fl=siteFactsLine(x.j); styles[rows.length]={facts:true,blank:!fl}; rows.push([fl||"Contact: "+BLANK+"    Access: "+BLANK+"   (nothing on the card; fill in before the van leaves)","","","","",""]); });
         lost.forEach(function(j){ styles[rows.length]={need:true}; rows.push(["?",j.title+"\nNot on the plan: no postcode on the card",BLANK,j.mins!=null?fmt(j.mins):"not set",cubeOf(j)!=null?fmtM3(cubeOf(j)):"-",""]); });
         if(vanQ>VAN_M3||kgQ>VAN_KG){ var advW=vehicleAdvice(vanQ,kgQ,vansOnRoad()).text; styles[rows.length]={warn:true}; rows.push([(vanQ>VAN_M3?"Over one van by volume":"Over the payload by weight")+". Needs "+advW.charAt(0).toLowerCase()+advW.slice(1),"","","","",""]); }
-        if(!g.unassigned&&DRIVERS.indexOf(g.name)<0&&!g.jobs.every(function(j){return j.who.some(function(w){return DRIVERS.indexOf(w)>=0;});})){ styles[rows.length]={warn:true}; rows.push([g.name+" cannot drive. Add Rob, Jack or Bart.","","","","",""]); } });
+        if(!g.unassigned&&CAN_DRIVE.indexOf(g.name)<0&&!g.jobs.every(function(j){return j.who.some(function(w){return CAN_DRIVE.indexOf(w)>=0;});})){ styles[rows.length]={warn:true}; rows.push([g.name+" cannot drive. Add Rob, Jack or Bart.","","","","",""]); } });
       dayWarnings(k).forEach(function(tx){ styles[rows.length]={warn:true}; rows.push([tx,"","","","",""]); });
       doc.autoTable({ startY:y+1, margin:{left:12,right:12}, head:[["#","Stop","Postcode","Time on site","Van load","Miles"]], body:rows,
         styles:{font:"helvetica",fontSize:9,cellPadding:1.6,textColor:[17,17,17],lineColor:[207,212,218],lineWidth:.2,overflow:"linebreak",valign:"top"},

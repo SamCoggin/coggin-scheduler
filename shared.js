@@ -20,7 +20,10 @@ function normPlan(d){ if(!d||typeof d!=="object") return d;
 // the odd job but never get a recycling allowance (Sam, 29 Sep 2026: Jess and Molly
 // were showing "Recycling: 7h 45m"). Mirrors CAPACITY_CREW in the CRM's opsCapacity.
 var FIELD_CREW=["Jack C","Jordan I","Bradley H","Rob D","Bart H"];
-var DRIVERS=["Rob D","Jack C","Bart H","Sam C"]; // the crew entries, so a plan's who (normalised) matches
+var DRIVERS=["Rob D","Jack C","Bart H"];
+// SAM IS BACKUP, NOT ON SHOW (Sam, 1 Oct 2026: "Do not [show] my available time and [the] fact I can [be] a driver. I am
+// backup to cover when needed only"). He is never labelled a driver, but a job he drives does not warn "no driver".
+var CAN_DRIVE=DRIVERS.concat(["Sam C"]); // the crew entries, so a plan's who (normalised) matches
 var CONTRACTORS=["MAK Installations","Courier","Other contractor"];
 // ── the van and what goes on it ──
 // the vans: two Renault Master 3.5 tonne Lutons (DVLA: FX75 BKG 2025, FX73 CWF 2024, revenue weight 3,500 kg).
