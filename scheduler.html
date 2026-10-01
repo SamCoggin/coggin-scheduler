@@ -1116,8 +1116,9 @@ var SNAP=null, DETAIL={};
       var srow=el("div","row");
       if(std.mins!=null&&part.mins!==std.mins){ var ub=el("button","close","Use the estimate"); ub.onclick=function(){ setMins(std.mins); render(); }; srow.appendChild(ub); } sb.appendChild(srow);
       right.appendChild(sb); } }
-    if(!o.leg&&!contractorOnly&&dayPassed(partDate(j,!!o.shop))){ var wh=block("What happened","happened"); var dn=part.done;
-      if(!dn){ wh.appendChild(el("div","hint","The day has passed. Record how it went so the standards learn from real jobs."));
+    var unfinishedP=!!(o.shop&&(function(){ var x=prodStatus(j); return x&&x.unfinished; })());   // Book the rest stands in for it
+    if(!o.leg&&!contractorOnly&&!unfinishedP&&dayPassed(partDate(j,!!o.shop))){ var wh=block("What happened","happened"); var dn=part.done;
+      if(!dn){ wh.appendChild(el("div","hint","The day has passed. Did it happen?"));
         var wr=el("div","seg"); var bDone=el("button",null,"Done"); bDone.onclick=function(){ part.done={status:"done",mins:part.mins,drive:o.shop?null:j.drive,who:part.who.slice(),notes:"",at:iso(new Date())}; persist(); render(); }; var bNo=el("button",null,"Did not go"); bNo.onclick=function(){ part.done={status:"no",reason:NO_GO_REASONS[0],notes:"",at:iso(new Date())}; persist(); render(); }; wr.appendChild(bDone); wr.appendChild(bNo); wh.appendChild(wr); }
       else if(dn.status==="no"){ wh.appendChild(el("div","hint far","Did not go. Give it a new date on the Trello card and it comes back as a normal job."));
         var rr=el("div","row"); var rs=el("select"); NO_GO_REASONS.forEach(function(x){ var op=el("option",null,x); op.value=x; if(dn.reason===x) op.selected=true; rs.appendChild(op); }); rs.onchange=function(){ dn.reason=rs.value; persist(); }; rr.appendChild(el("span","hint","Why")); rr.appendChild(rs); wh.appendChild(rr);
