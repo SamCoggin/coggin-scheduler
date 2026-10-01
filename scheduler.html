@@ -1278,7 +1278,7 @@ var SNAP=null, DETAIL={};
     var partX=isPrep?j.prep:j;
     var mid=el("div","mid"); mid.appendChild(el("span","ttl",j.title));
     // one line of context: what kind of work, who, which van
-    var ctx=[]; if(isPrep) ctx.push("Production"); else if(j.isLeg&&j.leg&&j.leg.type==="production") ctx.push("Production"); else if(j.isLeg) ctx.push("Leg");   /* a production stint is production, not a leg (Sam, 1 Oct 2026: "why is it a leg?") */ else ctx.push([j.work,j.movement||j.label].filter(Boolean).join(", ")||"Job");
+    var ctx=[]; if(isPrep) ctx.push("Production"); else if(j.isLeg&&j.leg&&j.leg.type==="production") ctx.push("Production"); else if(j.isLeg){ var ltd=LEG_TYPES.filter(function(t){ return t[0]===(j.leg&&j.leg.type); })[0]; ctx.push((ltd?ltd[1]:"Labour")+(j.leg&&j.leg.where?", "+j.leg.where:"")); }   /* named for the work, never "Leg" (Sam, 1 Oct 2026) */   /* a production stint is production, not a leg (Sam, 1 Oct 2026: "why is it a leg?") */ else ctx.push([j.work,j.movement||j.label].filter(Boolean).join(", ")||"Job");
     if(!isPrep&&j.contractor&&!j.who.length) ctx.push(j.contractor); else if(!isPrep&&attending(j)) ctx.push(j.contractor+" \u00b7 "+partX.who.join(", ")+" attending"); else if(partX.who.length) ctx.push(partX.who.join(", "));
     if(!isPrep&&ourJob(j)&&j.vehicle) ctx.push(j.vehicle==="hire"?"Hire":j.vehicle.split(" ")[0]);
     mid.appendChild(el("span","for ctx",ctx.join(" \u00b7 ")));
