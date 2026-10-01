@@ -1278,10 +1278,11 @@ var SNAP=null, DETAIL={};
     var partX=isPrep?j.prep:j;
     var mid=el("div","mid"); mid.appendChild(el("span","ttl",j.title));
     // one line of context: what kind of work, who, which van
-    var ctx=[]; if(isPrep) ctx.push("Production"); else if(j.isLeg) ctx.push("Leg"); else ctx.push([j.work,j.movement||j.label].filter(Boolean).join(", ")||"Job");
+    var ctx=[]; if(isPrep) ctx.push("Production"); else if(j.isLeg&&j.leg&&j.leg.type==="production") ctx.push(j.leg.where==="the rest"?"Production, the rest":"Production"); else if(j.isLeg) ctx.push("Leg");   /* a production stint is production, not a leg (Sam, 1 Oct 2026: "why is it a leg?") */ else ctx.push([j.work,j.movement||j.label].filter(Boolean).join(", ")||"Job");
     if(!isPrep&&j.contractor&&!j.who.length) ctx.push(j.contractor); else if(!isPrep&&attending(j)) ctx.push(j.contractor+" \u00b7 "+partX.who.join(", ")+" attending"); else if(partX.who.length) ctx.push(partX.who.join(", "));
     if(!isPrep&&ourJob(j)&&j.vehicle) ctx.push(j.vehicle==="hire"?"Hire":j.vehicle.split(" ")[0]);
     mid.appendChild(el("span","for ctx",ctx.join(" \u00b7 ")));
+    if(j.isLeg&&j.leg&&j.leg.type==="production"&&j.parentJob){ var rsx=prodStatus(j.parentJob); if(rsx) mid.appendChild(el("span","for "+rsx.cls,rsx.full)); }
     if(isPrep){ var pdays=daysOf(j.prep); mid.appendChild(el("span","for",(pdays.length>1?"Day "+(pdays.indexOf(k)+1)+" of "+pdays.length+". ":"")+"Required for "+niceDay(j.date)+(j.collect?", customer collecting":""))); var pst=prodStatus(j); if(pst) mid.appendChild(el("span","for "+pst.cls,pst.full)); }
     if(j.start){ var ds=daysOf(j); mid.appendChild(el("span","for","Day "+(ds.indexOf(k)+1)+" of "+ds.length+", "+niceDay(j.start)+" to "+niceDay(j.date))); }
     if(!isPrep&&j.prodDue){ var nrc=notReady(j); mid.appendChild(el("span","for"+(nrc?" late":""),nrc?nrc:"Production due "+niceDay(j.prodDue)+(j.collect?", customer collecting":""))); }
