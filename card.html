@@ -97,9 +97,24 @@
   var t=TrelloPowerUp.iframe();
   var el=function(tag,c,x){var n=document.createElement(tag);if(c)n.className=c;if(x!=null)n.textContent=x;return n;};
   var PARTS=null, CRM_FIRMS=[], CARRIER_PENDING=false;
-  var card=null, d=null, viewing=false, workshop=false, site=false, loading=false, saving=null, defaultDue=null, boardData={}, OTHERS=[], LEAVE=[], OTHERS_OK=null, MISSED=0;
+  var card=null, d=null, viewing=false, workshop=false, site=false, loading=false, saving=null, defaultDue=null, boardData={}, OTHERS=[], LEAVE=[], OTHERS_OK=null, MISSED=0, CAP=null;
   // the other cards on the board, with their plans, so this card can say who is free
+  // A CARD OFF THE JOBS BOARD ASKS THE CRM (Sam, 1 Oct 2026: "why is it still saying Rob is available?", on 375593 in
+  // New Jobs on Operations - Planning). That board holds none of the Scheduler's plans or Mark as off days, so the
+  // panel read an empty board as five free operatives. opsCapacity reads the Jobs board, the same figures the CRM's
+  // strip shows, and the card counts from that.
+  var JOBS_BOARD="Jobs - Planning Board";
   function loadOthers(){
+    return t.board("name").catch(function(){ return {name:""}; }).then(function(b){
+      if(b&&String(b.name||"").trim()===JOBS_BOARD) return loadOthersHere();
+      var keyP=boardData.crmKey?Promise.resolve(boardData.crmKey):t.get("member","private","crmKey","").catch(function(){return "";});
+      return keyP.then(function(key){ if(!key) throw new Error("no key");
+        return fetch("https://coggin-sos-os.base44.app/api/apps/69c930a6240fba922f369aa2/functions/opsCapacity",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({key:key,weeks:6})}).then(function(x){return x.json();}); })
+        .then(function(res){ if(!res||!res.ok||!res.days) throw new Error("no days"); CAP={}; res.days.forEach(function(dd){ CAP[dd.date]=dd; }); OTHERS=[]; OTHERS_OK=true; })
+        .catch(function(){ CAP=null; OTHERS=[]; OTHERS_OK=false; });
+    });
+  }
+  function loadOthersHere(){
     var cardsP=t.cards("id","name","due","start","idList","labels","desc","checklists").catch(function(){ return t.cards("id","name","due","start","idList","labels","desc"); });
     return Promise.all([cardsP, t.lists("all")]).then(function(r){
       var listName={}; r[1].forEach(function(l){ listName[l.id]=l.name; });
@@ -131,7 +146,9 @@
   function loadOn(k,skip){
     var out={}; CREW.forEach(function(w){ out[w]={mins:0,n:0,away:[],forton:0}; });
     LEAVE.forEach(function(l){ if(l.date===k&&out[l.who]) out[l.who].off=true; });
-    var offW=(boardData.off||{})[k]||[], offWhy=boardData.offWhy||{};
+    var cd=CAP?CAP[k]:null; if(cd){ (cd.off||[]).forEach(function(n){ var w=crewOf(n); if(!out[w]) return; out[w].off=true; var why=(cd.offWhy||{})[n]||(cd.offWhy||{})[w]; if(why) out[w].why=why; });
+      (cd.jobs||[]).forEach(function(j){ if(card&&String(j.id||"").indexOf(card.id)===0) return; (j.who||[]).forEach(function(n){ var w=crewOf(n); if(!out[w]) return; out[w].n++; out[w].mins+=(j.mins||0)+(j.drive||0); out[w].forton++; }); }); }
+    var offW=CAP?[]:((boardData.off||{})[k]||[]), offWhy=boardData.offWhy||{};
     offW.forEach(function(n){ var w=crewOf(n); if(!out[w]) return; out[w].off=true; if(offWhy[k+"|"+n]) out[w].why=offWhy[k+"|"+n]; });
     var mine=[]; if(card&&d&&card.due){ mine.push({name:"this job",due:card.due.slice(0,10),start:null,site:site,plan:{who:skip===d?[]:(d.who||[]),mins:d.mins,drive:d.drive,at:d.at,each:d.each,prep:skip===d.prep?null:d.prep,legs:(d.legs||[]).filter(function(L){return L!==skip;})}}); }
     OTHERS.concat(mine).forEach(function(o){ var p=o.plan;
@@ -148,6 +165,7 @@
     var box=el("div","avail"); if(!days.length){ box.appendChild(el("div","hint","Set the days to see who is available.")); return box; }
     // A FAILED LOAD IS NOT A FREE DAY: until the other jobs are read, nobody is shown as available
     if(OTHERS_OK===null){ box.appendChild(el("div","hint","Checking the other jobs to see who is free.")); return box; }
+    if(CAP&&days.some(function(k){ return !CAP[k]; })){ box.appendChild(el("div","hint","Who is free shows for the next six weeks only.")); days=days.filter(function(k){ return CAP[k]; }); if(!days.length) return box; }
     if(OTHERS_OK===false){ box.appendChild(el("div","hint far","Could not read the other jobs on the board, so who is free is not shown. Close the card and open it again.")); return box; }
     if(MISSED) box.appendChild(el("div","hint far","Could not read "+MISSED+(MISSED===1?" other job":" other jobs")+", so some times below may be too high."));
     days.slice(0,5).forEach(function(k){ var row=el("div","arow"); row.appendChild(el("b",null,niceShort(k))); var free=[], rest=[];
