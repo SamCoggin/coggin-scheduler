@@ -239,7 +239,7 @@ function syncCardMembers(cardId,plan,crmKey,inWorkshop){
 }
 // "08:00" plus minutes -> "10:25", for a site job's window (28 Sep 2026)
 function endOf(at,mins){ var m=/^(\d{1,2}):(\d{2})$/.exec(String(at||"")); if(!m) return ""; var t=parseInt(m[1],10)*60+parseInt(m[2],10)+(mins||0); t=Math.max(0,Math.min(23*60+59,t)); return String(Math.floor(t/60)).padStart(2,"0")+":"+String(t%60).padStart(2,"0"); }
-function fmt(m){ if(m==null) return ""; if(m<60) return m+" min"; var h=Math.floor(m/60), r=m%60; return h+"h"+(r?" "+r+"m":""); }
+function fmt(m){ if(m==null) return ""; m=Math.round(m); if(m<60) return m+" min"; var h=Math.floor(m/60), r=m%60; return h+"h"+(r?" "+r+"m":""); }
 // THE WORD ON THE FRONT (Sam, 29 Sep 2026: "rename transport to installation as transport is misleading"). The
 // minutes are time on site, so the badge names the job: a delivery installs, a clearance collects, a visit is on site.
 function siteTag(site){ if(!site) return ""; var mv=typeof site==="string"?site:""; if(mv==="Delivery") return "Installation: "; if(mv==="Collection"||mv==="Collect and Return") return "Collection: "; if(mv==="Site Visit") return "On site: "; return "Site: "; }
