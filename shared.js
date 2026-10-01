@@ -5,8 +5,10 @@
 // Plans saved before that day hold the bare first name ("Jack"); crewOf maps either
 // spelling to the list entry, and normPlan runs it over every plan as it is read.
 // Molly C came off on 29 Sep 2026 (Sam: part time, not needed). Sam, Ash and Jess came off the same day
-// (Sam: "remove office staff everywhere, it won't work as I wanted it to"). The field crew of five, nobody else.
-var CREW=["Jack C","Jordan I","Bradley H","Rob D","Bart H"];
+// (Sam: "remove office staff everywhere, it won't work as I wanted it to"). SAM C CAME BACK on 1 Oct 2026 (Sam: "I
+// also need to add me back in as an operative"): he can be put on any job and drives, but his day is never spare
+// crew time and never gets a recycling allowance. With nothing on he reads Office. FIELD_CREW is the five.
+var CREW=["Jack C","Jordan I","Bradley H","Rob D","Bart H","Sam C"];
 function crewOf(n){ var f=String(n||"").trim().split(/\s+/)[0].toLowerCase(); if(!f) return n; for(var i=0;i<CREW.length;i++){ if(CREW[i].split(" ")[0].toLowerCase()===f) return CREW[i]; } return n; }
 function normWho(a){ return (a||[]).map(crewOf).filter(function(n,i,x){ return x.indexOf(n)===i; }); }
 function normPlan(d){ if(!d||typeof d!=="object") return d;
@@ -17,8 +19,8 @@ function normPlan(d){ if(!d||typeof d!=="object") return d;
 // the five who do site work and yard recycling; the other four are on the crew for
 // the odd job but never get a recycling allowance (Sam, 29 Sep 2026: Jess and Molly
 // were showing "Recycling: 7h 45m"). Mirrors CAPACITY_CREW in the CRM's opsCapacity.
-var FIELD_CREW=CREW;
-var DRIVERS=["Rob D","Jack C","Bart H"]; // the crew entries, so a plan's who (normalised) matches
+var FIELD_CREW=["Jack C","Jordan I","Bradley H","Rob D","Bart H"];
+var DRIVERS=["Rob D","Jack C","Bart H","Sam C"]; // the crew entries, so a plan's who (normalised) matches
 var CONTRACTORS=["MAK Installations","Courier","Other contractor"];
 // ── the van and what goes on it ──
 // the vans: two Renault Master 3.5 tonne Lutons (DVLA: FX75 BKG 2025, FX73 CWF 2024, revenue weight 3,500 kg).
@@ -224,11 +226,13 @@ function syncCardMembers(cardId,plan,crmKey,inWorkshop){
   // operatives are nobody, and the people on it are on the labour leg at Forton.
   var pick=inWorkshop?((plan&&plan.prep&&plan.prep.who)||[]):((plan&&plan.who)||[]).concat(((plan&&plan.legs)||[]).reduce(function(a,L){ return a.concat((L&&L.who)||[]); },[]));
   var names=pick.map(crewOf).filter(function(n,i,a){return CREW.indexOf(n)>=0&&a.indexOf(n)===i;});
+  // SAM IS ADDED, NEVER TAKEN OFF (1 Oct 2026): he sits on cards for other reasons, so only the field crew are sent as
+  // the names the sync manages. Put on a job, he joins the card; anything else about his membership is his.
   var key=names.slice().sort().join(",");
   if(_memberSync[cardId]===key) return; _memberSync[cardId]=key;
   // the day and the part go with it, so the comment that tags a new member says something useful
   var due=inWorkshop?((plan&&plan.prep&&plan.prep.date)||(plan&&plan.date)||""):((plan&&plan.date)||""), mins=inWorkshop?((plan&&plan.prep&&plan.prep.mins)||0):((plan&&plan.mins)||0);
-  try{ fetch(CRM_MEMBERS_URL,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({key:crmKey,card_id:cardId,names:names,crew:CREW,part:inWorkshop?"production":"transport",mins:mins,due:due})}).catch(function(){}); }catch(e){}
+  try{ fetch(CRM_MEMBERS_URL,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({key:crmKey,card_id:cardId,names:names,crew:FIELD_CREW,part:inWorkshop?"production":"transport",mins:mins,due:due})}).catch(function(){}); }catch(e){}
 }
 // "08:00" plus minutes -> "10:25", for a site job's window (28 Sep 2026)
 function endOf(at,mins){ var m=/^(\d{1,2}):(\d{2})$/.exec(String(at||"")); if(!m) return ""; var t=parseInt(m[1],10)*60+parseInt(m[2],10)+(mins||0); t=Math.max(0,Math.min(23*60+59,t)); return String(Math.floor(t/60)).padStart(2,"0")+":"+String(t%60).padStart(2,"0"); }
