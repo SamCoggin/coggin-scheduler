@@ -532,8 +532,10 @@ function prodStatusOf(P,due,today){
   // before it is due. No time typed, no start date. text is the short line (the card has its own Start by row since
   // Sam's "give start by its own row"); full carries the start date for the Scheduler's production cards.
   var need=P.mins!=null?Math.max(1,Math.ceil(P.mins/DAY_MINS)):null, start=need==null?null:(need>1?workingDaysBefore(due,need-1):due);
-  var multi=start&&need>1, pre=multi?"Start by "+niceShort(start)+", due "+niceShort(due)+". ":"Due "+niceShort(due)+". ";   // a one-day job starts the day it is due, so it just says due
-  var out=function(cls,text,planned){ var full=multi&&/^Start by /.test(text)?"Due "+niceShort(due)+". "+text:!multi&&/^Due in /.test(text)?text.replace(/^Due in /,"Due "+niceShort(due)+", in "):!multi&&/^Due (today|date passed)/.test(text)?text.replace(/^Due date passed/,"Due "+niceShort(due)+", now past"):pre+text; return {cls:cls,text:text,full:full,start:start,need:need,planned:!!planned}; };
+  // EVERY JOB SAYS WHEN TO START (Sam, 1 Oct 2026: "But where is it telling me when to start the job?!"): a one-day
+  // job's start by is its due day, and it still says so in those words.
+  var multi=!!start, pre=multi?"Start by "+niceShort(start)+(start!==due?", due "+niceShort(due):"")+". ":"Due "+niceShort(due)+". ";   // a one-day job starts the day it is due, so it just says due
+  var out=function(cls,text,planned){ var full=multi&&/^Start by /.test(text)?(start!==due?"Due "+niceShort(due)+". ":"")+text:!multi&&/^Due in /.test(text)?text.replace(/^Due in /,"Due "+niceShort(due)+", in "):!multi&&/^Due (today|date passed)/.test(text)?text.replace(/^Due date passed/,"Due "+niceShort(due)+", now past"):pre+text; return {cls:cls,text:text,full:full,start:start,need:need,planned:!!planned}; };
   if(P.date&&who.length&&P.mins!=null){
     if(P.date>due){ var late=workDaysBetween(due,P.date)-1; return out("late","Finishes "+niceShort(P.date)+", "+late+(late===1?" working day":" working days")+" late",true); }
     return out("ok","On track, finishes "+niceShort(P.date),true); }
