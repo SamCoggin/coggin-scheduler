@@ -471,12 +471,12 @@
           },d.from?"":"todo")); }
         if(qcApplies&&!qcPlaced) ts.appendChild(qcRow());
         var LEG_TYPES_CARD=[["to_sub","Deliver to subcontractor"],["from_sub","Collect from subcontractor"],["production","Production"],["site","Site visit"],["labour","Labour"]];
-        var realLegs=d.legs||[]; ts.appendChild(rowEl("addleg","Legs",realLegs.length?((realLegs.length)+(realLegs.length===1?" leg":" legs")+" on this job"):"None",function(ed){
+        var realLegs=d.legs||[]; ts.appendChild(rowEl("addleg","Labour",realLegs.length?((realLegs.length)+" on this job"):"None",function(ed){
           var r=el("div","row"); var tsel=el("select"); LEG_TYPES_CARD.forEach(function(t2){ var o=el("option",null,t2[1]); o.value=t2[0]; tsel.appendChild(o); }); tsel.setAttribute("aria-label","Leg type"); r.appendChild(tsel);
           var di=el("input"); di.type="date"; di.value=card.due?card.due.slice(0,10):""; di.setAttribute("aria-label","Leg date"); r.appendChild(di);
           var wi=el("input"); wi.type="text"; wi.placeholder="Where, or what"; wi.setAttribute("aria-label","Where"); r.appendChild(wi);
           var ab=el("button","p","Add"); ab.onclick=function(){ if(!di.value) return; d.legs.push({type:tsel.value,date:di.value,who:[],mins:null,drive:null,where:wi.value||""}); save(); OPEN.addleg=false; render(); }; r.appendChild(ab); ed.appendChild(r);
-          ed.appendChild(el("div","hint","A leg is a separate trip or a separate piece of work on this job. Each one gets its own operatives, day and time in the sections below."));
+          ed.appendChild(el("div","hint","Extra labour is a separate trip or a separate piece of work on this job. Each one gets its own operatives, day and time in the sections below."));
         }));
       }
     }
@@ -541,7 +541,7 @@
       app.appendChild(ws);
     });
     var otherLegs=(d.legs||[]).filter(function(L){return L.type!=="labour";});
-    if(otherLegs.length){ var ls=section("labour","Legs",""); var lf=fld(""); otherLegs.forEach(function(Lg){ lf.appendChild(el("div",null,Lg.type.replace("_"," ")+(Lg.where?": "+Lg.where:"")+", "+(Lg.date?niceShort(Lg.date):"no date")+(Lg.who&&Lg.who.length?", "+Lg.who.join(", "):", unassigned")+(Lg.mins!=null?", "+fmt(Lg.mins):""))); }); lf.appendChild(el("div","hint","Legs are added and edited in the Scheduler.")); ls.appendChild(lf); app.appendChild(ls); }
+    if(otherLegs.length){ var ls=section("labour","Labour",""); var lf=fld(""); otherLegs.forEach(function(Lg){ lf.appendChild(el("div",null,Lg.type.replace("_"," ")+(Lg.where?": "+Lg.where:"")+", "+(Lg.date?niceShort(Lg.date):"no date")+(Lg.who&&Lg.who.length?", "+Lg.who.join(", "):", unassigned")+(Lg.mins!=null?", "+fmt(Lg.mins):""))); }); lf.appendChild(el("div","hint","Legs are added and edited in the Scheduler.")); ls.appendChild(lf); app.appendChild(ls); }
     fit();
   }
   function fit(){ requestAnimationFrame(function(){ var h=document.getElementById("app").getBoundingClientRect().height+16; t.sizeTo(Math.ceil(h)).catch(function(){}); }); }
