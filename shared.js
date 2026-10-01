@@ -532,15 +532,15 @@ function prodStatusOf(P,due,today){
   // before it is due. No time typed, no start date. text is the short line (the card has its own Start by row since
   // Sam's "give start by its own row"); full carries the start date for the Scheduler's production cards.
   var need=P.mins!=null?Math.max(1,Math.ceil(P.mins/DAY_MINS)):null, start=need==null?null:(need>1?workingDaysBefore(due,need-1):due);
-  var pre=start?"Start by "+niceShort(start)+", due "+niceShort(due)+". ":"Due "+niceShort(due)+". ";
-  var out=function(cls,text,planned){ var full=!start&&/^Due in /.test(text)?text.replace(/^Due in /,"Due "+niceShort(due)+", in "):!start&&/^Due today/.test(text)?text:pre+text; return {cls:cls,text:text,full:full,start:start,need:need,planned:!!planned}; };
+  var multi=start&&need>1, pre=multi?"Start by "+niceShort(start)+", due "+niceShort(due)+". ":"Due "+niceShort(due)+". ";   // a one-day job starts the day it is due, so it just says due
+  var out=function(cls,text,planned){ var full=!multi&&/^Due in /.test(text)?text.replace(/^Due in /,"Due "+niceShort(due)+", in "):!multi&&/^Due (today|date passed)/.test(text)?text.replace(/^Due date passed/,"Due "+niceShort(due)+", now past"):pre+text; return {cls:cls,text:text,full:full,start:start,need:need,planned:!!planned}; };
   if(P.date&&who.length&&P.mins!=null){
     if(P.date>due){ var late=workDaysBetween(due,P.date)-1; return out("late","Finishes "+niceShort(P.date)+", "+late+(late===1?" working day":" working days")+" late",true); }
     return out("ok","On track, finishes "+niceShort(P.date),true); }
-  var missing=!P.date?"no production days":!who.length?"no operatives":"no time", key=start||due, noTime=start?"":" Set the time to see when to start.";
-  if(key<today) return out("late",(start?"Start date passed":"Due date passed")+". Not planned: "+missing+"."+noTime);
-  if(key===today) return out("late",(start?"Start today":"Due today")+". Not planned: "+missing+"."+noTime);
+  var missing=!P.date?(need===1?"no production day":"no production days"):!who.length?"no operatives":"no time", key=start||due, noTime=start?"":" Set the time to see when to start.";
+  if(key<today) return out("late",(multi?"Start date passed":"Due date passed")+". Not planned: "+missing+"."+noTime);
+  if(key===today) return out("late",(multi?"Start today":"Due today")+". Not planned: "+missing+"."+noTime);
   var tm=new Date(today+"T12:00"); tm.setDate(tm.getDate()+1); var n=workDaysBetween(tm.toISOString().slice(0,10),key);
-  if(n<=PLAN_AHEAD_DAYS) return out("soon",(start?"Start":"Due")+" in "+n+(n===1?" working day":" working days")+". Plan it: "+missing+"."+noTime);
+  if(n<=PLAN_AHEAD_DAYS) return out("soon",(multi?"Start":"Due")+" in "+n+(n===1?" working day":" working days")+". Plan it: "+missing+"."+noTime);
   return out("","Plan by "+niceShort(workingDaysBefore(key,PLAN_AHEAD_DAYS))+"."+noTime);
 }

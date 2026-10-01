@@ -890,7 +890,7 @@ var SNAP=null, DETAIL={};
   function findOpen(){ if(!open) return null; var parts=open.split(":"); if(parts[1]&&parts[1].indexOf("leg")===0){ var lj=legJobs().filter(function(x){return x.id===open;})[0]; return lj?{job:lj,part:lj,shop:false,leg:true}:null; } var j=JOBS.filter(function(x){return x.id===parts[0];})[0]; if(!j) return null; return parts[1]==="prep"?{job:j,part:j.prep,shop:true}:{job:j,part:j,shop:false}; }
 
   // THE CARD BACK ORDER (Sam, 13 Sep 2026): blocks appear in the order you decide them. Anything at 20 or more folds under "More".
-  var BLOCK_ORDER={"This leg":0,"Estimate for this job":1,"Estimate for this production":1,"Operatives":2,"Production Dates":1.4,"Transported By":4,"Vehicle":5,"Travel Time, return":6,"Time Window":7,"Collection Slot":7,"QC":7.5,"What happened":0.5,"Production Time per Operative":1.2,"Site Time per Operative":8,"Labour Time per Operative":8,"Production":20,"Van Load":21,"Legs":22};
+  var BLOCK_ORDER={"This leg":0,"Estimate for this job":1,"Estimate for this production":1,"Operatives":2,"Production Dates":1.4,"Production Day":1.4,"Transported By":4,"Vehicle":5,"Travel Time, return":6,"Time Window":7,"Collection Slot":7,"QC":7.5,"What happened":0.5,"Production Time per Operative":1.2,"Site Time per Operative":8,"Labour Time per Operative":8,"Production":20,"Van Load":21,"Legs":22};
   function block(title,tipKey){ var d=el("div","blk"); d.dataset.order=BLOCK_ORDER[title]!=null?BLOCK_ORDER[title]:15; var h=el("div","bh"); h.appendChild(el("span",null,title)); if(tipKey) h.appendChild(tip(tipKey)); d.appendChild(h); return d; }
   function modal(){
     var o=findOpen(); if(!o) return null;
@@ -963,7 +963,14 @@ var SNAP=null, DETAIL={};
     if(o.leg){ var lgb=block("This leg"); var lr=el("div","row"); var ld=el("input"); ld.type="date"; ld.value=j.leg.date; ld.onchange=function(){ if(ld.value){ j.leg.date=ld.value; render(); } }; lr.appendChild(el("span",null,"Date")); lr.appendChild(ld); lgb.appendChild(lr);
       var wr=el("div","row"); var wi=el("input"); wi.type="text"; wi.value=j.leg.where||""; wi.placeholder="Subcontractor or site, with postcode"; wi.style.minWidth="260px"; wi.onchange=function(){ j.leg.where=wi.value; var pc=/\b([A-Z]{1,2})\d/i.exec(wi.value); j.leg.drive=pc&&DRIVE[pc[1].toUpperCase()]?Math.round(DRIVE[pc[1].toUpperCase()].h*2*60*TRAFFIC/5)*5:j.leg.drive; render(); }; wr.appendChild(el("span",null,"Where")); wr.appendChild(wi); lgb.appendChild(wr);
       var rm=el("button","close","Remove this leg"); rm.style.marginTop="8px"; rm.onclick=function(){ LEGS.splice(LEGS.indexOf(j.leg),1); open=null; render(); }; lgb.appendChild(rm); right.appendChild(lgb); }
-    if(o.shop){ var db=block("Production Dates","days"); var r=el("div","row");
+    var oneDayP=o.shop&&part.mins!=null&&part.mins<=DAY_MINS&&!(part.start&&part.date&&part.start!==part.date);
+    if(oneDayP){ var db=block("Production Day","days"); var r=el("div","row");   // one date for a job that fits in a day, as on the card
+      var d0=el("input"); d0.type="date"; d0.value=part.date||""; d0.setAttribute("aria-label","Production day"); d0.onchange=function(){ part.date=d0.value||null; part.start=part.date; render(); };
+      r.appendChild(d0); var clr0=el("button","close","Clear"); clr0.onclick=function(){ part.start=null; part.date=null; render(); }; r.appendChild(clr0); db.appendChild(r);
+      if(!part.date) db.appendChild(el("div","hint","Not scheduled. Pick the day and it appears under Production."));
+      if(j.prodDue){ var dst0=prodStatus(j); if(dst0) db.appendChild(el("div","for "+dst0.cls,dst0.full)); }
+      right.appendChild(db); }
+    else if(o.shop){ var db=block("Production Dates","days"); var r=el("div","row");
       var d1=el("input"); d1.type="date"; d1.value=part.start||""; d1.setAttribute("aria-label","From"); d1.onchange=function(){ part.start=d1.value||null; if(part.start&&(!part.date||part.date<part.start)) part.date=part.start; if(!part.start) part.date=null; render(); };
       var d2=el("input"); d2.type="date"; d2.value=part.date||""; d2.setAttribute("aria-label","To"); d2.onchange=function(){ part.date=d2.value||null; if(part.date&&(!part.start||part.start>part.date)) part.start=part.date; if(!part.date) part.start=null; render(); };
       r.appendChild(d1); r.appendChild(el("span",null,"to")); r.appendChild(d2); var clr=el("button","close","Clear"); clr.onclick=function(){ part.start=null; part.date=null; render(); }; r.appendChild(clr); db.appendChild(r);
