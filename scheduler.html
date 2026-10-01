@@ -1377,7 +1377,7 @@ var SNAP=null, DETAIL={};
       if(npList.length) cards.appendChild(el("div","nphead","Needs planning"));
       npList.sort(function(a,b){ var sa=(prodStatus(a).start||a.prodDue), sb=(prodStatus(b).start||b.prodDue); return sa<sb?-1:sa>sb?1:0; }).forEach(function(j){
         var st=prodStatus(j), nc=el("div","card needplan "+st.cls); nc.appendChild(el("b",null,j.title)); nc.appendChild(el("span","npstart "+st.cls,st.start?"Start "+niceDay(st.start):"No time set, so no start date")); nc.appendChild(el("span","for "+st.cls,st.full)); nc.title="Plan the production"; nc.onclick=function(){ open=j.id+":prep"; render(); }; cards.appendChild(nc); });
-      if(npList.length&&g[2].length) cards.appendChild(el("div","nphead","Booked today"));
+      if(npList.length&&g[2].length) cards.appendChild(el("div","nphead","Booked"));
       if(g[0]==="road") liveIssues(k).filter(function(x){ return !x.j; }).forEach(function(x){ var dw=el("div","daywarn"); dw.appendChild(document.createTextNode(x.text)); var xb=el("button","dis","\u00d7"); xb.title="Dismiss this warning. It comes back if what it says changes."; xb.onclick=function(e){ e.stopPropagation(); DISMISSED[warnKey(x)]=true; persist(); render(); }; dw.appendChild(xb); cards.appendChild(dw); });
       if(g[0]==="road") vanRounds(rounds).forEach(function(r){ cards.appendChild(roundEl(r)); });
       g[2].forEach(function(j){ cards.appendChild(cardEl(j,k,g[0]==="shop",isToday)); });
