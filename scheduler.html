@@ -662,6 +662,10 @@ var SNAP=null, DETAIL={};
       if(FIELD_CREW.indexOf(w)<0&&n){ out[w].t="backup"; out[w].s="Backup"; out[w].d=""; }   // backup: no time against him at all (Sam, 1 Oct 2026: "I don't need a time against me on this stuff!")
       if(FIELD_CREW.indexOf(w)<0&&!n){ out[w].c="office"; out[w].t="office"; out[w].s="Office"; out[w].d=""; out[w].r=4; out[w].rec=0; out[w].avail=0; }
       out[w].mins=mins; out[w].rec=FIELD_CREW.indexOf(w)>=0?Math.max(0,DAY_MINS-mins):0; out[w].avail=FIELD_CREW.indexOf(w)>=0?Math.max(0,DAY_MINS-mins):0;
+      // today counts only what is left of the working day; after 16:30 the day is over and nobody is free
+      var leftT=minsLeftOn(k); if(leftT!=null&&out[w].c!=="off"&&out[w].c!=="office"&&FIELD_CREW.indexOf(w)>=0){ var frT=Math.min(out[w].avail,leftT); out[w].avail=frT;
+        if(leftT===0){ out[w].c="past"; out[w].s="Day over"; out[w].t="day over"; }
+        else if(leftT<DAY_MINS){ out[w].s=frT>0?fmt(frT)+" left today":"Full for the rest of today"; out[w].t=out[w].s.toLowerCase(); if(out[w].c==="free"&&frT<=0) out[w].c="busy"; } }
     });
     return out;
   }
@@ -756,7 +760,7 @@ var SNAP=null, DETAIL={};
   }
   function opOrder(load){ return TEAM.slice().sort(function(a,b){ return ((load[a]||{}).r||0)-((load[b]||{}).r||0)||TEAM.indexOf(a)-TEAM.indexOf(b); }); }
   function isOffice(w){ return FIELD_CREW.indexOf(w)<0; }
-  function freeCount(load){ return FIELD_CREW.filter(function(w){return (load[w]||{}).c==="free";}).length+" of "+FIELD_CREW.length+" free"; }
+  function freeCount(load,k){ if(k&&minsLeftOn(k)===0) return "Day over"; return FIELD_CREW.filter(function(w){return (load[w]||{}).c==="free";}).length+" of "+FIELD_CREW.length+" free"; }
   function saveTally(k,w,units,notes,shredding){ var rec=(loadOn(k)[w]||{}).rec||0, prev=TALLIES[tallyKey(k,w)]||{}, row={date:k,operative:w,minutes:rec,target:recTarget(rec),units:units===""||units==null?null:Number(units),notes:notes||"",shredding:shredding||prev.shredding||[],recorded_by:"scheduler"};
     TALLIES[tallyKey(k,w)]={units:row.units,notes:row.notes,target:row.target,minutes:row.minutes,shredding:row.shredding};
     if(!CRM_KEY) return; try{ fetch(CRM_TALLY_URL,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({key:CRM_KEY,action:"save",rows:[row]})}).catch(function(){}); }catch(e){} }
@@ -1385,7 +1389,7 @@ var SNAP=null, DETAIL={};
       list.appendChild(cards); b.appendChild(list);
     });
     // people column: what each person has, and what they are on
-    var pl=el("div","list"+(isToday?" today":"")); var ph=el("h2"); var phl=el(isToday?"em":"span",null,"Operatives"); phl.appendChild(tip("people")); ph.appendChild(phl); var load=loadOn(k); ph.appendChild(el("span",null,(k<iso(TODAY))?FIELD_CREW.length+" operatives":freeCount(load))); pl.appendChild(ph);
+    var pl=el("div","list"+(isToday?" today":"")); var ph=el("h2"); var phl=el(isToday?"em":"span",null,"Operatives"); phl.appendChild(tip("people")); ph.appendChild(phl); var load=loadOn(k); ph.appendChild(el("span",null,(k<iso(TODAY))?FIELD_CREW.length+" operatives":freeCount(load,k))); pl.appendChild(ph);
     var pc=el("div","cards oplist"); jobs=allJobsDay; preps=prepJobs().filter(function(j){return j.prep&&j.prep.date&&daysOf(j.prep).indexOf(k)>=0;}); rounds=roundsOn(k,jobs);
     // OFF ONCE, AT THE TOP (Sam, 1 Oct 2026: "Rob is showing on leave twice on this list and i JUST NEED IT ONCE AT THE
     // TOP OF THE LIST"). The banner names who is off and why; someone marked off here gets Back in on it, and their

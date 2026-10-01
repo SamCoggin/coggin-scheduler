@@ -159,7 +159,7 @@
     if(MISSED) box.appendChild(el("div","hint far","Could not read "+MISSED+(MISSED===1?" other job":" other jobs")+", so some times below may be too high."));
     // ONE LINE A PERSON (Sam, 1 Oct 2026: "this UI is shit", the chip wall). A bar of their 7h45 day, the words on
     // the right, most free first, then full, then the office, then anyone off. "at Forton" is gone; out on site stays.
-    days.slice(0,5).forEach(function(k){ var load=loadOn(k,part), wk=el("div","wday"); wk.appendChild(el("div","whead","Who is free on "+niceShort(k)));
+    days.slice(0,5).forEach(function(k){ var load=loadOn(k,part), wk=el("div","wday"), leftK=minsLeftOn(k);   // today counts only what is left of it wk.appendChild(el("div","whead","Who is free on "+niceShort(k)));
       var rows=CREW.map(function(w){ var l=load[w], field=FIELD_CREW.indexOf(w)>=0, on=part.who.indexOf(w)>=0, used=Math.round(l.mins||0), allDay=l.away.some(function(x){return !x.until;});
         var until=l.away.filter(function(x){return x.until;}).map(function(x){return x.until;}).sort().pop();
         var txt, cls, rank;
@@ -169,7 +169,9 @@
         else if(allDay){ txt="Out on site all day"; cls="d"; rank=2; }
         else if(used>DAY_MINS){ txt="Full, "+fmt(used-DAY_MINS)+" over"; cls="d"; rank=2; }
         else if(l.n&&!used){ txt=l.n+(l.n===1?" job":" jobs")+", no time set"; cls="m"; rank=1; }
-        else { txt=fmt(DAY_MINS-used)+" free"+(until?", back "+until:""); cls="g"; rank=0; }
+        else if(leftK===0){ txt="Day over"; cls="m"; rank=3; }
+        else if(leftK!=null&&Math.min(DAY_MINS-used,leftK)<=0){ txt="Full for the rest of today"; cls="d"; rank=2; }
+        else { txt=fmt(leftK!=null?Math.min(DAY_MINS-used,leftK):DAY_MINS-used)+(leftK!=null&&leftK<DAY_MINS?" left today":" free")+(until?", back "+until:""); cls="g"; rank=0; }
         return {w:w,txt:txt,cls:cls,rank:rank,free:l.off?-1:DAY_MINS-used,used:l.off?0:used}; }).filter(Boolean);
       rows.sort(function(a,b){ return a.rank-b.rank||b.free-a.free||CREW.indexOf(a.w)-CREW.indexOf(b.w); });
       rows.forEach(function(r){ var row=el("div","wrow"); var nm=el("span","wname",r.w); if(DRIVERS.indexOf(r.w)>=0) nm.appendChild(el("i",null,"driver")); row.appendChild(nm);

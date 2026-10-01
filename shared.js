@@ -549,3 +549,9 @@ function prodStatusOf(P,due,today){
   if(n<=PLAN_AHEAD_DAYS) return out("soon",lead+(n===1?"That is tomorrow.":"That is in "+n+" working days.")+" Plan it: "+missing+".");
   return out("",lead+"Plan it by "+niceShort(workingDaysBefore(start,PLAN_AHEAD_DAYS))+".");
 }
+
+// WHAT IS LEFT OF TODAY (Sam, 1 Oct 2026, at 18:47: "we need to factor in the time of day as this is misleading for
+// today"). The working day is 8:00 to 16:30 with 45 minutes of breaks; the time left is that share of 7h45. Before 8:00
+// it is the whole day, after 16:30 none. Any other day gives null: the whole day stands.
+function minsLeftOn(k){ var n=new Date(), t=n.getFullYear()+"-"+String(n.getMonth()+1).padStart(2,"0")+"-"+String(n.getDate()).padStart(2,"0"); if(k!==t) return null;
+  var now=n.getHours()*60+n.getMinutes(), S=8*60, E=16*60+30; if(now<=S) return DAY_MINS; if(now>=E) return 0; return Math.round((E-now)*DAY_MINS/(E-S)); }
