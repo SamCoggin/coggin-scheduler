@@ -897,7 +897,7 @@ var SNAP=null, DETAIL={};
   function findOpen(){ if(!open) return null; var parts=open.split(":"); if(parts[1]&&parts[1].indexOf("leg")===0){ var lj=legJobs().filter(function(x){return x.id===open;})[0]; return lj?{job:lj,part:lj,shop:false,leg:true}:null; } var j=JOBS.filter(function(x){return x.id===parts[0];})[0]; if(!j) return null; return parts[1]==="prep"?{job:j,part:j.prep,shop:true}:{job:j,part:j,shop:false}; }
 
   // THE CARD BACK ORDER (Sam, 13 Sep 2026): blocks appear in the order you decide them. Anything at 20 or more folds under "More".
-  var BLOCK_ORDER={"This leg":0,"Estimate for this job":1,"Estimate for this production":1,"Operatives":2,"Production Dates":1.4,"Production Day":1.4,"Book the rest":0.6,"Transported By":4,"Vehicle":5,"Travel Time, return":6,"Time Window":7,"Collection Slot":7,"QC":7.5,"What happened":0.5,"Production Time per Operative":1.2,"Site Time per Operative":8,"Labour Time per Operative":8,"Production":20,"Van Load":21,"Legs":22};
+  var BLOCK_ORDER={"This leg":0,"Estimate for this job":1,"Estimate for this production":1,"Operatives":2,"Production Dates":1.4,"Production Day":1.4,"Book the rest":0.6,"The rest":0.7,"Transported By":4,"Vehicle":5,"Travel Time, return":6,"Time Window":7,"Collection Slot":7,"QC":7.5,"What happened":0.5,"Production Time per Operative":1.2,"Site Time per Operative":8,"Labour Time per Operative":8,"Production":20,"Van Load":21,"Legs":22};
   function block(title,tipKey){ var d=el("div","blk"); d.dataset.order=BLOCK_ORDER[title]!=null?BLOCK_ORDER[title]:15; var h=el("div","bh"); h.appendChild(el("span",null,title)); if(tipKey) h.appendChild(tip(tipKey)); d.appendChild(h); return d; }
   function modal(){
     var o=findOpen(); if(!o) return null;
@@ -984,6 +984,9 @@ var SNAP=null, DETAIL={};
         if(!(part.done&&part.done.status==="done")) part.done={status:"done",mins:part.mins,who:part.who.slice(),notes:"Part done, the rest booked for "+niceDay(di.value),at:iso(new Date())};
         LEGS.push({parent:j.id,type:"production",date:di.value,who:rWho.slice(),mins:m,drive:null,where:"the rest",from:null,by:null,pc:null,src:null}); persist(); render(); };
       rb.appendChild(go); rb.appendChild(err); right.appendChild(rb); }
+    // the rest already booked, listed in the production editor with Remove (it is production, not a leg)
+    var restB=o.shop?LEGS.filter(function(L){ return L.parent===j.id&&L.type==="production"&&L.where==="the rest"; }):[];
+    if(restB.length){ var rbk=block("The rest","days"); restB.forEach(function(L){ var r=el("div","row"); r.appendChild(el("span",null,(L.date?niceDay(L.date):"no day")+", "+((L.who||[]).join(", ")||"nobody")+", "+fmt(L.mins))); var rm=el("button","close","Remove"); rm.onclick=function(){ var i=LEGS.indexOf(L); if(i>=0) LEGS.splice(i,1); persist(); render(); }; r.appendChild(rm); rbk.appendChild(r); }); right.appendChild(rbk); }
     var oneDayP=o.shop&&part.mins!=null&&part.mins<=DAY_MINS&&!(part.start&&part.date&&part.start!==part.date);
     // MUST BE DONE BY, UNDER THE DAY (Sam, 1 Oct 2026: "match the scheduler editor too"): the due date is changed in
     // the same box as the day, as on the card, not in a box of its own.
@@ -1097,7 +1100,7 @@ var SNAP=null, DETAIL={};
       if(j.cubeSet!=null){ var rs2=el("button","close","Use the estimate"); rs2.onclick=function(){ j.cubeSet=null; render(); }; vr.appendChild(rs2); } set.appendChild(vr);
       set.appendChild(el("div","hint","A Luton box is about "+VAN_M3+" cubic metres, payload about "+VAN_KG+" kg. Desks count flat unless the item says built; sit-stand desks always count built. Chair figures assume double stacking.")); vb.appendChild(set);
       right.appendChild(vb); }
-    if(!o.shop && !o.leg){ var lb2=block("Legs"); var mine=LEGS.map(function(L,i){return {L:L,i:i};}).filter(function(x){return x.L.parent===j.id;});
+    if(!o.shop && !o.leg){ var lb2=block("Legs"); var mine=LEGS.map(function(L,i){return {L:L,i:i};}).filter(function(x){return x.L.parent===j.id&&!(x.L.type==="production"&&x.L.where==="the rest");});
       if(mine.length){ var lul=el("ul","items plain"); mine.forEach(function(x){ var t2=LEG_TYPES.filter(function(t){return t[0]===x.L.type;})[0]; var li=el("li",null,t2[1]+(x.L.where?" ("+x.L.where+")":"")+", "+niceDay(x.L.date)+(x.L.who.length?", "+x.L.who.join(", "):", unassigned")+(x.L.mins!=null?", "+fmt(x.L.mins):"")); var eb2=el("button","close","Edit"); eb2.style.marginLeft="8px"; eb2.onclick=function(){ open=j.id+":leg"+x.i; render(); }; li.appendChild(eb2); lul.appendChild(li); }); lb2.appendChild(lul); }
       else lb2.appendChild(el("div","hint","No extra legs. Add one when part of the job goes to a subcontractor or needs another visit."));
       var ar=el("div","row"); var ts=el("select"); LEG_TYPES.forEach(function(t){ var o3=el("option",null,t[1]); o3.value=t[0]; ts.appendChild(o3); }); var ad=el("input"); ad.type="date"; ad.value=j.date; var ab=el("button","close","Add leg"); ab.onclick=function(){ if(!ad.value) return; LEGS.push({parent:j.id,type:ts.value,date:ad.value,who:[],mins:null,drive:null,where:""}); open=j.id+":leg"+(LEGS.length-1); render(); }; ar.appendChild(ts); ar.appendChild(ad); ar.appendChild(ab); lb2.appendChild(ar); right.appendChild(lb2); }
@@ -1320,7 +1323,7 @@ var SNAP=null, DETAIL={};
     if(view==="day"&&(!isPrep||!onDay(j,k))) liveIssues(k).filter(function(x){ return x.j&&x.j.id===j.id; }).forEach(function(x){
       var tx=x.text, pre=short(j); if(tx.indexOf(pre+": ")===0) tx=tx.slice(pre.length+2); else if(tx.indexOf(pre+" ")===0) tx=tx.slice(pre.length+1); tx=tx.charAt(0).toUpperCase()+tx.slice(1);
       var cw=el("div","cardwarn"); cw.appendChild(document.createTextNode(tx)); var xb=el("button","dis","\u00d7"); xb.title="Dismiss this warning. It comes back if what it says changes."; xb.setAttribute("aria-label","Dismiss warning"); xb.onclick=function(e){ e.stopPropagation(); DISMISSED[warnKey(x)]=true; persist(); render(); }; cw.appendChild(xb); c.appendChild(cw); });
-    c.onclick=function(){ open=isPrep?j.id+":prep":j.id; render(); };
+    c.onclick=function(){ open=isPrep?j.id+":prep":(j.isLeg&&j.leg&&j.leg.type==="production"&&j.leg.where==="the rest"&&j.parentJob)?j.parentJob.id+":prep":j.id; render(); };   /* the rest opens its production, not a leg */
     return c;
   }
   function vs_ok(v){ return !/No van/.test(v); }

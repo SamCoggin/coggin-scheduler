@@ -277,6 +277,7 @@
   function section(kind,name,when){ var s=el("div","sec "+kind); var h=el("div","sec-h"); h.appendChild(el("span","name",name)); if(when) h.appendChild(el("span","when",when)); s.appendChild(h); return s; }
   var OPEN={};   // which editor rows are open, kept across redraws
   // the same as the Scheduler's: once the first stint is recorded and the rest booked, the latest stint is checked
+  function isRest(L){ return !!L&&L.type==="production"&&L.where==="the rest"; }
   function cardProdStatus(prodDue){ if(!d||!d.prep) return null; var inShop=workshop&&!/^(New Jobs|Transfer to Job Board)$/i.test(String(card.listName||"").trim());
     if(d.prep.done&&d.prep.done.status==="done"){ var rest=(d.legs||[]).filter(function(L){ return L.type==="production"&&L.date; }).sort(function(a,b){ return a.date<b.date?-1:1; }); if(!rest.length) return null; var L=rest[rest.length-1];
       var st=prodStatusOf({date:L.date,start:L.date,who:L.who||[],mins:L.mins},prodDue,todayIso(),inShop); if(st){ st.text="The rest: "+st.text; st.full="The rest: "+st.full; } return st; }
@@ -384,6 +385,10 @@
       ps.insertBefore(ps.lastChild,pdaysRow);   // time before days
       // ON TIME OR NOT, the same line the Scheduler's production card shows (Sam, 1 Oct 2026: "add it to the trello card too")
       var pst=cardProdStatus(prodDue);
+      // THE REST IS PRODUCTION, NOT A LEG (Sam, 1 Oct 2026: "I don't want it to be a leg")
+      var restL=(d.legs||[]).filter(isRest); if(restL.length) ps.appendChild(rowEl("prest","The rest",restL.map(function(L){ return (L.date?niceShort(L.date):"no day")+" \u00b7 "+((L.who||[]).join(", ")||"nobody")+" \u00b7 "+fmt(L.mins); }).join("; "),function(ed){
+        restL.forEach(function(L){ var r=el("div","row"); r.appendChild(el("span",null,(L.date?niceShort(L.date):"no day")+", "+((L.who||[]).join(", ")||"nobody")+", "+fmt(L.mins))); var rm=el("button","p","Remove"); rm.onclick=function(){ var i=d.legs.indexOf(L); if(i>=0) d.legs.splice(i,1); save(); render(); }; r.appendChild(rm); ed.appendChild(r); });
+        ed.appendChild(el("div","hint","Booked from the Scheduler's Book the rest. Remove one to take it off the day.")); }));
       if(pst) ps.appendChild(el("div","pst "+pst.cls,pst.text));
       // TIME, DAYS, DUE, THEN WHO (Sam, 1 Oct 2026: "I wanted time at the top of the list and then production day/s"),
       // the same order as the Scheduler's production editor so the two mirror.
@@ -472,7 +477,7 @@
           },d.from?"":"todo")); }
         if(qcApplies&&!qcPlaced) ts.appendChild(qcRow());
         var LEG_TYPES_CARD=[["to_sub","Deliver to subcontractor"],["from_sub","Collect from subcontractor"],["production","Production"],["site","Site visit"],["labour","Labour"]];
-        ts.appendChild(rowEl("addleg","Legs",(d.legs||[]).length?((d.legs.length)+(d.legs.length===1?" leg":" legs")+" on this job"):"None",function(ed){
+        var realLegs=(d.legs||[]).filter(function(L){ return !isRest(L); }); ts.appendChild(rowEl("addleg","Legs",realLegs.length?((realLegs.length)+(realLegs.length===1?" leg":" legs")+" on this job"):"None",function(ed){
           var r=el("div","row"); var tsel=el("select"); LEG_TYPES_CARD.forEach(function(t2){ var o=el("option",null,t2[1]); o.value=t2[0]; tsel.appendChild(o); }); tsel.setAttribute("aria-label","Leg type"); r.appendChild(tsel);
           var di=el("input"); di.type="date"; di.value=card.due?card.due.slice(0,10):""; di.setAttribute("aria-label","Leg date"); r.appendChild(di);
           var wi=el("input"); wi.type="text"; wi.placeholder="Where, or what"; wi.setAttribute("aria-label","Where"); r.appendChild(wi);
@@ -541,7 +546,7 @@
         ed.appendChild(el("div","lbl","Labour time per operative")); ed.appendChild(timeField(W,"")); },W.mins!=null?"":(W.who.length?"bad":"todo")));
       app.appendChild(ws);
     });
-    var otherLegs=(d.legs||[]).filter(function(L){return L.type!=="labour";});
+    var otherLegs=(d.legs||[]).filter(function(L){return L.type!=="labour"&&!isRest(L);});
     if(otherLegs.length){ var ls=section("labour","Legs",""); var lf=fld(""); otherLegs.forEach(function(Lg){ lf.appendChild(el("div",null,Lg.type.replace("_"," ")+(Lg.where?": "+Lg.where:"")+", "+(Lg.date?niceShort(Lg.date):"no date")+(Lg.who&&Lg.who.length?", "+Lg.who.join(", "):", unassigned")+(Lg.mins!=null?", "+fmt(Lg.mins):""))); }); lf.appendChild(el("div","hint","Legs are added and edited in the Scheduler.")); ls.appendChild(lf); app.appendChild(ls); }
     fit();
   }
