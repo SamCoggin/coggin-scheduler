@@ -491,19 +491,10 @@ var SNAP=null, DETAIL={};
   // extra legs on a job: a delivery to a subcontractor, the collection back,
   // a second production stint, a site visit. each has its own day, people,
   // travel and time, and shows on the board like any other job.
-  // A FORTON JOB'S LINE MIRRORS ITS CARD'S LABEL (Sam, 1 Oct 2026: "it is saying production for a donation collection
-  // which is misleading", then "can we not match the labels we update on the crm app schedule to mirror across here?").
-  // The line reads the card's own "Work - Movement" label as set from the CRM, e.g. "Donation - Collection". Without one
-  // it builds it from the work and movement it can read, and only a card with neither says Job.
-  // PRODUCTION STAYS PRODUCTION (Sam, 1 Oct 2026: "Why does it say resale courier for sketch studios when this is in the
-  // production list?!"). The label was first put on the workshop lines, the wrong ones: a production stint is named
-  // Production, never after the card's delivery movement. The Forton job lines were the ones saying Production.
-  function jobKind(j){
-    var labs=labelNames((j&&(j.labels||(j.parentJob&&j.parentJob.labels)))||[]);
-    for(var i=0;i<labs.length;i++){ if(/\S\s-\s\S/.test(labs[i])) return labs[i].replace(/\s-\s/," "); }
-    var w=String((j&&j.work)||"").trim(), mv=String((j&&j.movement)||"").trim();
-    return [w,mv].filter(Boolean).join(" ")||"Job";
-  }
+  // THE THREE TIERS NAME EVERY LINE (Sam, 1 Oct 2026: "there are three tiers, production, transport and labour
+  // operations and these need to be used on the operatives section so everything matches"). A line in the Operatives
+  // panel is named after the column its job sits in: Production, Transport or Labour Operations. This replaced the
+  // card-label names tried earlier the same day.
   var LEG_TYPES=[["to_sub","Deliver to subcontractor",true],["from_sub","Collect from subcontractor",true],["production","Production",false],["site","Site visit",true],["labour","Labour",false]];
   // DISMISSED WARNINGS (Sam, 15 Sep 2026: "I need to be able to dismiss these notifications"). Keyed on the warning's
   // own words, saved on the board, so a dismissed warning stays gone until what it says changes.
@@ -1371,11 +1362,11 @@ var SNAP=null, DETAIL={};
       if(!past&&load[w].c==="off") line("Off","r",load[w].d||load[w].t,"","");
       prepsP.forEach(function(j){ var nd=daysOf(j.prep).length||1, me=minsFor(j.prep,w), today=Math.round(prepShare(j,w)); seg("p",today); line("Production","p",j.title.split(" - ").slice(1).join(" - ")||j.title,(nd>1?"day "+(daysOf(j.prep).indexOf(k)+1)+" of "+nd:"")+(past?doneOf(j.prep):""),me!=null?fmt(today):"no time"); });
       var r=rounds.filter(function(x){return x.who===w;})[0], tlw=dayTimeline(k,w);
-      if(r){ seg("s",r.drive||0); line("Round","round",r.stops.map(function(j){return j.title.split(" - ")[0];}).join(", ")+(r.start&&r.start!==HOME_PC?" \u00b7 from "+placeName(r.start):"")+(tlw.back?" \u00b7 back "+hmStr(tlw.back)+" with breaks":""),"",r.drive?fmt(r.drive)+" driving":"no travel yet"); }
+      if(r){ seg("s",r.drive||0); line("Transport","round",r.stops.map(function(j){return j.title.split(" - ")[0];}).join(", ")+(r.start&&r.start!==HOME_PC?" \u00b7 from "+placeName(r.start):"")+(tlw.back?" \u00b7 back "+hmStr(tlw.back)+" with breaks":""),"",r.drive?fmt(r.drive)+" driving":"no travel yet"); }
       // stops in the order the day runs them, not the order the cards sit in (Sam's screenshot, 29 Sep 2026: York 11:20 above Bolton 08:40)
       var arriveOf=function(j){ var tm=jobTiming(j,k); return tm?tm.arrive:1e9; }; mineP=mineP.slice().sort(function(a,b){ return (a.site?0:1)-(b.site?0:1)||arriveOf(a)-arriveOf(b); });
-      mineP.forEach(function(j){ var m=minsFor(j,w); var tm=jobTiming(j,k); if(j.site){ seg("s",(m||0)+(j.onRound?0:(j.drive||0))); line(j.movement||"Site","s",j.title.split(" - ").slice(1).join(" - ")||j.title,(tm&&j.onRound?hmStr(tm.arrive):"")+(past?doneOf(j.isLeg?j.leg:j):""),(m!=null?fmt(m):"no time")+(j.site&&!j.onRound&&j.drive?" + "+fmt(j.drive):"")); }
-        else { seg("p",m||0); line(j.isLeg?(j.leg&&j.leg.type==="production"?"Production":"Labour"):jobKind(j),"p",j.title.split(" - ").slice(1).join(" - ")||j.title,past?doneOf(j.isLeg?j.leg:j):"",m!=null?fmt(m):"no time"); } });
+      mineP.forEach(function(j){ var m=minsFor(j,w); var tm=jobTiming(j,k); if(j.site){ seg("s",(m||0)+(j.onRound?0:(j.drive||0))); line("Transport","s",j.title.split(" - ").slice(1).join(" - ")||j.title,(tm&&j.onRound?hmStr(tm.arrive):"")+(past?doneOf(j.isLeg?j.leg:j):""),(m!=null?fmt(m):"no time")+(j.site&&!j.onRound&&j.drive?" + "+fmt(j.drive):"")); }
+        else { seg("p",m||0); line(j.isLeg&&j.leg&&j.leg.type==="production"?"Production":"Labour Operations","p",j.title.split(" - ").slice(1).join(" - ")||j.title,past?doneOf(j.isLeg?j.leg:j):"",m!=null?fmt(m):"no time"); } });
       if(load[w].c!=="off"&&load[w].c!=="office"&&load[w].rec>=30){ seg("r",load[w].rec); if(past){ var tly=TALLIES[tallyKey(k,w)], tg=recTarget(load[w].rec); line("Recycling","r",tly&&tly.units!=null?tly.units+" of "+tg+" units":"not recorded, target was "+tg+" units","",fmt(load[w].rec)); } else line("Recycling","r",r?"after the round":(lines.length?"the rest of the day":"nothing planned, so the day is on the tally"),"",fmt(load[w].rec)); }
       var planned=segs.reduce(function(t,x){return t+x.mins;},0), over=Math.max(0,planned-DAY_MINS), scale=Math.max(DAY_MINS,planned);
       if(over) warns.push(fmt(over)+" over the day"); if(tlw.driveOver) warns.push("Driving over 10 hours"); if(tlw.longDay) warns.push("Day over 11 hours");
