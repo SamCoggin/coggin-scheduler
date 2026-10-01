@@ -908,7 +908,9 @@ var SNAP=null, DETAIL={};
     // Straight to the card (Sam, 16 Sep 2026: "a button to click into the Trello card from here").
     // Inside Trello the Power-Up opens it in place; anywhere else the plain card link does.
     var tc=el("button","close","Open in Trello"); tc.style.marginRight="8px";
-    tc.onclick=function(){ var url="https://trello.com/c/"+j.id; try{ if(t&&typeof t.showCard==="function"){ t.showCard(j.id); return; } }catch(e){} window.open(url,"_blank","noopener"); };
+    // A NEW TAB (Sam, 1 Oct 2026: "I want it to open a new window tab rather than on the same window tab"), so the
+    // Scheduler stays open behind it. t.showCard swapped the whole Trello window over to the card.
+    tc.onclick=function(){ var url="https://trello.com/c/"+j.id; var w=window.open(url,"_blank"); if(w){ try{ w.opener=null; }catch(e){} } else { try{ if(t&&typeof t.showCard==="function") t.showCard(j.id); }catch(e){} } };
     head.appendChild(tc);
     var x=el("button","close","Close"); x.onclick=function(){open=null;render();}; head.appendChild(x); m.appendChild(head);
 
