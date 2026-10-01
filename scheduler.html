@@ -1026,8 +1026,9 @@ var SNAP=null, DETAIL={};
       right.appendChild(twb); }
     if(!o.shop && j.collect && !o.leg){ var cwb=block("Collection Slot","slot"); var cwr=el("div","row tw");
       var mkC=function(lbl,key){ var lab=el("label",null,lbl); var inp=el("input"); inp.type="time"; inp.step="300"; inp.value=j[key]||""; inp.setAttribute("aria-label",lbl); inp.onchange=function(){ j[key]=inp.value||null; persist(); render(); }; lab.appendChild(inp); return lab; };
-      cwr.appendChild(mkC("Customer arrives after","from")); cwr.appendChild(mkC("Loaded and ready by","by")); cwb.appendChild(cwr);
-      cwb.appendChild(el("div","hint",j.from||j.by?"The labour needs "+(part.who.length?part.who.join(", "):"someone")+" there"+(j.from?" from "+j.from:"")+(j.by?", with it picked and ready by "+j.by:"")+".":"Leave blank when the customer has not given a time. Put it in when they do, so Forton is not empty when they turn up."));
+      // one time, when they expect to collect (Sam, 1 Oct 2026: "not loaded by time")
+      cwr.appendChild(mkC("Estimated collection time","from")); cwb.appendChild(cwr);
+      cwb.appendChild(el("div","hint",j.from?"The labour needs "+(part.who.length?part.who.join(", "):"someone")+" there for around "+j.from+".":"Leave blank when the customer has not given a time. Put it in when they do, so Forton is not empty when they turn up."));
       right.appendChild(cwb); }
     if(ESTIMATE_ON && !o.shop && j.site && !contractorOnly && !j.isLeg){ var vb=block("Van Load","van"); var L=j.load||loadOf([]);
       var m3=j.cubeSet!=null?j.cubeSet:(L.complete?L.m3:null), kg=L.complete||j.cubeSet!=null?L.kg:0;

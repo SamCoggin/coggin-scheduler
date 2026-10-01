@@ -433,13 +433,14 @@
         }
         // THE COLLECTION SLOT ON THE CARD (Sam, 1 Oct 2026: "Why does it not show the collection slot on this view?").
         // The same two times the Scheduler's Collection Slot block saves, so either view sets them.
-        if(loading&&!contractorOnly){ var sTxt=(d.from||d.by)?((d.from?"customer after "+d.from:"")+(d.from&&d.by?", ":"")+(d.by?"ready by "+d.by:"")):"No time from the customer yet";
+        // ONE TIME, WHEN THEY EXPECT TO COLLECT (Sam, 1 Oct 2026: "I just need to be able to add the estimated collection
+        // time not loaded by time"). Saved as from, the field the Scheduler's warning already reads.
+        if(loading&&!contractorOnly){ var sTxt=d.from?"around "+d.from:"No time from the customer yet";
           ts.appendChild(rowEl("slot","Collection slot",sTxt,function(ed){
-            var r=el("div","row"); var fi=el("input"); fi.type="time"; fi.step="300"; fi.value=d.from||""; fi.setAttribute("aria-label","Customer arrives after"); fi.onchange=function(){ d.from=fi.value||null; save(); render(); };
-            var bi=el("input"); bi.type="time"; bi.step="300"; bi.value=d.by||""; bi.setAttribute("aria-label","Loaded and ready by"); bi.onchange=function(){ d.by=bi.value||null; save(); render(); };
-            r.appendChild(el("span","lbl","Customer arrives after")); r.appendChild(fi); r.appendChild(el("span","lbl","Loaded and ready by")); r.appendChild(bi); ed.appendChild(r);
+            var r=el("div","row"); var fi=el("input"); fi.type="time"; fi.step="300"; fi.value=d.from||""; fi.setAttribute("aria-label","Estimated collection time"); fi.onchange=function(){ d.from=fi.value||null; save(); render(); };
+            r.appendChild(el("span","lbl","Estimated collection time")); r.appendChild(fi); ed.appendChild(r);
             ed.appendChild(el("div","hint","Leave blank until the customer gives a time. Put it in when they do, so Forton is not empty when they turn up."));
-          },(d.from||d.by)?"":"todo")); }
+          },d.from?"":"todo")); }
         if(qcApplies&&!qcPlaced) ts.appendChild(qcRow());
         var LEG_TYPES_CARD=[["to_sub","Deliver to subcontractor"],["from_sub","Collect from subcontractor"],["production","Production"],["site","Site visit"],["labour","Labour"]];
         ts.appendChild(rowEl("addleg","Legs",(d.legs||[]).length?((d.legs.length)+(d.legs.length===1?" leg":" legs")+" on this job"):"None",function(ed){
