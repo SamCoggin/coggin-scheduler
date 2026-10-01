@@ -41,6 +41,7 @@
   .vseg button{display:flex;flex-direction:column;align-items:center;gap:2px;padding:9px 4px;line-height:1.1}
   .vseg button b{font-size:14px} .vseg button small{font-size:10.5px;font-weight:500;color:var(--muted)} .vseg button.on small{color:rgba(255,255,255,.85)}
   .hint{color:var(--muted);font-size:13px;margin-top:6px} .hint.far{color:var(--red);font-weight:700}
+  .pst{padding:8px 14px;font-size:13px;font-weight:700;border-top:1px solid var(--line);color:var(--muted)} .pst.ok{color:var(--green);background:var(--green-bg)} .pst.soon{color:var(--amber);background:var(--amber-bg)} .pst.late{color:var(--red);background:var(--red-bg)}
   .avail{margin-top:10px;display:flex;flex-direction:column;gap:6px}
   .wday{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:8px 12px}
   .whead{font-size:13px;font-weight:700;margin-bottom:4px}
@@ -359,6 +360,8 @@
         } },d.prep.mins!=null?"":(d.prep.who.length?"bad":"todo")));
       ps.appendChild(rowEl("pdue","Production due",(prodDue?niceShort(prodDue):"Not set")+(d.prodDue?"":viewing?", ready for the viewing":", "+PRODUCTION_BUFFER_DAYS+" working days before delivery"),function(ed){ var pdr=el("div","row"); var pdi=el("input"); pdi.type="date"; pdi.value=prodDue||""; pdi.onchange=function(){ d.prodDue=pdi.value||null; save(); render(); }; pdr.appendChild(pdi);
         if(d.prodDue){ var rs=el("button","p","Reset"); rs.onclick=function(){ d.prodDue=null; save(); render(); }; pdr.appendChild(rs); } ed.appendChild(pdr); ed.appendChild(el("div","hint","The day production must be finished and checked. "+PRODUCTION_BUFFER_DAYS+" working days before delivery unless you set it.")); }));
+      // ON TIME OR NOT, the same line the Scheduler's production card shows (Sam, 1 Oct 2026: "add it to the trello card too")
+      var pst=(d.prep.done&&d.prep.done.status==="done")?null:prodStatusOf(d.prep,prodDue,todayIso()); if(pst) ps.appendChild(el("div","pst "+pst.cls,pst.text));
       if(qcApplies){ ps.appendChild(qcRow()); qcPlaced=true; }
       app.appendChild(ps);
     }

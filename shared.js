@@ -518,3 +518,22 @@ if(!ESTIMATE_ON){
   driveFor=function(){ return null; };
   loadOf=function(){ return {m3:0,kg:0,rows:[],unmatched:[],min:0,prod:0,chairM3:0,any:false,complete:false}; };
 }
+
+// IS THE PRODUCTION ON TIME? (Sam, 1 Oct 2026: "is there a way to see when they need to be allocated to the job to
+// ensure the job is ready in time?", then "3 day rule on everything", then "add it to the trello card too"). Nothing is
+// estimated: due is the 3-day rule or the date set by hand. Once days, people and time are set, the booked finish is
+// checked against it; until then the job counts down to its due date, amber at 5 working days or less, red when due
+// or past. Used by the Scheduler's production cards and Needs planning list, and the card's Production section.
+var PLAN_AHEAD_DAYS=5;
+function prodStatusOf(P,due,today){
+  if(!P||!due) return null; var who=P.who||[];
+  if(P.date&&who.length&&P.mins!=null){
+    if(P.date>due){ var late=workDaysBetween(due,P.date)-1; return {cls:"late",planned:true,text:"Due "+niceShort(due)+". Finishes "+niceShort(P.date)+", "+late+(late===1?" working day":" working days")+" late"}; }
+    return {cls:"ok",planned:true,text:"Due "+niceShort(due)+". On track, finishes "+niceShort(P.date)}; }
+  var missing=!P.date?"no production days":!who.length?"no operatives":"no time";
+  if(due<today) return {cls:"late",text:"Due "+niceShort(due)+", now past. Not planned: "+missing};
+  if(due===today) return {cls:"late",text:"Due today. Not planned: "+missing};
+  var tm=new Date(today+"T12:00"); tm.setDate(tm.getDate()+1); var n=workDaysBetween(tm.toISOString().slice(0,10),due);
+  if(n<=PLAN_AHEAD_DAYS) return {cls:"soon",text:"Due "+niceShort(due)+", "+n+(n===1?" working day":" working days")+" away. Plan it: "+missing};
+  return {cls:"",text:"Due "+niceShort(due)+". Plan by "+niceShort(workingDaysBefore(due,PLAN_AHEAD_DAYS))};
+}

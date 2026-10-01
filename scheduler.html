@@ -1302,19 +1302,9 @@ var SNAP=null, DETAIL={};
   // ensure the job is ready in time?", then "3 day rule on everything"). Nothing is estimated: the due date is the
   // 3-day rule (or the date set by hand), and once people, days and time are set the booked finish is checked against
   // it. Until then the job counts down to its due date: amber at 5 working days or less, red when it is due or past.
-  var PLAN_AHEAD_DAYS=5;
   function prodStatus(j){
     if(!j||!j.prep||!j.prodDue||j.isHold||j.completed||(j.prep.done&&j.prep.done.status==="done")) return null;
-    var due=j.prodDue, today=iso(TODAY), P=j.prep;
-    if(P.date&&P.who.length&&P.mins!=null){
-      if(P.date>due){ var late=workDaysBetween(due,P.date)-1; return {cls:"late",text:"Due "+niceDay(due)+". Finishes "+niceDay(P.date)+", "+late+(late===1?" working day":" working days")+" late"}; }
-      return {cls:"ok",text:"Due "+niceDay(due)+". On track, finishes "+niceDay(P.date)}; }
-    var missing=!P.date?"no production days":!P.who.length?"no operatives":"no time";
-    if(due<today) return {cls:"late",text:"Due "+niceDay(due)+", now past. Not planned: "+missing};
-    var tm=new Date(today+"T12:00"); tm.setDate(tm.getDate()+1); var n=workDaysBetween(iso(tm),due);
-    if(due===today) return {cls:"late",text:"Due today. Not planned: "+missing};
-    if(n<=PLAN_AHEAD_DAYS) return {cls:"soon",text:"Due "+niceDay(due)+", "+n+(n===1?" working day":" working days")+" away. Plan it: "+missing};
-    return {cls:"",text:"Due "+niceDay(due)+". Plan by "+niceDay(workingDaysBefore(due,PLAN_AHEAD_DAYS))};
+    return prodStatusOf(j.prep,j.prodDue,iso(TODAY));
   }
   function notReady(j){
     if((!j.site&&!j.collect)||j.isHold||j.isLeg) return null;
@@ -1364,7 +1354,7 @@ var SNAP=null, DETAIL={};
       var cards=el("div","cards");
       // NEEDS PLANNING: production with no days, people or time, due within 5 working days or past it. At the top of
       // Production on every day from today, so it is seen before it is late. Select one to plan it.
-      if(g[0]==="shop"&&k>=iso(TODAY)) JOBS.filter(function(j){ var st=prodStatus(j); return st&&(st.cls==="soon"||(st.cls==="late"&&!(j.prep.date&&j.prep.who.length&&j.prep.mins!=null))); }).sort(function(a,b){ return a.prodDue<b.prodDue?-1:1; }).forEach(function(j){
+      if(g[0]==="shop"&&k>=iso(TODAY)) JOBS.filter(function(j){ var st=prodStatus(j); return st&&!st.planned&&(st.cls==="soon"||st.cls==="late"); }).sort(function(a,b){ return a.prodDue<b.prodDue?-1:1; }).forEach(function(j){
         var st=prodStatus(j), nc=el("div","card needplan "+st.cls); nc.appendChild(el("b",null,j.title)); nc.appendChild(el("span","for "+st.cls,st.text)); nc.title="Plan the production"; nc.onclick=function(){ open=j.id+":prep"; render(); }; cards.appendChild(nc); });
       if(g[0]==="road") liveIssues(k).filter(function(x){ return !x.j; }).forEach(function(x){ var dw=el("div","daywarn"); dw.appendChild(document.createTextNode(x.text)); var xb=el("button","dis","\u00d7"); xb.title="Dismiss this warning. It comes back if what it says changes."; xb.onclick=function(e){ e.stopPropagation(); DISMISSED[warnKey(x)]=true; persist(); render(); }; dw.appendChild(xb); cards.appendChild(dw); });
       if(g[0]==="road") vanRounds(rounds).forEach(function(r){ cards.appendChild(roundEl(r)); });
