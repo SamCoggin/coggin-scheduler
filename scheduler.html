@@ -897,7 +897,7 @@ var SNAP=null, DETAIL={};
   function findOpen(){ if(!open) return null; var parts=open.split(":"); if(parts[1]&&parts[1].indexOf("leg")===0){ var lj=legJobs().filter(function(x){return x.id===open;})[0]; return lj?{job:lj,part:lj,shop:false,leg:true}:null; } var j=JOBS.filter(function(x){return x.id===parts[0];})[0]; if(!j) return null; return parts[1]==="prep"?{job:j,part:j.prep,shop:true}:{job:j,part:j,shop:false}; }
 
   // THE CARD BACK ORDER (Sam, 13 Sep 2026): blocks appear in the order you decide them. Anything at 20 or more folds under "More".
-  var BLOCK_ORDER={"This leg":0,"Estimate for this job":1,"Estimate for this production":1,"Operatives":2,"Production Dates":1.4,"Production Day":1.4,"Transported By":4,"Vehicle":5,"Travel Time, return":6,"Time Window":7,"Collection Slot":7,"QC":7.5,"What happened":0.5,"Production Time per Operative":1.2,"Site Time per Operative":8,"Labour Time per Operative":8,"Production":20,"Van Load":21,"Legs":22};
+  var BLOCK_ORDER={"This leg":0,"Estimate for this job":1,"Estimate for this production":1,"Operatives":2,"Production Dates":1.4,"Production Day":1.4,"Book the rest":0.6,"Transported By":4,"Vehicle":5,"Travel Time, return":6,"Time Window":7,"Collection Slot":7,"QC":7.5,"What happened":0.5,"Production Time per Operative":1.2,"Site Time per Operative":8,"Labour Time per Operative":8,"Production":20,"Van Load":21,"Legs":22};
   function block(title,tipKey){ var d=el("div","blk"); d.dataset.order=BLOCK_ORDER[title]!=null?BLOCK_ORDER[title]:15; var h=el("div","bh"); h.appendChild(el("span",null,title)); if(tipKey) h.appendChild(tip(tipKey)); d.appendChild(h); return d; }
   function modal(){
     var o=findOpen(); if(!o) return null;
@@ -970,6 +970,20 @@ var SNAP=null, DETAIL={};
     if(o.leg){ var lgb=block("This leg"); var lr=el("div","row"); var ld=el("input"); ld.type="date"; ld.value=j.leg.date; ld.onchange=function(){ if(ld.value){ j.leg.date=ld.value; render(); } }; lr.appendChild(el("span",null,"Date")); lr.appendChild(ld); lgb.appendChild(lr);
       var wr=el("div","row"); var wi=el("input"); wi.type="text"; wi.value=j.leg.where||""; wi.placeholder="Subcontractor or site, with postcode"; wi.style.minWidth="260px"; wi.onchange=function(){ j.leg.where=wi.value; var pc=/\b([A-Z]{1,2})\d/i.exec(wi.value); j.leg.drive=pc&&DRIVE[pc[1].toUpperCase()]?Math.round(DRIVE[pc[1].toUpperCase()].h*2*60*TRAFFIC/5)*5:j.leg.drive; render(); }; wr.appendChild(el("span",null,"Where")); wr.appendChild(wi); lgb.appendChild(wr);
       var rm=el("button","close","Remove this leg"); rm.style.marginTop="8px"; rm.onclick=function(){ LEGS.splice(LEGS.indexOf(j.leg),1); open=null; render(); }; lgb.appendChild(rm); right.appendChild(lgb); }
+    // BOOK THE REST (Sam, 1 Oct 2026: "build it"): the stint that happened stays as worked; only what is left is booked,
+    // as its own production stint with its own people, time and day.
+    var stR=o.shop?prodStatus(j):null;
+    if(o.shop&&stR&&stR.unfinished){ var rb=block("Book the rest","days"); rb.appendChild(el("div","hint far",stR.text));
+      var rWho=(part.who||[]).slice(), rMins=null, rDay=null;
+      rb.appendChild(el("div","lbl","Who finishes it")); var rw=el("div","seg"); TEAM.forEach(function(w){ var bt=el("button",rWho.indexOf(w)>=0?"on":null,w); bt.onclick=function(){ var i=rWho.indexOf(w); if(i>=0) rWho.splice(i,1); else rWho.push(w); bt.className=rWho.indexOf(w)>=0?"on":""; }; rw.appendChild(bt); }); rb.appendChild(rw);
+      rb.appendChild(el("div","lbl","Time left per operative")); var tr=el("div","row"); var th=el("input"); th.type="number"; th.min="0"; th.value="0"; th.style.width="70px"; th.setAttribute("aria-label","Hours left"); var tmn=el("input"); tmn.type="number"; tmn.min="0"; tmn.step="5"; tmn.value="30"; tmn.style.width="70px"; tmn.setAttribute("aria-label","Minutes left");
+      tr.appendChild(th); tr.appendChild(el("span",null,"hours")); tr.appendChild(tmn); tr.appendChild(el("span",null,"minutes")); rb.appendChild(tr);
+      rb.appendChild(el("div","lbl","Day")); var dr=el("div","row"); var di=el("input"); di.type="date"; di.value=iso(TODAY); di.setAttribute("aria-label","Day to finish it"); dr.appendChild(di); rb.appendChild(dr);
+      var err=el("div","hint far",""); var go=el("button","p","Book the rest"); go.onclick=function(){ var m=(parseInt(th.value,10)||0)*60+(parseInt(tmn.value,10)||0);
+        if(!rWho.length){ err.textContent="Pick who finishes it."; return; } if(!m){ err.textContent="Put in the time left."; return; } if(!di.value){ err.textContent="Pick the day."; return; }
+        if(!(part.done&&part.done.status==="done")) part.done={status:"done",mins:part.mins,who:part.who.slice(),notes:"Part done, the rest booked for "+niceDay(di.value),at:iso(new Date())};
+        LEGS.push({parent:j.id,type:"production",date:di.value,who:rWho.slice(),mins:m,drive:null,where:"the rest",from:null,by:null,pc:null,src:null}); persist(); render(); };
+      rb.appendChild(go); rb.appendChild(err); right.appendChild(rb); }
     var oneDayP=o.shop&&part.mins!=null&&part.mins<=DAY_MINS&&!(part.start&&part.date&&part.start!==part.date);
     // MUST BE DONE BY, UNDER THE DAY (Sam, 1 Oct 2026: "match the scheduler editor too"): the due date is changed in
     // the same box as the day, as on the card, not in a box of its own.
@@ -1324,9 +1338,16 @@ var SNAP=null, DETAIL={};
   // 3-day rule (or the date set by hand), and once people, days and time are set the booked finish is checked against
   // it. Until then the job counts down to its due date: amber at 5 working days or less, red when it is due or past.
   function prodStatus(j){
-    if(!j||!j.prep||!j.prodDue||j.isHold||j.completed||(j.prep.done&&j.prep.done.status==="done")) return null;
-    return prodStatusOf(j.prep,j.prodDue,iso(TODAY),j.stage==="In progress"||j.stage==="Not started");
+    if(!j||!j.prep||!j.prodDue||j.isHold||j.completed) return null;
+    var inShop=j.stage==="In progress"||j.stage==="Not started";
+    // THE REST OF A PART-DONE PRODUCTION (Sam, 1 Oct 2026, CUBE HR: "Bart got the desks ready ... the chair needs 30
+    // minutes"). Once the first stint is recorded and the rest booked as its own stint, the latest stint is what is
+    // checked against the due date.
+    var rest=restStints(j); if(j.prep.done&&j.prep.done.status==="done"){ if(!rest.length) return null; var L=rest[rest.length-1];
+      var st=prodStatusOf({date:L.date,start:L.date,who:L.who||[],mins:L.mins},j.prodDue,iso(TODAY),inShop); if(st){ st.text="The rest: "+st.text; st.full="The rest: "+st.full; } return st; }
+    return prodStatusOf(j.prep,j.prodDue,iso(TODAY),inShop);
   }
+  function restStints(j){ return LEGS.filter(function(L){ return L.parent===j.id&&L.type==="production"&&L.date; }).sort(function(a,b){ return a.date<b.date?-1:1; }); }
   function notReady(j){
     if((!j.site&&!j.collect)||j.isHold||j.isLeg) return null;
     if(j.prep){ if(!j.prep.date) return "Production not scheduled"; if(!j.prep.who.length) return "Production has no operatives"; if(j.prep.date>=j.date) return "Production ends "+niceDay(j.prep.date)+", delivery is "+niceDay(j.date); if(j.prodDue&&j.prep.date>j.prodDue) return "Production ends "+niceDay(j.prep.date)+", after the "+niceDay(j.prodDue)+" due date"; }

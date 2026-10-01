@@ -276,6 +276,11 @@
   }
   function section(kind,name,when){ var s=el("div","sec "+kind); var h=el("div","sec-h"); h.appendChild(el("span","name",name)); if(when) h.appendChild(el("span","when",when)); s.appendChild(h); return s; }
   var OPEN={};   // which editor rows are open, kept across redraws
+  // the same as the Scheduler's: once the first stint is recorded and the rest booked, the latest stint is checked
+  function cardProdStatus(prodDue){ if(!d||!d.prep) return null; var inShop=workshop&&!/^(New Jobs|Transfer to Job Board)$/i.test(String(card.listName||"").trim());
+    if(d.prep.done&&d.prep.done.status==="done"){ var rest=(d.legs||[]).filter(function(L){ return L.type==="production"&&L.date; }).sort(function(a,b){ return a.date<b.date?-1:1; }); if(!rest.length) return null; var L=rest[rest.length-1];
+      var st=prodStatusOf({date:L.date,start:L.date,who:L.who||[],mins:L.mins},prodDue,todayIso(),inShop); if(st){ st.text="The rest: "+st.text; st.full="The rest: "+st.full; } return st; }
+    return prodStatusOf(d.prep,prodDue,todayIso(),inShop); }
   function rowEl(key,label,value,editor,cls){
     var r=el("div","srow"+(cls?" "+cls:"")); var top=el("div","stop2"); top.appendChild(el("span","sl",label)); var v=el("span","sv"); if(typeof value==="string") v.textContent=value; else v.appendChild(value); top.appendChild(v);
     if(editor){ var bt=el("button","chg",OPEN[key]?"Done":"Change"); bt.onclick=function(){ OPEN[key]=!OPEN[key]; render(); }; top.appendChild(bt); } r.appendChild(top);
@@ -343,7 +348,7 @@
       // DAY AND DUE ARE ONE ROW (Sam, 1 Oct 2026: "production day and production due feels like it is doing the same
       // thing"). The due date is in the header; the row says the day booked, or by when it must be. Moving the due
       // date sits in the same row's Change, under the day.
-      var pst0=(d.prep.done&&d.prep.done.status==="done")?null:prodStatusOf(d.prep,prodDue,todayIso(),workshop&&!/^(New Jobs|Transfer to Job Board)$/i.test(String(card.listName||"").trim()));
+      var pst0=cardProdStatus(prodDue);
       var dueEd=function(ed){ ed.appendChild(el("div","lbl","Must be done by")); var pdr=el("div","row"); var pdi=el("input"); pdi.type="date"; pdi.value=prodDue||""; pdi.setAttribute("aria-label","Must be done by"); pdi.onchange=function(){ d.prodDue=pdi.value||null; save(); render(); }; pdr.appendChild(pdi);
         if(d.prodDue){ var rs=el("button","p","Reset"); rs.onclick=function(){ d.prodDue=null; save(); render(); }; pdr.appendChild(rs); } ed.appendChild(pdr);
         ed.appendChild(el("div","hint",d.prodDue?"Set by you.":(viewing?"Ready for the viewing.":PRODUCTION_BUFFER_DAYS+" working days before delivery. Change it if this job needs more or less."))); };
@@ -378,7 +383,7 @@
         } },d.prep.mins!=null?"":(d.prep.who.length?"bad":"todo")));
       ps.insertBefore(ps.lastChild,pdaysRow);   // time before days
       // ON TIME OR NOT, the same line the Scheduler's production card shows (Sam, 1 Oct 2026: "add it to the trello card too")
-      var pst=(d.prep.done&&d.prep.done.status==="done")?null:prodStatusOf(d.prep,prodDue,todayIso(),workshop&&!/^(New Jobs|Transfer to Job Board)$/i.test(String(card.listName||"").trim()));
+      var pst=cardProdStatus(prodDue);
       if(pst) ps.appendChild(el("div","pst "+pst.cls,pst.text));
       // TIME, DAYS, DUE, THEN WHO (Sam, 1 Oct 2026: "I wanted time at the top of the list and then production day/s"),
       // the same order as the Scheduler's production editor so the two mirror.
