@@ -82,6 +82,7 @@
   .vrow .tag{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.03em;color:var(--muted);border:1px solid var(--line);border-radius:4px;padding:2px 6px}
   .vrow.bad{background:var(--red-bg)} .vrow.bad b,.vrow.bad .m{color:var(--red)}
   .vrow .rm{border:1px solid var(--line);background:var(--card);border-radius:6px;padding:3px 8px;font-size:13px;font-weight:700}
+  .blk .lbl{font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.03em;color:var(--muted);margin:12px 0 4px}
   .vadd{margin-top:10px} .vadd .lbl{font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.03em;margin-bottom:6px}
   .vadd select{border:1px solid var(--line);border-radius:6px;padding:6px 8px;background:var(--card);font-weight:600;flex:1}
   .board.manager{grid-template-columns:1fr;overflow:auto}
@@ -904,7 +905,7 @@ var SNAP=null, DETAIL={};
     if(j.label){ var lb=el("span","lab",j.label); lb.style.background=COL[j.label]||"#626f86"; labs.appendChild(lb); }
     labs.appendChild(el("span","lab stage",j.stageLabel)); ht.appendChild(labs);
     ht.appendChild(el("h3",null,j.title));
-    ht.appendChild(el("div","sub",o.shop?"Production for "+niceDay(j.date)+(j.collect?", customer collecting":""):(j.start?niceDay(j.start)+" to "+niceDay(j.date)+", "+daysOf(j).length+" days":niceDay(j.date))));
+    ht.appendChild(el("div","sub",o.shop?(j.prodDue?"Due "+niceDay(j.prodDue)+", for "+(j.collect?"collection ":"delivery ")+niceDay(j.date):"Production for "+niceDay(j.date)+(j.collect?", customer collecting":"")):(j.start?niceDay(j.start)+" to "+niceDay(j.date)+", "+daysOf(j).length+" days":niceDay(j.date))));
     head.appendChild(ht);
     // Straight to the card (Sam, 16 Sep 2026: "a button to click into the Trello card from here").
     // Inside Trello the Power-Up opens it in place; anywhere else the plain card link does.
@@ -964,12 +965,18 @@ var SNAP=null, DETAIL={};
       var wr=el("div","row"); var wi=el("input"); wi.type="text"; wi.value=j.leg.where||""; wi.placeholder="Subcontractor or site, with postcode"; wi.style.minWidth="260px"; wi.onchange=function(){ j.leg.where=wi.value; var pc=/\b([A-Z]{1,2})\d/i.exec(wi.value); j.leg.drive=pc&&DRIVE[pc[1].toUpperCase()]?Math.round(DRIVE[pc[1].toUpperCase()].h*2*60*TRAFFIC/5)*5:j.leg.drive; render(); }; wr.appendChild(el("span",null,"Where")); wr.appendChild(wi); lgb.appendChild(wr);
       var rm=el("button","close","Remove this leg"); rm.style.marginTop="8px"; rm.onclick=function(){ LEGS.splice(LEGS.indexOf(j.leg),1); open=null; render(); }; lgb.appendChild(rm); right.appendChild(lgb); }
     var oneDayP=o.shop&&part.mins!=null&&part.mins<=DAY_MINS&&!(part.start&&part.date&&part.start!==part.date);
+    // MUST BE DONE BY, UNDER THE DAY (Sam, 1 Oct 2026: "match the scheduler editor too"): the due date is changed in
+    // the same box as the day, as on the card, not in a box of its own.
+    var mustBy=function(box){ box.appendChild(el("div","lbl","Must be done by")); var pdr=el("div","row"); var pdi=el("input"); pdi.type="date"; pdi.value=j.prodDue||""; pdi.setAttribute("aria-label","Must be done by");
+      pdi.onchange=function(){ if(pdi.value){ j.prodDue=pdi.value; j.prodDueSet=true; } render(); }; pdr.appendChild(pdi);
+      if(j.prodDueSet){ var rs=el("button","close","Reset"); rs.onclick=function(){ j.prodDue=productionDueFor(j.labels,j.out); j.prodDueSet=false; render(); }; pdr.appendChild(rs); }
+      box.appendChild(pdr); box.appendChild(el("div","hint",j.prodDueSet?"Set by you.":PRODUCTION_BUFFER_DAYS+" working days before delivery. Change it if this job needs more or less.")); };
     if(oneDayP){ var db=block("Production Day","days"); var r=el("div","row");   // one date for a job that fits in a day, as on the card
       var d0=el("input"); d0.type="date"; d0.value=part.date||""; d0.setAttribute("aria-label","Production day"); d0.onchange=function(){ part.date=d0.value||null; part.start=part.date; render(); };
       r.appendChild(d0); var clr0=el("button","close","Clear"); clr0.onclick=function(){ part.start=null; part.date=null; render(); }; r.appendChild(clr0); db.appendChild(r);
       if(!part.date) db.appendChild(el("div","hint","Not scheduled. Pick the day and it appears under Production."));
       if(j.prodDue){ var dst0=prodStatus(j); if(dst0) db.appendChild(el("div","for "+dst0.cls,dst0.full)); }
-      right.appendChild(db); }
+      mustBy(db); right.appendChild(db); }
     else if(o.shop){ var db=block("Production Dates","days"); var r=el("div","row");
       var d1=el("input"); d1.type="date"; d1.value=part.start||""; d1.setAttribute("aria-label","From"); d1.onchange=function(){ part.start=d1.value||null; if(part.start&&(!part.date||part.date<part.start)) part.date=part.start; if(!part.start) part.date=null; render(); };
       var d2=el("input"); d2.type="date"; d2.value=part.date||""; d2.setAttribute("aria-label","To"); d2.onchange=function(){ part.date=d2.value||null; if(part.date&&(!part.start||part.start>part.date)) part.start=part.date; if(!part.date) part.start=null; render(); };
@@ -978,7 +985,7 @@ var SNAP=null, DETAIL={};
       var pf=prodFit(part.mins,nd); if(pf) db.appendChild(el("div","hint far",pf));
       // the same on-time line as the card's Production section, so the two mirror
       if(j.prodDue){ var dst=prodStatus(j); if(dst) db.appendChild(el("div","for "+dst.cls,dst.full)); else db.appendChild(el("div","hint","Production due "+niceDay(j.prodDue)+".")); }
-      right.appendChild(db); }
+      mustBy(db); right.appendChild(db); }
     if(!o.shop && j.prep){ var pb=block("Production");
       var pdr=el("div","row"); pdr.style.marginBottom="8px"; pdr.appendChild(el("span",null,"Production due")); var pdi=el("input"); pdi.type="date"; pdi.value=j.prodDue||""; pdi.setAttribute("aria-label","Production due date");
       pdi.onchange=function(){ if(pdi.value){ j.prodDue=pdi.value; j.prodDueSet=true; } render(); }; pdr.appendChild(pdi);
