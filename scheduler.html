@@ -921,7 +921,9 @@ var SNAP=null, DETAIL={};
     var tc=el("button","close","Open in Trello"); tc.style.marginRight="8px";
     // A NEW TAB (Sam, 1 Oct 2026: "I want it to open a new window tab rather than on the same window tab"), so the
     // Scheduler stays open behind it. t.showCard swapped the whole Trello window over to the card.
-    tc.onclick=function(){ var url="https://trello.com/c/"+j.id; var w=window.open(url,"_blank"); if(w){ try{ w.opener=null; }catch(e){} } else { try{ if(t&&typeof t.showCard==="function") t.showCard(j.id); }catch(e){} } };
+    // a leg is part of its job's card, so it opens that card (Sam, 1 Oct 2026, Balfour Beatty: "Malformed URL")
+    var cardJ=j.isLeg&&j.parentJob?j.parentJob:j; if(j.isHold) tc.style.display="none";
+    tc.onclick=function(){ var url="https://trello.com/c/"+(cardJ.short||cardJ.id); var w=window.open(url,"_blank"); if(w){ try{ w.opener=null; }catch(e){} } else { try{ if(t&&typeof t.showCard==="function") t.showCard(cardJ.id); }catch(e){} } };
     head.appendChild(tc);
     var x=el("button","close","Close"); x.onclick=function(){open=null;render();}; head.appendChild(x); m.appendChild(head);
 
