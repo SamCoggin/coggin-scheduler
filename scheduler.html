@@ -254,7 +254,7 @@
     .printsheet .psec{font-size:9pt;font-weight:800;text-transform:uppercase;letter-spacing:.04em;margin:2.5mm 0 1mm;color:#333;break-after:avoid}
     .printsheet .prow b{display:block} .printsheet .prow small{display:block;color:#444;font-size:9pt}
   }
-  .leave{flex-shrink:0;background:var(--amber-bg);color:var(--amber);font-weight:600;border-radius:8px;padding:8px 12px;font-size:13px}
+  .leave{flex-shrink:0;background:var(--amber-bg);color:var(--amber);font-weight:600;border-radius:8px;padding:8px 12px;font-size:13px;display:flex;justify-content:space-between;align-items:center;gap:8px}
 
   .tot{border-top:2px solid #3d4451;background:var(--card);border-radius:0 0 10px 10px;padding:8px 10px;font-size:13px;display:flex;flex-wrap:wrap;gap:4px 6px;align-items:center}
   .tot .n{font-weight:800;font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.03em;margin-right:2px}
@@ -1349,8 +1349,16 @@ var SNAP=null, DETAIL={};
     // people column: what each person has, and what they are on
     var pl=el("div","list"+(isToday?" today":"")); var ph=el("h2"); var phl=el(isToday?"em":"span",null,"Operatives"); phl.appendChild(tip("people")); ph.appendChild(phl); var load=loadOn(k); ph.appendChild(el("span",null,(k<iso(TODAY))?FIELD_CREW.length+" operatives":freeCount(load))); pl.appendChild(ph);
     var pc=el("div","cards oplist"); jobs=allJobsDay; preps=prepJobs().filter(function(j){return j.prep&&j.prep.date&&daysOf(j.prep).indexOf(k)>=0;}); rounds=roundsOn(k,jobs);
-    var lv=LEAVE.filter(function(l){return l.date===k;}); leaveLines(lv).forEach(function(tx){ pc.appendChild(el("div","leave",tx)); });
-    opOrder(load).forEach(function(w){ if((load[w]||{}).c==="office") return; var ob=null;
+    // OFF ONCE, AT THE TOP (Sam, 1 Oct 2026: "Rob is showing on leave twice on this list and i JUST NEED IT ONCE AT THE
+    // TOP OF THE LIST"). The banner names who is off and why; someone marked off here gets Back in on it, and their
+    // own row below is gone.
+    var lv=LEAVE.filter(function(l){return l.date===k;}), bhs=lv.filter(function(l){return l.bh;});
+    if(bhs.length) pc.appendChild(el("div","leave","Bank holiday: "+BANK_HOLIDAYS[k]));
+    lv.filter(function(l){return !l.bh;}).forEach(function(l){ var lw=crewOf(l.text.split(" ")[0]), why=OFF_WHY[k+"|"+lw];
+      var bn=el("div","leave",l.off?lw+" off"+(why?", "+why:""):l.text);
+      if(l.off&&k>=iso(TODAY)){ var bb=el("button","olink","Back in"); bb.title="Put "+lw+" back on the day"; bb.onclick=function(){ toggleOff(k,lw); }; bn.appendChild(bb); }
+      pc.appendChild(bn); });
+    opOrder(load).forEach(function(w){ var lc=(load[w]||{}).c; if(lc==="office"||lc==="off") return; var ob=null;
       var isOff=(OFF[k]||[]).map(crewOf).indexOf(w)>=0, onLeaveCard=LEAVE.some(function(l){return l.date===k&&!l.off&&crewOf(l.text.split(" ")[0])===w;});
       // The job sheet is gone (Sam, 29 Sep 2026: "the job sheet is also now redundant").
       if(!onLeaveCard){ ob=el("button","olink"+(isOff?" on":""),isOff?"Back in":"Mark as off"); ob.title=isOff?"Put "+w+" back on the day":"Mark "+w+" as off for this day: sick, a course, a breakdown. It asks why.";
