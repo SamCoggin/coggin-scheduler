@@ -562,3 +562,12 @@ function prodStatusOf(P,due,today,inShop){
 // it is the whole day, after 16:30 none. Any other day gives null: the whole day stands.
 function minsLeftOn(k){ var n=new Date(), t=n.getFullYear()+"-"+String(n.getMonth()+1).padStart(2,"0")+"-"+String(n.getDate()).padStart(2,"0"); if(k!==t) return null;
   var now=n.getHours()*60+n.getMinutes(), S=8*60, E=16*60+30; if(now<=S) return DAY_MINS; if(now>=E) return 0; return Math.round((E-now)*DAY_MINS/(E-S)); }
+
+// TIME PER DAY ON A MULTI-DAY PRODUCTION (Sam, 1 Oct 2026, Sketch Studios: he set Full day meaning every day, and it
+// was read as 7h45 in total over 11 days, 42 minutes a day). On more than one day the time is set per operative PER DAY;
+// perDay is kept with the plan and mins (the total everything else reads) is perDay times the working days, kept in
+// step when the days change. One-day production is unchanged: mins is the day's time.
+function prepDayCount(P){ if(!P||!P.date) return 0; var a=P.start&&P.start<P.date?P.start:P.date, n=0; for(var x=new Date(a+"T12:00"); x.toISOString().slice(0,10)<=P.date; x.setDate(x.getDate()+1)){ if(x.getDay()!==0&&x.getDay()!==6) n++; } return n; }
+function prepPerDay(P){ var n=prepDayCount(P); if(n<=1) return P.mins; return P.perDay!=null?P.perDay:(P.mins!=null?Math.round(P.mins/n):null); }
+function setPrepPerDay(P,v){ var n=prepDayCount(P); if(n<=1){ P.mins=v; P.perDay=null; return; } P.perDay=v; P.mins=v==null?null:v*n; }
+function syncPrepTotal(P){ if(P&&P.perDay!=null&&P.date){ var n=prepDayCount(P); if(n>1) P.mins=P.perDay*n; else { P.mins=P.perDay; P.perDay=null; } } }

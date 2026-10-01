@@ -575,7 +575,7 @@ var SNAP=null, DETAIL={};
       if(d.who) j.who=d.who.slice(); if(d.cube!=null) j.cubeSet=d.cube; if(d.ignore&&d.ignore.length){ j.ignore=d.ignore.slice(); j.items=j.allItems.filter(function(l){return j.ignore.indexOf(l)<0;}); } if(d.items&&d.items.length){ j.manual=d.items.slice(); } j.load=loadOf(j.items.concat(j.manual).concat(j.loanItems||[])); if(d.mins!=null) j.mins=d.mins; if(d.at) j.at=d.at; if(d.drive!=null) j.drive=d.drive; if(d.driveAuto) j.driveAuto=true; if(!ESTIMATE_ON&&j.driveAuto){ j.drive=null; j.driveAuto=false; } if(d.contractor) j.contractor=d.contractor; if(d.from) j.from=d.from; if(d.by) j.by=d.by; if(d.vehicle) j.vehicle=d.vehicle; if(d.soloOk) j.soloOk=d.soloOk; if(d.qc&&d.qc.by) j.qc=d.qc; if(d.done&&d.done.status) j.done=(d.done.status==="no"&&d.date&&d.date!==j.date)?null:d.done;   // a did-not-go record clears once the card has a new date
       // DATE MOVED (Sam, 13 Sep 2026): the plan remembers the date it was made for. If sales move the card, the plan flags itself until someone presses Replanned.
       if(d.date&&d.date!==j.date&&((d.who&&d.who.length)||d.mins!=null||d.vehicle)) j.moved={from:d.date}; if(d.hireRef) j.hireRef=d.hireRef; if(d.hireBooked) j.hireBooked=true;
-      if(d.prep&&j.prep){ j.prep.who=d.prep.who||[]; j.prep.mins=d.prep.mins; j.prep.start=d.prep.start||null; j.prep.date=d.prep.date||null; if(d.prep.done&&d.prep.done.status) j.prep.done=d.prep.done; }
+      if(d.prep&&j.prep){ j.prep.who=d.prep.who||[]; j.prep.mins=d.prep.mins; j.prep.perDay=d.prep.perDay!=null?d.prep.perDay:null; if(d.prep.each) j.prep.each=d.prep.each; j.prep.start=d.prep.start||null; j.prep.date=d.prep.date||null; if(d.prep.done&&d.prep.done.status) j.prep.done=d.prep.done; }
       if(d.prodDue&&j.prep){ j.prodDue=d.prodDue; j.prodDueSet=true; }
       (d.legs||[]).forEach(function(L){ LEGS.push({parent:j.id,type:(L.type==="yard"||L.type==="warehouse")?"labour":L.type,date:L.date,who:L.who||[],mins:L.mins,drive:L.drive,where:L.where||"",from:L.from||null,by:L.by||null,pc:L.pc||null,src:L.src||null}); });
     });
@@ -680,6 +680,8 @@ var SNAP=null, DETAIL={};
   }
   // One status per person across several days: free throughout, busy on some, over on some, or off.
   function rangeLoad(days){
+    // a day that is over is not a free day (1 Oct 2026: "free 1 of 4 days" counted today after 16:30)
+    var live=days.filter(function(k){ return k>iso(TODAY)||(k===iso(TODAY)&&minsLeftOn(k)!==0); }); if(live.length) days=live;
     if(days.length===1) return loadOn(days[0]);
     var per=days.map(function(k){ return {k:k,l:loadOn(k)}; }), out={};
     var list=function(ks){ return ks.length<=3?ks.map(shortDay).join(", "):ks.length+" days"; };
@@ -703,7 +705,7 @@ var SNAP=null, DETAIL={};
   function persist(){
     if(!t) return;
     JOBS.forEach(function(j){
-      var d={date:j.moved?j.moved.from:j.date,who:j.who,mins:j.mins,drive:j.drive,driveAuto:!!j.driveAuto,at:j.at||undefined,cube:j.cubeSet,ignore:j.ignore&&j.ignore.length?j.ignore:undefined,items:j.manual&&j.manual.length?j.manual:undefined,load:j.load&&j.load.any?{m3:j.load.m3,kg:j.load.kg,complete:j.load.complete,rows:j.load.rows.map(function(r){return {n:r.n,type:r.type,m3:r.m3,kg:r.kg,built:r.built,est:r.est};}),unmatched:j.load.unmatched}:undefined,contractor:j.contractor||"",from:j.from||null,by:j.by||null,vehicle:j.vehicle||null,soloOk:j.soloOk||"",qc:j.qc||null,done:j.done||null,hireRef:j.hireRef||"",hireBooked:!!j.hireBooked,prodDue:j.prodDueSet?j.prodDue:null,prep:j.prep?{who:j.prep.who,mins:j.prep.mins,start:j.prep.start,date:j.prep.date,done:j.prep.done||null}:null,
+      var d={date:j.moved?j.moved.from:j.date,who:j.who,mins:j.mins,drive:j.drive,driveAuto:!!j.driveAuto,at:j.at||undefined,cube:j.cubeSet,ignore:j.ignore&&j.ignore.length?j.ignore:undefined,items:j.manual&&j.manual.length?j.manual:undefined,load:j.load&&j.load.any?{m3:j.load.m3,kg:j.load.kg,complete:j.load.complete,rows:j.load.rows.map(function(r){return {n:r.n,type:r.type,m3:r.m3,kg:r.kg,built:r.built,est:r.est};}),unmatched:j.load.unmatched}:undefined,contractor:j.contractor||"",from:j.from||null,by:j.by||null,vehicle:j.vehicle||null,soloOk:j.soloOk||"",qc:j.qc||null,done:j.done||null,hireRef:j.hireRef||"",hireBooked:!!j.hireBooked,prodDue:j.prodDueSet?j.prodDue:null,prep:j.prep?{who:j.prep.who,mins:j.prep.mins,perDay:j.prep.perDay!=null?j.prep.perDay:undefined,each:j.prep.each&&Object.keys(j.prep.each).length?j.prep.each:undefined,start:j.prep.start,date:j.prep.date,done:j.prep.done||null}:null,
         legs:LEGS.filter(function(L){return L.parent===j.id;}).map(function(L){return {type:L.type,date:L.date,who:L.who,mins:L.mins,drive:L.drive,where:L.where,from:L.from||null,by:L.by||null,pc:L.pc||null,src:L.src||null};})};
       var js=JSON.stringify(d); if(lastSaved[j.id]===js) return; lastSaved[j.id]=js; t.set(j.id,"shared","sched",d); syncCardMembers(j.id,d,CRM_KEY,inWorkshop(j));
     });
@@ -898,7 +900,7 @@ var SNAP=null, DETAIL={};
   function findOpen(){ if(!open) return null; var parts=open.split(":"); if(parts[1]&&parts[1].indexOf("leg")===0){ var lj=legJobs().filter(function(x){return x.id===open;})[0]; return lj?{job:lj,part:lj,shop:false,leg:true}:null; } var j=JOBS.filter(function(x){return x.id===parts[0];})[0]; if(!j) return null; return parts[1]==="prep"?{job:j,part:j.prep,shop:true}:{job:j,part:j,shop:false}; }
 
   // THE CARD BACK ORDER (Sam, 13 Sep 2026): blocks appear in the order you decide them. Anything at 20 or more folds under "More".
-  var BLOCK_ORDER={"This leg":0,"Estimate for this job":1,"Estimate for this production":1,"Operatives":2,"Production Dates":1.4,"Production Day":1.4,"Transported By":4,"Vehicle":5,"Travel Time, return":6,"Time Window":7,"Collection Slot":7,"QC":7.5,"What happened":0.5,"Production Time per Operative":1.2,"Site Time per Operative":8,"Labour Time per Operative":8,"Production":20,"Van Load":21,"Legs":22};
+  var BLOCK_ORDER={"This leg":0,"Estimate for this job":1,"Estimate for this production":1,"Operatives":2,"Production Dates":1.4,"Production Day":1.4,"Transported By":4,"Vehicle":5,"Travel Time, return":6,"Time Window":7,"Collection Slot":7,"QC":7.5,"What happened":0.5,"Production Time per Operative":1.2,"Production Time per Operative, Each Day":1.2,"Site Time per Operative":8,"Labour Time per Operative":8,"Production":20,"Van Load":21,"Legs":22};
   function block(title,tipKey){ var d=el("div","blk"); d.dataset.order=BLOCK_ORDER[title]!=null?BLOCK_ORDER[title]:15; var h=el("div","bh"); h.appendChild(el("span",null,title)); if(tipKey) h.appendChild(tip(tipKey)); d.appendChild(h); return d; }
   function modal(){
     var o=findOpen(); if(!o) return null;
@@ -985,10 +987,10 @@ var SNAP=null, DETAIL={};
       if(j.prodDue){ var dst0=prodStatus(j); if(dst0) db.appendChild(el("div","for "+dst0.cls,dst0.full)); }
       mustBy(db); right.appendChild(db); }
     else if(o.shop){ var db=block("Production Dates","days"); var r=el("div","row");
-      var d1=el("input"); d1.type="date"; d1.value=part.start||""; d1.setAttribute("aria-label","From"); d1.onchange=function(){ part.start=d1.value||null; if(part.start&&(!part.date||part.date<part.start)) part.date=part.start; if(!part.start) part.date=null; render(); };
-      var d2=el("input"); d2.type="date"; d2.value=part.date||""; d2.setAttribute("aria-label","To"); d2.onchange=function(){ part.date=d2.value||null; if(part.date&&(!part.start||part.start>part.date)) part.start=part.date; if(!part.date) part.start=null; render(); };
+      var d1=el("input"); d1.type="date"; d1.value=part.start||""; d1.setAttribute("aria-label","From"); d1.onchange=function(){ part.start=d1.value||null; if(part.start&&(!part.date||part.date<part.start)) part.date=part.start; if(!part.start) part.date=null; syncPrepTotal(part); render(); };
+      var d2=el("input"); d2.type="date"; d2.value=part.date||""; d2.setAttribute("aria-label","To"); d2.onchange=function(){ part.date=d2.value||null; if(part.date&&(!part.start||part.start>part.date)) part.start=part.date; if(!part.date) part.start=null; syncPrepTotal(part); render(); };
       r.appendChild(d1); r.appendChild(el("span",null,"to")); r.appendChild(d2); var clr=el("button","close","Clear"); clr.onclick=function(){ part.start=null; part.date=null; render(); }; r.appendChild(clr); db.appendChild(r);
-      var nd=part.date?daysOf(part).length:0; db.appendChild(el("div","hint",!part.date?"Not scheduled. Set the production dates and it appears under Production.":nd>1?nd+" days. Time below is the total per person, spread over the days.":"One day. Set the second date later if it needs more."));
+      var nd=part.date?daysOf(part).length:0; db.appendChild(el("div","hint",!part.date?"Not scheduled. Set the production dates and it appears under Production.":nd>1?nd+" days. The time above is for each day.":"One day. Set the second date later if it needs more."));
       var pf=prodFit(part.mins,nd); if(pf) db.appendChild(el("div","hint far",pf));
       // the same on-time line as the card's Production section, so the two mirror
       if(j.prodDue){ var dst=prodStatus(j); if(dst) db.appendChild(el("div","for "+dst.cls,dst.full)); else db.appendChild(el("div","hint","Production due "+niceDay(j.prodDue)+".")); }
@@ -1119,9 +1121,12 @@ var SNAP=null, DETAIL={};
         var plan=(part.mins!=null?"Planned "+fmt(part.mins):"No time was planned")+(dn.mins!=null&&part.mins!=null?(dn.mins>part.mins?", took "+fmt(dn.mins-part.mins)+" longer":dn.mins<part.mins?", "+fmt(part.mins-dn.mins)+" quicker":", as planned"):"");
         wh.appendChild(el("div","hint",plan)); var clr2=el("button","close","Clear the record"); clr2.onclick=function(){ part.done=null; persist(); render(); }; wh.appendChild(clr2); }
       right.appendChild(wh); }
-    if(!contractorOnly){ var tb=block(o.shop?"Production Time per Operative":(j.site?"Site Time per Operative":"Labour Time per Operative"),"time");
-      var q=el("div","seg"); QUICK.forEach(function(qq){ var b=el("button",part.mins===qq[0]?"on":"",qq[1]); b.onclick=function(){ setMins(qq[0]); render(); }; q.appendChild(b); }); tb.appendChild(q);
-      var r3=el("div","row"); r3.appendChild(el("span","hint","or exactly")); r3.appendChild(hmBoxes(function(){return part.mins;},setMins,"Time")); tb.appendChild(r3); right.appendChild(tb); }
+    if(!contractorOnly){ var perDayP=o.shop&&prepDayCount(part)>1, getT=perDayP?function(){ return prepPerDay(part); }:function(){ return part.mins; }, setT=perDayP?function(v){ setPrepPerDay(part,v); }:setMins;
+      var tb=block(o.shop?(perDayP?"Production Time per Operative, Each Day":"Production Time per Operative"):(j.site?"Site Time per Operative":"Labour Time per Operative"),"time");
+      var q=el("div","seg"); QUICK.forEach(function(qq){ var b=el("button",getT()===qq[0]?"on":"",qq[1]); b.onclick=function(){ setT(qq[0]); render(); }; q.appendChild(b); }); tb.appendChild(q);
+      var r3=el("div","row"); r3.appendChild(el("span","hint","or exactly")); r3.appendChild(hmBoxes(getT,setT,"Time")); tb.appendChild(r3);
+      if(perDayP) tb.appendChild(el("div","hint",prepDayCount(part)+" working days, so "+(part.mins!=null?fmt(part.mins)+" each in all":"no total yet")+"."));
+      right.appendChild(tb); }
     var blocks=Array.prototype.slice.call(right.children); blocks.sort(function(a,b){ return (+a.dataset.order||15)-(+b.dataset.order||15); });
     right.innerHTML=""; var more=null; blocks.forEach(function(bk){ if((+bk.dataset.order||15)>=20){ if(!more){ more=el("details","more"); more.summ=el("summary",null,"More"); more.appendChild(more.summ); right.appendChild(more); } more.appendChild(bk); } else right.appendChild(bk); });
     if(more){ var names=Array.prototype.slice.call(more.querySelectorAll(".bh")).map(function(h){return h.firstChild.textContent.replace(/\s*\(\d+\)$/,"").toLowerCase();}); more.summ.textContent="More: "+names.join(", "); if(window.__moreOpen) more.open=true; more.ontoggle=function(){ window.__moreOpen=more.open; }; }

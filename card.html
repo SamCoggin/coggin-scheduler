@@ -259,10 +259,10 @@
     return w;
   }
   function fld(label){ var f=el("div","fld"); if(label) f.appendChild(el("div","lbl",label)); return f; }
-  function timeField(part,label){
+  function timeField(part,label,getT,setT){ getT=getT||function(){ return part.mins; }; setT=setT||function(v){ part.mins=v; };
     var f=fld(label);
-    var seg=el("div","seg"); QUICK.forEach(function(q){ var x=el("button",part.mins===q[0]?"on":"",q[1]); x.onclick=function(){ part.mins=q[0]; save(); render(); }; seg.appendChild(x); }); f.appendChild(seg);
-    var r=el("div","row"); r.appendChild(el("span","hint","or exactly")); r.appendChild(hm(function(){return part.mins;},function(v){part.mins=v;},label)); f.appendChild(r);
+    var seg=el("div","seg"); QUICK.forEach(function(q){ var x=el("button",getT()===q[0]?"on":"",q[1]); x.onclick=function(){ setT(q[0]); save(); render(); }; seg.appendChild(x); }); f.appendChild(seg);
+    var r=el("div","row"); r.appendChild(el("span","hint","or exactly")); r.appendChild(hm(getT,setT,label)); f.appendChild(r);
     return f;
   }
   function whoLine(part,detail,contractor){
@@ -361,15 +361,16 @@
         pr.appendChild(d0); var clr0=el("button","p","Clear"); clr0.onclick=function(){ d.prep.start=null; d.prep.date=null; save(); render(); }; pr.appendChild(clr0); ed.appendChild(pr);
         ed.appendChild(el("div","hint","Pick the day and it appears under Production in the Scheduler.")); dueEd(ed); }:function(ed){ var pr=el("div","row");
         var d1=el("input"); d1.type="date"; d1.value=d.prep.start||""; var d2=el("input"); d2.type="date"; d2.value=d.prep.date||"";
-        d1.onchange=function(){ d.prep.start=d1.value||null; if(d.prep.start&&(!d.prep.date||d.prep.date<d.prep.start)) d.prep.date=d.prep.start; if(!d.prep.start) d.prep.date=null; save(); render(); };
-        d2.onchange=function(){ d.prep.date=d2.value||null; if(d.prep.date&&(!d.prep.start||d.prep.start>d.prep.date)) d.prep.start=d.prep.date; if(!d.prep.date) d.prep.start=null; save(); render(); };
+        d1.onchange=function(){ d.prep.start=d1.value||null; if(d.prep.start&&(!d.prep.date||d.prep.date<d.prep.start)) d.prep.date=d.prep.start; if(!d.prep.start) d.prep.date=null; syncPrepTotal(d.prep); save(); render(); };
+        d2.onchange=function(){ d.prep.date=d2.value||null; if(d.prep.date&&(!d.prep.start||d.prep.start>d.prep.date)) d.prep.start=d.prep.date; if(!d.prep.date) d.prep.start=null; syncPrepTotal(d.prep); save(); render(); };
         pr.appendChild(el("span",null,"From")); pr.appendChild(d1); pr.appendChild(el("span",null,"to")); pr.appendChild(d2); var clr=el("button","p","Clear"); clr.onclick=function(){ d.prep.start=null; d.prep.date=null; save(); render(); }; pr.appendChild(clr); ed.appendChild(pr);
         ed.appendChild(el("div","hint","Set the days and it appears under Production in the Scheduler.")); dueEd(ed); var pf=prodFit(d.prep.mins,d.prep.date?workDays(d.prep.start||d.prep.date,d.prep.date).length:0); if(pf) ed.appendChild(el("div","hint far",pf)); },d.prep.date?"":(prodFit(d.prep.mins,d.prep.date?workDays(d.prep.start||d.prep.date,d.prep.date).length:0)?"todo":"")));
-      ps.appendChild(rowEl("ptime",d.prep.who.length>1?"Time per operative":"Time",d.prep.mins!=null?fmt(d.prep.mins)+(d.prep.who.length>1?" each":""):(pstd?"Not set, estimated "+fmt(pstd.mins):"Not set"),function(ed){
+      var pnd=prepDayCount(d.prep);
+      ps.appendChild(rowEl("ptime",(d.prep.who.length>1?"Time per operative":"Time")+(pnd>1?", each day":""),d.prep.mins!=null?fmt(pnd>1?prepPerDay(d.prep):d.prep.mins)+(pnd>1?" a day":"")+(d.prep.who.length>1?" each":""):(pstd?"Not set, estimated "+fmt(pstd.mins):"Not set"),function(ed){
         if(pstd){ var sb=el("div","stdbox"); sb.appendChild(el("b",null,"Estimate: "+pstd.crew+(pstd.crew===1?" operative":" operatives")+", "+fmt(pstd.mins)+(pstd.crew>1?" each":"")+(pstd.days>1?", "+pstd.days+" days":""))); sb.appendChild(el("div","hint",pstd.why));
           var br=el("div","row"); br.style.marginTop="6px"; if(d.prep.who.length&&d.prep.mins!==pstd.mins){ var ub=el("button","p","Use the estimate for the "+d.prep.who.length+" chosen"); ub.onclick=function(){ d.prep.mins=pstd.mins; save(); render(); }; br.appendChild(ub); } sb.appendChild(br); ed.appendChild(sb); }
         else if(ESTIMATE_ON) ed.appendChild(el("div","hint","The estimate comes from the items on the card. "+(Lp.unmatched.length?"Some items are not in the table: "+Lp.unmatched.join("; ")+".":Lp.rows.length?"":"No items found on the card.")));
-        ed.appendChild(el("div","lbl","Production time per operative")); ed.appendChild(timeField(d.prep,""));
+        ed.appendChild(el("div","lbl","Production time per operative"+(pnd>1?", each day":""))); ed.appendChild(pnd>1?timeField(d.prep,"",function(){ return prepPerDay(d.prep); },function(v){ setPrepPerDay(d.prep,v); }):timeField(d.prep,"")); if(pnd>1) ed.appendChild(el("div","hint",pnd+" working days, so "+(d.prep.mins!=null?fmt(d.prep.mins)+" each in all":"no total yet")+"."));
         // SOMEBODY BREAKING OFF (Sam, 18 Sep 2026: "an operative might have to break off a job onto something
         // else"). One time for everybody is the norm; where it is not, set that person's own time here and the
         // day view, the capacity and the job sheets all follow it.
