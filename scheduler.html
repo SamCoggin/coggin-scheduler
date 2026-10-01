@@ -1949,6 +1949,51 @@ var SNAP=null, DETAIL={};
   // operative gets a printed page for the day at the start, in driving order, with the facts the card holds and
   // the items to tick, and hands it back at the end with the times and what happened written in.
   function clock(m){ if(m==null) return ""; m=Math.round(m); var h=Math.floor(m/60), r=m%60; return (h<10?"0":"")+h+":"+(r<10?"0":"")+r; }
+
+  // THE DAY SHEET (Sam, 1 Oct 2026: "a one page schedule that I will be printing off and handing to the operatives",
+  // mock v2 approved). One A4 portrait page: who is off, then every job once with everyone on it, under Production,
+  // Transport and Labour Operations, then each person's recycling. Sam is backup: his jobs list with no time.
+  // Holds are not booked work, so they are left off. A busy day shrinks the type to stay on one page.
+  function daySheetPdf(k){
+    var J=window.jspdf&&window.jspdf.jsPDF; if(!J){ alert("The PDF tool did not load. Close the Scheduler and open it again."); return; }
+    var load=loadOn(k), field=function(w){ return FIELD_CREW.indexOf(w)>=0; };
+    var name=function(j){ var t=(j.title||"").split(" - "); return t.length>1?t.slice(1).join(" - "):j.title; };
+    var each=function(who,f){ var ms=who.filter(field).map(f), sh=ms.filter(function(m){ return m!=null; }); if(!sh.length) return ""; var same=sh.every(function(m){ return m===sh[0]; });
+      return same?fmt(sh[0])+(who.filter(field).length>1?" each":""):who.filter(field).map(function(w){ return w.split(" ")[0]+" "+fmt(f(w)); }).join(", "); };
+    var prod=[], road=[], lab=[];
+    prepJobs().filter(function(j){ return !j.isHold&&j.prep&&j.prep.date&&daysOf(j.prep).indexOf(k)>=0; }).forEach(function(j){ var nd=daysOf(j.prep).length;
+      prod.push([name(j),nd>1?"Day "+(daysOf(j.prep).indexOf(k)+1)+" of "+nd:"",j.prep.who.join(", ")||"Nobody yet",each(j.prep.who,function(w){ return Math.round(prepShare(j,w)); })]); });
+    allJobs().filter(function(j){ return onDay(j,k)&&!j.isHold&&!j.completed; }).forEach(function(j){
+      var who=j.who.length?j.who.join(", "):(j.contractor||"Nobody yet"), tm=each(j.who,function(w){ return minsFor(j,w); });
+      if(j.isLeg&&j.leg&&j.leg.type==="production"){ prod.push([name(j),"",who,tm]); return; }
+      if(j.site){ var d0=DETAIL[j.id]?parseDesc(DETAIL[j.id].desc||""):null, where=j.isLeg?(j.leg.where||""):(d0&&d0.where[0]?d0.where[0]:""), tmg=jobTiming(j,k);
+        var sub=[j.movement||"", tmg&&tmg.arrive!=null?"arrive about "+hmStr(tmg.arrive):(j.at?"start "+j.at:""), where, ourJob(j)&&j.vehicle?(j.vehicle==="hire"?"hire van":j.vehicle):(ourJob(j)?"no van set":"")].filter(Boolean).join(" · ");
+        road.push([name(j),sub,who,tm+(j.drive&&tm?" + "+fmt(j.drive)+" travel":"")]); return; }
+      var sub2=j.collect?("Customer collects"+(j.from?", around "+j.from:", time not given yet")):(j.isLeg?(j.leg.where||""):[j.work,j.movement].filter(Boolean).join(", "));
+      lab.push([name(j),sub2,who,tm]); });
+    var off=LEAVE.filter(function(l){ return l.date===k; }).map(function(l){ var w=crewOf(l.text.split(" ")[0]); return l.bh?"Bank holiday":(w+(OFF_WHY[k+"|"+w]?" ("+OFF_WHY[k+"|"+w]+")":/leave/i.test(l.text)?" (annual leave)":"")); });
+    var rec=FIELD_CREW.filter(function(w){ return load[w]&&load[w].c!=="off"&&(load[w].rec||0)>=15; }).sort(function(a,b){ return load[b].rec-load[a].rec; }).map(function(w){ return w+" "+fmt(load[w].rec); });
+    var build=function(fs){
+      var doc=new J({orientation:"portrait",unit:"mm",format:"a4"}), y=16, L=14, W=182;
+      doc.setFont("helvetica","bold"); doc.setFontSize(fs+6); doc.text("Day sheet · "+niceDay(k),L,y);
+      doc.setFont("helvetica","normal"); doc.setFontSize(fs-2); doc.setTextColor(90); var pr=new Date(); doc.text("8:00 to 16:30 · printed "+niceShort(iso(pr))+" "+String(pr.getHours()).padStart(2,"0")+":"+String(pr.getMinutes()).padStart(2,"0"),L+W,y,{align:"right"});
+      doc.setTextColor(0); doc.setLineWidth(0.6); doc.line(L,y+2.5,L+W,y+2.5); y+=9;
+      if(off.length){ doc.setFontSize(fs); doc.text("Off: "+off.join(", "),L,y); y+=6; }
+      var sect=function(title,rows,empty){ doc.setFont("helvetica","bold"); doc.setFontSize(fs-2.5); doc.setTextColor(90); doc.text(title.toUpperCase(),L,y+3); doc.setTextColor(0); y+=4.5;
+        var body=rows.length?rows.map(function(r){ return ["",r[0]+(r[1]?"\n"+r[1]:""),r[2],r[3]]; }):[["",empty,"",""]];
+        doc.autoTable({startY:y,margin:{left:L,right:14},theme:"plain",body:body,styles:{fontSize:fs,cellPadding:{top:1.6,bottom:1.6,left:1.5,right:1.5},lineColor:[220,220,220],lineWidth:{bottom:0.2},valign:"top",textColor:[17,17,17]},
+          columnStyles:{0:{cellWidth:7},1:{cellWidth:"auto"},2:{cellWidth:46},3:{cellWidth:30,halign:"right"}},
+          didParseCell:function(h){ if(h.column.index===1&&h.cell.raw&&String(h.cell.raw).indexOf("\n")>0){ h.cell.styles.fontStyle="normal"; } if(!rows.length) h.cell.styles.textColor=[110,110,110]; },
+          didDrawCell:function(h){ if(rows.length&&h.column.index===0){ doc.setLineWidth(0.3); doc.setDrawColor(40); doc.rect(h.cell.x+1.2,h.cell.y+1.8,3.4,3.4); doc.setDrawColor(0); } } });
+        y=doc.lastAutoTable.finalY+3; };
+      sect("Production",prod,"No production"); sect("Transport",road,"Nothing going out"); sect("Labour operations",lab,"Nothing booked");
+      if(rec.length){ doc.setFont("helvetica","bold"); doc.setFontSize(fs-2.5); doc.setTextColor(90); doc.text("RECYCLING, THE REST OF THE DAY",L,y+3); doc.setTextColor(0); y+=8; doc.setFont("helvetica","normal"); doc.setFontSize(fs); var rl=doc.splitTextToSize(rec.join("  ·  "),W); doc.text(rl,L,y); y+=rl.length*fs*0.42+2; }
+      doc.setFontSize(fs-2.5); doc.setTextColor(90); doc.text("Tick each job when done. Hand the sheet back at the end of the day.",L,287); doc.text("Coggin SOS",L+W,287,{align:"right"}); doc.setTextColor(0);
+      return {doc:doc,fits:doc.getNumberOfPages()===1&&y<282};
+    };
+    var r=null; for(var fs=10.5;fs>=6.5;fs-=0.5){ r=build(fs); if(r.fits) break; }
+    r.doc.save("day-sheet-"+k+".pdf");
+  }
   function crewSheetsPdf(k,onlyW){
     var dj=allJobs().filter(function(j){return onDay(j,k)&&!j.isHold;});
     // one operative when asked from their card on the Day view (Sam, 14 Sep 2026), else everyone with work or recycling time
@@ -2122,7 +2167,7 @@ var SNAP=null, DETAIL={};
   function render(){
     persist();
     $("#pdf").onclick=function(){ try{ schedulePdf(); }catch(e){ alert("The PDF could not be built: "+(e&&e.message||e)); } };
-    $("#pdf").textContent="Download schedule"; $("#sheets").hidden=true; $("#guide").onclick=function(){ location.href="./guide.html"; };
+    $("#pdf").textContent="Download schedule"; $("#sheets").hidden=view!=="day"; $("#sheets").textContent="Download day sheet"; $("#sheets").title="One page for the day in view, to print and hand to the operatives"; $("#sheets").onclick=function(){ try{ daySheetPdf(dayCur); }catch(e){ alert("The day sheet could not be built: "+(e&&e.message||e)); } }; $("#guide").onclick=function(){ location.href="./guide.html"; };
     if(t&&view!=="manager"&&view!=="month") setTimeout(refreshRounds,0);
     $("#need").hidden=true; /* Outstanding, Download schedule and Guide are off the toolbar (Sam, 29 Sep 2026); the week view keeps its Outstanding tile */ $("#pdf").hidden=true; $("#guide").hidden=true; $("#need").className=NEED?"on":""; var nTP=toPlanCount(); $("#need").textContent="Outstanding"+(nTP?" ("+nTP+")":""); $("#need").title=nTP?nTP+(nTP===1?" job still needs":" jobs still need")+" operatives, time, travel or a van on the "+(view==="day"?"day":view==="month"?"month":"week")+" in view":"Everything in view is planned"; $("#need").onclick=function(){ NEED=!NEED; render(); };
     document.body.onclick=function(){ if(tipOpen){ tipOpen=null; render(); } };
