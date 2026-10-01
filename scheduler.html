@@ -491,6 +491,9 @@ var SNAP=null, DETAIL={};
   // extra legs on a job: a delivery to a subcontractor, the collection back,
   // a second production stint, a site visit. each has its own day, people,
   // travel and time, and shows on the board like any other job.
+  // THE LINE SAYS WHAT THE WORK IS (Sam, 1 Oct 2026: "it is saying production for a donation collection which is
+  // misleading"). Workshop time on a Resale job is production; on anything else it is named after the job's work.
+  function prepKind(j){ var w=String((j&&j.work)||"").split(" - ")[0].trim(); return (!w||/^resale/i.test(w))?"Production":w; }
   var LEG_TYPES=[["to_sub","Deliver to subcontractor",true],["from_sub","Collect from subcontractor",true],["production","Production",false],["site","Site visit",true],["labour","Labour",false]];
   // DISMISSED WARNINGS (Sam, 15 Sep 2026: "I need to be able to dismiss these notifications"). Keyed on the warning's
   // own words, saved on the board, so a dismissed warning stays gone until what it says changes.
@@ -1353,7 +1356,7 @@ var SNAP=null, DETAIL={};
       var seg=function(cls,mins){ if(mins>0) segs.push({cls:cls,mins:mins}); };
       if(isOff&&OFF_WHY[k+"|"+w]) line("Off","r",OFF_WHY[k+"|"+w],"","");
       if(!past&&load[w].c==="off") line("Off","r",load[w].d||load[w].t,"","");
-      prepsP.forEach(function(j){ var nd=daysOf(j.prep).length||1, me=minsFor(j.prep,w), today=Math.round(prepShare(j,w)); seg("p",today); line("Production","p",j.title.split(" - ").slice(1).join(" - ")||j.title,(nd>1?"day "+(daysOf(j.prep).indexOf(k)+1)+" of "+nd:"")+(past?doneOf(j.prep):""),me!=null?fmt(today):"no time"); });
+      prepsP.forEach(function(j){ var nd=daysOf(j.prep).length||1, me=minsFor(j.prep,w), today=Math.round(prepShare(j,w)); seg("p",today); line(prepKind(j),"p",j.title.split(" - ").slice(1).join(" - ")||j.title,(nd>1?"day "+(daysOf(j.prep).indexOf(k)+1)+" of "+nd:"")+(past?doneOf(j.prep):""),me!=null?fmt(today):"no time"); });
       var r=rounds.filter(function(x){return x.who===w;})[0], tlw=dayTimeline(k,w);
       if(r){ seg("s",r.drive||0); line("Round","round",r.stops.map(function(j){return j.title.split(" - ")[0];}).join(", ")+(r.start&&r.start!==HOME_PC?" \u00b7 from "+placeName(r.start):"")+(tlw.back?" \u00b7 back "+hmStr(tlw.back)+" with breaks":""),"",r.drive?fmt(r.drive)+" driving":"no travel yet"); }
       // stops in the order the day runs them, not the order the cards sit in (Sam's screenshot, 29 Sep 2026: York 11:20 above Bolton 08:40)
