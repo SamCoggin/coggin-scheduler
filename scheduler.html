@@ -613,7 +613,7 @@ var SNAP=null, DETAIL={};
     if(SNAP.boardData&&SNAP.boardData.off){ OFF=JSON.parse(JSON.stringify(SNAP.boardData.off)); } if(SNAP.boardData&&SNAP.boardData.offWhy){ OFF_WHY=JSON.parse(JSON.stringify(SNAP.boardData.offWhy)); } syncOff();
     // HELD DATES FROM THE CRM (Sam, 13 Sep 2026): a request sales are waiting on. Ghost cards: they sit on
     // their day, count the standard crew and time and the van load, and vanish when the hold lapses.
-    REQUESTS=(SNAP.requests||[]);
+    REQUESTS=[];   // DATE REQUESTS ARE THE CRM'S (Sam, 1 Oct 2026: "remove date requests as these are managed in the app")
     HOLDS=(SNAP.holds||[]).map(function(h){ var mv=h.movement||"Delivery", load=loadOf(h.items||[]), std=standardFor(mv,load);
       // a hold somebody else carries (sub-contractor, haulier) counts no crew of ours; the labour unload comes with the card
       var j={id:"hold:"+h.id,title:h.title||h.ref,label:mv,movement:mv,work:h.service==="Office Clearance"?"Clearance":h.service==="Refurbishing"?"Refurb":h.service||"",labels:[],who:[],contractor:h.carrier||"",mins:h.carrier?null:(std&&std.mins!=null?std.mins:120),out:h.date,date:h.date,start:null,site:isSiteMove(mv),collect:isCollectMove(mv),
