@@ -345,7 +345,7 @@
       var dueEd=function(ed){ ed.appendChild(el("div","lbl","Must be done by")); var pdr=el("div","row"); var pdi=el("input"); pdi.type="date"; pdi.value=prodDue||""; pdi.setAttribute("aria-label","Must be done by"); pdi.onchange=function(){ d.prodDue=pdi.value||null; save(); render(); }; pdr.appendChild(pdi);
         if(d.prodDue){ var rs=el("button","p","Reset"); rs.onclick=function(){ d.prodDue=null; save(); render(); }; pdr.appendChild(rs); } ed.appendChild(pdr);
         ed.appendChild(el("div","hint",d.prodDue?"Set by you.":(viewing?"Ready for the viewing.":PRODUCTION_BUFFER_DAYS+" working days before delivery. Change it if this job needs more or less."))); };
-      var notSetTxt="Not set"+(prodDue?(pst0&&pst0.need>1&&pst0.start?", start by "+niceShort(pst0.start):", by "+niceShort(prodDue)):"");
+      var notSetTxt="Not set";   // plain (Sam, 1 Oct 2026: "not set, by fri 2 oct = wtf does that mean?"); the header has the due date
       var daysTxt=d.prep.date?(d.prep.start&&d.prep.start!==d.prep.date?niceShort(d.prep.start)+" to "+niceShort(d.prep.date):niceShort(d.prep.date)):notSetTxt;
       // ONE DAY FOR A SHORT JOB (Sam, 1 Oct 2026: "Production days is not relevant for a job that only takes 30 mins").
       // When the time fits in one working day it is one date, Production day; a range only for longer work, or one
