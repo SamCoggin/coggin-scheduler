@@ -97,7 +97,7 @@
   var t=TrelloPowerUp.iframe();
   var el=function(tag,c,x){var n=document.createElement(tag);if(c)n.className=c;if(x!=null)n.textContent=x;return n;};
   var PARTS=null, CRM_FIRMS=[], CARRIER_PENDING=false;
-  var card=null, d=null, viewing=false, workshop=false, site=false, loading=false, saving=null, defaultDue=null, boardData={}, OTHERS=[], LEAVE=[];
+  var card=null, d=null, viewing=false, workshop=false, site=false, loading=false, saving=null, defaultDue=null, boardData={}, OTHERS=[], LEAVE=[], OTHERS_OK=null, MISSED=0;
   // the other cards on the board, with their plans, so this card can say who is free
   function loadOthers(){
     var cardsP=t.cards("id","name","due","start","idList","labels","desc","checklists").catch(function(){ return t.cards("id","name","due","start","idList","labels","desc"); });
@@ -105,13 +105,17 @@
       var listName={}; r[1].forEach(function(l){ listName[l.id]=l.name; });
       var dated=r[0].filter(function(x){ return x.due && x.id!==card.id; }); var nameOf={}; r[0].forEach(function(x){ nameOf[x.id]=(x.name||"").split(" - ").slice(0,2).join(" - "); });
       LEAVE=dated.filter(function(x){ return /Holidays|Leave/i.test(listName[x.idList]||""); }).map(function(x){ return {date:x.due.slice(0,10),who:crewOf(x.name.split(/\s*\(/)[0].trim())}; });
-      var jobs=dated.filter(function(x){ return !/Holidays|Leave|Operations Transfer|^Supplies Request$/i.test(listName[x.idList]||""); });
-      return Promise.all(jobs.map(function(x){ return t.get(x.id,"shared","sched",null).then(function(p){ p=normPlan(p);
+      // ONLY JOBS THAT CAN STILL TOUCH A DAY AHEAD (1 Oct 2026): every completed card on the board was read one by one,
+      // and the panel drew "7h 45m available" for everyone while that was still going or after it failed.
+      var cut=new Date(); cut.setDate(cut.getDate()-60); var cutK=cut.toISOString().slice(0,10);
+      var jobs=dated.filter(function(x){ return x.due.slice(0,10)>=cutK && !/Holidays|Leave|Operations Transfer|^Supplies Request$/i.test(listName[x.idList]||""); });
+      MISSED=0;
+      return Promise.all(jobs.map(function(x){ return t.get(x.id,"shared","sched",null).catch(function(){ MISSED++; return null; }).then(function(p){ p=normPlan(p);
         var cc=[]; (x.checklists||[]).forEach(function(cl){ (cl.checkItems||[]).forEach(function(it){ cc.push({n:it.name||""}); }); });
         var L=loadOf(itemsOf(x.desc||"",cc).concat((p&&p.items)||[])); if(!L.any&&p&&p.load) L=p.load;
         var cube=p&&p.cube!=null?p.cube:(L.complete?L.m3:null);
         return {id:x.id,name:nameOf[x.id],due:x.due.slice(0,10),start:x.start?x.start.slice(0,10):null,site:isSiteLabels(x.labels,x.desc),plan:p||{who:[]},cube:cube,kg:L.complete?L.kg:0,why:cube!=null?"":(L.unmatched&&L.unmatched.length?"items not matched":"no items on the card")}; }); }));
-    }).then(function(list){ OTHERS=list; }).catch(function(){ OTHERS=[]; });
+    }).then(function(list){ OTHERS=list; OTHERS_OK=true; }).catch(function(){ OTHERS=[]; OTHERS_OK=false; });
   }
   function todayIso(){ var t=new Date(); t.setHours(12,0,0,0); return t.toISOString().slice(0,10); }
   function nextWorkDay(k){ var x=new Date(k+"T12:00"); while(x.getDay()===0||x.getDay()===6) x.setDate(x.getDate()+1); return x.toISOString().slice(0,10); }
@@ -121,21 +125,33 @@
   // still shown, and "Use the estimate" still sets the time on whoever is
   // actually chosen.
   function workDays(a,b){ var out=[]; if(!a) return out; for(var x=new Date(a+"T12:00"); ; x.setDate(x.getDate()+1)){ var k=x.toISOString().slice(0,10); if(k>(b||a)) break; if(x.getDay()!==0&&x.getDay()!==6) out.push(k); } return out; }
-  function loadOn(k){
+  // OFF ON THE SCHEDULER IS OFF HERE (Sam, 1 Oct 2026: "why is it showing Rob available here?"). Rob was marked off with
+  // the Scheduler's Mark as off, which lives on the board, not as a card in Holidays / Leave, so this panel never saw it.
+  // THIS CARD'S OTHER PARTS COUNT TOO: Jack and Jordan in production on this card are not free for its loading.
+  function loadOn(k,skip){
     var out={}; CREW.forEach(function(w){ out[w]={mins:0,n:0,away:[],forton:0}; });
     LEAVE.forEach(function(l){ if(l.date===k&&out[l.who]) out[l.who].off=true; });
-    OTHERS.forEach(function(o){ var p=o.plan;
-      if(workDays(o.start&&o.start<o.due?o.start:o.due,o.due).indexOf(k)>=0){ (p.who||[]).forEach(function(w){ if(!out[w]) return; out[w].n++; out[w].mins+=(p.mins||0)+(o.site?(p.drive||0):0); if(o.site) out[w].away.push({name:o.name,until:p.at?endOf(p.at,(p.mins||0)+(p.drive||0)):null}); else out[w].forton++; }); }
-      if(p.prep&&p.prep.date&&workDays(p.prep.start||p.prep.date,p.prep.date).indexOf(k)>=0){ (p.prep.who||[]).forEach(function(w){ if(!out[w]) return; out[w].n++; out[w].mins+=(p.prep.mins||0); out[w].forton++; }); }
-      (p.legs||[]).forEach(function(L){ if(L.date===k) (L.who||[]).forEach(function(w){ if(!out[w]) return; out[w].n++; out[w].mins+=(L.mins||0)+(L.drive||0); out[w].forton++; }); });
+    var offW=(boardData.off||{})[k]||[], offWhy=boardData.offWhy||{};
+    offW.forEach(function(n){ var w=crewOf(n); if(!out[w]) return; out[w].off=true; if(offWhy[k+"|"+n]) out[w].why=offWhy[k+"|"+n]; });
+    var mine=[]; if(card&&d&&card.due){ mine.push({name:"this job",due:card.due.slice(0,10),start:null,site:site,plan:{who:skip===d?[]:(d.who||[]),mins:d.mins,drive:d.drive,at:d.at,each:d.each,prep:skip===d.prep?null:d.prep,legs:(d.legs||[]).filter(function(L){return L!==skip;})}}); }
+    OTHERS.concat(mine).forEach(function(o){ var p=o.plan;
+      if(workDays(o.start&&o.start<o.due?o.start:o.due,o.due).indexOf(k)>=0){ (p.who||[]).forEach(function(w){ if(!out[w]) return; out[w].n++; out[w].mins+=(minsFor(p,w)||0)+(o.site?(p.drive||0):0); if(o.site) out[w].away.push({name:o.name,until:p.at?endOf(p.at,(p.mins||0)+(p.drive||0)):null}); else out[w].forton++; }); }
+      // production time is the total for each person, spread over its working days, as the Scheduler counts it
+      var pd=p.prep&&p.prep.date?workDays(p.prep.start&&p.prep.start<p.prep.date?p.prep.start:p.prep.date,p.prep.date):[];
+      if(pd.indexOf(k)>=0){ (p.prep.who||[]).forEach(function(w){ if(!out[w]) return; out[w].n++; out[w].mins+=Math.round((minsFor(p.prep,w)||0)/(pd.length||1)); out[w].forton++; }); }
+      (p.legs||[]).forEach(function(L){ if(L.date===k) (L.who||[]).forEach(function(w){ if(!out[w]) return; out[w].n++; out[w].mins+=(minsFor(L,w)||0)+(L.drive||0); out[w].forton++; }); });
     });
     CREW.forEach(function(w){ var x=out[w]; x.avail=x.off?0:Math.max(0,DAY_MINS-x.mins); x.t=x.off?"on leave":!x.n?"available":x.mins>DAY_MINS?fmt(x.mins)+", over capacity":!x.mins?x.n+(x.n===1?" job, no time":" jobs, no time"):fmt(x.mins)+" allocated"; x.c=x.off?"off":!x.n?"free":x.mins>DAY_MINS?"over":"busy"; });
     return out;
   }
   function availability(days,part){
     var box=el("div","avail"); if(!days.length){ box.appendChild(el("div","hint","Set the days to see who is available.")); return box; }
+    // A FAILED LOAD IS NOT A FREE DAY: until the other jobs are read, nobody is shown as available
+    if(OTHERS_OK===null){ box.appendChild(el("div","hint","Checking the other jobs to see who is free.")); return box; }
+    if(OTHERS_OK===false){ box.appendChild(el("div","hint far","Could not read the other jobs on the board, so who is free is not shown. Close the card and open it again.")); return box; }
+    if(MISSED) box.appendChild(el("div","hint far","Could not read "+MISSED+(MISSED===1?" other job":" other jobs")+", so some times below may be too high."));
     days.slice(0,5).forEach(function(k){ var row=el("div","arow"); row.appendChild(el("b",null,niceShort(k))); var free=[], rest=[];
-      var load=loadOn(k); CREW.forEach(function(w){ if(part.who.indexOf(w)>=0) return; var l=load[w]; if(l.c==="off") return; var allDay=l.away.some(function(x){return !x.until;}); var whereTxt=l.away.length?(allDay?" \u00b7 out all day: ":" \u00b7 out until "+l.away.map(function(x){return x.until;}).sort().pop()+": ")+l.away.map(function(x){return x.name;}).filter(function(n,i,a){return a.indexOf(n)===i;}).join(", "):(l.forton?" \u00b7 at Forton":""); row.appendChild(el("span",l.away.length?"away":l.c,w+": "+(allDay?"out on site":l.c==="free"?fmt(DAY_MINS)+" available":l.c==="off"?"on leave":l.c==="over"?"over capacity":fmt(Math.max(0,DAY_MINS-l.mins))+" available")+whereTxt)); });
+      var load=loadOn(k,part); CREW.forEach(function(w){ if(part.who.indexOf(w)>=0) return; var l=load[w]; if(l.c==="off"){ row.appendChild(el("span","off",w+": off"+(l.why?" ("+l.why+")":""))); return; } var allDay=l.away.some(function(x){return !x.until;}); var whereTxt=l.away.length?(allDay?" \u00b7 out all day: ":" \u00b7 out until "+l.away.map(function(x){return x.until;}).sort().pop()+": ")+l.away.map(function(x){return x.name;}).filter(function(n,i,a){return a.indexOf(n)===i;}).join(", "):(l.forton?" \u00b7 at Forton":""); row.appendChild(el("span",l.away.length?"away":l.c,w+": "+(allDay?"out on site":l.c==="free"?fmt(DAY_MINS)+" available":l.c==="off"?"on leave":l.c==="over"?"over capacity":fmt(Math.max(0,DAY_MINS-l.mins))+" available")+whereTxt)); });
       if(row.children.length===1) row.appendChild(el("span","busy","everyone is on this job")); box.appendChild(row); });
     if(days.length>5) box.appendChild(el("div","hint","First 5 days shown."));
     return box;
@@ -195,7 +211,7 @@
       });
       var viaCrm=cl.then(function(){ if(checksOf().length) return; return (boardData.crmKey?Promise.resolve(boardData.crmKey):t.get("member","private","crmKey","").catch(function(){return "";})).then(function(key){ if(!key){ window.__ckTrace.push("crm:no key"); window.__noKey=true; return; } window.__noKey=false;
         return fetch("https://coggin-sos-os.base44.app/api/apps/69c930a6240fba922f369aa2/functions/opsCardChecklist",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({key:key,card_id:card.id})}).then(function(x){return x.json();}).then(function(res){ window.__ckTrace.push("crm:"+(res&&res.ok?res.items.length:(res&&res.error)||"failed")); if(res&&res.ok&&res.items.length) card.checklists=[{name:"Products",checkItems:res.items.map(function(i){return {name:i.n,state:i.done?"complete":"incomplete"};})}]; }).catch(function(){ window.__ckTrace.push("crm:failed"); }); }); });
-      return Promise.all([viaCrm,viaFirms,loadOthers()]).then(render);
+      return Promise.all([viaCrm,viaFirms,loadOthers()]).then(render,render);
     });
   }
   function save(){ clearTimeout(saving); saving=setTimeout(function(){ t.set("card","shared","sched",d); if(card&&card.id) syncCardMembers(card.id,d,boardData.crmKey||"",workshop); },250); }
@@ -213,7 +229,7 @@
   // Someone on leave on any of the part's days is greyed out and cannot be
   // picked (Sam, 17 Sep 2026). Already picked stays clickable, so it can be removed.
   function people(part,transport,fill,days){
-    var w=el("div","people"), offOn={}, awayOn={}; (days||[]).forEach(function(k){ var L=loadOn(k); CREW.forEach(function(n){ if(L[n]&&L[n].off) offOn[n]=true; if(L[n]&&L[n].away&&L[n].away.some(function(x){return !x.until;})) awayOn[n]=true; }); });
+    var w=el("div","people"), offOn={}, awayOn={}; (days||[]).forEach(function(k){ var L=loadOn(k,part); CREW.forEach(function(n){ if(L[n]&&L[n].off) offOn[n]=true; if(L[n]&&L[n].away&&L[n].away.some(function(x){return !x.until;})) awayOn[n]=true; }); });
     CREW.forEach(function(n){ var picked=part.who.indexOf(n)>=0, off=offOn[n]&&!picked, away=awayOn[n]&&!picked&&!off; var b=el("button","p"+(picked?" on":"")+(off?" off":"")+(away?" away":""),n); if(away) b.title=n+" is out on site all day"; if(off){ b.disabled=true; b.title=n+" is on leave"; b.appendChild(el("i","lv","on leave")); } if(transport&&DRIVERS.indexOf(n)>=0) b.appendChild(el("i","drv","driver")); b.onclick=function(){ var i=part.who.indexOf(n); if(i<0) part.who.push(n); else part.who.splice(i,1); if(part.who.length&&part.mins==null&&fill){ var m=fill(); if(m!=null) part.mins=m; } save(); render(); }; w.appendChild(b); });
     return w;
   }
