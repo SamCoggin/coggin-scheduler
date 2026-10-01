@@ -208,6 +208,7 @@
   .offwhy{margin-left:8px;font-size:12px;font-weight:700;color:var(--red)}
   .offbtn.on{background:var(--red-bg);color:var(--red);border-color:var(--red)}
   .prow li.warn{color:var(--red);font-weight:700}
+  .cardwarn{position:relative;margin:0;padding:7px 30px 7px 10px;background:var(--red);color:#fff;font-weight:700;font-size:12.5px} .cardwarn .dis{position:absolute;top:4px;right:6px;border:0;background:transparent;color:#fff;font-size:16px;line-height:1;cursor:pointer;padding:2px 5px;border-radius:4px}
   .daywarn{flex-shrink:0;margin:0 8px 6px;padding:8px 10px;border-radius:8px;background:var(--red);color:#fff;font-weight:800;font-size:13px}
   .printsheet{display:none}
   @media print{
@@ -1272,6 +1273,12 @@ var SNAP=null, DETAIL={};
     // the deal's Operations tab, or the donation, where the date is confirmed.
     if(j.isHold){ c.className+=" hold"; var hid=String(j.id||"").replace(/^hold:/,""), hurl=/^donation:/.test(hid)?"https://crm.coggin-sos.co.uk/donations?donation="+encodeURIComponent(hid.replace(/^donation:/,"")):"https://crm.coggin-sos.co.uk/pipeline?deal="+encodeURIComponent(hid)+"&tab=operations";
       c.title="Open in the CRM"; c.style.cursor="pointer"; c.onclick=function(e){ if(e) e.stopPropagation(); window.open(hurl,"_blank","noopener"); }; var bx=ft.querySelector(".bdg"); if(bx) ft.removeChild(bx); return c; }
+    // A JOB'S WARNING SITS ON ITS OWN CARD (Sam, 1 Oct 2026: two "customer collecting with no time" warnings sat in
+    // Transport although the jobs are Labour Operations, "I would also rather see this in the job card"). The job's
+    // main card carries it; a job only in production that day carries it on the production card.
+    if(view==="day"&&(!isPrep||!onDay(j,k))) liveIssues(k).filter(function(x){ return x.j&&x.j.id===j.id; }).forEach(function(x){
+      var tx=x.text, pre=short(j); if(tx.indexOf(pre+": ")===0) tx=tx.slice(pre.length+2); else if(tx.indexOf(pre+" ")===0) tx=tx.slice(pre.length+1); tx=tx.charAt(0).toUpperCase()+tx.slice(1);
+      var cw=el("div","cardwarn"); cw.appendChild(document.createTextNode(tx)); var xb=el("button","dis","\u00d7"); xb.title="Dismiss this warning. It comes back if what it says changes."; xb.setAttribute("aria-label","Dismiss warning"); xb.onclick=function(e){ e.stopPropagation(); DISMISSED[warnKey(x)]=true; persist(); render(); }; cw.appendChild(xb); c.appendChild(cw); });
     c.onclick=function(){ open=isPrep?j.id+":prep":j.id; render(); };
     return c;
   }
@@ -1333,7 +1340,7 @@ var SNAP=null, DETAIL={};
     cols.forEach(function(g){
       var list=el("div","list"+(isToday?" today":"")); var h=el("h2"); var hl=el(isToday?"em":"span",null,g[1]); hl.appendChild(tip(g[0])); h.appendChild(hl); h.appendChild(el("span",null,g[2].length?g[2].length+(g[2].length===1?" job":" jobs"):"nothing")); list.appendChild(h);
       var cards=el("div","cards");
-      if(g[0]==="road") liveIssues(k).forEach(function(x){ var dw=el("div","daywarn"); dw.appendChild(document.createTextNode(x.text)); var xb=el("button","dis","\u00d7"); xb.title="Dismiss this warning. It comes back if what it says changes."; xb.onclick=function(e){ e.stopPropagation(); DISMISSED[warnKey(x)]=true; persist(); render(); }; dw.appendChild(xb); cards.appendChild(dw); });
+      if(g[0]==="road") liveIssues(k).filter(function(x){ return !x.j; }).forEach(function(x){ var dw=el("div","daywarn"); dw.appendChild(document.createTextNode(x.text)); var xb=el("button","dis","\u00d7"); xb.title="Dismiss this warning. It comes back if what it says changes."; xb.onclick=function(e){ e.stopPropagation(); DISMISSED[warnKey(x)]=true; persist(); render(); }; dw.appendChild(xb); cards.appendChild(dw); });
       if(g[0]==="road") vanRounds(rounds).forEach(function(r){ cards.appendChild(roundEl(r)); });
       g[2].forEach(function(j){ cards.appendChild(cardEl(j,k,g[0]==="shop",isToday)); });
       if(!g[2].length) cards.appendChild(el("div","hint",NEED?"Nothing outstanding.":"Nothing here today."));
