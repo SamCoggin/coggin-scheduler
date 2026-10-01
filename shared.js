@@ -525,8 +525,13 @@ if(!ESTIMATE_ON){
 // checked against it; until then the job counts down to its due date, amber at 5 working days or less, red when due
 // or past. Used by the Scheduler's production cards and Needs planning list, and the card's Production section.
 var PLAN_AHEAD_DAYS=5;
-function prodStatusOf(P,due,today){
+function prodStatusOf(P,due,today,inShop){
   if(!P||!due) return null; var who=P.who||[];
+  // STILL IN THE WORKSHOP AFTER ITS DAYS (Sam, 1 Oct 2026, CUBE HR: "it clearly says it is still in progress and surely
+  // it could pick this up"). Booked days gone by and the card not moved on from Not Started or In-progress means the
+  // production is not finished, so it is not on track: it needs the rest booked, and it goes back on Needs planning.
+  if(inShop&&P.date&&P.date<today){ var pastDue=due<today;
+    return {cls:pastDue?"late":"soon",text:"Booked to finish "+niceShort(P.date)+" but still in the workshop. Book the rest of the production"+(pastDue?", it was due "+niceShort(due):", it is due "+niceShort(due))+".",full:"Booked to finish "+niceShort(P.date)+" but still in the workshop. Book the rest of the production"+(pastDue?", it was due "+niceShort(due):", it is due "+niceShort(due))+".",start:today,need:null,planned:false,unfinished:true}; }
   // START ON THIS DATE TO FINISH ON TIME (Sam, 1 Oct 2026: "It should be telling me start on this date to complete on
   // time for the due date"). The start date comes from the time typed per operative: each full 7h45 of it is a
   // working day, so 18h each needs 3 days and starts 2 working days before it is due; a one-day job starts on its due

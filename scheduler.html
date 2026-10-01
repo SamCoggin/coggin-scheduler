@@ -1325,7 +1325,7 @@ var SNAP=null, DETAIL={};
   // it. Until then the job counts down to its due date: amber at 5 working days or less, red when it is due or past.
   function prodStatus(j){
     if(!j||!j.prep||!j.prodDue||j.isHold||j.completed||(j.prep.done&&j.prep.done.status==="done")) return null;
-    return prodStatusOf(j.prep,j.prodDue,iso(TODAY));
+    return prodStatusOf(j.prep,j.prodDue,iso(TODAY),j.stage==="In progress"||j.stage==="Not started");
   }
   function notReady(j){
     if((!j.site&&!j.collect)||j.isHold||j.isLeg) return null;
@@ -1341,7 +1341,7 @@ var SNAP=null, DETAIL={};
   var NO_GO_REASONS=["Customer not ready","Van fault","Weather","Cancelled by customer","Ran out of time","Other"];
   function partDate(j,isPrep){ return isPrep?(j.prep&&j.prep.date):j.date; }
   function dayPassed(k){ return !!k&&k<iso(TODAY); }
-  function needsRecord(j,isPrep){ var part=isPrep?j.prep:j; if(!part||j.isHold||j.isLeg) return false; var k=partDate(j,isPrep); if(!dayPassed(k)) return false; if(!isPrep&&j.contractor&&!j.who.length) return false; if(!part.who.length&&part.mins==null) return false; return !part.done; }
+  function needsRecord(j,isPrep){ var part=isPrep?j.prep:j; if(!part||j.isHold||j.isLeg) return false; if(isPrep&&(j.stage==="In progress"||j.stage==="Not started")) return false; /* the workshop list says it is not finished; the status line asks for the rest */ var k=partDate(j,isPrep); if(!dayPassed(k)) return false; if(!isPrep&&j.contractor&&!j.who.length) return false; if(!part.who.length&&part.mins==null) return false; return !part.done; }
   function needsPlan(j,isPrep){
     if(j.isHold||j.completed) return false; if(j.isLeg) return !j.who.length||j.mins==null;
     var part=isPrep?j.prep:j;
