@@ -262,6 +262,11 @@
 
   .tot{border-top:2px solid #3d4451;background:var(--card);border-radius:0 0 10px 10px;padding:8px 10px;font-size:13px;display:flex;flex-wrap:wrap;gap:4px 6px;align-items:center}
   .tot .n{font-weight:800;font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.03em;margin-right:2px}
+  .tot.crewtot{display:block} .tot.crewtot .n{display:block;margin-bottom:3px}
+  .wcrew{display:grid;grid-template-columns:52px minmax(0,1fr) 62px;gap:6px;align-items:center;font-size:12px;margin:2px 0}
+  .wcrew .wn{font-weight:700} .wcrew .wt{text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums} .wcrew .wt.over{color:var(--red);font-weight:700} .wcrew .wt.free{color:var(--muted)} .wcrew .wt.todo{color:var(--amber)}
+  .wbar2{height:6px;border-radius:3px;background:var(--line);overflow:hidden} .wbar2 i{display:block;height:100%;background:#378add} .wbar2 i.o{background:var(--red)} .wcrew .wbk{color:var(--muted);font-size:11px}
+  .wmore{display:block;width:100%;text-align:left;border:0;background:transparent;color:var(--blue);font-weight:700;font-size:12px;padding:2px 4px;cursor:pointer}
   .tot .chip{border-radius:6px;padding:2px 7px;background:var(--list);white-space:nowrap;font-weight:600}
   .tot .chip b{font-weight:800}
   .tot .chip.ok{background:var(--green-bg);color:var(--green)} .tot .chip.over{background:var(--red-bg);color:var(--red)} .tot .chip.todo{background:var(--amber-bg);color:var(--amber)} .tot .chip.free{color:var(--muted)}
@@ -1474,20 +1479,24 @@ var SNAP=null, DETAIL={};
       for(var i=0;i<5;i++){
         var d=addDays(w,i), k=iso(d), inMonth=d.getMonth()===m0.getMonth(), isToday=k===iso(TODAY);
         var c=el("button","mcell"+(isToday?" today":"")+(inMonth?"":" dim"));
-        var dh=el("div","d",String(d.getDate())); if(isToday) dh.appendChild(el("span",null,"Today")); c.appendChild(dh);
+        var dh=el("div","d",String(d.getDate())); if(isToday) dh.appendChild(el("span",null,minsLeftOn(k)===0?"Day over":"Today")); c.appendChild(dh);
         var jobs=allJobs().filter(function(j){return onDay(j,k);}), preps=prepJobs().filter(function(j){return j.prep&&j.prep.date&&daysOf(j.prep).indexOf(k)>=0;});
         var nP=preps.length, nT=jobs.filter(function(j){return j.site;}).length, nY=jobs.filter(function(j){return !j.site;}).length;
         var lv=LEAVE.filter(function(l){return l.date===k;});
         var pills=el("div","mp");
         if(NEED){ var pfm=planFilter(jobs,preps), nN=pfm.jobs.length+pfm.preps.length; if(nN) pills.appendChild(el("span","ov",nN+" outstanding")); }
         else{
-        if(nP) pills.appendChild(el("span","p",nP+" production"));
-        if(nT) pills.appendChild(el("span","t",nT+" transport"));
-        if(nY) pills.appendChild(el("span","y",nY+" labour"));
+        // THE TIER NAMES AND THE DAY VIEW'S FLAGS (month view mock, 1 Oct 2026)
+        if(nP) pills.appendChild(el("span","p","Production "+nP));
+        if(nT) pills.appendChild(el("span","t","Transport "+nT));
+        if(nY) pills.appendChild(el("span","y","Labour Ops "+nY));
+        var nLate=preps.filter(function(j){ var st=prodStatus(j); return st&&st.planned&&st.cls==="late"; }).length; if(nLate) pills.appendChild(el("span","ov",nLate+" production late"));
+        var nPlan=JOBS.filter(function(j){ var st=prodStatus(j); return st&&!st.planned&&(st.start||j.prodDue)===k; }).length; if(nPlan) pills.appendChild(el("span","l","Needs planning: "+nPlan));
+        if(k>=iso(TODAY)){ var nUn=jobs.filter(function(j){ return !j.isHold&&!j.completed&&!j.who.length&&!(j.contractor); }).length; if(nUn) pills.appendChild(el("span","l",nUn+" unassigned")); }
         }
-        lv.forEach(function(l){ pills.appendChild(el("span","l",l.text)); });
+        lv.forEach(function(l){ pills.appendChild(el("span","l",l.off?crewOf(l.text.split(" ")[0])+" off":l.text)); });
         var capM=dayCapacity(k,allJobs().filter(function(j){return onDay(j,k);}),prepJobs().filter(function(j){return j.prep&&j.prep.date&&daysOf(j.prep).indexOf(k)>=0;})); if(capM.overTime||capM.overVans) pills.appendChild(el("span","ov","Over if holds land"));
-        var load=loadOn(k); var over=TEAM.filter(function(x){return load[x].c==="over";}); if(over.length) pills.appendChild(el("span","ov",over.join(", ")+" over capacity"));
+        var load=loadOn(k); var over=FIELD_CREW.filter(function(x){return load[x].c==="over";}); if(over.length) pills.appendChild(el("span","ov",over.map(function(x){return x.split(" ")[0];}).join(", ")+" over"));
         c.appendChild(pills);
         c.onclick=(function(kk){return function(){ dayCur=kk; view="day"; render(); };})(k);
         b.appendChild(c);
@@ -2249,7 +2258,7 @@ var SNAP=null, DETAIL={};
       var pfr=planFilter(jobs,preps,true); pfr.preps.forEach(function(j){ var miss=[]; if(!j.prep.who.length) miss.push("no operatives"); if(j.prep.mins==null) miss.push("no production time"); TOPLAN.push({k:k,title:short(j),j:j,amber:true,text:"Production, "+miss.join(", ")+"."}); });
       pfr.jobs.forEach(function(j){ if(j.isHold) return; var miss=[]; if(!j.who.length) miss.push("no operatives"); if(j.mins==null) miss.push(j.site?"no site time":"no time"); if(j.site&&j.drive==null&&!j.onRound) miss.push("no travel time"); if(j.site&&!j.vehicle&&!(j.contractor&&!j.who.length)&&!attending(j)) miss.push("no van"); else if(j.site&&hireDue(j)) miss.push("hire not booked"); var nrr=notReady(j); if(nrr) miss.push(nrr.charAt(0).toLowerCase()+nrr.slice(1)); if(shortCrew(j)) miss.push("one operative with two-person items"); if(j.moved) miss.push("date moved from "+niceDay(j.moved.from)); TOPLAN.push({k:k,title:short(j),j:j,amber:true,text:(j.movement||j.label||"Job")+", "+miss.join(", ")+"."}); });
       var ld=loadOn(k); var dh={need:0,avail:0,overVans:cap.overVans}; FIELD_CREW.forEach(function(w){ if(ld[w].c!=="off"){ dh.avail+=DAY_MINS; dh.need+=ld[w].mins||0; } }); HOURS.avail+=dh.avail; HOURS.need+=dh.need; DAYH[k]=dh;
-      h.appendChild(el("span",null,n?n+(NEED?" outstanding":(n===1?" job":" jobs")):"")); list.appendChild(h);
+      h.appendChild(el("span",null,(isToday&&minsLeftOn(k)===0?"Day over · ":"")+(n?n+(NEED?" outstanding":(n===1?" job":" jobs")):""))); list.appendChild(h);
       var cards=el("div","cards");
       var lv=LEAVE.filter(function(l){return l.date===k;}); if(lv.length){ var lh=el("div","sec-h"); var lhl=el("span",null,lv.some(function(l){return l.bh;})?"Bank Holiday":"Off"); lhl.appendChild(tip("leave",k)); lh.appendChild(lhl); cards.appendChild(lh); leaveLines(lv).forEach(function(tx){ cards.appendChild(el("div","leave",tx)); }); }
       var rounds=roundsOn(k,jobs); jobs.forEach(function(j){ j.onRound=rounds.some(function(r){return r.stops.indexOf(j)>=0;}); j.roundVan=roundVanOf(j,rounds); });
@@ -2260,11 +2269,13 @@ var SNAP=null, DETAIL={};
         if(!g[2].length) return;
         var sh=el("div","sec-h"+(g[0]==="shop"?" shop":"")); var shl=el("span",null,g[1]); shl.appendChild(tip(g[0],k)); sh.appendChild(shl); sh.appendChild(el("span",null,String(g[2].length))); cards.appendChild(sh);
         if(g[0]==="road") vanRounds(rounds).forEach(function(r){ cards.appendChild(roundEl(r)); });
-        g[2].forEach(function(j){ cards.appendChild(cardEl(j,k,g[0]==="shop",isToday)); });
+        // A BUSY DAY STAYS READABLE (Sam, 1 Oct 2026, week view mock): the first three of each tier, then "+N more" opens the day
+        g[2].slice(0,3).forEach(function(j){ cards.appendChild(cardEl(j,k,g[0]==="shop",isToday)); });
+        if(g[2].length>3){ var more=el("button","wmore","+"+(g[2].length-3)+" more"); more.onclick=(function(kk){return function(){ dayCur=kk; view="day"; render(); };})(k); cards.appendChild(more); }
       });
       if(NEED&&!jobs.length&&!preps.length) cards.appendChild(el("div","hint","Nothing outstanding."));
       list.appendChild(cards); jobs=allJobsWeek; preps=allPrepsWeek;
-      var tot=el("div","tot"); var thl=el("span","n","Hours"); thl.appendChild(tip("tot",k)); tot.appendChild(thl); var off=LEAVE.filter(function(l){return l.date===k;}).map(function(l){return crewOf(l.text.split(" ")[0]);});
+      var tot=el("div","tot crewtot"); var thl=el("span","n","Free"); thl.appendChild(tip("tot",k)); tot.appendChild(thl); var off=LEAVE.filter(function(l){return l.date===k;}).map(function(l){return crewOf(l.text.split(" ")[0]);});
       var heldMins=jobs.filter(function(j){return j.isHold;}).reduce(function(t,j){return t+(j.mins||0)*(j.holdCrew||2)+(j.site?(j.drive||0)*(j.holdCrew||2):0);},0);
       var heldChip=heldMins?el("span","chip todo","Held "+fmt(heldMins)):null;
       TEAM.forEach(function(w){
@@ -2281,7 +2292,11 @@ var SNAP=null, DETAIL={};
         else if(unset&&!mins){ txt="no time"; cls="todo"; }
         else { txt=fmt(mins)+(unset?" +?":"")+(mins>DAY_H*60?" over":""); cls=mins>DAY_H*60?"over":(unset?"todo":"ok"); }
         if(off.indexOf(w)<0&&FIELD_CREW.indexOf(w)>=0){ WEEK_REC[w]=(WEEK_REC[w]||0)+(mine.length&&!(unset&&!mins)?Math.max(0,DAY_MINS-mins):(mine.length?0:DAY_MINS)); }
-        var chip=el("span","chip "+cls); chip.appendChild(el("b",null,w)); chip.appendChild(document.createTextNode(" "+txt)); chip.title=w+": "+(off.indexOf(w)>=0?"annual leave":!mine.length?"no jobs, available all day":fmt(mins)+" on jobs"+(unset?", "+unset+" with no time set":"")+(mins>DAY_H*60?", over capacity":", "+fmt(Math.max(0,DAY_MINS-mins))+" recycling")); tot.appendChild(chip);
+        // A BAR OF THE DAY PER PERSON (week view mock, 1 Oct 2026), as the Day view's Operatives; Sam is Backup with no time
+        var isBack=FIELD_CREW.indexOf(w)<0, dayOver=isToday&&minsLeftOn(k)===0, wr=el("div","wcrew"); wr.appendChild(el("span","wn",w.split(" ")[0]));
+        var wbar=el("div","wbar2"); if(!isBack&&off.indexOf(w)<0&&mins>0){ var wf=el("i",mins>DAY_H*60?"o":""); wf.style.width=Math.min(100,mins/DAY_MINS*100)+"%"; wbar.appendChild(wf); } wr.appendChild(isBack?el("span","wbk","Backup"):wbar);
+        wr.appendChild(el("span","wt "+(off.indexOf(w)>=0?"free":mins>DAY_H*60?"over":(unset&&!mins?"todo":"")),isBack?"":(off.indexOf(w)>=0?"Off":dayOver?"Day over":mins>DAY_H*60?"Over":(unset&&!mins?"No time":(!mine.length?fmt(DAY_MINS):fmt(Math.max(0,DAY_MINS-mins))+(unset?" +?":""))))));
+        var chip=wr; chip.title=w+": "+(off.indexOf(w)>=0?"annual leave":!mine.length?"no jobs, available all day":fmt(mins)+" on jobs"+(unset?", "+unset+" with no time set":"")+(mins>DAY_H*60?", over capacity":", "+fmt(Math.max(0,DAY_MINS-mins))+" available")); tot.appendChild(chip);
       });
       if(heldChip) tot.appendChild(heldChip);
       list.appendChild(tot); b.appendChild(list);
@@ -2301,11 +2316,19 @@ var SNAP=null, DETAIL={};
     var rc=el("div","cards"); if(!ISSUES.length&&!TOPLAN.length&&!TORECORD.length&&!REQUESTS.length) rc.appendChild(el("div","hint","Nothing needs a decision this week."));
     // DATE REQUESTS (Sam, 14 Sep 2026: "how does this notify operations?"). Asked on the CRM, unanswered, listed here where operations plan. Press one to open the record on the CRM.
     var railItems=[]; if(REQUESTS.length){ railItems.push({sep:REQUESTS.length+(REQUESTS.length===1?" date request":" date requests")}); REQUESTS.forEach(function(r){ railItems.push({req:true,title:r.title,url:r.url,amber:true,text:(r.type==="required"&&r.date?"Asks for "+niceDay(r.date):"Asks for the next available slot")+", "+(r.movement||"job").toLowerCase()+(r.service?" ("+r.service+")":"")+"."+(r.note?" "+r.note:"")+" Hold a date on the CRM."}); }); }
-    if(ISSUES.length&&(TOPLAN.length||REQUESTS.length||TORECORD.length)) railItems.push({sep:"Warnings"});
+    // NEEDS PLANNING AND LATE PRODUCTION LEAD (week view mock, 1 Oct 2026), the same lines as the Day view's production cards
+    var wkEnd=iso(addDays(mon,4)), PLANQ=[], LATEQ=[];
+    JOBS.forEach(function(j){ var st=prodStatus(j); if(!st) return;
+      if(!st.planned&&(st.cls==="late"||st.cls==="soon")&&(st.start||j.prodDue)<=wkEnd) PLANQ.push({k:st.start||j.prodDue,title:short(j),j:j,prep:true,amber:st.cls!=="late",text:st.full});
+      else if(st.planned&&st.cls==="late"&&j.prep.date>=iso(mon)&&j.prep.date<=wkEnd) LATEQ.push({k:j.prep.date,title:short(j),j:j,prep:true,amber:false,text:st.full}); });
+    if(PLANQ.length){ railItems.unshift.apply(railItems,[{sep:PLANQ.length+" needs planning"}].concat(PLANQ)); }
+    if(LATEQ.length){ railItems.splice(PLANQ.length?PLANQ.length+1:0,0,{sep:LATEQ.length+" production late"}); railItems.splice.apply(railItems,[PLANQ.length?PLANQ.length+2:1,0].concat(LATEQ)); }
+    if(ISSUES.length&&(TOPLAN.length||REQUESTS.length||TORECORD.length||PLANQ.length||LATEQ.length)) railItems.push({sep:"Warnings"});
+    try{ var rcount=railItems.filter(function(x){return !x.sep;}).length+ISSUES.length+TOPLAN.length+TORECORD.length; rh.lastChild.textContent=rcount?String(rcount):""; }catch(e){}
     railItems=railItems.concat(ISSUES); if(TOPLAN.length){ railItems.push({sep:TOPLAN.length+" outstanding this week"}); railItems=railItems.concat(TOPLAN); } if(TORECORD.length){ railItems.push({sep:TORECORD.length+" to record"}); railItems=railItems.concat(TORECORD); }
     var hiddenN=0; railItems=railItems.filter(function(x){ if(x.sep||x.req||!DISMISSED[warnKey(x)]||SHOW_DISMISSED) return true; hiddenN++; return false; });
     var dismissBtn=function(x){ var xb=el("button","dis",DISMISSED[warnKey(x)]?"Bring back":"\u00d7"); xb.title=DISMISSED[warnKey(x)]?"Show this warning again":"Dismiss this warning. It comes back if what it says changes."; xb.onclick=function(e){ e.stopPropagation(); if(DISMISSED[warnKey(x)]) delete DISMISSED[warnKey(x)]; else DISMISSED[warnKey(x)]=true; persist(); render(); }; return xb; };
-    railItems.forEach(function(x){ if(x.sep){ rc.appendChild(el("div","sec-h",x.sep)); return; } if(x.req){ var itr=el("button","iss amber"); itr.appendChild(el("b",null,x.title)); itr.appendChild(el("span",null,x.text)); itr.onclick=function(){ window.open(x.url,"_blank"); }; rc.appendChild(itr); return; } if(x.prep){ var itp=el("button","iss amber"+(DISMISSED[warnKey(x)]?" dim":"")); itp.appendChild(el("b",null,shortDay(x.k)+" \u00b7 "+x.title)); itp.appendChild(el("span",null,x.text)); itp.appendChild(dismissBtn(x)); itp.onclick=function(){ open=x.j.id+":prep"; render(); }; rc.appendChild(itp); return; } var it=el("button","iss"+(x.amber?" amber":"")+(DISMISSED[warnKey(x)]?" dim":"")); it.appendChild(el("b",null,shortDay(x.k)+" \u00b7 "+x.title)); it.appendChild(el("span",null,x.text)); it.appendChild(dismissBtn(x)); if(x.j&&!x.j.isHold){ it.onclick=function(){ open=x.j.id; render(); }; } else { it.onclick=function(){ dayCur=x.k; view="day"; render(); }; } rc.appendChild(it); });
+    railItems.forEach(function(x){ if(x.sep){ rc.appendChild(el("div","sec-h",x.sep)); return; } if(x.req){ var itr=el("button","iss amber"); itr.appendChild(el("b",null,x.title)); itr.appendChild(el("span",null,x.text)); itr.onclick=function(){ window.open(x.url,"_blank"); }; rc.appendChild(itr); return; } if(x.prep){ var itp=el("button","iss"+(x.amber===false?"":" amber")+(DISMISSED[warnKey(x)]?" dim":"")); itp.appendChild(el("b",null,shortDay(x.k)+" \u00b7 "+x.title)); itp.appendChild(el("span",null,x.text)); itp.appendChild(dismissBtn(x)); itp.onclick=function(){ open=x.j.id+":prep"; render(); }; rc.appendChild(itp); return; } var it=el("button","iss"+(x.amber?" amber":"")+(DISMISSED[warnKey(x)]?" dim":"")); it.appendChild(el("b",null,shortDay(x.k)+" \u00b7 "+x.title)); it.appendChild(el("span",null,x.text)); it.appendChild(dismissBtn(x)); if(x.j&&!x.j.isHold){ it.onclick=function(){ open=x.j.id; render(); }; } else { it.onclick=function(){ dayCur=x.k; view="day"; render(); }; } rc.appendChild(it); });
     if(hiddenN||SHOW_DISMISSED){ var sd=el("button","dis-toggle",SHOW_DISMISSED?"Hide dismissed":hiddenN+(hiddenN===1?" dismissed warning, show":" dismissed warnings, show")); sd.onclick=function(){ SHOW_DISMISSED=!SHOW_DISMISSED; render(); }; rc.appendChild(sd); }
     rail.appendChild(rc); b.appendChild(rail);
     var strip=$("#strip"); strip.hidden=false; strip.innerHTML="";
