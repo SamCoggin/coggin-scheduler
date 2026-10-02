@@ -436,6 +436,7 @@ var SNAP=null, DETAIL={};
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
 <script>document.write('<script src="./shared.js?v='+Math.floor(Date.now()/60000)+'"><\/script>');</script>
 <script>
 (function(){
@@ -765,6 +766,7 @@ var SNAP=null, DETAIL={};
   // CRM's JobActual (Trello card data is too small for it). A day that has gone with jobs not typed in shows in the
   // week's Needs a decision. Timings compares planned with actual over four weeks.
   var CRM_ACTUALS_URL="https://coggin-sos-os.base44.app/api/apps/69c930a6240fba922f369aa2/functions/jobActuals";
+  var CRM_PICKING_URL="https://coggin-sos-os.base44.app/api/apps/69c930a6240fba922f369aa2/functions/pickingSheets";
   var ACTUALS={}, ACTUALS_OK=false, ACT_OPEN=null, ACT_DRAFT=null, TIMINGS_OPEN=false;
   function fetchActuals(){ if(!CRM_KEY) return Promise.resolve();
     return fetch(CRM_ACTUALS_URL,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({key:CRM_KEY,action:"list",from:iso(addDays(TODAY,-60)),to:iso(TODAY)})}).then(function(x){return x.json();}).then(function(r){ if(!(r&&r.ok)) return; ACTUALS={}; (r.rows||[]).forEach(function(a){ ACTUALS[a.row_key]=a; }); ACTUALS_OK=true; }).catch(function(){}); }
@@ -2063,7 +2065,8 @@ var SNAP=null, DETAIL={};
   // mock v2 approved). One A4 portrait page: who is off, then every job once with everyone on it, under Production,
   // Transport and Labour Operations, then each person's recycling. Sam is backup: his jobs list with no time.
   // Holds are not booked work, so they are left off. A busy day shrinks the type to stay on one page.
-  function daySheetPdf(k){
+  // PICK is {cardId: {picks, url, made, page, failed}} from daySheetDownload; mode "cards" returns the cards that pick that day
+  function daySheetPdf(k,PICK,mode){
     var J=window.jspdf&&window.jspdf.jsPDF; if(!J){ alert("The PDF tool did not load. Close the Scheduler and open it again."); return; }
     var load=loadOn(k), field=function(w){ return FIELD_CREW.indexOf(w)>=0; };
     var name=function(j){ var t=(j.title||"").split(" - "); return t.length>1?t.slice(1).join(" - "):j.title; };
@@ -2080,9 +2083,9 @@ var SNAP=null, DETAIL={};
     var finished=function(j){ return !!(j.completed||(j.isLeg&&j.parentJob&&j.parentJob.completed)); };
     var leftOff=allJobs().filter(function(j){ return onDay(j,k)&&!j.isHold&&finished(j); }).length;
     prepJobs().filter(function(j){ return !j.isHold&&!finished(j)&&!(j.prep&&j.prep.done&&j.prep.done.status==="done")&&j.prep&&j.prep.date&&daysOf(j.prep).indexOf(k)>=0; }).forEach(function(j){ var nd=daysOf(j.prep).length;
-      A4({key:"p"+j.id,part:"Production",name:name(j),sub:nd>1?"Day "+(daysOf(j.prep).indexOf(k)+1)+" of "+nd:"",who:j.prep.who.slice(),contractor:"",mins:function(w){ return Math.round(prepShare(j,w)); },extra:"",at:null,cid:j.short||j.id}); });
+      A4({key:"p"+j.id,card:j.id,short:j.short||"",pickable:daysOf(j.prep)[0]===k?"first":"later",part:"Production",name:name(j),sub:nd>1?"Day "+(daysOf(j.prep).indexOf(k)+1)+" of "+nd:"",who:j.prep.who.slice(),contractor:"",mins:function(w){ return Math.round(prepShare(j,w)); },extra:"",at:null,cid:j.short||j.id}); });
     allJobs().filter(function(j){ return onDay(j,k)&&!j.isHold&&!finished(j); }).forEach(function(j){ var pj=j.isLeg&&j.parentJob?j.parentJob:j, cid=pj.short||pj.id;
-      var base={key:"j"+j.id,name:name(j),who:j.who.slice(),contractor:j.who.length?"":(j.contractor||""),mins:function(w){ return minsFor(j,w); },extra:"",at:null,cid:cid};
+      var base={key:"j"+j.id,card:j.isLeg?"":j.id,short:j.isLeg?"":(j.short||""),pickable:!j.isLeg&&!j.prep&&!/^(Workshop: Ready|Completed)$/.test(j.stageLabel||"")?"first":"",name:name(j),who:j.who.slice(),contractor:j.who.length?"":(j.contractor||""),mins:function(w){ return minsFor(j,w); },extra:"",at:null,cid:cid};
       if(j.isLeg&&j.leg&&j.leg.type==="production"){ base.part="Production"; base.sub=""; A4(base); return; }
       if(j.site){ var d0=DETAIL[j.id]?parseDesc(DETAIL[j.id].desc||""):null, where=j.isLeg?(j.leg.where||""):(d0&&d0.where[0]?d0.where[0]:""), tmg=jobTiming(j,k);
         base.part="Transport"; base.at=tmg&&tmg.arrive!=null?tmg.arrive:hm(j.at);
@@ -2091,6 +2094,15 @@ var SNAP=null, DETAIL={};
       base.part="Labour"; base.at=j.arrive&&!j.isLeg?hm(j.from):null;
       base.sub=j.arrive&&!j.isLeg?(arrivalText(j.arrive,j.from,j.by,j.collectAt)||(ARRIVAL_WHO[j.arrive]||"Arriving")+", time not given yet"):(j.isLeg?(j.leg.where||""):[j.work,j.movement].filter(Boolean).join(", "));
       A4(base); });
+    // THE PICKING LINE (Sam, 2 Oct 2026, mock approved): a job picks on its first production day, or on its own day when
+    // it has no production; its own picking sheet from the CRM goes behind the day sheet.
+    if(mode==="cards"){ var seenC={}; return rows.filter(function(r){ return r.card&&r.pickable&&!seenC[r.card]&&(seenC[r.card]=1); }).map(function(r){ return {id:r.card,short:r.short}; }); }
+    var pickOf=function(r){ var i=PICK&&r.card&&r.pickable?PICK[r.card]:null; if(!i||!i.picks) return null;
+      if(r.pickable==="later") return {kind:"later",text:"Picked on day 1."};
+      if(!i.url) return {kind:"none",text:"No picking sheet yet. Update card on the deal makes one."};
+      if(i.failed) return {kind:"none",text:"The picking sheet would not load. Open it from the Trello card."};
+      var md=i.made?new Date(i.made):null, mdT=md&&!isNaN(md)?" Made "+md.getDate()+" "+["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"][md.getMonth()]+" "+String(md.getHours()).padStart(2,"0")+":"+String(md.getMinutes()).padStart(2,"0")+".":"";
+      return {kind:"sheet",card:r.card,text:(i.page?(/ to /.test(i.page)?"Picking sheet, pages ":"Picking sheet, page ")+i.page+".":"Picking sheet behind this one.")+mdT}; };
     // one bar per person; people whose jobs are exactly the same get one joint bar ("Jack C + Jordan I")
     var people=TEAM.filter(function(w){ return rows.some(function(r){ return r.who.indexOf(w)>=0; }); });
     var sig={}; people.forEach(function(w){ sig[w]=rows.filter(function(r){ return r.who.indexOf(w)>=0; }).map(function(r){ return r.key; }).join("|"); });
@@ -2102,11 +2114,11 @@ var SNAP=null, DETAIL={};
       var mine=order(rows.filter(function(r){ return r.who.indexOf(g[0])>=0; }));
       var cells=mine.map(function(r){ var others=r.who.filter(function(w){ return g.indexOf(w)<0; }), ms=g.map(function(w){ return r.mins(w); }), have=ms.filter(function(m){ return m!=null; });
         var tm=!have.length?"":g.length===1||have.every(function(m){ return m===have[0]; })?fmt(have[0])+(g.length>1?" each":""):g.map(function(w){ return w.split(" ")[0]+" "+(r.mins(w)!=null?fmt(r.mins(w)):"?"); }).join(", ");
-        return [r.name,r.part+(r.sub?" · "+r.sub:""),others.length?"with "+others.join(", "):"",tm?tm+r.extra:"",r.cid]; });
+        return [r.name,r.part+(r.sub?" · "+r.sub:""),others.length?"with "+others.join(", "):"",tm?tm+r.extra:"",r.cid,pickOf(r)]; });
       var booked=Math.round((load[g[0]]||{}).mins||0), backup=FIELD_CREW.indexOf(g[0])<0;
       return {title:g.join(" + "),right:[g.length>1?"Together all day":"", backup?"Backup":booked?fmt(booked)+" booked"+(g.length>1?" each":""):"", cells.length+(cells.length===1?" job":" jobs")].filter(Boolean).join(" · "),cells:cells}; });
-    var nobody=order(rows.filter(function(r){ return !r.who.length&&!r.contractor; })).map(function(r){ return [r.name,r.part+(r.sub?" · "+r.sub:""),"Needs someone",r.mins(null)!=null?fmt(r.mins(null)):"",r.cid]; });
-    var subs=order(rows.filter(function(r){ return !r.who.length&&r.contractor; })).map(function(r){ return [r.name,r.part+(r.sub?" · "+r.sub:""),r.contractor,"",r.cid]; });
+    var nobody=order(rows.filter(function(r){ return !r.who.length&&!r.contractor; })).map(function(r){ return [r.name,r.part+(r.sub?" · "+r.sub:""),"Needs someone",r.mins(null)!=null?fmt(r.mins(null)):"",r.cid,pickOf(r)]; });
+    var subs=order(rows.filter(function(r){ return !r.who.length&&r.contractor; })).map(function(r){ return [r.name,r.part+(r.sub?" · "+r.sub:""),r.contractor,"",r.cid,pickOf(r)]; });
     if(nobody.length) bars.push({title:"Nobody yet",right:nobody.length+(nobody.length===1?" job":" jobs"),cells:nobody});
     if(subs.length) bars.push({title:"Subcontractors and couriers",right:subs.length+(subs.length===1?" job":" jobs"),cells:subs});
     // which sheet this one replaces: the last print of this day, kept in this browser only
@@ -2128,7 +2140,7 @@ var SNAP=null, DETAIL={};
     TEAM.filter(function(w){ return !field(w)&&load[w]&&load[w].c!=="office"&&load[w].c!=="off"; }).forEach(function(w){ crew.push({w:w,t:"Backup"}); });
     crew.sort(function(a,b){ return (a.off?1:0)-(b.off?1:0); });   // anyone off goes at the end of the strip
     var build=function(sc,paged){
-      var doc=new J({orientation:"portrait",unit:"mm",format:"a4"}), L=14, W=182, G=5, CW=(W-G)/2, fs=10.5*sc, qs=Math.max(11,15*sc), y=17, STRIP=12.5;
+      var order=[], doc=new J({orientation:"portrait",unit:"mm",format:"a4"}), L=14, W=182, G=5, CW=(W-G)/2, fs=10.5*sc, qs=Math.max(11,15*sc), y=17, STRIP=12.5;
       // A BUSY DAY RUNS ONTO A SECOND PAGE (2 Oct 2026): with the write-in strip on every job, squeezing a busy day onto one
       // page made the type too small to write against, so it carries on, the date at the top of each page.
       var foot=function(){ doc.setFont("helvetica","normal"); doc.setFontSize(8); doc.setTextColor(90); doc.text("Find your name on a black bar. Tick each job when done. Scan a code to open it in Trello.",L,287); doc.text("Coggin SOS",L+W,287,{align:"right"}); doc.setTextColor(0); };
@@ -2137,7 +2149,9 @@ var SNAP=null, DETAIL={};
       doc.setFont("helvetica","normal"); doc.setFontSize(8.5); doc.setTextColor(90); var pr=new Date();
       doc.text("Day sheet · 8:00 to 16:30",L+W,y-4.5,{align:"right"}); var prT=String(pr.getHours()).padStart(2,"0")+":"+String(pr.getMinutes()).padStart(2,"0");
       doc.text("Printed "+niceShort(iso(pr))+" "+prT+(lastPrint?", replaces the "+lastPrint+" sheet":""),L+W,y,{align:"right"});
-      if(leftOff){ doc.text(leftOff+(leftOff===1?" job":" jobs")+" done, left off",L+W,y+4,{align:"right"}); } doc.setTextColor(0); y+=leftOff?8:5;
+      var pickNote=PICK&&PICK.__range?"Picking sheets for "+PICK.__n+(PICK.__n===1?" job on ":" jobs on ")+PICK.__range:"";
+      var hl=[leftOff?leftOff+(leftOff===1?" job":" jobs")+" done, left off":"",pickNote].filter(Boolean);
+      hl.forEach(function(t,i){ doc.text(t,L+W,y+4*(i+1),{align:"right"}); }); doc.setTextColor(0); y+=5+4*hl.length;
       // the crew strip
       var n=crew.length, tw=(W-(n-1)*3)/n;
       crew.forEach(function(c,i){ var x=L+i*(tw+3); doc.setLineWidth(c.off?0.25:0.5); doc.setDrawColor(c.off?170:17); doc.roundedRect(x,y,tw,12,1,1); doc.setDrawColor(0);
@@ -2146,7 +2160,10 @@ var SNAP=null, DETAIL={};
       y+=17;
       var bar=function(title,count){ doc.setFillColor(17,17,17); doc.roundedRect(L,y,W,6.5,0.8,0.8,"F"); doc.setTextColor(255); doc.setFont("helvetica","bold"); doc.setFontSize(8.5); doc.text(title.toUpperCase(),L+3,y+4.5); if(count){ doc.setFont("helvetica","normal"); doc.text(count,L+W-3,y+4.5,{align:"right"}); } doc.setTextColor(0); y+=9.5; };
       var tx0=function(x){ return x+qs+6; }, tw0=CW-qs-15;
-      var need=function(r){ var h=3.5; doc.setFont("helvetica","bold"); doc.setFontSize(fs+1); h+=doc.splitTextToSize(r[0],tw0).length*(fs+1)*0.4; doc.setFont("helvetica","normal"); doc.setFontSize(fs-1.5); if(r[1]) h+=doc.splitTextToSize(r[1],tw0).length*(fs-1.5)*0.4+0.6; h+=fs*0.45+2.5; return Math.max(qs+6,h+2)+STRIP; };
+      // the picking line wraps rather than clips: its own lines, measured the way box() draws them
+      var pickLines=function(r){ var pk=r[5]; if(!pk) return []; doc.setFont("helvetica",pk.kind==="later"?"normal":"bold"); doc.setFontSize(fs-2); return doc.splitTextToSize(pk.text,CW-qs-6-(pk.kind==="later"?3:14)); };
+      var pickH=function(r){ var n=pickLines(r).length; return n?5.5+n*(fs-2)*0.42:0; };
+      var need=function(r){ var h=3.5; doc.setFont("helvetica","bold"); doc.setFontSize(fs+1); h+=doc.splitTextToSize(r[0],tw0).length*(fs+1)*0.4; doc.setFont("helvetica","normal"); doc.setFontSize(fs-1.5); if(r[1]) h+=doc.splitTextToSize(r[1],tw0).length*(fs-1.5)*0.4+0.6; h+=fs*0.45+2.5; return Math.max(qs+6,h+2)+STRIP+pickH(r); };
       var box=function(r,x,y0,h){ doc.setDrawColor(150); doc.setLineWidth(0.3); doc.roundedRect(x,y0,CW,h,1.2,1.2); doc.setDrawColor(0);
         if(r[4]) qrAt(doc,"https://trello.com/c/"+r[4],x+3,y0+3,qs);
         doc.setLineWidth(0.45); doc.setDrawColor(17); doc.roundedRect(x+CW-8,y0+3,5,5,0.6,0.6); doc.setDrawColor(0);
@@ -2159,7 +2176,14 @@ var SNAP=null, DETAIL={};
         while(need0()>room-2*(fns.length-1)&&fsz>5.5) fsz-=0.25; var gap=Math.max(1.5,(room-need0())/Math.max(1,fns.length-1)); doc.setFontSize(fsz);
         var nx=x+19; fns.forEach(function(fn){ doc.setLineWidth(0.25); doc.rect(nx,sy+1.3,2.6,2.6); doc.text(fn,nx+3.4,sy+3.6); nx+=doc.getTextWidth(fn)+3.4+gap; });
         doc.setFontSize(7.5); doc.text("Actual time each",x+3,sy+9); var lx=x+3+doc.getTextWidth("Actual time each")+2; doc.setLineWidth(0.25); doc.line(lx,sy+9.4,lx+10,sy+9.4); doc.text("h",lx+11,sy+9); doc.line(lx+15,sy+9.4,lx+25,sy+9.4); doc.text("min",lx+26,sy+9);
-        var by=y0+h-STRIP-1.5; doc.setFont("helvetica","normal"); doc.setFontSize(fs-0.5); doc.text(doc.splitTextToSize(r[2],CW-qs-6-30)[0],tx,by);
+        var pk=r[5], ph=pickH(r), by=y0+h-STRIP-1.5-ph;
+        if(pk){ var pls=pickLines(r), ly=by+2.4, py=ly+4.2; if(pk.kind==="sheet"&&order.indexOf(pk.card)<0) order.push(pk.card);
+          doc.setDrawColor(150); doc.setLineDashPattern([0.8,0.8],0); doc.line(tx,ly,x+CW-3,ly); doc.setLineDashPattern([],0); doc.setDrawColor(0);
+          if(pk.kind!=="later"){ doc.setLineWidth(0.4); if(pk.kind==="none") doc.setLineDashPattern([0.7,0.6],0); doc.roundedRect(tx,py-3.2,9,4.2,0.5,0.5); doc.setLineDashPattern([],0);
+            doc.setFont("helvetica","bold"); doc.setFontSize(6.8); doc.text("PICK",tx+4.5,py-0.2,{align:"center"}); }
+          doc.setFont("helvetica",pk.kind==="later"?"normal":"bold"); doc.setFontSize(fs-2); if(pk.kind==="later") doc.setTextColor(85);
+          doc.text(pls,tx+(pk.kind==="later"?0:11),py); doc.setTextColor(0); }
+        doc.setFont("helvetica","normal"); doc.setFontSize(fs-0.5); doc.text(doc.splitTextToSize(r[2],CW-qs-6-30)[0],tx,by);
         if(r[3]){ doc.setFont("helvetica","bold"); doc.setFontSize(fs+0.5); doc.text(r[3],x+CW-3,by,{align:"right"}); } };
       var sect=function(title,rows,right){ if(!rows.length) return; if(paged){ var h0=Math.max(need(rows[0]),rows[1]?need(rows[1]):0); if(y+9.5+h0>280) newPage(); }   /* a heading never sits alone at the foot of a page */ bar(title,right||(rows.length+(rows.length===1?" job":" jobs")));
         for(var i=0;i<rows.length;i+=2){ var h=Math.max(need(rows[i]),rows[i+1]?need(rows[i+1]):0); if(paged&&y+h>280){ newPage(); bar(title+", continued",""); } box(rows[i],L,y,h); if(rows[i+1]) box(rows[i+1],L+CW+G,y,h); y+=h+3.5; } y+=1; };
@@ -2174,12 +2198,41 @@ var SNAP=null, DETAIL={};
         for(var ai=0;ai<recW.length;ai+=2){ [0,1].forEach(function(o2){ var a=recW[ai+o2]; if(!a) return; var x=L+o2*(CW+G); doc.setDrawColor(150); doc.setLineWidth(0.3); doc.roundedRect(x,y,CW,10,1.2,1.2); doc.setDrawColor(0);
             doc.setFont("helvetica","bold"); doc.setFontSize(11); doc.text(a.w,x+3.5,y+6.6); doc.setFontSize(13); doc.text(fmt(a.m),x+CW-3.5,y+6.8,{align:"right"}); }); y+=13; } }
       foot();
-      return {doc:doc,fits:y<281};
+      return {doc:doc,fits:y<281,order:order};
     };
     var r=null; for(var sc=1;sc>=0.85;sc-=0.05){ r=build(sc,false); if(r.fits&&r.doc.getNumberOfPages()===1) break; r=null; }
     if(!r) r=build(1,true);
-    try{ var pn=new Date(); window.localStorage.setItem("coggin.daysheet."+k,String(pn.getHours()).padStart(2,"0")+":"+String(pn.getMinutes()).padStart(2,"0")); }catch(e){}
-    r.doc.save("day-sheet-"+k+".pdf");
+    return r;
+  }
+  // ONE DOWNLOAD: THE DAY SHEET, THEN EACH JOB'S PICKING SHEET (Sam, 2 Oct 2026, mock approved). The CRM says which of the
+  // day's cards pick stock and where their picking sheet is; the PDFs are fetched, counted, numbered on the day sheet
+  // and joined behind it in the order the jobs appear. Anything that fails leaves the day sheet as it was, with the
+  // line on that job saying so.
+  async function daySheetDownload(k){
+    var btn=$("#sheets"), was=btn?btn.textContent:""; if(btn){ btn.disabled=true; btn.textContent="Building the day sheet..."; }
+    try{
+      var PICK=null, pdfs={}, cards=daySheetPdf(k,null,"cards")||[];
+      if(cards.length&&CRM_KEY){
+        var res=await fetch(CRM_PICKING_URL,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({key:CRM_KEY,cards:cards})}).then(function(x){ return x.json(); }).catch(function(){ return null; });
+        if(res&&res.ok){ PICK={}; (res.sheets||[]).forEach(function(sh){ PICK[sh.card]={picks:!!sh.picks,url:sh.url||"",made:sh.made||""}; });
+          await Promise.all(Object.keys(PICK).map(async function(id){ var i=PICK[id]; if(!i.picks||!i.url||!window.PDFLib) return;
+            try{ var buf=await fetch(i.url).then(function(x){ if(!x.ok) throw new Error(x.status); return x.arrayBuffer(); }); var pd=await PDFLib.PDFDocument.load(buf,{ignoreEncryption:true}); pdfs[id]=pd; i.pages=pd.getPageCount(); }
+            catch(e){ i.failed=true; } })); } }
+      // number the sheets after the day sheet's own pages; a second pass settles it if the numbers changed its length
+      var r=daySheetPdf(k,PICK);
+      for(var pass=0;pass<3&&PICK;pass++){ var D=r.doc.getNumberOfPages(), at=D+1, first=0, last=0, n=0, changed=false;
+        r.order.forEach(function(id){ var i=PICK[id]; if(!pdfs[id]) return; var pg=i.pages>1?at+" to "+(at+i.pages-1):String(at); if(i.page!==pg){ i.page=pg; changed=true; } if(!first) first=at; last=at+i.pages-1; at+=i.pages; n++; });
+        var range=n?(first===last?"page "+first:"pages "+first+" to "+last):""; if(PICK.__range!==range){ PICK.__range=range; PICK.__n=n; changed=true; }
+        if(!changed) break; r=daySheetPdf(k,PICK); }
+      var name="day-sheet-"+k+".pdf";
+      try{ var pn=new Date(); window.localStorage.setItem("coggin.daysheet."+k,String(pn.getHours()).padStart(2,"0")+":"+String(pn.getMinutes()).padStart(2,"0")); }catch(e){}
+      var ids=(r.order||[]).filter(function(id){ return pdfs[id]; });
+      if(!ids.length||!window.PDFLib){ r.doc.save(name); return; }
+      var out=await PDFLib.PDFDocument.load(r.doc.output("arraybuffer"));
+      for(var q=0;q<ids.length;q++){ var src=pdfs[ids[q]]; var pages=await out.copyPages(src,src.getPageIndices()); pages.forEach(function(pg){ out.addPage(pg); }); }
+      var bytes=await out.save(), blob=new Blob([bytes],{type:"application/pdf"}), a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download=name; document.body.appendChild(a); a.click();
+      setTimeout(function(){ URL.revokeObjectURL(a.href); a.remove(); },4000);
+    } finally { if(btn){ btn.disabled=false; btn.textContent=was||"Download day sheet"; } }
   }
   function crewSheetsPdf(k,onlyW){
     var dj=allJobs().filter(function(j){return onDay(j,k)&&!j.isHold;});
@@ -2355,7 +2408,7 @@ var SNAP=null, DETAIL={};
     if(!window.__arrFilled&&JOBS.length){ window.__arrFilled=true; JOBS.forEach(function(j){ if((j.arrive==="delivers"||j.arrive==="both")&&!j.from){ var dd=DETAIL[j.id], t0=arrivalFromDesc(dd?dd.desc:""); if(t0){ j.from=t0; j.fromAuto=true; } } }); }
     persist();
     $("#pdf").onclick=function(){ try{ schedulePdf(); }catch(e){ alert("The PDF could not be built: "+(e&&e.message||e)); } };
-    $("#pdf").textContent="Download schedule"; $("#sheets").hidden=view!=="day"; $("#sheets").textContent="Download day sheet"; $("#sheets").title="One page for the day in view, to print and hand to the operatives"; $("#sheets").onclick=function(){ try{ daySheetPdf(dayCur); }catch(e){ alert("The day sheet could not be built: "+(e&&e.message||e)); } };
+    $("#pdf").textContent="Download schedule"; $("#sheets").hidden=view!=="day"; $("#sheets").textContent="Download day sheet"; $("#sheets").title="One page for the day in view, to print and hand to the operatives"; $("#sheets").onclick=function(){ daySheetDownload(dayCur).catch(function(e){ alert("The day sheet could not be built: "+(e&&e.message||e)); }); };
     $("#actuals").hidden=!(view==="day"&&dayCur<=iso(TODAY)); var unN=view==="day"?unrecorded(dayCur).length:0; $("#actuals").textContent="Enter day sheet"+(unN?" ("+unN+" to do)":""); $("#actuals").onclick=function(){ ACT_OPEN=dayCur; ACT_DRAFT=null; render(); };
     $("#timings").hidden=!(view==="day"||view==="week"); $("#timings").onclick=function(){ TIMINGS_OPEN=true; render(); }; $("#guide").onclick=function(){ location.href="./guide.html"; };
     if(t&&view!=="manager"&&view!=="month") setTimeout(refreshRounds,0);
