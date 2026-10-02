@@ -2386,7 +2386,7 @@ var SNAP=null, DETAIL={};
       // when Download is pressed, built by the CRM's own pick-line rules.
       if(PICK&&order.length){
         var pickHead=function(cont){ doc.addPage(); y=14; doc.setFont("helvetica","bold"); doc.setFontSize(cont?12:19); doc.text("Picking · "+niceDay(k)+(cont?", continued":""),L,y+(cont?0:2));
-          if(!cont){ doc.setFont("helvetica","normal"); doc.setFontSize(8.5); doc.setTextColor(90); doc.text("Read from the CRM when printed, "+prT,L+W,y+2,{align:"right"}); doc.setTextColor(0); }
+          // no "Read from the CRM when printed" line (Sam, 2 Oct 2026: "this is not required")
           y+=cont?6:9; };
         var pfoot=function(){ doc.setFont("helvetica","normal"); doc.setFontSize(8); doc.setTextColor(90); doc.text("Tick each line as it comes off the rack. Write what was finished today on each line.",L,287); doc.text("Coggin SOS",L+W,287,{align:"right"}); doc.setTextColor(0); };
         var PH=17, PW=21, TX=L+56, RW=40, TW=W-56-RW-2;
