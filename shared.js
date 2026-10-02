@@ -288,7 +288,7 @@ function frontBadges(d,site,round){
   var tight=function(m){ if(m==null) return ""; var h=Math.floor(m/60), r=m%60; return h?(h+"h"+(r?String(r).padStart(2,"0"):"")):(r+"m"); };
   // A FORTON JOB SAYS LABOUR (Sam, 2 Oct 2026: "why is it saying Bradley H no time on this trello card?"). It sat under
   // "Production: Bradley H, 30 min" with no word for which part it was. The tier name now leads, as production's does.
-  var word=tag?tag.replace(/: $/,""):"Labour: "+who.join(", ")+(d.mins==null?",":"");
+  var word=tag?tag.replace(/: $/,""):"Labour: "+who.join(", ")+",";
   var travel=!site?"":(round?(round.total==null?" · no round travel":" · round "+tight(round.total)):(d.drive==null?" · no travel":" · travel "+tight(d.drive)));
   var missing=d.mins==null||(site&&(round?round.total==null:d.drive==null));
   out.push({text:word+(d.mins==null?" no time":" "+tight(d.mins)+(who.length>1?" each":""))+travel,color:missing?"yellow":"green"});
