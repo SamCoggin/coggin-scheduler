@@ -108,8 +108,8 @@
   .banner button.close{margin-left:10px;background:#fff;color:var(--red)}
   .banner{margin:10px 0 0;padding:10px 14px;border-radius:8px;background:var(--red);color:#fff;font-weight:800;font-size:14px}
   /* down to the window edge (Sam, 2 Oct 2026: "Why is there a gap under the footer bar?"): the veil's 24px bottom padding left a strip where the job scrolled through */
-  .save.sticky{position:sticky;bottom:-28px;padding-bottom:42px!important;z-index:3;background:var(--card);border-top:2px solid #3d4451;box-shadow:0 -6px 14px rgba(9,30,66,.18);padding:12px 24px 16px;margin-top:8px}
-  .modal.wide .save.sticky{padding:12px 24px 16px;margin-top:8px}
+  .save.sticky{position:sticky;bottom:-28px;z-index:3;background:var(--card);border-top:2px solid #3d4451;box-shadow:0 -6px 14px rgba(9,30,66,.18);padding:9px 24px 9px!important;margin-top:8px}   /* slim (2 Oct 2026, "Why is this bar so big?"): the same space above and below the button; bottom -28px (24px after the .88 zoom) still meets the window edge over the veil padding */
+  .modal.wide .save.sticky{margin-top:8px}
   .crew{display:flex;flex-wrap:wrap;gap:6px;padding:8px 14px;border-bottom:1px solid var(--line)}
   .crew span{font-size:13px;font-weight:700;border-radius:6px;padding:4px 9px;border:1px solid var(--line);background:var(--list)}
   .crew .free{color:var(--green);background:var(--green-bg);border-color:var(--green-bg)} .crew .over{color:var(--red);background:var(--red-bg);border-color:var(--red-bg)} .crew .off{color:var(--amber);background:var(--amber-bg);border-color:var(--amber-bg)}
