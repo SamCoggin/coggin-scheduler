@@ -563,7 +563,11 @@ function prodStatusOf(P,due,today,inShop){
   // STILL IN THE WORKSHOP AFTER ITS DAYS (Sam, 1 Oct 2026, CUBE HR: "it clearly says it is still in progress and surely
   // it could pick this up"). Booked days gone by and the card not moved on from Not Started or In-progress means the
   // production is not finished, so it is not on track: move its production days on, and it goes back on Needs planning.
-  if(inShop&&P.date&&P.date<today){ var pastDue=due<today;
+  // ...AND ONCE TODAY'S WORKING DAY IS OVER (Sam, 2 Oct 2026, Harrison Drury and Lancaster College at 17:00: "These jobs
+  // did not get completed today and will run into Monday"). A card booked to finish today and still in the workshop
+  // after 16:30 is not finished either; it said "On track" until the next morning.
+  var dayGoneToday=P.date===today&&typeof minsLeftOn==="function"&&minsLeftOn(today)===0;
+  if(inShop&&P.date&&(P.date<today||dayGoneToday)){ var pastDue=due<today||(dayGoneToday&&due<=today);
     // the earliest it can carry on: today while the working day lasts, otherwise the next working day
     var carry=today; if(typeof minsLeftOn==="function"&&minsLeftOn(today)===0){ var nx=new Date(today+"T12:00"); do{ nx.setDate(nx.getDate()+1); }while(nx.getDay()===0||nx.getDay()===6); carry=nx.toISOString().slice(0,10); }
     return {cls:pastDue?"late":"soon",text:"Booked to finish "+niceShort(P.date)+" but still in the workshop. Move the production "+(P.mins!=null&&P.mins<=DAY_MINS?"day":"days")+" on to when it will be finished"+(pastDue?", it was due "+niceShort(due):", it is due "+niceShort(due))+".",full:"Booked to finish "+niceShort(P.date)+" but still in the workshop. Move the production "+(P.mins!=null&&P.mins<=DAY_MINS?"day":"days")+" on to when it will be finished"+(pastDue?", it was due "+niceShort(due):", it is due "+niceShort(due))+".",start:carry,need:null,planned:false,unfinished:true}; }
