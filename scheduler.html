@@ -2446,6 +2446,7 @@ var SNAP=null, DETAIL={};
             if(r.part==="Production"){ var i=PICK[r.card]||{}, lines=i.lines||[], fin=j.stage==="In progress"&&!(j.prep&&j.prep.stages);
               kit.header("Job · Production · "+b.title,r.name,[c[3],j.prodDue?"due "+niceDay(j.prodDue):"",j.date?"for "+(j.site?"delivery ":"")+niceDay(j.date):"",i.ref?"Ref "+i.ref:""].filter(Boolean).join(" · "),"https://trello.com/c/"+(j.short||j.id),"Scan to open the Trello card");
               starts[r.key]=doc.getNumberOfPages();
+              kit.steps([fin?"Card is In-progress. Keep it there while you work":"Starting? Move the card to In-progress","Tick the checklist on the Trello card as each item is finished","All done? Move the card to Ready for Delivery / Collection"]);
               kit.heading(0,i.allPicked?"All finished":fin?"Items to finish":"Pick and finish"); y=kit.getY();
               if(lines.length){ lines.forEach(function(l){ if(y+lineH(l)>278){ kit.setFoot("This job carries on over the page."); kit.header("Job · Production · "+b.title,r.name,"",null,"",true); y=kit.getY(); } drawLine(l); }); kit.setY(y); }
               else { var inf=DATA.info[r.card]||(DATA.byCard[r.card]?{items:DATA.byCard[r.card].stop.items}:null); kit.items(inf&&inf.items?inf.items:[],function(){ kit.setFoot("This job carries on over the page."); kit.header("Job · Production · "+b.title,r.name,"",null,"",true); }); }
@@ -2558,6 +2559,14 @@ var SNAP=null, DETAIL={};
     kit.crew=function(c){ crewFoot=c; };
     kit.getY=function(){ return y; }; kit.setY=function(v){ y=v; };
     kit.L=L; kit.W=W; kit.heading=heading; kit.label=label; kit.setFoot=setFoot;
+    // THE TRELLO STEPS (Sam, 2 Oct 2026: "they need to make sure they move the card on trello into in progress and when
+    // completed into the completed list ensuring the checklist is completed"). Equal boxes under the header, a tick box
+    // each, in the order they happen.
+    kit.steps=function(list){ var n=list.length, g=4, bw=(W-g*(n-1))/n, h=17;
+      list.forEach(function(t,i){ var x=L+i*(bw+g); doc.setLineWidth(0.5); doc.setDrawColor(17); doc.roundedRect(x,y,bw,h,1.2,1.2); doc.setDrawColor(0);
+        box(x+3,y+3,5); doc.setFont("helvetica","bold"); doc.setFontSize(8); doc.setTextColor(110); doc.text("STEP "+(i+1),x+10.5,y+6.6,{charSpace:0.2}); doc.setTextColor(0);
+        doc.setFont("helvetica","bold"); doc.setFontSize(9); doc.text(doc.splitTextToSize(t,bw-6).slice(0,2),x+3,y+11.6); });
+      y+=h+6; };
     // the header every job page shares: kind and crew, the name large, a code top right, a rule under it
     kit.header=function(kind,name,sub,code,codeLabel,cont){ newPage(); label(kind+(cont?", continued":""),L,y+1);
       doc.setFont("helvetica","bold"); doc.setFontSize(cont?14:20); var tl=doc.splitTextToSize(name,W-48).slice(0,2); doc.text(tl,L,y+(cont?7:9)); var ty=y+(cont?7:9)+(tl.length-1)*7.5;
@@ -2617,7 +2626,8 @@ var SNAP=null, DETAIL={};
         else { doc.setDrawColor(150); doc.setLineDashPattern([0.8,0.8],0); doc.rect(qx,y,38,38); doc.setLineDashPattern([],0); doc.setDrawColor(0); doc.setFont("helvetica","bold"); doc.setFontSize(8); doc.text(doc.splitTextToSize("No sign-off link on the card. Ring the office.",32),qx+19,y+17,{align:"center"}); }
         y=Math.max(cy+5+Math.max(al.length,cl.length)*4.8,y+47)+2; rule(); y+=5; };
       var cont=function(){ setFoot("This stop carries on over the page."); stopHead(true); };
-      stopHead(false); heading(0,collect?"Collect":"Unload"); kit.items(s.items,cont);
+      stopHead(false); kit.steps(["Tick the checklist on the Trello card as each item is done","Sign off and add your photos","Move the card to Job Completed"]);
+      heading(0,collect?"Collect":"Unload"); kit.items(s.items,cont);
       kit.photosBox("TAKE PHOTOS BEFORE YOU LEAVE",j,cont); kit.know(d,cont);
       setFoot("Problems? Ring the office before you leave site. No sign-off, no invoice."); };
     // a labour page: what is happening, what moves, a code to sign off, the photos prompt
@@ -2625,6 +2635,7 @@ var SNAP=null, DETAIL={};
       var code=d.signoff||("https://trello.com/c/"+(j.short||j.id)), codeLabel=d.signoff?"Scan to sign off when it leaves":"Scan to open the Trello card";
       kit.header("Job · Labour · "+crewTxt,nm,[timeTxt,sub].filter(Boolean).join(" · "),code,codeLabel);
       var cont=function(){ setFoot("This job carries on over the page."); kit.header("Job · Labour · "+crewTxt,nm,"",null,"",true); };
+      kit.steps(["Tick the checklist on the Trello card as each item is done","Sign off and add your photos","Move the card to Job Completed"]);
       heading(0,"Items"); kit.items(info.items,cont); kit.photosBox("TAKE PHOTOS BEFORE THEY LEAVE",j,cont); kit.know(d,cont);
       setFoot("Ring the office with any problem."); };
     return kit; }
