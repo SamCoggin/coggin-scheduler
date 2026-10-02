@@ -360,6 +360,7 @@
   .pstep input{width:46px;height:30px;border:0;text-align:center;font:inherit;font-size:13px;font-variant-numeric:tabular-nums;-moz-appearance:textfield} .pstep input::-webkit-inner-spin-button,.pstep input::-webkit-outer-spin-button{-webkit-appearance:none;margin:0}
   @media (max-width:640px){ .picks2 li{grid-template-columns:1fr 1fr} .picks2 .pnm{grid-column:1/-1} }
   .pfoot{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-top:8px} .pfoot .link{white-space:nowrap}
+  .rtl .rbrk{display:flex;justify-content:space-between;align-items:center;gap:10px;margin:2px 0 2px 34px;padding:6px 10px;border-radius:8px;background:#f4f6f9;font-size:12.5px;color:var(--muted)} .rtl .rbrk .nm{font-weight:600;color:var(--muted)}
     .bh .rpill{margin-left:auto;font-size:12px;font-weight:700;background:#e8eef9;color:#1D3058;border-radius:999px;padding:3px 9px;letter-spacing:0;text-transform:none}
   .rwho{font-size:13px;color:var(--muted);margin:2px 0 10px}
   .rroute{list-style:none;margin:0 0 10px;padding:0}
@@ -972,6 +973,15 @@ var SNAP=null, DETAIL={};
   // taken at different times, not dead on time, without micro managing them"): 45 minutes on every day out, added to the
   // clock as a lump. The 7h45 capacity already has them taken off the 8:00 to 16:30 day.
   var DAY_START=8*60, DAY_END=16*60+30, BREAKS=45, DRIVE_MAX=10*60, DRIVER_DAY_MAX=11*60;
+  // BREAKS AT THEIR TIMES (Sam, 2 Oct 2026: "it is 15 mins at 10:00am or close to that time and 30 mins at 12:00 or close
+  // to that time not 45 mins when ever they feel like it"). This replaces the 45-minute lump above. Each break is taken
+  // at the first gap between stops from a quarter of an hour before its time, so it lands close to 10:00 and 12:00
+  // without stopping a drive or a job halfway. A round back before 9:45 takes neither on the road. BREAKS stays as the
+  // daily total the 7h 45m capacity already has off the day.
+  var BREAK_TIMES=[[10*60,15,"Morning break"],[12*60,30,"Lunch"]], BREAK_EARLY=15;
+  // a drive or a job that runs across a break's time stops for it there: the stretch ends that much later
+  function breakDuring(t,dur,taken,list){ var add=0; BREAK_TIMES.forEach(function(b,i){ if(!taken[i]&&t<b[0]-BREAK_EARLY&&t+dur+add>b[0]){ taken[i]=1; if(list) list.push({at:b[0],mins:b[1],what:b[2]}); add+=b[1]; } }); return add; }
+  function breakAt(t,taken,list){ BREAK_TIMES.forEach(function(b,i){ if(!taken[i]&&t>=b[0]-BREAK_EARLY){ taken[i]=1; if(list) list.push({at:t,mins:b[1],what:b[2]}); t+=b[1]; } }); return t; }
   function parseHM(t){ if(!t) return null; var m=/^(\d{1,2}):(\d{2})$/.exec(t); return m?parseInt(m[1],10)*60+parseInt(m[2],10):null; }
   function hmStr(m){ m=Math.round(m/5)*5; var h=Math.floor(m/60), mm=m%60; return h+":"+(mm<10?"0":"")+mm; }
   function windowText(j){ if(!j||(!j.from&&!j.by)) return ""; if(j.collect) return (j.from?", customer arrives after "+j.from:"")+(j.by?", ready by "+j.by:""); return (j.from?", arrive after "+j.from:"")+(j.by?", finish by "+j.by:""); }
@@ -981,19 +991,19 @@ var SNAP=null, DETAIL={};
     var dj=allJobs().filter(function(j){return onDay(j,k)&&!j.isHold;}), jobs=dj.filter(function(j){return j.who.indexOf(w)>=0;});
     var site=jobs.filter(function(j){return j.site;}), other=jobs.filter(function(j){return !j.site;});
     var preps=prepJobs().filter(function(j){return j.prep&&j.prep.date&&daysOf(j.prep).indexOf(k)>=0&&j.prep.who.indexOf(w)>=0;});
-    var t=DAY_START, drive=0, stops=[];
+    var t=DAY_START, drive=0, stops=[], taken={}, brk=[];
     if(site.length){
       var rs=roundsOn(k,dj).filter(function(r){return r.who===w;})[0], ordered=windowOrder(site);
       if(rs&&rs.legs&&rs.order&&(rs.typed||ROUND_DRIVE[rs.key]==null)){ ordered=rs.order.map(function(id){ return site.filter(function(j){return j.id===id;})[0]; }).filter(Boolean); }
       var total=rs&&rs.drive!=null?rs.drive:(site.length===1?site[0].drive:null), leg=total!=null?total/(ordered.length+1):null, realLegs=rs&&rs.legs&&rs.order&&(rs.typed||ROUND_DRIVE[rs.key]==null)?rs.legs:null, li=0;
       if(rs&&rs.setOff&&parseHM(rs.setOff)!=null) t=parseHM(rs.setOff);
-      ordered.forEach(function(j){ if(realLegs){ var lg=realLegs[li++]||0; t+=lg; drive+=lg; } else if(leg!=null){ t+=leg; drive+=leg; } var arrive=t, f=parseHM(j.from), wait=0; if(f!=null&&arrive<f){ wait=f-arrive; t=f; } var st=t; t+=(j.mins||0); var by=parseHM(j.by);
-        stops.push({j:j,arrive:arrive,start:st,end:t,wait:wait,by:by,late:by!=null&&t>by,noDrive:leg==null}); });
-      if(realLegs){ var lgb=realLegs[li]||0; t+=lgb; drive+=lgb; } else if(leg!=null){ t+=leg; drive+=leg; }
+      ordered.forEach(function(j){ if(realLegs){ var lg=realLegs[li++]||0; t+=lg+breakDuring(t,lg,taken,brk); drive+=lg; } else if(leg!=null){ t+=leg+breakDuring(t,leg,taken,brk); drive+=leg; } var arrive=t, f=parseHM(j.from), wait=0; if(f!=null&&arrive<f){ wait=f-arrive; t=f; } var st=t; t+=(j.mins||0)+breakDuring(t,j.mins||0,taken,brk); var by=parseHM(j.by);
+        stops.push({j:j,arrive:arrive,start:st,end:t,wait:wait,by:by,late:by!=null&&t>by,noDrive:leg==null}); t=breakAt(t,taken,brk); });
+      if(realLegs){ var lgb=realLegs[li]||0; t+=lgb+breakDuring(t,lgb,taken,brk); drive+=lgb; } else if(leg!=null){ t+=leg+breakDuring(t,leg,taken,brk); drive+=leg; }
     }
-    if(site.length) t+=BREAKS; var back=t; other.forEach(function(j){ t+=(j.mins||0); }); preps.forEach(function(j){ t+=(j.prep.who.length?j.prep.who.reduce(function(x,w){return x+prepShare(j,w);},0):prepShare(j)); });
+    var back=t; other.forEach(function(j){ t=breakAt(t,taken,brk); t+=(j.mins||0); }); preps.forEach(function(j){ t=breakAt(t,taken,brk); t+=(j.prep.who.length?j.prep.who.reduce(function(x,w){return x+prepShare(j,w);},0):prepShare(j)); }); t=breakAt(t,taken,brk);
     var isDriver=CAN_DRIVE.indexOf(w)>=0&&site.length>0;
-    return {stops:stops,drive:Math.round(drive),back:back,end:t,isDriver:isDriver,driveOver:isDriver&&drive>DRIVE_MAX,longDay:isDriver&&(t-DAY_START)>DRIVER_DAY_MAX};
+    return {stops:stops,drive:Math.round(drive),back:back,breaks:brk,end:t,isDriver:isDriver,driveOver:isDriver&&drive>DRIVE_MAX,longDay:isDriver&&(t-DAY_START)>DRIVER_DAY_MAX};
   }
   function jobTiming(j,k){ if(!j.who.length) return null; var tl=dayTimeline(k,j.who[0]); return tl.stops.filter(function(x){return x.j===j;})[0]||null; }
   // the town alone was not clear enough in a warning (Sam, 15 Sep 2026: "I think this is meant to be Preston - MJS Groundworks"): the whole title, which is already town and customer
@@ -1395,16 +1405,16 @@ var SNAP=null, DETAIL={};
     var tot=legsNow.every(function(x){return x!=null;})?legsNow.reduce(function(a,b){return a+b;},0):null;
     var oneTotal=tot==null&&r.drive!=null?r.drive:null, perLeg=oneTotal!=null?oneTotal/legsNow.length:null;
     // THE CLOCK: set off, drive, wait for the window, site time, drive, until a leg is unknown
-    var t0=RL.setOff&&parseHM(RL.setOff)!=null?parseHM(RL.setOff):DAY_START, t=t0, known=true, times=[];
-    ordered.forEach(function(j,i){ var lg=legsNow[i]!=null?legsNow[i]:perLeg; if(lg==null) known=false; if(known){ t+=lg; var f=parseHM(j.from); if(f!=null&&t<f) t=f; var a=t; t+=(j.mins||0); times.push({arrive:a,leave:t,late:parseHM(j.by)!=null&&t>parseHM(j.by)}); } else times.push(null); });
-    var lastLeg=legsNow[ordered.length]!=null?legsNow[ordered.length]:perLeg; var back=known&&lastLeg!=null?t+lastLeg:null;
+    var t0=RL.setOff&&parseHM(RL.setOff)!=null?parseHM(RL.setOff):DAY_START, t=t0, known=true, times=[], rTaken={}, rBrk=[];
+    ordered.forEach(function(j,i){ var lg=legsNow[i]!=null?legsNow[i]:perLeg; if(lg==null) known=false; if(known){ var bw=[], bl=[]; t+=lg+breakDuring(t,lg,rTaken,bw); var f=parseHM(j.from); if(f!=null&&t<f) t=f; var a=t; t+=(j.mins||0)+breakDuring(t,j.mins||0,rTaken,bl); var tm0={arrive:a,leave:t,late:parseHM(j.by)!=null&&t>parseHM(j.by),brk:bl,way:bw}; bw.forEach(function(x){ rBrk.push(x); }); t=breakAt(t,rTaken,tm0.brk); tm0.brk.forEach(function(x){ rBrk.push(x); }); times.push(tm0); } else times.push(null); });
+    var lastLeg=legsNow[ordered.length]!=null?legsNow[ordered.length]:perLeg, lastBrk=[]; var back=known&&lastLeg!=null?t+lastLeg+breakDuring(t,lastLeg,rTaken,lastBrk):null; lastBrk.forEach(function(x){ rBrk.push(x); });
     var driving=tot!=null?tot:oneTotal, driveOver=driving!=null&&driving>DRIVE_MAX;
     var veh=(ordered.map(function(j){return j.vehicle&&j.vehicle!=="hire"?j.vehicle:(j.vehicle==="hire"?"Hire":"");}).filter(Boolean))[0]||"";
     var m=el("div","modal round");
     var head=el("div","head"); var hd=el("div"); hd.appendChild(el("h3",null,crewText(r.crew)+(r.crew.length<2?"'s round":": their round"))); hd.appendChild(el("div","hint",niceDay(k)+" · "+ordered.length+" stops"+(veh?" · "+veh:""))); hd.style.flex="1"; head.appendChild(hd);
     var x=el("button","close","Close"); x.onclick=shut; head.appendChild(x); m.appendChild(head);
     var sum=el("div","rsum"); var cell=function(lbl,val,cls){ var c=el("div",cls||null); c.appendChild(el("small",null,lbl)); c.appendChild(el("b",null,val)); sum.appendChild(c); };
-    cell("Driving",driving!=null?((tot==null?"about ":"")+fmt(driving)):"Not set",driving==null||tot==null?"warn":null); cell("Back at Forton",back!=null?((tot==null?"about ":"")+clock(back)+", "+clock(back+BREAKS)+" with breaks"):"Unknown",back==null||tot==null?"warn":null); cell(driveOver?"Driving":"Breaks",driveOver?"Over 10 hours":fmt(BREAKS)+" on top, taken when they like",driveOver?"warn":null); m.appendChild(sum);
+    cell("Driving",driving!=null?((tot==null?"about ":"")+fmt(driving)):"Not set",driving==null||tot==null?"warn":null); cell("Back at Forton",back!=null?((tot==null?"about ":"")+clock(back)):"Unknown",back==null||tot==null?"warn":null); cell(driveOver?"Driving":"Breaks",driveOver?"Over 10 hours":(back==null?"Not known yet":rBrk.length?rBrk.map(function(x){return x.mins+" min about "+clock(x.at);}).join(", "):"None while out, back before 9:45"),driveOver?"warn":null); m.appendChild(sum);
     var tl=el("div","rtl");
     // SET OFF: postcode and time on one line (Sam, 29 Sep 2026: PR3 1AD unless the driver sets off from somewhere else)
     var n0=el("div","rnode"); var n0t=el("div","top"); var n0n=el("span","nm","Sets off"); n0n.appendChild(el("small",null,placeName(start)+(start!==HOME_PC?", "+start:""))); n0t.appendChild(n0n);
@@ -1429,9 +1439,11 @@ var SNAP=null, DETAIL={};
       if(legsNow[i]==null&&perLeg!=null) lr.appendChild(el("span","mi","about "+fmt(Math.round(perLeg/5)*5)+" from the total")); else if(milesNow&&milesNow[i]!=null) lr.appendChild(el("span","mi",Math.round(milesNow[i])+" mi"));
       if(i>0&&i<ordered.length){ var sw=el("button","close s","Swap with next"); sw.onclick=function(){ var ids=ordered.map(function(x){return x.id;}); var tmp=ids[i-1]; ids[i-1]=ids[i]; ids[i]=tmp; setRL({order:ids,legs:null,miles:null,picked:""}); render(); }; lr.appendChild(sw); }
       return lr; };
-    ordered.forEach(function(j,i){ tl.appendChild(legRow(i)); var n=el("div","rnode rstop"); var top=el("div","top"); var nm=el("span","nm",j.title); var pc=pcOf(j)&&!/^area:/.test(pcOf(j))?pcOf(j):""; nm.appendChild(el("small",null,(pc||"no postcode on the card")+" · "+(j.mins!=null?fmt(j.mins)+" on site":"site time not set")+(j.from?" · after "+j.from:"")+(j.by?" · by "+j.by:""))); top.appendChild(nm);
-      var tm=times[i]; top.appendChild(el("span","t"+(tm&&tm.late?" late":""),tm?"arrive "+clock(tm.arrive)+", away "+clock(tm.leave)+(tm.late?", past the window":""):"")); n.appendChild(top); tl.appendChild(n); });
-    tl.appendChild(legRow(ordered.length)); var nb=el("div","rnode"); var nbt=el("div","top"); nbt.appendChild(el("span","nm","Back at Forton")); nbt.appendChild(el("span","t",back!=null?clock(back)+", or "+clock(back+BREAKS)+" with breaks":"")); nb.appendChild(nbt); tl.appendChild(nb);
+    var brkRow=function(x,extra){ var bn=el("div","rbrk"); bn.appendChild(el("span","nm",x.what+", "+x.mins+" min"+(extra||""))); bn.appendChild(el("span","t",clock(x.at)+" to "+clock(x.at+x.mins))); tl.appendChild(bn); };
+    ordered.forEach(function(j,i){ tl.appendChild(legRow(i)); if(times[i]) times[i].way.forEach(function(x){ brkRow(x,", on the way"); }); var n=el("div","rnode rstop"); var top=el("div","top"); var nm=el("span","nm",j.title); var pc=pcOf(j)&&!/^area:/.test(pcOf(j))?pcOf(j):""; nm.appendChild(el("small",null,(pc||"no postcode on the card")+" · "+(j.mins!=null?fmt(j.mins)+" on site":"site time not set")+(j.from?" · after "+j.from:"")+(j.by?" · by "+j.by:""))); top.appendChild(nm);
+      var tm=times[i]; top.appendChild(el("span","t"+(tm&&tm.late?" late":""),tm?"arrive "+clock(tm.arrive)+", away "+clock(tm.leave)+(tm.late?", past the window":""):"")); n.appendChild(top); tl.appendChild(n);
+      if(tm) tm.brk.forEach(function(x){ brkRow(x); }); });
+    tl.appendChild(legRow(ordered.length)); lastBrk.forEach(function(x){ brkRow(x,", on the way back"); }); var nb=el("div","rnode"); var nbt=el("div","top"); nbt.appendChild(el("span","nm","Back at Forton")); nbt.appendChild(el("span","t",back!=null?clock(back):"")); nb.appendChild(nbt); tl.appendChild(nb);
     m.appendChild(tl);
     var lk=el("div","row"); var lkb=el("button","p","Look up travel"); var canLook=pts.every(Boolean)&&!!CRM_KEY; lkb.disabled=!canLook; lkb.title=canLook?"Road time for each leg from the postcodes, plus a fifth for traffic":(!CRM_KEY?"The board needs its CRM key first":"Every stop needs a postcode on its card");
     // THE QUICKEST ORDER (Sam, 2 Oct 2026: "make it pick the quickest order"). Look up travel asks for the road time
@@ -1457,7 +1469,7 @@ var SNAP=null, DETAIL={};
         var moved=best.idx.some(function(v,i){return v!==i;});
         setRL({legs:legs,order:best.idx.map(function(i){return ordered[i].id;}),miles:mls,source:src,picked:tryAll?(moved?"moved":"kept"):""}); r.keys.forEach(function(kk){ delete ROUND_DRIVE[kk]; }); render();
       }).catch(function(e){ lkb.disabled=false; lkb.textContent="Look up travel"; var old=lk.querySelector(".hint.far"); if(old) lk.removeChild(old); lk.appendChild(el("span","hint far","Could not look the travel up. "+String(e&&e.message||e).replace(/\.?$/,".")+" Type the legs for now.")); }); };
-    lk.appendChild(lkb); lk.appendChild(el("span","hint",RL.source&&tot!=null?((RL.picked==="moved"?"Put in the quickest order. ":RL.picked==="kept"?"Already in the best order. ":"")+(RL.source==="google"?"Looked up on Google":"Looked up on OpenStreetMap")+", plus a fifth for traffic. Type over any leg. Stop times run on from the set-off with no breaks in them."):(canLook?(ordered.length>1&&ordered.length<=7?"Picks the quickest order that keeps every time window, then times each leg plus a fifth for traffic.":"Road time for each leg, plus a fifth for traffic. Or type the legs."):(!CRM_KEY?"Needs the board's CRM key. Type the legs instead.":"A stop has no postcode on its card. Type the legs instead.")))); m.appendChild(lk);
+    lk.appendChild(lkb); lk.appendChild(el("span","hint",RL.source&&tot!=null?((RL.picked==="moved"?"Put in the quickest order. ":RL.picked==="kept"?"Already in the best order. ":"")+(RL.source==="google"?"Looked up on Google":"Looked up on OpenStreetMap")+", plus a fifth for traffic. Type over any leg. Breaks are on the clock, 15 min near 10:00 and 30 min near 12:00."):(canLook?(ordered.length>1&&ordered.length<=7?"Picks the quickest order that keeps every time window, then times each leg plus a fifth for traffic.":"Road time for each leg, plus a fifth for traffic. Or type the legs."):(!CRM_KEY?"Needs the board's CRM key. Type the legs instead.":"A stop has no postcode on its card. Type the legs instead.")))); m.appendChild(lk);
     // NEARBY, OTHER DAYS: site jobs in the next six weeks within twenty road miles of a stop, so they can ride along
     var nbSec=el("div","sec"); nbSec.appendChild(el("div","k","Nearby, other days")); var nbBody=el("div","hint","Finding postcodes…"); nbSec.appendChild(nbBody); m.appendChild(nbSec);
     (function(){ var horizon=iso(addDays(new Date(k+"T12:00"),42)); var pool=allJobs().filter(function(j){ return j.site&&!(j.contractor&&!j.who.length)&&j.date!==k&&j.date>=k&&j.date<=horizon&&r.stops.indexOf(j)<0; });
@@ -1684,7 +1696,7 @@ var SNAP=null, DETAIL={};
       if(!past&&load[w].c==="off") line("Off","r",load[w].d||load[w].t,"","");
       prepsP.forEach(function(j){ var nd=daysOf(j.prep).length||1, me=minsFor(j.prep,w), today=Math.round(prepShare(j,w)); seg("p",today); line("Production","p",j.title.split(" - ").slice(1).join(" - ")||j.title,(nd>1?"day "+(daysOf(j.prep).indexOf(k)+1)+" of "+nd:"")+(j.prepDone?(nd>1?" · ":"")+"finished":"")+(past&&!j.prepDone?doneOf(j.prep):""),me!=null?fmt(today):"no time"); });
       var r=rounds.filter(function(x){return x.who===w;})[0], tlw=dayTimeline(k,w);
-      if(r){ seg("s",r.drive||0); line("Transport","round",r.stops.map(function(j){return j.title.split(" - ")[0];}).join(", ")+(r.start&&r.start!==HOME_PC?" \u00b7 from "+placeName(r.start):"")+(tlw.back?" \u00b7 back "+hmStr(tlw.back)+" with breaks":""),"",r.drive?fmt(r.drive)+" driving":"no travel yet"); }
+      if(r){ seg("s",r.drive||0); line("Transport","round",r.stops.map(function(j){return j.title.split(" - ")[0];}).join(", ")+(r.start&&r.start!==HOME_PC?" \u00b7 from "+placeName(r.start):"")+(tlw.back?" \u00b7 back "+hmStr(tlw.back):""),"",r.drive?fmt(r.drive)+" driving":"no travel yet"); }
       // stops in the order the day runs them, not the order the cards sit in (Sam's screenshot, 29 Sep 2026: York 11:20 above Bolton 08:40)
       var arriveOf=function(j){ var tm=jobTiming(j,k); return tm?tm.arrive:1e9; }; mineP=mineP.slice().sort(function(a,b){ return (a.site?0:1)-(b.site?0:1)||arriveOf(a)-arriveOf(b); });
       mineP.forEach(function(j){ var m=minsFor(j,w); var tm=jobTiming(j,k); if(j.site){ seg("s",(m||0)+(j.onRound?0:(j.drive||0))); line("Transport","s",j.title.split(" - ").slice(1).join(" - ")||j.title,(tm&&j.onRound?hmStr(tm.arrive):"")+(past?doneOf(j.isLeg?j.leg:j):""),(m!=null?fmt(m):"no time")+(j.site&&!j.onRound&&j.drive?" + "+fmt(j.drive):"")); }
