@@ -784,10 +784,10 @@ var SNAP=null, DETAIL={};
     var parts=dayParts(k);
     if(!ACT_DRAFT||ACT_DRAFT.k!==k){ ACT_DRAFT={k:k,rows:parts.map(function(p){ var a=ACTUALS[p.key]; return {p:p,who:a?(a.actual_who||[]).slice():p.who.slice(),mins:a?a.actual_mins:(p.mins!=null?p.mins:null),not_done:a?!!a.not_done:false,typed:!!a}; })}; }
     var veil=el("div","veil"); veil.onclick=function(e){ if(e.target===veil){ ACT_OPEN=null; ACT_DRAFT=null; render(); } };
-    var m=el("div","modal wide"); var head=el("div","head"); var ht=el("div"); ht.appendChild(el("h3",null,"Day sheet, "+niceDay(k))); ht.appendChild(el("div","sub","Type in what came back on the sheet: who did each job and the actual time each. Planned is filled in, so change only what was different.")); head.appendChild(ht);
+    var m=el("div","modal wide"); var head=el("div","head"); var ht=el("div"); ht.style.flex="1"; ht.appendChild(el("h3",null,"Day sheet, "+niceDay(k))); ht.appendChild(el("div","sub","Type in what came back on the sheet: who did each job and the actual time each. Planned is filled in, so change only what was different.")); head.appendChild(ht);
     var cl=el("button","close","Close"); cl.onclick=function(){ ACT_OPEN=null; ACT_DRAFT=null; render(); }; head.appendChild(cl); m.appendChild(head);
-    if(!CRM_KEY){ m.appendChild(el("div","hint far","The CRM key is not set on this board, so nothing can be saved.")); veil.appendChild(m); return veil; }
-    if(!parts.length) m.appendChild(el("div","hint","Nothing was booked on this day."));
+    if(!CRM_KEY){ var hx=el("div","hint far","The CRM key is not set on this board, so nothing can be saved."); hx.style.padding="16px 24px"; hx.style.margin="0"; m.appendChild(hx); veil.appendChild(m); return veil; }
+    if(!parts.length) var hx=el("div","hint","Nothing was booked on this day."); hx.style.padding="16px 24px"; hx.style.margin="0"; m.appendChild(hx);
     ACT_DRAFT.rows.forEach(function(r){ var row=el("div","actrow"+(r.not_done?" nd":""));
       var c1=el("div"); c1.appendChild(el("b",null,r.p.title)); c1.appendChild(el("small",null,r.p.sub+" · planned "+(r.p.who.length?r.p.who.map(function(w){return w.split(" ")[0];}).join(", "):"nobody")+(r.p.mins!=null?", "+fmt(r.p.mins)+(r.p.who.length>1?" each":""):""))); row.appendChild(c1);
       var c2=el("div","actwho"); TEAM.forEach(function(w){ var on=r.who.indexOf(w)>=0; var b=el("button",on?"on":"",w.split(" ")[0]); b.onclick=function(){ var i=r.who.indexOf(w); if(i>=0) r.who.splice(i,1); else r.who.push(w); render(); }; c2.appendChild(b); }); row.appendChild(c2);
@@ -808,10 +808,10 @@ var SNAP=null, DETAIL={};
   function timingsModal(){
     if(!TIMINGS_OPEN) return null;
     var veil=el("div","veil"); veil.onclick=function(e){ if(e.target===veil){ TIMINGS_OPEN=false; render(); } };
-    var m=el("div","modal wide"); var head=el("div","head"); var ht=el("div"); ht.appendChild(el("h3",null,"Timings, last four weeks")); ht.appendChild(el("div","sub","Planned against actual, from the day sheets typed in. Over 100 percent means jobs took longer than planned.")); head.appendChild(ht);
+    var m=el("div","modal wide"); var head=el("div","head"); var ht=el("div"); ht.style.flex="1"; ht.appendChild(el("h3",null,"Timings, last four weeks")); ht.appendChild(el("div","sub","Planned against actual, from the day sheets typed in. Over 100 percent means jobs took longer than planned.")); head.appendChild(ht);
     var cl=el("button","close","Close"); cl.onclick=function(){ TIMINGS_OPEN=false; render(); }; head.appendChild(cl); m.appendChild(head);
     var from=iso(addDays(TODAY,-28)), rows=Object.keys(ACTUALS).map(function(kk){return ACTUALS[kk];}).filter(function(a){ return a.date>=from&&!a.not_done&&a.actual_mins!=null&&a.planned_mins!=null; });
-    if(!rows.length){ m.appendChild(el("div","hint","No day sheets typed in yet. Enter day sheet on the Day view fills this.")); veil.appendChild(m); return veil; }
+    if(!rows.length){ var nh=el("div","hint","No day sheets typed in yet. Enter day sheet on the Day view fills this."); nh.style.padding="16px 24px 24px"; nh.style.margin="0"; m.appendChild(nh); veil.appendChild(m); return veil; }
     var table=function(title,byPerson,keyOf){ var lb0=el("div","lbl",title); lb0.style.padding="0 24px"; m.appendChild(lb0); var g={};
       rows.forEach(function(a){ keyOf(a).forEach(function(kk){ var x=g[kk]=g[kk]||{n:0,plan:0,act:0,pp:0,pa:0}; x.n++; x.plan+=byPerson?a.planned_mins:a.planned_mins*Math.max(1,(a.planned_who||[]).length); x.act+=byPerson?a.actual_mins:a.actual_mins*Math.max(1,(a.actual_who||[]).length); x.pp+=(a.planned_who||[]).length; x.pa+=(a.actual_who||[]).length; }); });
       var hd=el("div","timrow head"); ["","Jobs","Planned","Actual","Against plan",byPerson?"":"People planned / used"].forEach(function(t){ hd.appendChild(el("span",null,t)); }); m.appendChild(hd);
