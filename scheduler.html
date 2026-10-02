@@ -345,7 +345,14 @@
   @media (max-width:420px){ .each-p{grid-template-columns:1fr} }
   .items{list-style:none;margin:8px 0 0;padding:0}
   .items li{padding:5px 0;border-top:1px solid var(--line);font-size:13px;display:flex;gap:8px;align-items:flex-start}
-  .bh .rpill{margin-left:auto;font-size:12px;font-weight:700;background:#e8eef9;color:#1D3058;border-radius:999px;padding:3px 9px;letter-spacing:0;text-transform:none}
+  .picks{list-style:none;margin:0;padding:0;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+  .picks li+li{border-top:1px solid var(--line)}
+  .picks label{display:flex;gap:10px;align-items:flex-start;padding:9px 12px;cursor:pointer}
+  .picks input{width:18px;height:18px;margin:1px 0 0;flex:0 0 18px;accent-color:#1D3058;cursor:pointer}
+  .picks .ptx{display:flex;flex-direction:column;gap:2px;min-width:0} .picks .ptx b{font-size:13.5px;font-weight:600;overflow-wrap:anywhere} .picks .ptx small{font-size:12px;color:var(--muted)}
+  .picks li.done{background:#f6f8fb} .picks li.done .ptx b{color:var(--muted);text-decoration:line-through}
+  .pfoot{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-top:8px} .pfoot .link{white-space:nowrap}
+    .bh .rpill{margin-left:auto;font-size:12px;font-weight:700;background:#e8eef9;color:#1D3058;border-radius:999px;padding:3px 9px;letter-spacing:0;text-transform:none}
   .rwho{font-size:13px;color:var(--muted);margin:2px 0 10px}
   .rroute{list-style:none;margin:0 0 10px;padding:0}
   .rroute li{display:grid;grid-template-columns:16px minmax(0,1fr) auto;gap:10px;align-items:center;padding:5px 0;font-size:13.5px;position:relative}
@@ -618,7 +625,7 @@ var SNAP=null, DETAIL={};
       if(d.who) j.who=d.who.slice(); if(d.cube!=null) j.cubeSet=d.cube; if(d.ignore&&d.ignore.length){ j.ignore=d.ignore.slice(); j.items=j.allItems.filter(function(l){return j.ignore.indexOf(l)<0;}); } if(d.items&&d.items.length){ j.manual=d.items.slice(); } j.load=loadOf(j.items.concat(j.manual).concat(j.loanItems||[])); if(d.mins!=null) j.mins=d.mins; if(d.each) j.each=d.each; if(d.at) j.at=d.at; if(d.drive!=null) j.drive=d.drive; if(d.driveAuto) j.driveAuto=true; if(!ESTIMATE_ON&&j.driveAuto){ j.drive=null; j.driveAuto=false; } if(d.contractor) j.contractor=d.contractor; if(d.from) j.from=d.from; if(d.by) j.by=d.by; if(d.collectAt) j.collectAt=d.collectAt; if(d.vehicle) j.vehicle=d.vehicle; if(d.soloOk) j.soloOk=d.soloOk; if(d.qc&&d.qc.by) j.qc=d.qc; if(d.done&&d.done.status) j.done=(d.done.status==="no"&&d.date&&d.date!==j.date)?null:d.done;   // a did-not-go record clears once the card has a new date
       // DATE MOVED (Sam, 13 Sep 2026): the plan remembers the date it was made for. If sales move the card, the plan flags itself until someone presses Replanned.
       if(d.date&&d.date!==j.date&&((d.who&&d.who.length)||d.mins!=null||d.vehicle)) j.moved={from:d.date}; if(d.hireRef) j.hireRef=d.hireRef; if(d.hireBooked) j.hireBooked=true;
-      if(d.prep&&j.prep){ j.prep.who=d.prep.who||[]; j.prep.mins=d.prep.mins; j.prep.perDay=d.prep.perDay!=null?d.prep.perDay:null; if(d.prep.each) j.prep.each=d.prep.each; j.prep.start=d.prep.start||null; j.prep.date=d.prep.date||null; if(d.prep.done&&d.prep.done.status) j.prep.done=d.prep.done; }
+      if(d.prep&&j.prep){ j.prep.who=d.prep.who||[]; j.prep.mins=d.prep.mins; j.prep.perDay=d.prep.perDay!=null?d.prep.perDay:null; if(d.prep.each) j.prep.each=d.prep.each; j.prep.start=d.prep.start||null; j.prep.date=d.prep.date||null; if(d.prep.done&&d.prep.done.status) j.prep.done=d.prep.done; if(d.prep.picked) j.prep.picked=d.prep.picked; }
       // FINISHED PRODUCTION KEEPS ITS PLAN (Sam, 2 Oct 2026: "I don't think is taking into concideration they have also
       // completed to other jobs"): a card moved on to Ready or beyond has no production part any more, but the plan says
       // who worked on it and when, so it is kept, saved back unchanged, and its hours stay on those days as finished work.
@@ -757,7 +764,7 @@ var SNAP=null, DETAIL={};
   function persist(){
     if(!t) return;
     JOBS.forEach(function(j){
-      tidyEach(j); var d={date:j.moved?j.moved.from:j.date,who:j.who,mins:j.mins,each:j.each||undefined,drive:j.drive,driveAuto:!!j.driveAuto,at:j.at||undefined,cube:j.cubeSet,ignore:j.ignore&&j.ignore.length?j.ignore:undefined,items:j.manual&&j.manual.length?j.manual:undefined,load:j.load&&j.load.any?{m3:j.load.m3,kg:j.load.kg,complete:j.load.complete,rows:j.load.rows.map(function(r){return {n:r.n,type:r.type,m3:r.m3,kg:r.kg,built:r.built,est:r.est};}),unmatched:j.load.unmatched}:undefined,contractor:j.contractor||"",from:j.from||null,by:j.by||null,collectAt:j.collectAt||undefined,vehicle:j.vehicle||null,soloOk:j.soloOk||"",qc:j.qc||null,done:j.done||null,hireRef:j.hireRef||"",hireBooked:!!j.hireBooked,prodDue:j.prodDueSet?j.prodDue:null,prep:j.prep?{who:j.prep.who,mins:j.prep.mins,perDay:j.prep.perDay!=null?j.prep.perDay:undefined,each:j.prep.each&&Object.keys(j.prep.each).length?j.prep.each:undefined,start:j.prep.start,date:j.prep.date,done:j.prep.done||null}:(j.donePrep||null),
+      tidyEach(j); var d={date:j.moved?j.moved.from:j.date,who:j.who,mins:j.mins,each:j.each||undefined,drive:j.drive,driveAuto:!!j.driveAuto,at:j.at||undefined,cube:j.cubeSet,ignore:j.ignore&&j.ignore.length?j.ignore:undefined,items:j.manual&&j.manual.length?j.manual:undefined,load:j.load&&j.load.any?{m3:j.load.m3,kg:j.load.kg,complete:j.load.complete,rows:j.load.rows.map(function(r){return {n:r.n,type:r.type,m3:r.m3,kg:r.kg,built:r.built,est:r.est};}),unmatched:j.load.unmatched}:undefined,contractor:j.contractor||"",from:j.from||null,by:j.by||null,collectAt:j.collectAt||undefined,vehicle:j.vehicle||null,soloOk:j.soloOk||"",qc:j.qc||null,done:j.done||null,hireRef:j.hireRef||"",hireBooked:!!j.hireBooked,prodDue:j.prodDueSet?j.prodDue:null,prep:j.prep?{who:j.prep.who,mins:j.prep.mins,perDay:j.prep.perDay!=null?j.prep.perDay:undefined,each:j.prep.each&&Object.keys(j.prep.each).length?j.prep.each:undefined,start:j.prep.start,date:j.prep.date,done:j.prep.done||null,picked:j.prep.picked&&Object.keys(j.prep.picked).length?j.prep.picked:undefined}:(j.donePrep||null),
         legs:LEGS.filter(function(L){return L.parent===j.id;}).map(function(L){ tidyEach(L); return {type:L.type,date:L.date,who:L.who,mins:L.mins,each:L.each||undefined,drive:L.drive,where:L.where,from:L.from||null,by:L.by||null,pc:L.pc||null,src:L.src||null};})};
       var js=JSON.stringify(d); if(lastSaved[j.id]===js) return; lastSaved[j.id]=js; t.set(j.id,"shared","sched",d); syncCardMembers(j.id,d,CRM_KEY,inWorkshop(j));
     });
@@ -814,6 +821,13 @@ var SNAP=null, DETAIL={};
     v.onclick=function(e){ if(e.target===v||e.target===x) close(); }; document.addEventListener("keydown",onKey,true);
     document.body.appendChild(v); x.focus();
   }
+  // PICKED LINES (Sam, 2 Oct 2026, option 2): a production that runs over days printed its whole pick list every day.
+  // Each pick line is ticked off in the production editor once it is picked, saved on the card's plan, and the day
+  // sheet prints only what is still to pick. The key is the product, its section and its label, so a desk build's
+  // variants stay separate lines.
+  var PICK_LINES={};   // card id -> null while loading, or {picks, lines}
+  function pickKey(l){ return [l.product_id||l.name||"",l.section||"",l.label||""].join("|"); }
+  function pickedOf(id){ var j=JOBS.filter(function(x){return x.id===id;})[0]; if(!j) return {}; return (j.prep&&j.prep.picked)||(j.donePrep&&j.donePrep.picked)||{}; }
   var ITEM_PHOTOS={};   // card id -> [{name, qty, photo}] from the CRM, fetched when the card is opened
   var CRM_PICKING_URL="https://coggin-sos-os.base44.app/api/apps/69c930a6240fba922f369aa2/functions/pickingSheets";
   var ACTUALS={}, ACTUALS_OK=false, ACT_OPEN=null, ACT_DRAFT=null, TIMINGS_OPEN=false;
@@ -1093,6 +1107,22 @@ var SNAP=null, DETAIL={};
         if(src){ var im=el("img","ithumb zoom"); im.src=src; im.alt=x; im.loading="lazy"; im.tabIndex=0; im.title="Click to see it bigger"; im.setAttribute("role","button");
           im.onclick=function(e){ e.stopPropagation(); photoPopup(src,x); }; im.onkeydown=function(e){ if(e.key==="Enter"||e.key===" "){ e.preventDefault(); photoPopup(src,x); } }; li.appendChild(im); } else if(photos) li.appendChild(el("span","ithumb none","No photo"));
         li.appendChild(el("span",null,x)); ul.appendChild(li); }); ib.appendChild(ul); left.appendChild(ib); }
+    // THE PICK LIST, TICKED OFF AS IT IS PICKED (2 Oct 2026). Production only, Resale and Refurb only (the CRM says which).
+    if(o.shop&&!j.isHold&&CRM_KEY){ var plc=PICK_LINES[j.id];
+      if(plc===undefined){ PICK_LINES[j.id]=null; fetch(CRM_PICKING_URL,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({key:CRM_KEY,action:"lines",cards:[{id:j.id,short:j.short||""}]})})
+        .then(function(x){return x.json();}).then(function(res){ var e=res&&res.ok&&res.lines?res.lines[j.id]:null; PICK_LINES[j.id]={picks:!!(e&&e.picks),lines:(e&&e.lines)||[]}; window.__keepScroll=(document.querySelector(".veil")||{}).scrollTop||0; render(); })
+        .catch(function(){ PICK_LINES[j.id]={picks:false,lines:[],failed:true}; render(); }); }
+      if(plc===null||plc===undefined){ var pb0=block("Picking"); pb0.appendChild(el("div","hint","Loading the pick list\u2026")); left.appendChild(pb0); }
+      else if(plc.picks&&plc.lines.length){ var pb=block("Picking"); var pk=j.prep.picked||{}, nDone=plc.lines.filter(function(l){return pk[pickKey(l)];}).length;
+        pb.querySelector(".bh").appendChild(el("span","rpill",nDone+" of "+plc.lines.length+" picked"));
+        var setPicked=function(l,on){ var P=Object.assign({},j.prep.picked||{}); if(on) P[pickKey(l)]={on:iso(TODAY)}; else delete P[pickKey(l)]; j.prep.picked=P; window.__keepScroll=(document.querySelector(".veil")||{}).scrollTop||0; persist(); render(); };
+        var pul=el("ul","picks");
+        plc.lines.forEach(function(l){ var done=pk[pickKey(l)], li=el("li",done?"done":""); var lab=el("label"); var cb=el("input"); cb.type="checkbox"; cb.checked=!!done; cb.onchange=function(){ setPicked(l,cb.checked); }; lab.appendChild(cb);
+          var tx=el("span","ptx"); tx.appendChild(el("b",null,(l.qty||1)+" x "+(l.label||l.name))); var sub=[l.section||"",l.stock_location?"Location "+l.stock_location:"",done?"picked "+niceDay(done.on):""].filter(Boolean).join(" \u00b7 "); if(sub) tx.appendChild(el("small",null,sub)); lab.appendChild(tx); li.appendChild(lab); pul.appendChild(li); });
+        pb.appendChild(pul);
+        var pf=el("div","pfoot"); pf.appendChild(el("span","hint","Tick a line once it is picked. The day sheet prints only what is left."));
+        var allOn=nDone===plc.lines.length, tb=el("button","link",allOn?"Untick all":"Tick all"); tb.onclick=function(){ var P=allOn?{}:Object.assign({},j.prep.picked||{}); if(!allOn) plc.lines.forEach(function(l){ if(!P[pickKey(l)]) P[pickKey(l)]={on:iso(TODAY)}; }); j.prep.picked=P; window.__keepScroll=(document.querySelector(".veil")||{}).scrollTop||0; persist(); render(); }; pf.appendChild(tb);
+        pb.appendChild(pf); left.appendChild(pb); } }
     // WHAT IS BEING WORKED ON (Sam, 15 Sep 2026: "so I don't have to go back into the Trello card to see what is being
     // worked on"): the card's checklist, every line with its tick, and the works lines from the description.
     var checks=(dt&&dt.checks)||[];
@@ -2206,6 +2236,7 @@ var SNAP=null, DETAIL={};
     // the job each picking section belongs to, from the first box it appears in on the day sheet
     var pickMeta={};
     var pickOf=function(r){ var i=PICK&&r.card&&r.pickable?PICK[r.card]:null; if(!i||!i.picks) return null;
+      if(i.allPicked) return {kind:"none",main:"All picked",rest:""};
       if(i.error||!(i.lines&&i.lines.length)) return {kind:"none",main:"No stock reserved",rest:""};
       if(!pickMeta[r.card]) pickMeta[r.card]={name:r.name,part:r.part+(r.sub?" · "+r.sub:""),who:r.who.join(" + "),ref:i.ref||""};
       var n=i.lines.length; return {kind:"sheet",card:r.card,main:i.page?"Page "+i.page:"Picking pages",rest:n+(n===1?" line":" lines")}; };
@@ -2383,7 +2414,7 @@ var SNAP=null, DETAIL={};
       var PICK=null, cards=daySheetPdf(k,null,"cards")||[];
       if(cards.length&&CRM_KEY){
         var res=await fetch(CRM_PICKING_URL,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({key:CRM_KEY,action:"lines",cards:cards})}).then(function(x){ return x.json(); }).catch(function(){ return null; });
-        if(res&&res.ok&&res.lines){ PICK={}; Object.keys(res.lines).forEach(function(id){ var e=res.lines[id]; PICK[id]={picks:!!e.picks,lines:e.lines||[],error:e.error||"",ref:e.ref||""}; });
+        if(res&&res.ok&&res.lines){ PICK={}; Object.keys(res.lines).forEach(function(id){ var e=res.lines[id]; var all=e.lines||[], pk=pickedOf(id), left=all.filter(function(l){ return !pk[pickKey(l)]; }); PICK[id]={picks:!!e.picks,lines:left,allPicked:all.length>0&&!left.length,error:e.error||"",ref:e.ref||""}; });
           var urls={}; Object.keys(PICK).forEach(function(id){ PICK[id].lines.forEach(function(l){ [l.product_photo,l.storage_photo].forEach(function(u){ if(u&&!PICK_IMG[u]) urls[u]=1; }); }); });
           await Promise.all(Object.keys(urls).slice(0,150).map(loadPickPhoto)); } }
       // number the picking sections; a second pass settles it if the numbers changed the day sheet's length
