@@ -2289,10 +2289,7 @@ var SNAP=null, DETAIL={};
       if(j.isLeg&&j.leg&&j.leg.type==="production"){ base.part="Production"; base.sub=""; A4(base); return; }
       if(j.site){ var d0=DETAIL[j.id]?parseDesc(DETAIL[j.id].desc||""):null, where=j.isLeg?(j.leg.where||""):(d0&&d0.where[0]?d0.where[0]:""), tmg=jobTiming(j,k);
         base.part="Transport"; base.at=tmg&&tmg.arrive!=null?tmg.arrive:hm(j.at);
-        base.sub=[j.movement||"", tmg&&tmg.arrive!=null?etaText(tmg.arrive):(j.at?"start around "+j.at:""), /* no address on the day sheet (Sam, 2 Oct 2026): it is on the stop page */ (function(){ if(!ourJob(j)) return ""; if(j.vehicle) return j.vehicle==="hire"?"hire van":j.vehicle;
-          // A STOP ON A ROUND RIDES IN THE ROUND'S VAN (Sam, 2 Oct 2026: CUBE HR said "no van set" while Bluebird, the other
-          // stop on the same round, had FX75 BKG). The editor already read it this way; the day sheet now does too.
-          var rv=roundVanOf(j,roundsOn(k,allJobs().filter(function(x){return onDay(x,k);}))); return rv||"no van set"; })()].filter(Boolean).join(" · ");
+        base.sub=[j.movement||"", tmg&&tmg.arrive!=null?etaText(tmg.arrive):(j.at?"start around "+j.at:""), /* no address or van on the day sheet (Sam, 2 Oct 2026): both are on the yard and stop pages */ ].filter(Boolean).join(" · ");
         // SAY WHAT THE TIME IS FOR (Sam, 2 Oct 2026: "it needs to say 30 mins install and 1h travel")
         base.word=/^Delivery$/.test(j.movement||"")?"install":/^Collect/.test(j.movement||"")?"collection":"on site";
         base.extra=j.drive?" and "+fmt(j.drive)+" travel":""; A4(base); return; }
