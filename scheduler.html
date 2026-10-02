@@ -345,12 +345,18 @@
   @media (max-width:420px){ .each-p{grid-template-columns:1fr} }
   .items{list-style:none;margin:8px 0 0;padding:0}
   .items li{padding:5px 0;border-top:1px solid var(--line);font-size:13px;display:flex;gap:8px;align-items:flex-start}
-  .picks{list-style:none;margin:0;padding:0;border:1px solid var(--line);border-radius:8px;overflow:hidden}
-  .picks li+li{border-top:1px solid var(--line)}
-  .picks label{display:flex;gap:10px;align-items:flex-start;padding:9px 12px;cursor:pointer}
-  .picks input{width:18px;height:18px;margin:1px 0 0;flex:0 0 18px;accent-color:#1D3058;cursor:pointer}
-  .picks .ptx{display:flex;flex-direction:column;gap:2px;min-width:0} .picks .ptx b{font-size:13.5px;font-weight:600;overflow-wrap:anywhere} .picks .ptx small{font-size:12px;color:var(--muted)}
-  .picks li.done{background:#f6f8fb} .picks li.done .ptx b{color:var(--muted);text-decoration:line-through}
+  .psum{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:6px 0 12px} .psum>div{border:1px solid var(--line);border-radius:9px;padding:8px 10px}
+  .psum small{display:block;font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.04em} .psum b{font-size:17px;font-variant-numeric:tabular-nums}
+  .pbar{height:6px;border-radius:99px;background:#eef1f5;overflow:hidden;margin-top:6px} .pbar i{display:block;height:100%} .pbar .pk{background:#5b8def} .pbar .fn{background:#1f845a}
+  .picks2{list-style:none;margin:0;padding:0;border:1px solid var(--line);border-radius:9px;overflow:hidden}
+  .picks2 li{display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:12px;align-items:center;padding:10px 12px} .picks2 li+li{border-top:1px solid var(--line)}
+  .picks2 li.done{background:#f3faf6} .picks2 li.done .pnm b{color:#1f845a}
+  .pnm{min-width:0} .pnm b{display:block;font-size:13.5px;font-weight:600;overflow-wrap:anywhere} .pnm small{font-size:12px;color:var(--muted)}
+  .pct{display:flex;flex-direction:column;align-items:center;gap:3px} .pct>span{font-size:10.5px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.04em} .pct .of{text-transform:none;font-weight:600}
+  .pstep{display:flex;align-items:center;border:1px solid #c4cbd8;border-radius:7px;overflow:hidden;background:#fff}
+  .pstep button{width:26px;height:30px;border:0;background:#f4f6f9;color:#1D3058;font-weight:700;font-size:15px;cursor:pointer} .pstep button:hover,.pstep button:focus-visible{background:#e3e9f4;outline:none}
+  .pstep input{width:46px;height:30px;border:0;text-align:center;font:inherit;font-size:13px;font-variant-numeric:tabular-nums;-moz-appearance:textfield} .pstep input::-webkit-inner-spin-button,.pstep input::-webkit-outer-spin-button{-webkit-appearance:none;margin:0}
+  @media (max-width:640px){ .picks2 li{grid-template-columns:1fr 1fr} .picks2 .pnm{grid-column:1/-1} }
   .pfoot{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-top:8px} .pfoot .link{white-space:nowrap}
     .bh .rpill{margin-left:auto;font-size:12px;font-weight:700;background:#e8eef9;color:#1D3058;border-radius:999px;padding:3px 9px;letter-spacing:0;text-transform:none}
   .rwho{font-size:13px;color:var(--muted);margin:2px 0 10px}
@@ -827,6 +833,11 @@ var SNAP=null, DETAIL={};
   // variants stay separate lines.
   var PICK_LINES={};   // card id -> null while loading, or {picks, lines}
   function pickKey(l){ return [l.product_id||l.name||"",l.section||"",l.label||""].join("|"); }
+  // COUNTS, NOT TICKS (Sam, 2 Oct 2026, Sketch Studios: "the guys picking x amount per day how can we keep a track of
+  // that and what has been completed?", mock approved). Each line holds how many are picked and how many finished.
+  // Picking starts the production on those items straight away, so finished never runs ahead of picked. A tick saved
+  // before this ({on} with no count) reads as the whole line picked. log keeps one entry per day.
+  function pickCount(P,l){ var q=Number(l.qty)||0, e=P[pickKey(l)]; if(!e) return {n:0,f:0,q:q}; var n=e.n!=null?Number(e.n)||0:q; return {n:Math.min(n,q),f:Math.min(Number(e.f)||0,n,q),q:q,on:e.on||""}; }
   function pickedOf(id){ var j=JOBS.filter(function(x){return x.id===id;})[0]; if(!j) return {}; return (j.prep&&j.prep.picked)||(j.donePrep&&j.donePrep.picked)||{}; }
   var ITEM_PHOTOS={};   // card id -> [{name, qty, photo}] from the CRM, fetched when the card is opened
   var CRM_PICKING_URL="https://coggin-sos-os.base44.app/api/apps/69c930a6240fba922f369aa2/functions/pickingSheets";
@@ -1107,21 +1118,31 @@ var SNAP=null, DETAIL={};
         if(src){ var im=el("img","ithumb zoom"); im.src=src; im.alt=x; im.loading="lazy"; im.tabIndex=0; im.title="Click to see it bigger"; im.setAttribute("role","button");
           im.onclick=function(e){ e.stopPropagation(); photoPopup(src,x); }; im.onkeydown=function(e){ if(e.key==="Enter"||e.key===" "){ e.preventDefault(); photoPopup(src,x); } }; li.appendChild(im); } else if(photos) li.appendChild(el("span","ithumb none","No photo"));
         li.appendChild(el("span",null,x)); ul.appendChild(li); }); ib.appendChild(ul); left.appendChild(ib); }
-    // THE PICK LIST, TICKED OFF AS IT IS PICKED (2 Oct 2026). Production only, Resale and Refurb only (the CRM says which).
+    // PICKING AND FINISHING (2 Oct 2026, mock approved). Production only, Resale and Refurb only (the CRM says which).
     if(o.shop&&!j.isHold&&CRM_KEY){ var plc=PICK_LINES[j.id];
       if(plc===undefined){ PICK_LINES[j.id]=null; fetch(CRM_PICKING_URL,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({key:CRM_KEY,action:"lines",cards:[{id:j.id,short:j.short||""}]})})
         .then(function(x){return x.json();}).then(function(res){ var e=res&&res.ok&&res.lines?res.lines[j.id]:null; PICK_LINES[j.id]={picks:!!(e&&e.picks),lines:(e&&e.lines)||[]}; window.__keepScroll=(document.querySelector(".veil")||{}).scrollTop||0; render(); })
         .catch(function(){ PICK_LINES[j.id]={picks:false,lines:[],failed:true}; render(); }); }
-      if(plc===null||plc===undefined){ var pb0=block("Picking"); pb0.appendChild(el("div","hint","Loading the pick list\u2026")); left.appendChild(pb0); }
-      else if(plc.picks&&plc.lines.length){ var pb=block("Picking"); var pk=j.prep.picked||{}, nDone=plc.lines.filter(function(l){return pk[pickKey(l)];}).length;
-        pb.querySelector(".bh").appendChild(el("span","rpill",nDone+" of "+plc.lines.length+" picked"));
-        var setPicked=function(l,on){ var P=Object.assign({},j.prep.picked||{}); if(on) P[pickKey(l)]={on:iso(TODAY)}; else delete P[pickKey(l)]; j.prep.picked=P; window.__keepScroll=(document.querySelector(".veil")||{}).scrollTop||0; persist(); render(); };
-        var pul=el("ul","picks");
-        plc.lines.forEach(function(l){ var done=pk[pickKey(l)], li=el("li",done?"done":""); var lab=el("label"); var cb=el("input"); cb.type="checkbox"; cb.checked=!!done; cb.onchange=function(){ setPicked(l,cb.checked); }; lab.appendChild(cb);
-          var tx=el("span","ptx"); tx.appendChild(el("b",null,(l.qty||1)+" x "+(l.label||l.name))); var sub=[l.section||"",l.stock_location?"Location "+l.stock_location:"",done?"picked "+niceDay(done.on):""].filter(Boolean).join(" \u00b7 "); if(sub) tx.appendChild(el("small",null,sub)); lab.appendChild(tx); li.appendChild(lab); pul.appendChild(li); });
+      if(plc===null||plc===undefined){ var pb0=block("Picking and finishing"); pb0.appendChild(el("div","hint","Loading the pick list\u2026")); left.appendChild(pb0); }
+      else if(plc.picks&&plc.lines.length){ var pb=block("Picking and finishing"), P0=j.prep.picked||{}, ndays=daysOf(j.prep).length, dayI=daysOf(j.prep).indexOf(iso(TODAY));
+        if(ndays>1) pb.querySelector(".bh").appendChild(el("span","rpill",dayI>=0?"Day "+(dayI+1)+" of "+ndays:ndays+" days"));
+        var tq=0, tn=0, tf=0; plc.lines.forEach(function(l){ var c=pickCount(P0,l); tq+=c.q; tn+=c.n; tf+=c.f; });
+        var sum=el("div","psum"); [["Picked",tn,"pk"],["Finished",tf,"fn"]].forEach(function(x){ var d=el("div"); d.appendChild(el("small",null,x[0])); d.appendChild(el("b",null,x[1]+" of "+tq)); var br=el("div","pbar"), bi=el("i",x[2]); bi.style.width=(tq?Math.round(x[1]/tq*100):0)+"%"; br.appendChild(bi); d.appendChild(br); sum.appendChild(d); }); pb.appendChild(sum);
+        var keep=function(){ window.__keepScroll=(document.querySelector(".veil")||{}).scrollTop||0; };
+        var setCount=function(l,n,f){ var c=pickCount(j.prep.picked||{},l); n=Math.max(0,Math.min(c.q,Math.round(n))); f=Math.max(0,Math.min(n,Math.round(f))); var P=Object.assign({},j.prep.picked||{}), k0=pickKey(l), old=P[k0]||{}, log=(old.log||[]).filter(function(x){return x.on!==iso(TODAY);});
+          if(n===0&&f===0){ delete P[k0]; } else { log.push({on:iso(TODAY),n:n,f:f}); P[k0]={n:n,f:f,on:iso(TODAY),log:log.slice(-30)}; } j.prep.picked=P; keep(); persist(); render(); };
+        var stepper=function(lbl,val,max,onSet){ var w=el("div","pct"); w.appendChild(el("span",null,lbl)); var st=el("div","pstep"); var mi=el("button",null,"\u2212"); mi.type="button"; mi.setAttribute("aria-label",lbl+" one fewer"); var inp=el("input"); inp.type="number"; inp.min="0"; inp.max=String(max); inp.value=String(val); inp.setAttribute("aria-label",lbl); inp.inputMode="numeric"; var pl=el("button",null,"+"); pl.type="button"; pl.setAttribute("aria-label",lbl+" one more");
+          mi.onclick=function(){ onSet(val-1); }; pl.onclick=function(){ onSet(val+1); }; inp.onchange=function(){ var v=parseInt(inp.value,10); onSet(isNaN(v)?0:v); }; inp.onkeydown=function(e){ if(e.key==="Enter") inp.blur(); };
+          st.appendChild(mi); st.appendChild(inp); st.appendChild(pl); w.appendChild(st); w.appendChild(el("span","of","of "+max)); return w; };
+        var pul=el("ul","picks2");
+        plc.lines.forEach(function(l){ var c=pickCount(P0,l), all=c.f>=c.q&&c.q>0, li=el("li",all?"done":"");
+          var nm=el("div","pnm"); nm.appendChild(el("b",null,c.q+" x "+(l.label||l.name))); nm.appendChild(el("small",null,[l.section||"",l.stock_location?"Location "+l.stock_location:"",all?"all finished":(c.on?"updated "+niceDay(c.on):"")].filter(Boolean).join(" \u00b7 "))); li.appendChild(nm);
+          li.appendChild(stepper("Picked",c.n,c.q,function(v){ setCount(l,v,Math.min(c.f,v)); }));
+          li.appendChild(stepper("Finished",c.f,c.q,function(v){ setCount(l,Math.max(c.n,v),v); }));
+          pul.appendChild(li); });
         pb.appendChild(pul);
-        var pf=el("div","pfoot"); pf.appendChild(el("span","hint","Tick a line once it is picked. The day sheet prints only what is left."));
-        var allOn=nDone===plc.lines.length, tb=el("button","link",allOn?"Untick all":"Tick all"); tb.onclick=function(){ var P=allOn?{}:Object.assign({},j.prep.picked||{}); if(!allOn) plc.lines.forEach(function(l){ if(!P[pickKey(l)]) P[pickKey(l)]={on:iso(TODAY)}; }); j.prep.picked=P; window.__keepScroll=(document.querySelector(".veil")||{}).scrollTop||0; persist(); render(); }; pf.appendChild(tb);
+        var pf=el("div","pfoot"); pf.appendChild(el("span","hint","Type what was picked and finished from the day sheet. Picking starts the production, so finished never passes picked. The day sheet prints only what is left to pick."));
+        var allPicked=tn>=tq, tb=el("button","link",allPicked?"Clear the counts":"Mark all picked"); tb.onclick=function(){ var P={}; if(!allPicked) plc.lines.forEach(function(l){ var c=pickCount(P0,l), old=P0[pickKey(l)]||{}, log=(old.log||[]).filter(function(x){return x.on!==iso(TODAY);}); log.push({on:iso(TODAY),n:c.q,f:c.f}); P[pickKey(l)]={n:c.q,f:c.f,on:iso(TODAY),log:log.slice(-30)}; }); j.prep.picked=P; keep(); persist(); render(); }; pf.appendChild(tb);
         pb.appendChild(pf); left.appendChild(pb); } }
     // WHAT IS BEING WORKED ON (Sam, 15 Sep 2026: "so I don't have to go back into the Trello card to see what is being
     // worked on"): the card's checklist, every line with its tick, and the works lines from the description.
@@ -2350,7 +2371,7 @@ var SNAP=null, DETAIL={};
           doc.rect(x,y0,PW,PH); var im=PICK_IMG[url]; if(im){ try{ var r0=im.w/im.h, dw=PW-1, dh=PH-1; if(r0>dw/dh) dh=dw/r0; else dw=dh*r0; doc.addImage(im.d,"JPEG",x+(PW-dw)/2,y0+(PH-dh)/2,dw,dh,undefined,"FAST"); }catch(e){} }
           doc.setFillColor(255,255,255); doc.setFont("helvetica","bold"); doc.setFontSize(5.5); var lw=doc.getTextWidth(label)+1.6; doc.rect(x+0.3,y0+0.3,lw,2.4,"F"); doc.setTextColor(90); doc.text(label,x+1.1,y0+2.1); doc.setTextColor(0); doc.setDrawColor(0); };
         var lineH=function(l){ doc.setFont("helvetica","bold"); doc.setFontSize(10.5); var h=7.5+doc.splitTextToSize(l.name||"",TW).length*4.3; var det=[l.attr_colour,l.attr_features,l.attr_dims].filter(Boolean).join(" · ");
-          if(det){ doc.setFont("helvetica","normal"); doc.setFontSize(8.5); h+=Math.min(2,doc.splitTextToSize(det,TW).length)*3.6; } if(l.attr_pick) h+=4; var rh=Math.max(PH+2,h)+3;
+          if(det){ doc.setFont("helvetica","normal"); doc.setFontSize(8.5); h+=Math.min(2,doc.splitTextToSize(det,TW).length)*3.6; } if(l.attr_pick) h+=4; if(l._already||l._write) h+=4.5; var rh=Math.max(PH+2,h)+3;
           if(l.cut_down&&l.cut_down.to) rh+=9; if(l.spec_notes) rh+=8; var cs=Array.isArray(l.build_components)?l.build_components:[]; if(cs.length) rh+=7+cs.length*6; return rh; };
         var drawLine=function(l){ var y0=y+2.5;
           doc.setLineWidth(0.5); doc.setDrawColor(17); doc.roundedRect(L+0.5,y0,5.5,5.5,0.7,0.7); doc.setDrawColor(0);
@@ -2361,6 +2382,8 @@ var SNAP=null, DETAIL={};
           var det=[l.attr_colour,l.attr_features,l.attr_dims].filter(Boolean).join(" · ");
           if(det){ doc.setFont("helvetica","normal"); doc.setFontSize(8.5); doc.setTextColor(85); var dl=doc.splitTextToSize(det,TW).slice(0,2); doc.text(dl,TX,ty+0.6); ty+=dl.length*3.6; doc.setTextColor(0); }
           if(l.attr_pick){ doc.setFont("helvetica","bold"); doc.setFontSize(8.5); doc.text(doc.splitTextToSize("Pick: "+l.attr_pick,TW)[0],TX,ty+1); ty+=4; }
+          // a job picked in stages: what is already done, and a space to write today's count
+          if(l._already||l._write){ doc.setFont("helvetica","normal"); doc.setFontSize(8.5); doc.setTextColor(70); doc.text((l._already?l._already+" of "+l._of+" already picked.  ":"")+"Picked today: ________",TX,ty+1.4); doc.setTextColor(0); ty+=4.5; }
           // THE WHOLE LOCATION (Sam, 2 Oct 2026: "Locations titles are being cut off"): smaller type to fit the column, then a
           // second line, never clipped. "Fabric Storage Room" is the longest at 19 characters.
           doc.setFont("courier","bold"); var lf=11.5, loc=String(l.stock_location||""); doc.setFontSize(lf); while(loc&&lf>9&&doc.getTextWidth(loc)>RW){ lf-=0.5; doc.setFontSize(lf); }
@@ -2414,7 +2437,9 @@ var SNAP=null, DETAIL={};
       var PICK=null, cards=daySheetPdf(k,null,"cards")||[];
       if(cards.length&&CRM_KEY){
         var res=await fetch(CRM_PICKING_URL,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({key:CRM_KEY,action:"lines",cards:cards})}).then(function(x){ return x.json(); }).catch(function(){ return null; });
-        if(res&&res.ok&&res.lines){ PICK={}; Object.keys(res.lines).forEach(function(id){ var e=res.lines[id]; var all=e.lines||[], pk=pickedOf(id), left=all.filter(function(l){ return !pk[pickKey(l)]; }); PICK[id]={picks:!!e.picks,lines:left,allPicked:all.length>0&&!left.length,error:e.error||"",ref:e.ref||""}; });
+        if(res&&res.ok&&res.lines){ PICK={}; Object.keys(res.lines).forEach(function(id){ var e=res.lines[id]; var all=e.lines||[], pk=pickedOf(id), jj=JOBS.filter(function(x){return x.id===id;})[0], multi=!!(jj&&jj.prep&&daysOf(jj.prep).length>1);
+            var left=[]; all.forEach(function(l){ var c=pickCount(pk,l), rem=c.q-c.n; if(rem<=0) return; left.push(c.n>0||multi?Object.assign({},l,{qty:rem,headerCustomer:c.n>0?String(rem):l.headerCustomer,headerBreakdown:c.n>0?null:l.headerBreakdown,_already:c.n,_of:c.q,_write:multi}):l); });
+            PICK[id]={picks:!!e.picks,lines:left,allPicked:all.length>0&&!left.length,error:e.error||"",ref:e.ref||""}; });
           var urls={}; Object.keys(PICK).forEach(function(id){ PICK[id].lines.forEach(function(l){ [l.product_photo,l.storage_photo].forEach(function(u){ if(u&&!PICK_IMG[u]) urls[u]=1; }); }); });
           await Promise.all(Object.keys(urls).slice(0,150).map(loadPickPhoto)); } }
       // number the picking sections; a second pass settles it if the numbers changed the day sheet's length
