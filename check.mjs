@@ -68,7 +68,7 @@ setTimeout(()=>{ reg['#next'].onclick(); const walk0=(n,o=[])=>{o.push(n);(n.chi
 
 // the completed card: still on Rob's day, counted, labelled Completed, never in To plan
 setTimeout(()=>{ const walk=(n,o=[])=>{o.push(n);(n.children||[]).forEach(c=>walk(c,o));return o;}; reg['#prev'].onclick(); const T=walk(reg['#board']).map(x=>x.textContent).filter(Boolean).join(' ');
-  console.log('completed keeps hours:', /Lancaster - AB12CG/.test(T)&&/Completed/.test(T)&&/Rob D Driver Out all day/.test(T)&&/2h \+ 1h/.test(T)); },1100);
+  console.log('completed keeps hours:', /Lancaster - AB12CG/.test(T)&&/Completed/.test(T)&&/Rob D Driver 4h 45m free/.test(T)&&!/Out all day/.test(T)&&/2h \+ 1h/.test(T)); },1100);   // a site job's own time counts, never "out all day" (2 Oct 2026)
 
 // FINISHED PRODUCTION: the card in Ready keeps its plan when saved, and Jack's day still shows its 2h as finished
 setTimeout(()=>{ const walk=(n,o=[])=>{o.push(n);(n.children||[]).forEach(c=>walk(c,o));return o;}; const T=walk(reg['#board']).map(x=>x.textContent).filter(Boolean).join(' ');

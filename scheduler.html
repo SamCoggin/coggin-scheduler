@@ -679,7 +679,8 @@ var SNAP=null, DETAIL={};
       // completed list, and the legs of one, has used its time; whatever is left of today is free once the unfinished work
       // is taken off it, so a job finished early hands its spare time back by itself.
       var doneMins=mine.filter(function(j){ return j.completed||(j.isLeg&&j.parentJob&&j.parentJob.completed); }).reduce(function(s,j){ return s+(minsFor(j,w)||0)+(j.site&&!j.onRound?(j.drive||0):0); },0)+myPreps.filter(function(j){ return j.prepDone; }).reduce(function(s,j){ return s+prepShare(j,w); },0);
-      var away=mine.filter(function(j){return j.site;}), allDay=away.some(function(j){return !j.at;}), until=away.filter(function(j){return j.at;}).map(function(j){return endOf(j.at,(minsFor(j,w)||0)+(j.drive||0));}).sort().pop();
+      var away=mine.filter(function(j){return j.site;}), allDay=false,   // NEVER ASSUMED (Sam, 2 Oct 2026: "why is it also saying bart is out all day?"): a site job with no arrival time used to count as the whole day; now its own time counts, and no time reads "no time set"
+         until=away.filter(function(j){return j.at;}).map(function(j){return endOf(j.at,(minsFor(j,w)||0)+(j.drive||0));}).sort().pop();
       out[w]= !n ? {t:fmt(DAY_MINS)+" available",c:"free"} : allDay ? {t:"out on site all day",c:"busy"} : mins>DAY_H*60 ? {t:"over capacity by "+fmt(mins-DAY_MINS),c:"over"} : !mins ? {t:n+(n===1?" job":" jobs")+", no time set",c:"busy"} : {t:fmt(Math.max(0,DAY_MINS-mins))+" available"+(until?", out until "+until:"")+(n>1?", "+n+" jobs":""),c:"busy"};
       // ONE SHORT STATUS AND ITS DETAIL (Sam, 29 Sep 2026: "the UI here sucks"). The
       // sentence above stays for the chips and the PDFs; the rows read these two.

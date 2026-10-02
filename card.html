@@ -166,7 +166,7 @@
     // ONE LINE A PERSON (Sam, 1 Oct 2026: "this UI is shit", the chip wall). A bar of their 7h45 day, the words on
     // the right, most free first, then full, then the office, then anyone off. "at Forton" is gone; out on site stays.
     days.slice(0,5).forEach(function(k){ var load=loadOn(k,part), wk=el("div","wday"), leftK=minsLeftOn(k);   // today counts only what is left of it wk.appendChild(el("div","whead","Who is free on "+niceShort(k)));
-      var rows=CREW.map(function(w){ var l=load[w], field=FIELD_CREW.indexOf(w)>=0, on=part.who.indexOf(w)>=0, used=Math.round(l.mins||0), allDay=l.away.some(function(x){return !x.until;});
+      var rows=CREW.map(function(w){ var l=load[w], field=FIELD_CREW.indexOf(w)>=0, on=part.who.indexOf(w)>=0, used=Math.round(l.mins||0), allDay=false;   // never assumed from a missing arrival time (2 Oct 2026, Bart on Bluebird)
         var until=l.away.filter(function(x){return x.until;}).map(function(x){return x.until;}).sort().pop();
         var txt, cls, rank;
         if(on){ txt="On this job"; cls="m"; rank=5; }
