@@ -351,6 +351,8 @@
   .psum small{display:block;font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.04em} .psum b{font-size:17px;font-variant-numeric:tabular-nums}
   .pbar{height:6px;border-radius:99px;background:#eef1f5;overflow:hidden;margin-top:6px} .pbar i{display:block;height:100%} .pbar .pk{background:#5b8def} .pbar .fn{background:#1f845a}
   .pstage{display:flex;gap:10px;align-items:center;border:1px solid var(--line);border-radius:9px;padding:9px 12px;margin:0 0 12px;cursor:pointer;min-height:44px;box-sizing:border-box} .pstage input{width:18px;height:18px;margin:0;flex:0 0 18px;accent-color:#1D3058;cursor:pointer} .pstage span{display:flex;flex-direction:column;gap:2px} .pstage b{font-size:13.5px;font-weight:600} .pstage small{font-size:12px;color:var(--muted)}
+  .pstats{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:-4px 0 12px} .pstats>div{border:1px solid var(--line);border-radius:9px;padding:8px 10px;height:58px;box-sizing:border-box} .pstats small{display:block;font-size:10.5px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.04em} .pstats b{font-size:15px;font-variant-numeric:tabular-nums;white-space:nowrap} .pstats .bad b{color:#9a3412} .pstats .ok b{color:#1f845a}
+  .pwarn{display:flex;align-items:center;justify-content:space-between;gap:12px;border:1px solid #f0c7a6;background:#fff7f0;border-radius:9px;padding:10px 12px;margin:0 0 12px} .pwarn b{display:block;color:#9a3412;font-size:13.5px} .pwarn span{display:block;font-size:12.5px;color:#7c2d12;margin-top:2px} .pwarn button{white-space:nowrap}
   .psum.one{grid-template-columns:1fr} .picks2.one li{grid-template-columns:56px minmax(0,1fr) 128px;height:72px;box-sizing:border-box;padding-top:0;padding-bottom:0} .picks2.one .pnm b{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden} .picks2.one .pnm small{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .picks2{list-style:none;margin:0;padding:0;border:1px solid var(--line);border-radius:9px;overflow:hidden}
   .picks2 li{display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:12px;align-items:center;padding:10px 12px} .picks2 li+li{border-top:1px solid var(--line)}
@@ -450,7 +452,7 @@
   .prep{display:grid;grid-template-columns:1fr auto;gap:4px 12px;align-items:center;font-weight:600}
   .prep .hint{margin:0;grid-column:1}
   .prep button{grid-row:1/3;grid-column:2}
-  .seg{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+  .seg{display:grid;grid-template-columns:repeat(3,1fr);gap:6px} .seg.two{grid-template-columns:1fr 1fr}
   .seg button{border:2px solid var(--line);background:var(--card);border-radius:8px;padding:8px 6px;font-weight:600}
   .seg button.on{border-color:var(--blue);background:var(--blue-bg);color:var(--blue)}
   .seg+.row{margin-top:10px}
@@ -1143,6 +1145,14 @@ var SNAP=null, DETAIL={};
         if(ndays>1) pb.querySelector(".bh").appendChild(el("span","rpill",dayI>=0?"Day "+(dayI+1)+" of "+ndays:ndays+" days"));
         var tq=0, tf=0; plc.lines.forEach(function(l){ var c=pickCount(P0,l); tq+=c.q; tf+=c.f; });
         var sum=el("div","psum one"); var sd=el("div"); sd.appendChild(el("small",null,"Finished")); sd.appendChild(el("b",null,tf+" of "+tq)); var br=el("div","pbar"), bi=el("i","fn"); bi.style.width=(tq?Math.round(tf/tq*100):0)+"%"; br.appendChild(bi); sd.appendChild(br); sum.appendChild(sd); pb.appendChild(sum);
+        // PROGRESS FROM THE COUNTS (2 Oct 2026, mock approved): on a job over several days, the rate so far against the
+        // days still booked, "On track" or "n days short", and Add a day to put the next working day on the end.
+        if(ndays>1){ var dd0=daysOf(j.prep), worked=dd0.filter(function(x){ return x<iso(TODAY); }).length, left0=dd0.filter(function(x){ return x>=iso(TODAY); }).length;
+          if(worked>0&&tf>0&&tf<tq){ var rate=tf/worked, need=Math.ceil((tq-tf)/rate), shortN=need-left0;
+            var st=el("div","pstats"); [["Rate",Math.round(rate)+" a day"],["Needs",need+(need===1?" more day":" more days")],["Booked",left0+(left0===1?" day left":" days left")],["Status",shortN>0?shortN+(shortN===1?" day short":" days short"):"On track"]].forEach(function(x,xi){ var c=el("div",xi===3?(shortN>0?"bad":"ok"):""); c.appendChild(el("small",null,x[0])); c.appendChild(el("b",null,x[1])); st.appendChild(c); }); pb.appendChild(st);
+            if(shortN>0){ var nx=new Date(j.prep.date+"T12:00"); do{ nx.setDate(nx.getDate()+1); }while(nx.getDay()===0||nx.getDay()===6||isBankHoliday(iso(nx))); var nk=iso(nx);
+              var wr=el("div","pwarn"); var wt=el("div"); wt.appendChild(el("b",null,"At this rate it needs "+(shortN===1?"one more day.":shortN+" more days."))); wt.appendChild(el("span",null,j.date&&nk>=j.date?"Adding "+niceDay(nk)+" finishes on or after the "+(j.site?"delivery":"due")+" day, "+niceDay(j.date)+".":"Adds "+niceDay(nk)+" to the end.")); wr.appendChild(wt);
+              var ab=el("button","p","Add a day"); ab.onclick=function(){ j.prep.date=nk; syncPrepTotal(j.prep); window.__keepScroll=(document.querySelector(".veil")||{}).scrollTop||0; persist(); render(); }; wr.appendChild(ab); pb.appendChild(wr); } } }
         // STILL PICKING IN STAGES (2 Oct 2026): an In-progress job keeps its picking pages on the day sheet
         var stg=el("label","pstage"); var sc=el("input"); sc.type="checkbox"; sc.checked=!!j.prep.stages; sc.onchange=function(){ if(sc.checked) j.prep.stages=true; else delete j.prep.stages; window.__keepScroll=(document.querySelector(".veil")||{}).scrollTop||0; persist(); render(); };
         stg.appendChild(sc); var stx=el("span"); stx.appendChild(el("b",null,"Still picking in stages")); stx.appendChild(el("small",null,j.prep.stages?"Picking pages print every day until it is all finished.":"Once In-progress, it drops off the picking pages.")); stg.appendChild(stx); pb.appendChild(stg);
@@ -1371,13 +1381,23 @@ var SNAP=null, DETAIL={};
         wh.appendChild(el("div","hint",plan)); var clr2=el("button","close","Clear the record"); clr2.onclick=function(){ part.done=null; persist(); render(); }; wh.appendChild(clr2); }
       right.appendChild(wh); }
     if(!contractorOnly){ var perDayP=o.shop&&prepDayCount(part)>1, getT=perDayP?function(){ return prepPerDay(part); }:function(){ return part.mins; }, setT=perDayP?function(v){ setPrepPerDay(part,v); }:setMins;
-      var tb=block(o.shop?(perDayP?"Production Time per Operative, Each Day":"Production Time per Operative"):(j.site?"Site Time per Operative":"Labour Time per Operative"),"time");
-      var q=el("div","seg"); QUICK.forEach(function(qq){ var b=el("button",getT()===qq[0]?"on":"",qq[1]); b.onclick=function(){ setT(qq[0]); render(); }; q.appendChild(b); }); tb.appendChild(q);
-      var r3=el("div","row"); r3.appendChild(el("span","hint","or exactly")); r3.appendChild(hmBoxes(getT,setT,"Time")); tb.appendChild(r3);
-      if(perDayP) tb.appendChild(el("div","hint",prepDayCount(part)+" working days, so "+(part.mins!=null?fmt(part.mins)+" each in all":"no total yet")+"."));
+      var tb=block(o.shop?(perDayP?"Production Time":"Production Time per Operative"):(j.site?"Site Time per Operative":"Labour Time per Operative"),"time");
+      // BIG JOBS IN DAYS, NOT HOURS (Sam, 2 Oct 2026, mock approved after Sketch Studios came out at 8h 22m a day): a
+      // production over several days is Full days (7h 45m each, every day) or Part days (so many hours a day). No total
+      // to work out; the total follows the days.
+      if(perDayP){ var full=prepPerDay(part)===DAY_MINS&&!part.each, partOpen=!full&&(part.perDay!=null||part.mins!=null||part.partDays);
+        var fm=el("div","seg two"); var fb=el("button",full?"on":"","Full days"), pb2=el("button",!full&&partOpen?"on":"","Part days");
+        fb.onclick=function(){ delete part.each; delete part.partDays; setPrepPerDay(part,DAY_MINS); render(); }; pb2.onclick=function(){ part.partDays=true; if(prepPerDay(part)===DAY_MINS) setPrepPerDay(part,null); render(); };
+        fm.appendChild(fb); fm.appendChild(pb2); tb.appendChild(fm);
+        if(full) tb.appendChild(el("div","hint",fmt(DAY_MINS)+" a day each, "+prepDayCount(part)+" working days. No totals to work out."));
+        else if(partOpen){ var r3p=el("div","row"); r3p.appendChild(el("span","hint","a day each")); r3p.appendChild(hmBoxes(getT,setT,"Time a day")); tb.appendChild(r3p);
+          var pdm=prepPerDay(part); tb.appendChild(el("div","hint"+(pdm!=null&&pdm>DAY_MINS?" far":""),pdm==null?"Type the hours each day.":pdm>DAY_MINS?fmt(pdm)+" a day is more than a "+fmt(DAY_MINS)+" day. Pick Full days and add a day instead.":prepDayCount(part)+" working days of "+fmt(pdm)+" each.")); }
+        else tb.appendChild(el("div","hint","Pick Full days, or Part days for a few hours a day.")); }
+      else { var q=el("div","seg"); QUICK.forEach(function(qq){ var b=el("button",getT()===qq[0]?"on":"",qq[1]); b.onclick=function(){ setT(qq[0]); render(); }; q.appendChild(b); }); tb.appendChild(q);
+      var r3=el("div","row"); r3.appendChild(el("span","hint","or exactly")); r3.appendChild(hmBoxes(getT,setT,"Time")); tb.appendChild(r3); }
       // DIFFERENT TIME FOR SOMEBODY (Sam, 2 Oct 2026: "add it to labour, transport and the scheduler editor"), the same
       // box as the card's. On a production over several days the times here are a day's, like the main time above.
-      var ebx=eachPersonBox(el,part,{div:perDayP?prepDayCount(part):1,commit:function(){ if(part.leg) part.leg.each=part.each; render(); }}); if(ebx) tb.appendChild(ebx);
+      var ebx=(perDayP&&prepPerDay(part)===DAY_MINS&&!part.each)?null:eachPersonBox(el,part,{div:perDayP?prepDayCount(part):1,commit:function(){ if(part.leg) part.leg.each=part.each; render(); }}); if(ebx) tb.appendChild(ebx);
       right.appendChild(tb); }
     var blocks=Array.prototype.slice.call(right.children); blocks.sort(function(a,b){ return (+a.dataset.order||15)-(+b.dataset.order||15); });
     right.innerHTML=""; var more=null; blocks.forEach(function(bk){ if((+bk.dataset.order||15)>=20){ if(!more){ more=el("details","more"); more.summ=el("summary",null,"More"); more.appendChild(more.summ); right.appendChild(more); } more.appendChild(bk); } else right.appendChild(bk); });
@@ -2304,6 +2324,7 @@ var SNAP=null, DETAIL={};
       var cells=mine.map(function(r){ var ms=g.map(function(w){ return r.mins(w); }), have=ms.filter(function(m){ return m!=null; });
         var tm=!have.length?"":g.length===1||have.every(function(m){ return m===have[0]; })?fmt(have[0])+(g.length>1?" each":""):g.map(function(w){ return w.split(" ")[0]+" "+(r.mins(w)!=null?fmt(r.mins(w)):"?"); }).join(", ");
         if(tm&&r.word) tm=/ each$/.test(tm)?tm.replace(/ each$/," "+r.word+" each"):tm+" "+r.word;
+        if(r.part==="Production"&&have.length&&have.every(function(m){ return m===DAY_MINS; })) tm="Full day";   // big jobs read "Full day" (2 Oct 2026)
         return [r.name,r.part+(r.sub?" · "+r.sub:""),"",tm?tm+r.extra:"",r.cid,pickOf(r),r]; });
       var backup=g.length===1&&FIELD_CREW.indexOf(g[0])<0;
       return {crew:true,title:g.join(" + "),right:[g.length>1?"Together":"",backup?"Backup":"",cells.length+(cells.length===1?" job":" jobs")].filter(Boolean).join(" · "),cells:cells}; });
