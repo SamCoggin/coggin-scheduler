@@ -2271,7 +2271,9 @@ var SNAP=null, DETAIL={};
           // A STOP ON A ROUND RIDES IN THE ROUND'S VAN (Sam, 2 Oct 2026: CUBE HR said "no van set" while Bluebird, the other
           // stop on the same round, had FX75 BKG). The editor already read it this way; the day sheet now does too.
           var rv=roundVanOf(j,roundsOn(k,allJobs().filter(function(x){return onDay(x,k);}))); return rv||"no van set"; })()].filter(Boolean).join(" · ");
-        base.extra=j.drive?" + "+fmt(j.drive)+" travel":""; A4(base); return; }
+        // SAY WHAT THE TIME IS FOR (Sam, 2 Oct 2026: "it needs to say 30 mins install and 1h travel")
+        base.word=/^Delivery$/.test(j.movement||"")?"install":/^Collect/.test(j.movement||"")?"collection":"on site";
+        base.extra=j.drive?" and "+fmt(j.drive)+" travel":""; A4(base); return; }
       base.part="Labour"; base.at=j.arrive&&!j.isLeg?hm(j.from):null;
       base.sub=j.arrive&&!j.isLeg?(arrivalText(j.arrive,j.from,j.by,j.collectAt)||(ARRIVAL_WHO[j.arrive]||"Arriving")+", time not given yet"):(j.isLeg?(j.leg.where||""):[j.work,j.movement].filter(Boolean).join(", "));
       A4(base); });
@@ -2299,6 +2301,7 @@ var SNAP=null, DETAIL={};
       var mine=order(rowsOf(g));
       var cells=mine.map(function(r){ var ms=g.map(function(w){ return r.mins(w); }), have=ms.filter(function(m){ return m!=null; });
         var tm=!have.length?"":g.length===1||have.every(function(m){ return m===have[0]; })?fmt(have[0])+(g.length>1?" each":""):g.map(function(w){ return w.split(" ")[0]+" "+(r.mins(w)!=null?fmt(r.mins(w)):"?"); }).join(", ");
+        if(tm&&r.word) tm=/ each$/.test(tm)?tm.replace(/ each$/," "+r.word+" each"):tm+" "+r.word;
         return [r.name,r.part+(r.sub?" · "+r.sub:""),"",tm?tm+r.extra:"",r.cid,pickOf(r)]; });
       var backup=g.length===1&&FIELD_CREW.indexOf(g[0])<0;
       return {title:g.join(" + "),right:[g.length>1?"Together":"",backup?"Backup":"",cells.length+(cells.length===1?" job":" jobs")].filter(Boolean).join(" · "),cells:cells}; });
