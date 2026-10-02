@@ -2526,6 +2526,8 @@ var SNAP=null, DETAIL={};
     if(!out.contacts.length){ var kv0=out.kv, nm0=kv0["site contact name"]||kv0["contact name"]||kv0["name"]||"", ph0=kv0["mobile number"]||kv0["contact phone/mobile number"]||kv0["phone"]||kv0["number"]||"";
       if(nm0||ph0) out.contacts.push([nm0,ph0].filter(Boolean).join(" · ")); }
     if(!out.access.length&&out.kv.access) out.access.push(out.kv.access);
+    // ONE CONTACT ONCE (Sam, 2 Oct 2026, CUBE HR printed Lisa twice): a secondary that is the same person is dropped
+    var seenC={}; out.contacts=out.contacts.filter(function(c){ var key=c.toLowerCase().replace(/[^a-z0-9]/g,""); if(seenC[key]) return false; seenC[key]=1; return true; });
     return out; }
   function knowRows(d){ var kv=d.kv, rows=[], g=function(k){ return kv[k]||""; };
     var getIn=[g("floor"),g("lift")?"Lift: "+g("lift"):"",g("stairs")?"Stairs: "+g("stairs"):"",g("distance to entrance")?g("distance to entrance")+" from the van":"",g("loading")?g("loading"):"",g("loading bay")?"Loading bay: "+g("loading bay"):""].filter(Boolean).join(", ");
