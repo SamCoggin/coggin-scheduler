@@ -2269,7 +2269,7 @@ var SNAP=null, DETAIL={};
       if(j.isLeg&&j.leg&&j.leg.type==="production"){ base.part="Production"; base.sub=""; A4(base); return; }
       if(j.site){ var d0=DETAIL[j.id]?parseDesc(DETAIL[j.id].desc||""):null, where=j.isLeg?(j.leg.where||""):(d0&&d0.where[0]?d0.where[0]:""), tmg=jobTiming(j,k);
         base.part="Transport"; base.at=tmg&&tmg.arrive!=null?tmg.arrive:hm(j.at);
-        base.sub=[j.movement||"", tmg&&tmg.arrive!=null?"arrive about "+hmStr(tmg.arrive):(j.at?"start "+j.at:""), where, (function(){ if(!ourJob(j)) return ""; if(j.vehicle) return j.vehicle==="hire"?"hire van":j.vehicle;
+        base.sub=[j.movement||"", tmg&&tmg.arrive!=null?etaText(tmg.arrive):(j.at?"start around "+j.at:""), where, (function(){ if(!ourJob(j)) return ""; if(j.vehicle) return j.vehicle==="hire"?"hire van":j.vehicle;
           // A STOP ON A ROUND RIDES IN THE ROUND'S VAN (Sam, 2 Oct 2026: CUBE HR said "no van set" while Bluebird, the other
           // stop on the same round, had FX75 BKG). The editor already read it this way; the day sheet now does too.
           var rv=roundVanOf(j,roundsOn(k,allJobs().filter(function(x){return onDay(x,k);}))); return rv||"no van set"; })()].filter(Boolean).join(" · ");
@@ -2446,7 +2446,8 @@ var SNAP=null, DETAIL={};
             if(r.part==="Production"){ var i=PICK[r.card]||{}, lines=i.lines||[], fin=j.stage==="In progress"&&!(j.prep&&j.prep.stages);
               kit.header("Job · Production · "+b.title,r.name,[c[3],j.prodDue?"due "+niceDay(j.prodDue):"",j.date?"for "+(j.site?"delivery ":"")+niceDay(j.date):"",i.ref?"Ref "+i.ref:""].filter(Boolean).join(" · "),"https://trello.com/c/"+(j.short||j.id),"Scan to open the Trello card");
               starts[r.key]=doc.getNumberOfPages();
-              kit.steps([fin?"Card is In-progress. Keep it there while you work":"Starting? Move the card to In-progress","Tick the checklist on the Trello card as each item is finished","All done? Move the card to Ready for Delivery / Collection"]);
+              // STEPS AS SAM WROTE THEM (2 Oct 2026); a job already In-progress has step 1 done
+              kit.steps([{t:"Move the job into In-progress",done:j.stage==="In progress"},"When complete, tick off the checklist","Move the job into the completed list"]);
               kit.heading(0,i.allPicked?"All finished":fin?"Items to finish":"Pick and finish"); y=kit.getY();
               if(lines.length){ lines.forEach(function(l){ if(y+lineH(l)>278){ kit.setFoot("This job carries on over the page."); kit.header("Job · Production · "+b.title,r.name,"",null,"",true); y=kit.getY(); } drawLine(l); }); kit.setY(y); }
               else { var inf=DATA.info[r.card]||(DATA.byCard[r.card]?{items:DATA.byCard[r.card].stop.items}:null); kit.items(inf&&inf.items?inf.items:[],function(){ kit.setFoot("This job carries on over the page."); kit.header("Job · Production · "+b.title,r.name,"",null,"",true); }); }
@@ -2482,6 +2483,8 @@ var SNAP=null, DETAIL={};
   // actually has. Printed black and white on A4; long lists carry onto a continued page.
   var TRANSPORT_KIT=["Sack truck","Dollies or skates","Straps, blankets, cardboard","Drill and Allen keys","Spare castors and screws","Desk feet and fixings","Cloths and cleaning spray","Vacuum","Bin bags"];
   var LOAD_MINS=30;
+  // EVERYTHING IS AN ESTIMATE (Sam, 2 Oct 2026: "remove exact times as everything we do is estimated"): an ETA to the nearest quarter hour
+  function etaText(m){ return "ETA around "+hmStr(Math.round(m/15)*15); }
   // NO SIGN-OFF ON A DONATION (Sam, 2 Oct 2026: "Sign offs are not needed for donations")
   function isDonation(j){ var p0=j&&j.isLeg&&j.parentJob?j.parentJob:j; return /^Donation/i.test(String(p0&&p0.work||""))||(p0&&p0.labels||[]).some(function(x){ return /donation/i.test(String(x)); }); }
   var NOT_SET=/^(n\/a|na|none|no|not needed|not applicable|-|tbc|unknown|yes\s*-\s*n\/a)?\.?$/i;
@@ -2564,10 +2567,12 @@ var SNAP=null, DETAIL={};
     // THE TRELLO STEPS (Sam, 2 Oct 2026: "they need to make sure they move the card on trello into in progress and when
     // completed into the completed list ensuring the checklist is completed"). Equal boxes under the header, a tick box
     // each, in the order they happen.
+    // a step already done (the card is In-progress) prints ticked and grey, so nobody does it twice
     kit.steps=function(list){ var n=list.length, g=4, bw=(W-g*(n-1))/n, h=17;
-      list.forEach(function(t,i){ var x=L+i*(bw+g); doc.setLineWidth(0.5); doc.setDrawColor(17); doc.roundedRect(x,y,bw,h,1.2,1.2); doc.setDrawColor(0);
-        box(x+3,y+3,5); doc.setFont("helvetica","bold"); doc.setFontSize(8); doc.setTextColor(110); doc.text("STEP "+(i+1),x+10.5,y+6.6,{charSpace:0.2}); doc.setTextColor(0);
-        doc.setFont("helvetica","bold"); doc.setFontSize(9); doc.text(doc.splitTextToSize(t,bw-6).slice(0,2),x+3,y+11.6); });
+      list.forEach(function(st,i){ var t=typeof st==="string"?st:st.t, done=typeof st==="object"&&st.done, x=L+i*(bw+g); doc.setLineWidth(0.5); doc.setDrawColor(done?170:17); doc.roundedRect(x,y,bw,h,1.2,1.2); doc.setDrawColor(0);
+        box(x+3,y+3,5); if(done){ doc.setLineWidth(0.7); doc.setDrawColor(17); doc.line(x+4,y+5.6,x+5.4,y+7); doc.line(x+5.4,y+7,x+7.3,y+4); doc.setDrawColor(0); }
+        doc.setFont("helvetica","bold"); doc.setFontSize(8); doc.setTextColor(110); doc.text("STEP "+(i+1)+(done?" · DONE":""),x+10.5,y+6.6,{charSpace:0.2});
+        doc.setTextColor(done?140:0); doc.setFont("helvetica","bold"); doc.setFontSize(9); doc.text(doc.splitTextToSize(t,bw-6).slice(0,2),x+3,y+11.6); doc.setTextColor(0); });
       y+=h+6; };
     // the header every job page shares: kind and crew, the name large, a code top right, a rule under it
     kit.header=function(kind,name,sub,code,codeLabel,cont){ newPage(); label(kind+(cont?", continued":""),L,y+1);
@@ -2620,16 +2625,19 @@ var SNAP=null, DETAIL={};
       var stopHead=function(cont){ newPage(); label("Stop "+(si+1)+" of "+nStops+" · "+run.crew.join(" + ")+(cont?", continued":""),L,y+1);
         if(cont){ doc.setFont("helvetica","bold"); doc.setFontSize(14); doc.text(nm,L,y+7); y+=10; rule(); y+=5; return; }
         doc.setFont("helvetica","bold"); doc.setFontSize(20); var tl=doc.splitTextToSize(nm,W-48).slice(0,2); doc.text(tl,L,y+9); var ty=y+9+(tl.length-1)*7.5;
-        doc.setFontSize(11); doc.text([s.arrive!=null?"Arrive about "+hmStr(s.arrive):"",mins!=null?fmt(mins)+" "+word:"",j.from?"not before "+j.from:"",j.by?"finish by "+j.by:""].filter(Boolean).join(" · ")||(collect?"Collection":"Delivery"),L,ty+6.5);
+        doc.setFontSize(11); doc.text([s.arrive!=null?etaText(s.arrive):"",mins!=null?fmt(mins)+" "+word:"",j.from?"not before "+j.from:"",j.by?"finish by "+j.by:""].filter(Boolean).join(" · ")||(collect?"Collection":"Delivery"),L,ty+6.5);
         var cy=ty+12; label("Address",L,cy); label("Site contact",L+72,cy);
         doc.setFont("helvetica","normal"); doc.setFontSize(10.5); var al=doc.splitTextToSize(d.address||"Not on the card",66).slice(0,4); doc.text(al,L,cy+5);
         doc.setFont("helvetica","bold"); doc.setFontSize(11.5); var cl=[]; (d.contacts.length?d.contacts:["Not on the card"]).slice(0,2).forEach(function(c){ c.split(" · ").forEach(function(p0){ cl.push(p0); }); }); cl=cl.slice(0,4); doc.text(cl,L+72,cy+5);
         var qx=L+W-38; if(isDonation(j)){ if(qr("https://trello.com/c/"+(j.short||j.id),qx,y,38)){ doc.setFont("helvetica","bold"); doc.setFontSize(8.5); doc.text(["Scan to open","the Trello card"],qx+19,y+42,{align:"center"}); } }
         else if(qr(d.signoff,qx,y,38)){ doc.setFont("helvetica","bold"); doc.setFontSize(8.5); doc.text(["Scan to sign off","before you leave"],qx+19,y+42,{align:"center"}); }
         else { doc.setDrawColor(150); doc.setLineDashPattern([0.8,0.8],0); doc.rect(qx,y,38,38); doc.setLineDashPattern([],0); doc.setDrawColor(0); doc.setFont("helvetica","bold"); doc.setFontSize(8); doc.text(doc.splitTextToSize("No sign-off link on the card. Call the operations manager.",32),qx+19,y+17,{align:"center"}); }
-        y=Math.max(cy+5+Math.max(al.length,cl.length)*4.8,y+47)+2; rule(); y+=5; };
+        var cyEnd=cy+5+Math.max(al.length,cl.length)*4.8;
+        // CALL AHEAD (Sam, 2 Oct 2026: "telling the operative to call each delivery with an eta")
+        doc.setFont("helvetica","bold"); doc.setFontSize(10); doc.text(doc.splitTextToSize("Call the site contact with your ETA before you head here.",W-48),L,cyEnd+2); cyEnd+=6;
+        y=Math.max(cyEnd,y+47)+2; rule(); y+=5; };
       var cont=function(){ setFoot("This stop carries on over the page."); stopHead(true); };
-      var don=isDonation(j); stopHead(false); kit.steps(["Tick the checklist on the Trello card as each item is done",don?"Add your photos to the Trello card":"Sign off and add your photos","Move the card to Job Completed"]);
+      var don=isDonation(j); stopHead(false); kit.steps(["Add photos to the Trello card","Move the job to Job Completed"]);
       heading(0,collect?"Collect":"Unload"); kit.items(s.items,cont);
       kit.photosBox("TAKE PHOTOS BEFORE YOU LEAVE",j,cont); kit.know(d,cont);
       setFoot(don?"Problems? Call the operations manager before you leave site.":"Problems? Call the operations manager before you leave site. No sign-off, no invoice."); };
@@ -2638,7 +2646,7 @@ var SNAP=null, DETAIL={};
       var don=isDonation(j), code=(!don&&d.signoff)||("https://trello.com/c/"+(j.short||j.id)), codeLabel=(!don&&d.signoff)?"Scan to sign off when it leaves":"Scan to open the Trello card";
       kit.header("Job · Labour · "+crewTxt,nm,[timeTxt,sub].filter(Boolean).join(" · "),code,codeLabel);
       var cont=function(){ setFoot("This job carries on over the page."); kit.header("Job · Labour · "+crewTxt,nm,"",null,"",true); };
-      kit.steps(["Tick the checklist on the Trello card as each item is done",don?"Add your photos to the Trello card":"Sign off and add your photos","Move the card to Job Completed"]);
+      kit.steps(["Add photos to the Trello card","Move the job to Job Completed"]);
       heading(0,"Items"); kit.items(info.items,cont); kit.photosBox("TAKE PHOTOS BEFORE THEY LEAVE",j,cont); kit.know(d,cont);
       setFoot("Any problem? Call the operations manager."); };
     return kit; }
