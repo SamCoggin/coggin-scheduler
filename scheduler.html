@@ -2455,7 +2455,7 @@ var SNAP=null, DETAIL={};
       var PICK=null, cards=daySheetPdf(k,null,"cards")||[];
       if(cards.length&&CRM_KEY){
         var res=await fetch(CRM_PICKING_URL,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({key:CRM_KEY,action:"lines",cards:cards})}).then(function(x){ return x.json(); }).catch(function(){ return null; });
-        if(res&&res.ok&&res.lines){ PICK={}; Object.keys(res.lines).forEach(function(id){ var e=res.lines[id]; var all=e.lines||[], pk=pickedOf(id), jj=JOBS.filter(function(x){return x.id===id;})[0], multi=!!(jj&&jj.prep&&daysOf(jj.prep).length>1);
+        if(res&&res.ok&&res.lines){ PICK={}; Object.keys(res.lines).forEach(function(id){ var e=res.lines[id]; var all=e.lines||[], pk=pickedOf(id), jj=JOBS.filter(function(x){return x.id===id;})[0], multi=!!(jj&&jj.prep&&jj.prep.date);   // every production line gets Finished today, one day or many (2 Oct 2026, the Alcove Booth line had none)
             var left=[]; all.forEach(function(l){ var c=pickCount(pk,l), rem=c.q-c.f; if(rem<=0) return; left.push(c.f>0||multi?Object.assign({},l,{qty:rem,headerCustomer:c.f>0?String(rem):l.headerCustomer,headerBreakdown:c.f>0?null:l.headerBreakdown,_already:c.f,_of:c.q,_write:multi}):l); });
             PICK[id]={picks:!!e.picks,lines:left,allPicked:all.length>0&&!left.length,error:e.error||"",ref:e.ref||""}; });
           var urls={}; Object.keys(PICK).forEach(function(id){ PICK[id].lines.forEach(function(l){ [l.product_photo,l.storage_photo].forEach(function(u){ if(u&&!PICK_IMG[u]) urls[u]=1; }); }); });
