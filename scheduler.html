@@ -2289,12 +2289,12 @@ var SNAP=null, DETAIL={};
       if(j.isLeg&&j.leg&&j.leg.type==="production"){ base.part="Production"; base.sub=""; A4(base); return; }
       if(j.site){ var d0=DETAIL[j.id]?parseDesc(DETAIL[j.id].desc||""):null, where=j.isLeg?(j.leg.where||""):(d0&&d0.where[0]?d0.where[0]:""), tmg=jobTiming(j,k);
         base.part="Transport"; base.at=tmg&&tmg.arrive!=null?tmg.arrive:hm(j.at);
-        base.sub=[j.movement||"", /* no ETA, address or van on the day sheet (Sam, 2 Oct 2026): they are on the yard and stop pages; the ETA still orders the boxes */ ].filter(Boolean).join(" · ");
+        base.sub=[/* no movement type (Sam, 2 Oct 2026) */ /* no ETA, address or van on the day sheet (Sam, 2 Oct 2026): they are on the yard and stop pages; the ETA still orders the boxes */ ].filter(Boolean).join(" · ");
         // SAY WHAT THE TIME IS FOR (Sam, 2 Oct 2026: "it needs to say 30 mins install and 1h travel")
         base.word=/^Delivery$/.test(j.movement||"")?"install":/^Collect/.test(j.movement||"")?"collection":"on site";
         base.extra=j.drive?" and "+fmt(j.drive)+" travel":""; A4(base); return; }
       base.part="Labour"; base.at=j.arrive&&!j.isLeg?hm(j.from):null;
-      base.sub=j.arrive&&!j.isLeg?(arrivalText(j.arrive,j.from,j.by,j.collectAt)||(ARRIVAL_WHO[j.arrive]||"Arriving")+", time not given yet"):(j.isLeg?(j.leg.where||""):[j.work,j.movement].filter(Boolean).join(", "));
+      base.sub=j.arrive&&!j.isLeg?(arrivalText(j.arrive,j.from,j.by,j.collectAt)||(ARRIVAL_WHO[j.arrive]||"Arriving")+", time not given yet"):(j.isLeg?(j.leg.where||""):(j.work||""));
       A4(base); });
     // THE PICKING LINE (Sam, 2 Oct 2026, mock approved): a job picks on its first production day, or on its own day when
     // it has no production; its own picking sheet from the CRM goes behind the day sheet.
