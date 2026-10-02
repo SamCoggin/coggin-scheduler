@@ -2673,13 +2673,15 @@ var SNAP=null, DETAIL={};
       var dropOnly=/drop off only/i.test((d.access||[]).join(" ")+" "+(d.kv.access||""));
       var stopHead=function(cont){ newPage(); label("Stop "+(si+1)+" of "+nStops+" · "+run.crew.join(" + ")+(cont?", continued":""),L,y+1);
         if(cont){ doc.setFont("helvetica","bold"); doc.setFontSize(14); doc.text(nm,L,y+7); y+=10; rule(); y+=5; return; }
-        var qs0=30, qx=L+W-qs0, top=y;
-        doc.setFont("helvetica","bold"); doc.setFontSize(20); var tl=doc.splitTextToSize(nm,W-qs0-8).slice(0,2); doc.text(tl,L,y+9); var ty=y+9+(tl.length-1)*7.5;
+        // NO TOP CODE ON A DONATION (Sam, 2 Oct 2026: "top right qr code not required for donations"): the Trello code is in Before you leave
+        var qs0=don?0:30, qx=L+W-qs0, top=y;
+        doc.setFont("helvetica","bold"); doc.setFontSize(20); var tl=doc.splitTextToSize(nm,W-(don?0:qs0+8)).slice(0,2); doc.text(tl,L,y+9); var ty=y+9+(tl.length-1)*7.5;
         doc.setFontSize(11); doc.text([mins!=null?fmt(mins)+(dropOnly?"":" "+word):"",dropOnly?"drop off only":"",j.from?"not before "+j.from:"",j.by?"finish by "+j.by:""].filter(Boolean).join(" · ")||(collect?"Collection":"Delivery"),L,ty+6.5);
-        var code=don?("https://trello.com/c/"+(j.short||j.id)):d.signoff, codeLbl=don?"Scan to open the Trello card":"Scan to sign off before you leave";
-        if(qr(code,qx,top,qs0)){ doc.setFont("helvetica","bold"); doc.setFontSize(7.5); doc.text(doc.splitTextToSize(codeLbl,36),qx+qs0/2,top+qs0+3.5,{align:"center"}); }
+        var code=d.signoff, codeLbl="Scan to sign off before you leave";
+        if(don){ }
+        else if(qr(code,qx,top,qs0)){ doc.setFont("helvetica","bold"); doc.setFontSize(7.5); doc.text(doc.splitTextToSize(codeLbl,36),qx+qs0/2,top+qs0+3.5,{align:"center"}); }
         else { doc.setDrawColor(150); doc.setLineDashPattern([0.8,0.8],0); doc.rect(qx,top,qs0,qs0); doc.setLineDashPattern([],0); doc.setDrawColor(0); doc.setFont("helvetica","bold"); doc.setFontSize(7.5); doc.text(doc.splitTextToSize("No sign-off link on the card. Call the operations manager.",26),qx+qs0/2,top+12,{align:"center"}); }
-        y=Math.max(ty+10,top+qs0+9); rule(); y+=5;
+        y=don?ty+10:Math.max(ty+10,top+qs0+9); rule(); y+=5;
         // who and where: two equal boxes
         var bw=W/2; doc.setFont("helvetica","normal"); doc.setFontSize(10.5); var al=doc.splitTextToSize(d.address||"Not on the card",bw-8).slice(0,4);
         var c0=(d.contacts[0]||"Not on the card").split(" · "), c1=d.contacts[1]||""; var bh=Math.max(20,8+Math.max(al.length*4.6,c0.length*5.2+(c1?4.5:0))+3);
