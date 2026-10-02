@@ -2708,19 +2708,23 @@ var SNAP=null, DETAIL={};
     // THE PRODUCTION PAGE, UPGRADED (Sam, 2 Oct 2026, mock approved): the name and a small Trello code, four even fact boxes,
     // Before you start (step 1, ticked when the job is already In-progress), the items with even rows, then a black When you
     // finish panel with steps 2 and 3.
-    kit.production=function(o){ var head=function(cont){ newPage(); label("Production · "+o.crew+(cont?", continued":""),L,y+1);
+    kit.production=function(o){ var head=function(cont){ newPage(); label(cont?"Production · "+o.crew+", continued":"Production",L,y+1);
         if(cont){ doc.setFont("helvetica","bold"); doc.setFontSize(14); doc.text(o.name,L,y+7); y+=10; rule(); y+=5; return; }
-        var qs0=24, top=y; doc.setFont("helvetica","bold"); doc.setFontSize(20); var tl=doc.splitTextToSize(o.name,W-qs0-8).slice(0,2); doc.text(tl,L,y+9);
-        if(qr(o.code,L+W-qs0,top,qs0)){ doc.setFont("helvetica","bold"); doc.setFontSize(7); doc.text("Trello card",L+W-qs0/2,top+qs0+3,{align:"center"}); }
-        y=Math.max(y+9+(tl.length-1)*7.5+5,top+qs0+6);
+        // THE CREW STANDS OUT, THE TRELLO CODE SITS WITH THE STEPS (Sam, 2 Oct 2026: "Operatives assigned need highlighting. Also
+        // shouldn't the trello card be in with the steps as the natural flow?")
+        doc.setFont("helvetica","bold"); doc.setFontSize(20); var tl=doc.splitTextToSize(o.name,W).slice(0,2); doc.text(tl,L,y+9); y+=9+(tl.length-1)*7.5+4;
+        var px=L; o.crew.split(" + ").forEach(function(nmC){ doc.setFont("helvetica","bold"); doc.setFontSize(10); var pw=doc.getTextWidth(nmC)+7; doc.setFillColor(17,17,17); doc.roundedRect(px,y,pw,7,1.2,1.2,"F"); doc.setTextColor(255); doc.text(nmC,px+3.5,y+4.9); doc.setTextColor(0); px+=pw+2.5; });
+        y+=11;
         var facts=o.facts.filter(function(f){ return f[1]; }), fw=(W-(facts.length-1)*3)/Math.max(1,facts.length);
         facts.forEach(function(f,i){ var fx=L+i*(fw+3); doc.setLineWidth(0.5); doc.setDrawColor(17); doc.roundedRect(fx,y,fw,11,1.2,1.2); doc.setDrawColor(0); label(f[0],fx+3,y+4); doc.setFont("helvetica","bold"); doc.setFontSize(10); doc.text(doc.splitTextToSize(f[1],fw-5)[0],fx+3,y+8.8); });
         y+=15;
         // before you start
-        doc.setFillColor(17,17,17); doc.roundedRect(L,y,38,10,1.5,1.5,"F"); doc.rect(L+36,y,2,10,"F"); doc.setLineWidth(0.5); doc.setDrawColor(17); doc.roundedRect(L,y,W,10,1.5,1.5); doc.setDrawColor(0);
-        doc.setTextColor(255); doc.setFont("helvetica","bold"); doc.setFontSize(8); doc.text("BEFORE YOU START",L+19,y+6.3,{align:"center"}); doc.setTextColor(0);
-        box(L+42,y+2.5,5); if(o.started){ doc.setLineWidth(0.7); doc.setDrawColor(17); doc.line(L+43,y+5.1,L+44.4,y+6.5); doc.line(L+44.4,y+6.5,L+46.3,y+3.5); doc.setDrawColor(0); }
-        doc.setTextColor(o.started?140:0); doc.setFontSize(10); doc.text("Move the job into In-progress"+(o.started?" · done":""),L+50,y+6.5); doc.setTextColor(0); y+=16; };
+        var bh0=20; doc.setFillColor(17,17,17); doc.roundedRect(L,y,38,bh0,1.5,1.5,"F"); doc.rect(L+36,y,2,bh0,"F"); doc.setLineWidth(0.5); doc.setDrawColor(17); doc.roundedRect(L,y,W,bh0,1.5,1.5); doc.setDrawColor(0);
+        doc.setTextColor(255); doc.setFont("helvetica","bold"); doc.setFontSize(8); doc.text(["BEFORE","YOU START"],L+19,y+bh0/2-0.6,{align:"center"}); doc.setTextColor(0);
+        box(L+42,y+bh0/2-2.5,5); if(o.started){ var cy0=y+bh0/2-2.5; doc.setLineWidth(0.7); doc.setDrawColor(17); doc.line(L+43,cy0+2.6,L+44.4,cy0+4); doc.line(L+44.4,cy0+4,L+46.3,cy0+1); doc.setDrawColor(0); }
+        doc.setTextColor(110); doc.setFont("helvetica","bold"); doc.setFontSize(7); doc.text("STEP 1"+(o.started?" · DONE":""),L+50,y+bh0/2-2.2,{charSpace:0.2});
+        doc.setTextColor(o.started?140:0); doc.setFontSize(10.5); doc.text("Move the job into In-progress",L+50,y+bh0/2+3.2); doc.setTextColor(0);
+        qr(o.code,L+W-17.5,y+1.5,14); doc.setFont("helvetica","bold"); doc.setFontSize(6); doc.text("Trello card",L+W-10.5,y+bh0-1.2,{align:"center"}); y+=bh0+6; };
       var cont=function(){ setFoot("This job carries on over the page."); head(true); };
       head(false);
       doc.setFont("helvetica","bold"); doc.setFontSize(9.5); doc.text(o.title.toUpperCase(),L,y+3,{charSpace:0.3}); doc.setFont("helvetica","normal"); doc.setFontSize(8); doc.setTextColor(100); doc.text("Tick when finished",L+W,y+3,{align:"right"}); doc.setTextColor(0); y+=5;
@@ -2753,8 +2757,9 @@ var SNAP=null, DETAIL={};
       if(o.lines.length){ doc.setDrawColor(215); doc.setLineWidth(0.25); doc.line(L,y,L+W,y); doc.setDrawColor(0); }
       // when you finish
       if(y+34>278) cont(); y+=5; var ph2=30; doc.setFillColor(17,17,17); doc.roundedRect(L,y,W,ph2,2,2,"F"); doc.setTextColor(255); doc.setFont("helvetica","bold"); doc.setFontSize(12); doc.text("WHEN YOU FINISH",L+5,y+7.5);
-      var sw=(W-14)/2, sy=y+10.5, shh=16; [["STEP 2","Tick off the checklist on the Trello card"],["STEP 3","Move the job into Ready for Delivery / Collection"]].forEach(function(st,i){ var sx=L+5+i*(sw+4); doc.setFillColor(255,255,255); doc.roundedRect(sx,sy,sw,shh,1.2,1.2,"F");
+      var sw=(W-10-30-8)/2, sy=y+10.5, shh=16; [["STEP 2","Tick off the checklist on the Trello card"],["STEP 3","Move the job into Ready for Delivery / Collection"]].forEach(function(st,i){ var sx=L+5+i*(sw+4); doc.setFillColor(255,255,255); doc.roundedRect(sx,sy,sw,shh,1.2,1.2,"F");
         doc.setDrawColor(17); doc.setLineWidth(0.5); doc.roundedRect(sx+3,sy+3,4.5,4.5,0.5,0.5); doc.setDrawColor(0); doc.setTextColor(110); doc.setFont("helvetica","bold"); doc.setFontSize(7); doc.text(st[0],sx+10,sy+6.3,{charSpace:0.2}); doc.setTextColor(17); doc.setFontSize(9.5); doc.text(doc.splitTextToSize(st[1],sw-13).slice(0,2),sx+10,sy+11); });
+      var qbx2=L+W-5-30; doc.setFillColor(255,255,255); doc.roundedRect(qbx2,sy,30,shh,1.2,1.2,"F"); qr(o.code,qbx2+9.5,sy+1,11); doc.setTextColor(17); doc.setFont("helvetica","bold"); doc.setFontSize(6); doc.text("Trello card",qbx2+15,sy+14.8,{align:"center"});
       doc.setTextColor(0); y+=ph2+4; setFoot(o.crew); };
     // a labour page: what is happening, what moves, a code to sign off, the photos prompt
     kit.labour=function(j,info,crewTxt,sub,timeTxt){ var d=info.d, nm=j.title.split(" - ").slice(1).join(" - ")||j.title;
