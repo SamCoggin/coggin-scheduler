@@ -339,6 +339,7 @@
   .over h4{margin:0 0 4px;font-size:12px;text-transform:uppercase;color:var(--muted);letter-spacing:.03em}
   .items{list-style:none;margin:8px 0 0;padding:0}
   .items li{padding:5px 0;border-top:1px solid var(--line);font-size:13px;display:flex;gap:8px;align-items:flex-start}
+  .items.plain li{align-items:center} .ithumb{width:56px;height:56px;object-fit:contain;background:#fff;border:1px solid var(--line);border-radius:4px;flex:0 0 56px} .ithumb.none{display:flex;align-items:center;justify-content:center;font-size:9px;color:var(--muted);text-align:center}
   .items.checks li.done{color:var(--muted);text-decoration:line-through} .items.checks .tick{font-size:15px;line-height:1;text-decoration:none;color:var(--text)}
   .items.plain li{padding-left:14px;position:relative}
   .items.plain li:before{content:"";position:absolute;left:0;top:11px;width:6px;height:6px;border-radius:50%;background:var(--muted)}
@@ -766,6 +767,7 @@ var SNAP=null, DETAIL={};
   // CRM's JobActual (Trello card data is too small for it). A day that has gone with jobs not typed in shows in the
   // week's Needs a decision. Timings compares planned with actual over four weeks.
   var CRM_ACTUALS_URL="https://coggin-sos-os.base44.app/api/apps/69c930a6240fba922f369aa2/functions/jobActuals";
+  var ITEM_PHOTOS={};   // card id -> [{name, qty, photo}] from the CRM, fetched when the card is opened
   var CRM_PICKING_URL="https://coggin-sos-os.base44.app/api/apps/69c930a6240fba922f369aa2/functions/pickingSheets";
   var ACTUALS={}, ACTUALS_OK=false, ACT_OPEN=null, ACT_DRAFT=null, TIMINGS_OPEN=false;
   // DAY SHEET ENTRY SWITCHED OFF (Sam, 2 Oct 2026: the sheet's who-did-it and actual-time strip became notes, "yes switch it
@@ -1028,7 +1030,19 @@ var SNAP=null, DETAIL={};
     [["Contact",g.contact],["Where",g.where],["Access",g.access],["Notes",g.notes]].forEach(function(f){ var r=field(f[0],f[1]); if(r) box.appendChild(r); });
     if(!box.children.length) box.appendChild(el("div","hint","Nothing written on the card yet."));
     jb.appendChild(box); left.appendChild(jb);
-    if(items.length){ var ib=block("Items ("+items.length+")"); var ul=el("ul","items plain"); items.forEach(function(x){ ul.appendChild(el("li",null,x)); }); ib.appendChild(ul); left.appendChild(ib); }
+    // A PHOTO BESIDE EACH ITEM (Sam, 2 Oct 2026: "I want to see the photo of the item in this view"). The CRM sends the
+    // deal's quoted items with a photo each, once per card per visit; a line takes the photo whose name it carries.
+    var pcard=j.isLeg&&j.parentJob?j.parentJob:j, photos=ITEM_PHOTOS[pcard.id];
+    if(items.length&&photos===undefined&&CRM_KEY){ ITEM_PHOTOS[pcard.id]=null; fetch(CRM_PICKING_URL,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({key:CRM_KEY,action:"photos",cards:[{id:pcard.id,short:pcard.short||""}]})})
+      .then(function(x){ return x.json(); }).then(function(r){ ITEM_PHOTOS[pcard.id]=(r&&r.ok&&r.items&&r.items[pcard.id])||[]; render(); }).catch(function(){ ITEM_PHOTOS[pcard.id]=[]; }); }
+    // matched on shared words, not the exact name: the card can say "Alcove Booth" where the proposal says "Alcove Sofa",
+    // or carry a size the proposal line leaves out. The best match over 60 percent of the proposal name's words wins.
+    var words=function(t){ return String(t||"").toLowerCase().replace(/^\s*\d+\s*x\s*/,"").split(/[^a-z0-9-]+/).filter(function(w){ return w.length>1||/\d/.test(w); }); };
+    var photoFor=function(line){ var lw=words(line), best=null, bs=0; (photos||[]).forEach(function(p){ if(!p.photo) return; var pw=words(p.name); if(!pw.length) return;
+        var sc=pw.filter(function(w){ return lw.indexOf(w)>=0; }).length/pw.length; if(sc>bs){ bs=sc; best=p; } }); return bs>=0.6&&best?best.photo:""; };
+    if(items.length){ var ib=block("Items ("+items.length+")"); var ul=el("ul","items plain"); items.forEach(function(x){ var li=el("li",null); var src=photoFor(x);
+        if(src){ var im=el("img","ithumb"); im.src=src; im.alt=""; im.loading="lazy"; li.appendChild(im); } else if(photos) li.appendChild(el("span","ithumb none","No photo"));
+        li.appendChild(el("span",null,x)); ul.appendChild(li); }); ib.appendChild(ul); left.appendChild(ib); }
     // WHAT IS BEING WORKED ON (Sam, 15 Sep 2026: "so I don't have to go back into the Trello card to see what is being
     // worked on"): the card's checklist, every line with its tick, and the works lines from the description.
     var checks=(dt&&dt.checks)||[];
