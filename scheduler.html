@@ -2682,7 +2682,7 @@ var SNAP=null, DETAIL={};
         var code=d.signoff, codeLbl="Scan to sign off before you leave";
         if(don){ }
         else if(qr(code,qx,top,qs0)){ doc.setFont("helvetica","bold"); doc.setFontSize(7.5); doc.text(doc.splitTextToSize(codeLbl,36),qx+qs0/2,top+qs0+3.5,{align:"center"}); }
-        else { doc.setDrawColor(150); doc.setLineDashPattern([0.8,0.8],0); doc.rect(qx,top,qs0,qs0); doc.setLineDashPattern([],0); doc.setDrawColor(0); doc.setFont("helvetica","bold"); doc.setFontSize(7.5); doc.text(doc.splitTextToSize("No sign-off link on the card. Call the operations manager.",26),qx+qs0/2,top+12,{align:"center"}); }
+        else { doc.setDrawColor(150); doc.setLineDashPattern([0.8,0.8],0); doc.rect(qx,top,qs0,qs0); doc.setLineDashPattern([],0); doc.setDrawColor(0); doc.setFont("helvetica","bold"); doc.setFontSize(7.5); doc.text(doc.splitTextToSize("No sign-off link on the card. Contact the operations manager.",26),qx+qs0/2,top+12,{align:"center"}); }
         y=don?ty+10:Math.max(ty+10,top+qs0+9); rule(); y+=5;
         // who and where: two equal boxes
         var bw=W/2; doc.setFont("helvetica","normal"); doc.setFontSize(10.5); var al=doc.splitTextToSize(d.address||"Not on the card",bw-8).slice(0,4);
@@ -2709,7 +2709,7 @@ var SNAP=null, DETAIL={};
         doc.setTextColor(110); doc.setFont("helvetica","bold"); doc.setFontSize(7); doc.text(st[0],sx+10,sy+6.3,{charSpace:0.2}); doc.setTextColor(17); doc.setFontSize(9.5); doc.text(doc.splitTextToSize(st[1],sw-13).slice(0,3),sx+10,sy+11); });
       var qbx=L+W-5-30; doc.setFillColor(255,255,255); doc.roundedRect(qbx,sy,30,shh+0.01,1.2,1.2,"F"); qr("https://trello.com/c/"+(j.short||j.id),qbx+8,sy+1.5,14); doc.setTextColor(17); doc.setFont("helvetica","bold"); doc.setFontSize(6.5); doc.text("Trello card",qbx+15,sy+18.6,{align:"center"});
       doc.setTextColor(220); doc.setFont("helvetica","normal"); doc.setFontSize(8); doc.text("Photos are used for marketing and as proof of delivery.",L+5,y+ph-3.5); doc.setTextColor(0); y+=ph+4;
-      setFoot(don?"Problems? Call the operations manager before you leave site.":"Problems? Call the operations manager before you leave site. No sign-off, no invoice."); };
+      setFoot(don?"Any issues, contact the operations manager before you leave site.":"Any issues, contact the operations manager before you leave site. No sign-off, no invoice."); };
     // THE PRODUCTION PAGE, UPGRADED (Sam, 2 Oct 2026, mock approved): the name and a small Trello code, four even fact boxes,
     // Before you start (step 1, ticked when the job is already In-progress), the items with even rows, then a black When you
     // finish panel with steps 2 and 3.
@@ -2795,7 +2795,7 @@ var SNAP=null, DETAIL={};
         doc.setTextColor(110); doc.setFont("helvetica","bold"); doc.setFontSize(7); doc.text("STEP "+(i+1),sx+10,sy+6.3,{charSpace:0.2});
         doc.setTextColor(17); doc.setFontSize(10); var tl2=doc.splitTextToSize(st[0],sw-30).slice(0,4); doc.text(tl2,sx+3,sy+13);
         qr(st[1],sx+sw-23,sy+2.5,20); doc.setFont("helvetica","bold"); doc.setFontSize(6.5); doc.text(st[2],sx+sw-13,sy+26.3,{align:"center"}); });
-      doc.setTextColor(0); y+=ph+4; setFoot("Any problem? Call the operations manager."); };
+      doc.setTextColor(0); y+=ph+4; setFoot("Any issues, contact the operations manager."); };
     return kit; }
   async function daySheetDownload(k){
     var btn=$("#sheets"), was=btn?btn.textContent:""; if(btn){ btn.disabled=true; btn.textContent="Building the day sheet..."; }
