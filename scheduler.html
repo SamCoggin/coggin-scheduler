@@ -345,7 +345,13 @@
   @media (max-width:420px){ .each-p{grid-template-columns:1fr} }
   .items{list-style:none;margin:8px 0 0;padding:0}
   .items li{padding:5px 0;border-top:1px solid var(--line);font-size:13px;display:flex;gap:8px;align-items:flex-start}
-  .items.plain li{align-items:center} .ithumb{width:56px;height:56px;object-fit:contain;background:#fff;border:1px solid var(--line);border-radius:4px;flex:0 0 56px} .ithumb.none{display:flex;align-items:center;justify-content:center;font-size:9px;color:var(--muted);text-align:center}
+  .ithumb.zoom{cursor:zoom-in} .ithumb.zoom:hover,.ithumb.zoom:focus-visible{border-color:#1D3058;outline:none;box-shadow:0 0 0 2px rgba(29,48,88,.25)}
+  .photopop{position:fixed;inset:0;background:rgba(9,14,28,.72);z-index:10000;display:flex;align-items:center;justify-content:center;padding:24px}
+  .photopop .pbox{position:relative;background:#fff;border-radius:10px;padding:16px;max-width:min(900px,94vw);max-height:90vh;display:flex;flex-direction:column;gap:10px;box-shadow:0 20px 50px rgba(0,0,0,.35)}
+  .photopop img{max-width:100%;max-height:calc(90vh - 90px);object-fit:contain;display:block;margin:0 auto}
+  .photopop .pcap{font-size:14px;color:#1D3058;font-weight:600;text-align:center;padding:0 28px}
+  .photopop .pclose{position:absolute;top:6px;right:8px;width:32px;height:32px;border:0;background:transparent;font-size:24px;line-height:1;color:#5f6b7f;cursor:pointer;border-radius:6px} .photopop .pclose:hover,.photopop .pclose:focus-visible{background:#eef1f6;color:#1D3058;outline:none}
+    .items.plain li{align-items:center} .ithumb{width:56px;height:56px;object-fit:contain;background:#fff;border:1px solid var(--line);border-radius:4px;flex:0 0 56px} .ithumb.none{display:flex;align-items:center;justify-content:center;font-size:9px;color:var(--muted);text-align:center}
   .items.checks li.done{color:var(--muted);text-decoration:line-through} .items.checks .tick{font-size:15px;line-height:1;text-decoration:none;color:var(--text)}
   .items.plain li{padding-left:14px;position:relative}
   .items.plain li:before{content:"";position:absolute;left:0;top:11px;width:6px;height:6px;border-radius:50%;background:var(--muted)}
@@ -785,6 +791,17 @@ var SNAP=null, DETAIL={};
   // CRM's JobActual (Trello card data is too small for it). A day that has gone with jobs not typed in shows in the
   // week's Needs a decision. Timings compares planned with actual over four weeks.
   var CRM_ACTUALS_URL="https://coggin-sos-os.base44.app/api/apps/69c930a6240fba922f369aa2/functions/jobActuals";
+  // THE PHOTO, BIG (Sam, 2 Oct 2026: "can we make the photos clickable to expand as a popup"). Click, Escape or the
+  // cross closes it; the editor underneath is left exactly as it was.
+  function photoPopup(src,name){
+    var v=el("div","photopop"); v.setAttribute("role","dialog"); v.setAttribute("aria-label",name||"Item photo");
+    var box=el("div","pbox"), img=el("img"); img.src=src; img.alt=name||""; box.appendChild(img); if(name) box.appendChild(el("div","pcap",name));
+    var x=el("button","pclose","\u00d7"); x.setAttribute("aria-label","Close"); box.appendChild(x); v.appendChild(box);
+    var close=function(){ document.removeEventListener("keydown",onKey,true); if(v.parentNode) v.parentNode.removeChild(v); };
+    var onKey=function(e){ if(e.key==="Escape"){ e.stopPropagation(); e.preventDefault(); close(); } };
+    v.onclick=function(e){ if(e.target===v||e.target===x) close(); }; document.addEventListener("keydown",onKey,true);
+    document.body.appendChild(v); x.focus();
+  }
   var ITEM_PHOTOS={};   // card id -> [{name, qty, photo}] from the CRM, fetched when the card is opened
   var CRM_PICKING_URL="https://coggin-sos-os.base44.app/api/apps/69c930a6240fba922f369aa2/functions/pickingSheets";
   var ACTUALS={}, ACTUALS_OK=false, ACT_OPEN=null, ACT_DRAFT=null, TIMINGS_OPEN=false;
@@ -1061,7 +1078,8 @@ var SNAP=null, DETAIL={};
     var photoFor=function(line){ var lw=words(line), best=null, bs=0; (photos||[]).forEach(function(p){ if(!p.photo) return; var pw=words(p.name); if(!pw.length) return;
         var sc=pw.filter(function(w){ return lw.indexOf(w)>=0; }).length/pw.length; if(sc>bs){ bs=sc; best=p; } }); return bs>=0.6&&best?best.photo:""; };
     if(items.length){ var ib=block("Items ("+items.length+")"); var ul=el("ul","items plain"); items.forEach(function(x){ var li=el("li",null); var src=photoFor(x);
-        if(src){ var im=el("img","ithumb"); im.src=src; im.alt=""; im.loading="lazy"; li.appendChild(im); } else if(photos) li.appendChild(el("span","ithumb none","No photo"));
+        if(src){ var im=el("img","ithumb zoom"); im.src=src; im.alt=x; im.loading="lazy"; im.tabIndex=0; im.title="Click to see it bigger"; im.setAttribute("role","button");
+          im.onclick=function(e){ e.stopPropagation(); photoPopup(src,x); }; im.onkeydown=function(e){ if(e.key==="Enter"||e.key===" "){ e.preventDefault(); photoPopup(src,x); } }; li.appendChild(im); } else if(photos) li.appendChild(el("span","ithumb none","No photo"));
         li.appendChild(el("span",null,x)); ul.appendChild(li); }); ib.appendChild(ul); left.appendChild(ib); }
     // WHAT IS BEING WORKED ON (Sam, 15 Sep 2026: "so I don't have to go back into the Trello card to see what is being
     // worked on"): the card's checklist, every line with its tick, and the works lines from the description.
