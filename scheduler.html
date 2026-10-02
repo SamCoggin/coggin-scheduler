@@ -1032,7 +1032,8 @@ var SNAP=null, DETAIL={};
     var dt=DETAIL[j.id];
     var jb=block("Job Details"); var g=dt?parseDesc(dt.desc):{contact:[],where:[],what:[],access:[],notes:[]}, box=el("div","facts");
     var items=itemsOf(dt?dt.desc:"",dt?dt.checks:[]); g.notes=g.notes.concat(g.what.filter(function(l){return !/^\d+\s*x\s*/i.test(l);}));
-    [["Contact",g.contact],["Where",g.where],["Access",g.access],["Notes",g.notes]].forEach(function(f){ var r=field(f[0],f[1]); if(r) box.appendChild(r); });
+    // NO ACCESS ROW (Sam, 2 Oct 2026: "remove the access details from the scheduler editor"): it is on the card and the sheets.
+    [["Contact",g.contact],["Where",g.where],["Notes",g.notes]].forEach(function(f){ var r=field(f[0],f[1]); if(r) box.appendChild(r); });
     if(!box.children.length) box.appendChild(el("div","hint","Nothing written on the card yet."));
     jb.appendChild(box); left.appendChild(jb);
     // A PHOTO BESIDE EACH ITEM (Sam, 2 Oct 2026: "I want to see the photo of the item in this view"). The CRM sends the
