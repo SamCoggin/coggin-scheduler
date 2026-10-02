@@ -2597,9 +2597,13 @@ var SNAP=null, DETAIL={};
         doc.setTextColor(done?140:0); doc.setFont("helvetica","bold"); doc.setFontSize(9); doc.text(doc.splitTextToSize(t,bw-6).slice(0,2),x+3,y+11.6); doc.setTextColor(0); });
       y+=h+6; };
     // the header every job page shares: kind and crew, the name large, a code top right, a rule under it
-    kit.header=function(kind,name,sub,code,codeLabel,cont){ newPage(); label(kind+(cont?", continued":""),L,y+1);
+    // OPERATIVES AS BLACK NAME TAGS ON EVERY SHEET (Sam, 2 Oct 2026: "I want operatives highlighted on every sheet")
+    var pillsAt=function(names,x0,y0){ var px=x0; (names||[]).forEach(function(nmC){ doc.setFont("helvetica","bold"); doc.setFontSize(10); var pw=doc.getTextWidth(nmC)+7; doc.setFillColor(17,17,17); doc.roundedRect(px,y0,pw,7,1.2,1.2,"F"); doc.setTextColor(255); doc.text(nmC,px+3.5,y0+4.9); doc.setTextColor(0); px+=pw+2.5; }); };
+    kit.pillsAt=pillsAt;
+    kit.header=function(kind,name,sub,code,codeLabel,cont,crewList){ newPage(); label(kind+(cont?", continued":""),L,y+1);
       doc.setFont("helvetica","bold"); doc.setFontSize(cont?14:20); var tl=doc.splitTextToSize(name,W-48).slice(0,2); doc.text(tl,L,y+(cont?7:9)); var ty=y+(cont?7:9)+(tl.length-1)*7.5;
       if(sub&&!cont){ doc.setFontSize(11); doc.text(doc.splitTextToSize(sub,W-48)[0],L,ty+6.5); ty+=6.5; }
+      if(crewList&&crewList.length&&!cont){ pillsAt(crewList,L,ty+3); ty+=11; }
       var top=y; if(code&&!cont){ var qx=L+W-34; if(qr(code,qx,y,34)){ doc.setFont("helvetica","bold"); doc.setFontSize(8); doc.text(doc.splitTextToSize(codeLabel,40),qx+17,y+38,{align:"center"}); } }
       y=cont?ty+4:Math.max(ty+5,top+44); rule(); y+=5; return y; };
     var tiles=function(items){ var tw=(W-12)/4, th=38; items.forEach(function(it,i){ var tx=L+(i%4)*(tw+4), ty=y+Math.floor(i/4)*(th+4); doc.setDrawColor(180); doc.setLineWidth(0.3); doc.roundedRect(tx,ty,tw,th,1,1); doc.setDrawColor(0);
@@ -2624,8 +2628,8 @@ var SNAP=null, DETAIL={};
         label(rw[0],L,y+4.8); doc.setFont("helvetica","normal"); doc.setFontSize(10); doc.text(vl,L+34,y+4.8); y+=h; doc.setDrawColor(215); doc.setLineWidth(0.25); doc.line(L,y,L+W,y); doc.setDrawColor(0); }); };
     // the yard page for a van: load in drop order with photos, the blanket rule, the kit check
     kit.yard=function(run){ var nStops=run.stops.length, crewTxt=run.crew.join(" + "), dels=run.stops.filter(function(s){ return !takesOn(s.j); });
-      var yardHead=function(cont){ newPage(); label("Transport · "+crewTxt+(cont?", continued":""),L,y+1); doc.setFont("helvetica","bold"); doc.setFontSize(cont?14:20); doc.text("Loading sheet",L,y+(cont?7:9));   // Sam, 2 Oct 2026: "this should be called loading sheet"
-        doc.setFontSize(10); doc.text([run.van||"No van set",nStops+(nStops===1?" stop":" stops")].join(" · "),   /* no load or set-off times (Sam, 2 Oct 2026) */L,y+(cont?12.5:15)); y+=cont?15.5:18.5; rule(); y+=5; };
+      var yardHead=function(cont){ newPage(); label("Transport"+(cont?" · "+crewTxt+", continued":""),L,y+1); doc.setFont("helvetica","bold"); doc.setFontSize(cont?14:20); doc.text("Loading sheet",L,y+(cont?7:9));   // Sam, 2 Oct 2026: "this should be called loading sheet"
+        doc.setFontSize(10); doc.text([run.van||"No van set",nStops+(nStops===1?" stop":" stops")].join(" · "),   /* no load or set-off times (Sam, 2 Oct 2026) */L,y+(cont?12.5:15)); if(!cont){ pillsAt(run.crew,L,y+18.5); y+=28; } else y+=15.5; rule(); y+=5; };
       yardHead(false); heading(1,"Load the van");
       // THE LOADING LIST, UPGRADED (Sam, 2 Oct 2026, mock approved): the van drawn front to back with each stop's space, the
       // blanket rule as a black label, then one box per load with even rows and two ticks, Loaded and Blanketed.
@@ -2668,12 +2672,13 @@ var SNAP=null, DETAIL={};
     kit.stop=function(run,s){ var j=s.j, d=s.d, collect=takesOn(j), nm=j.title.split(" - ").slice(1).join(" - ")||j.title, si=run.stops.indexOf(s), nStops=run.stops.length;
       var word=/^Delivery$/.test(j.movement||"")?"install":collect?"collection":"on site", mins=minsFor(j,run.crew[0]), don=isDonation(j);
       var dropOnly=/drop off only/i.test((d.access||[]).join(" ")+" "+(d.kv.access||""));
-      var stopHead=function(cont){ newPage(); label("Stop "+(si+1)+" of "+nStops+" · "+run.crew.join(" + ")+(cont?", continued":""),L,y+1);
+      var stopHead=function(cont){ newPage(); label("Stop "+(si+1)+" of "+nStops+(cont?" · "+run.crew.join(" + ")+", continued":""),L,y+1);
         if(cont){ doc.setFont("helvetica","bold"); doc.setFontSize(14); doc.text(nm,L,y+7); y+=10; rule(); y+=5; return; }
         // NO TOP CODE ON A DONATION (Sam, 2 Oct 2026: "top right qr code not required for donations"): the Trello code is in Before you leave
         var qs0=don?0:30, qx=L+W-qs0, top=y;
         doc.setFont("helvetica","bold"); doc.setFontSize(20); var tl=doc.splitTextToSize(nm,W-(don?0:qs0+8)).slice(0,2); doc.text(tl,L,y+9); var ty=y+9+(tl.length-1)*7.5;
         doc.setFontSize(11); doc.text([mins!=null?fmt(mins)+(dropOnly?"":" "+word):"",dropOnly?"drop off only":"",j.from?"not before "+j.from:"",j.by?"finish by "+j.by:""].filter(Boolean).join(" · ")||(collect?"Collection":"Delivery"),L,ty+6.5);
+        pillsAt(run.crew,L,ty+10); ty+=11;
         var code=d.signoff, codeLbl="Scan to sign off before you leave";
         if(don){ }
         else if(qr(code,qx,top,qs0)){ doc.setFont("helvetica","bold"); doc.setFontSize(7.5); doc.text(doc.splitTextToSize(codeLbl,36),qx+qs0/2,top+qs0+3.5,{align:"center"}); }
@@ -2764,7 +2769,7 @@ var SNAP=null, DETAIL={};
     // a labour page: what is happening, what moves, a code to sign off, the photos prompt
     kit.labour=function(j,info,crewTxt,sub,timeTxt){ var d=info.d, nm=j.title.split(" - ").slice(1).join(" - ")||j.title;
       var don=isDonation(j), code=(!don&&d.signoff)||("https://trello.com/c/"+(j.short||j.id)), codeLabel=(!don&&d.signoff)?"Scan to sign off when it leaves":"Scan to open the Trello card";
-      kit.header("Job · Labour · "+crewTxt,nm,[timeTxt,sub].filter(Boolean).join(" · "),code,codeLabel);
+      kit.header("Labour",nm,[timeTxt,sub].filter(Boolean).join(" · "),code,codeLabel,false,crewTxt.split(" + "));
       var cont=function(){ setFoot("This job carries on over the page."); kit.header("Job · Labour · "+crewTxt,nm,"",null,"",true); };
       kit.steps(["Add photos to the Trello card","Move the job to Job Completed"]);
       heading(0,"Items"); kit.items(info.items,cont); kit.photosBox("TAKE PHOTOS BEFORE THEY LEAVE",j,cont); kit.know(d,cont);
