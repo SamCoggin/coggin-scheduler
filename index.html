@@ -41,7 +41,12 @@
         var plan=d||{};
         if(workshop){ var pb=prodBadgeText(plan); out.push({ text:pb.text, color:pb.color }); }
         // a viewing order is production only: no transport or labour badge (17 Sep 2026)
-        if(!isViewingLabels(card.labels)) frontBadges(plan,isSite(card)?movementOf(card.labels,card.desc):false,round).forEach(function(b){ out.push({ text:b.text, color:b.color }); });
+        // EACH LIST SHOWS ITS OWN PART (Sam, 2 Oct 2026: "Labour for collection is not needed to be seen at not started
+        // yet and should be in Ready for delivery/collection"). Not Started and In-progress carry production only; the
+        // labour, installation or courier badge appears once the card reaches Ready for Delivery / Collection. The back
+        // of the card still shows every part.
+        var inWorkshop=!!(list&&WORKSHOP_LISTS.test(String(list.name||"").trim()));
+        if(!isViewingLabels(card.labels)&&!inWorkshop) frontBadges(plan,isSite(card)?movementOf(card.labels,card.desc):false,round).forEach(function(b){ out.push({ text:b.text, color:b.color }); });
         return out;
       });
     },
