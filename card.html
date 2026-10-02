@@ -40,6 +40,7 @@
   .seg button.on{border-color:var(--blue);background:var(--blue);color:#fff}
   .vseg button{display:flex;flex-direction:column;align-items:center;gap:2px;padding:9px 4px;line-height:1.1}
   .vseg button b{font-size:14px} .vseg button small{font-size:10.5px;font-weight:500;color:var(--muted)} .vseg button.on small{color:rgba(255,255,255,.85)}
+  .atime{display:flex;align-items:center;gap:10px;flex-wrap:wrap} .atime+.atime{margin-top:8px} .atime .an{min-width:72px;font-size:14px;font-weight:700} .atime .ato{color:var(--muted);font-size:14px} .atime input{width:120px}
   .hint{color:var(--muted);font-size:13px;margin-top:6px} .hint.far{color:var(--red);font-weight:700}
   .pst{padding:8px 14px;font-size:13px;font-weight:700;border-top:1px solid var(--line);color:var(--muted)} .pst.ok{color:var(--green);background:var(--green-bg)} .pst.soon{color:var(--amber);background:var(--amber-bg)} .pst.late{color:var(--red);background:var(--red-bg)}
   .avail{margin-top:10px;display:flex;flex-direction:column;gap:6px}
@@ -468,13 +469,14 @@
         var ak=site?"":arrivalKind(card.labels,card.name,card.desc);
         if(ak&&!contractorOnly){
           if(!d.from&&(ak==="delivers"||ak==="both")){ var t0=arrivalFromDesc(card.desc); if(t0){ d.from=t0; d.fromAuto=true; } }
-          var tIn=function(lbl,key){ var r=el("div","row"); var fi=el("input"); fi.type="time"; fi.step="300"; fi.value=d[key]||""; fi.setAttribute("aria-label",lbl); fi.onchange=function(){ d[key]=fi.value||null; if(key==="from") d.fromAuto=false; save(); render(); }; r.appendChild(el("span","lbl",lbl)); r.appendChild(fi); return r; };
+          /* ONE LINE PER TIME (Sam, 2 Oct 2026: "Shit UI here"): a short name, the time, and an optional "to" time beside it */
+          var tBox=function(key,aria){ var fi=el("input"); fi.type="time"; fi.step="300"; fi.value=d[key]||""; fi.setAttribute("aria-label",aria); fi.onchange=function(){ d[key]=fi.value||null; if(key==="from") d.fromAuto=false; save(); render(); }; return fi; };
+          var tLine=function(name,k1,k2){ var r=el("div","atime"); r.appendChild(el("span","an",name)); r.appendChild(tBox(k1,name)); if(k2){ r.appendChild(el("span","ato","to")); r.appendChild(tBox(k2,name+", latest")); } return r; };
           var aTxt=arrivalText(ak,d.from,d.by,d.collectAt)||(ak==="waste"?"No window from the carrier yet":"No time given yet");
           ts.appendChild(rowEl("slot",ak==="collects"?"Collection slot":ak==="waste"?"Carrier window":ak==="both"?"Arrives and collects":"Expected arrival",aTxt+(d.fromAuto?", from the CRM":""),function(ed){
-            if(ak==="waste"){ ed.appendChild(tIn("Arrives between","from")); ed.appendChild(tIn("and","by")); ed.appendChild(el("div","hint","Leave the second time blank if they give one time.")); }
-            else if(ak==="both"){ ed.appendChild(tIn("Customer arrives","from")); ed.appendChild(tIn("or between that and","by")); ed.appendChild(tIn("Customer collects","collectAt")); }
-            else { ed.appendChild(tIn(ak==="collects"?"Estimated collection time":"Expected around","from")); ed.appendChild(tIn("or between that and","by")); ed.appendChild(el("div","hint","Fill the second time only when they give a window.")); }
-            ed.appendChild(el("div","hint",d.fromAuto?"Taken from the drop-off plan on the deal. Change it if they give another time.":"Leave blank until they give a time. Put it in when they do, so Forton is not empty when they turn up."));
+            if(ak==="both"){ ed.appendChild(tLine("Arrives","from","by")); ed.appendChild(tLine("Collects","collectAt")); }
+            else ed.appendChild(tLine(ak==="collects"||ak==="buyer"?"Collects":ak==="waste"?"Carrier":"Arrives","from","by"));
+            ed.appendChild(el("div","hint",d.fromAuto?"From the deal. Change it if they give another time.":ak==="waste"?"Put in the window the carrier gives.":"The second time is only for a window."));
           },arrivalMissing(ak,d.from,d.by,d.collectAt)?"todo":"")); }
         if(qcApplies&&!qcPlaced) ts.appendChild(qcRow());
         var LEG_TYPES_CARD=[["to_sub","Deliver to subcontractor"],["from_sub","Collect from subcontractor"],["production","Production"],["site","Site visit"],["labour","Labour"]];

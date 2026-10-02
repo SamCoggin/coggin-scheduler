@@ -298,6 +298,7 @@
   .person.off{opacity:.6}
   .person.on{border-color:var(--blue);background:var(--blue-bg)}
   .person.on .av{background:#0c66e4;color:#fff}
+  .atime{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:8px} .atime .an{min-width:72px;font-size:14px;font-weight:700} .atime .ato{color:var(--muted);font-size:14px} .atime input{width:120px}
   .hint{color:var(--muted);font-size:13px}
   .hint.far{color:var(--red);font-weight:700;margin-top:8px}
   .quick{display:flex;gap:8px;flex-wrap:wrap}
@@ -1138,14 +1139,13 @@ var SNAP=null, DETAIL={};
         if(tlm.longDay) twb.appendChild(el("div","hint far",part.who[0]+"'s day runs "+fmt(tlm.end-DAY_START)+" from 8:00, over 11 hours for a driver.")); }
       right.appendChild(twb); }
     // ARRIVAL AT FORTON (2 Oct 2026): one time, a waste carrier's window, or two times for deliver-and-collect
-    if(!o.shop && !o.leg && !j.site && j.arrive){ var ak=j.arrive, cwb=block(ak==="collects"?"Collection Slot":"Arrival","slot"); var cwr=el("div","row tw");
-      var mkC=function(lbl,key){ var lab=el("label",null,lbl); var inp=el("input"); inp.type="time"; inp.step="300"; inp.value=j[key]||""; inp.setAttribute("aria-label",lbl); inp.onchange=function(){ j[key]=inp.value||null; if(key==="from") j.fromAuto=false; persist(); render(); }; lab.appendChild(inp); return lab; };
-      if(ak==="waste"){ cwr.appendChild(mkC("Waste carrier arrives between","from")); cwr.appendChild(mkC("and","by")); }
-      else if(ak==="both"){ cwr.appendChild(mkC("Customer arrives","from")); cwr.appendChild(mkC("or between that and","by")); cwr.appendChild(mkC("Customer collects","collectAt")); }
-      else { cwr.appendChild(mkC(ak==="collects"?"Estimated collection time":ak==="buyer"?"Buyer collects around":ak==="supplier"?"Supplier arrives around":"Customer arrives around","from")); cwr.appendChild(mkC("or between that and","by")); }
-      cwb.appendChild(cwr);
-      var atx=arrivalText(ak,j.from,j.by,j.collectAt);
-      cwb.appendChild(el("div","hint",atx?atx+(j.fromAuto?", taken from the drop-off plan on the deal":"")+"."+(ak==="waste"&&!j.by?" Leave the second time blank if they gave one time.":""):(ak==="waste"?"Put in the carrier's window when they give it. Leave the second time blank if they give one time.":"Leave blank until they give a time. Put it in when they do, so Forton is not empty when they turn up.")));
+    if(!o.shop && !o.leg && !j.site && j.arrive){ var ak=j.arrive, cwb=block(ak==="collects"?"Collection Slot":"Arrival","slot");
+      /* ONE LINE PER TIME, the same as the card (Sam, 2 Oct 2026: "Shit UI here") */
+      var tBox=function(key,aria){ var inp=el("input"); inp.type="time"; inp.step="300"; inp.value=j[key]||""; inp.setAttribute("aria-label",aria); inp.onchange=function(){ j[key]=inp.value||null; if(key==="from") j.fromAuto=false; persist(); render(); }; return inp; };
+      var tLine=function(name,k1,k2){ var r=el("div","atime"); r.appendChild(el("span","an",name)); r.appendChild(tBox(k1,name)); if(k2){ r.appendChild(el("span","ato","to")); r.appendChild(tBox(k2,name+", latest")); } return r; };
+      if(ak==="both"){ cwb.appendChild(tLine("Arrives","from","by")); cwb.appendChild(tLine("Collects","collectAt")); }
+      else cwb.appendChild(tLine(ak==="collects"||ak==="buyer"?"Collects":ak==="waste"?"Carrier":"Arrives","from","by"));
+      cwb.appendChild(el("div","hint",j.fromAuto?"From the deal. Change it if they give another time.":ak==="waste"?"Put in the window the carrier gives.":"The second time is only for a window."));
       right.appendChild(cwb); }
     if(ESTIMATE_ON && !o.shop && j.site && !contractorOnly && !j.isLeg){ var vb=block("Van Load","van"); var L=j.load||loadOf([]);
       var m3=j.cubeSet!=null?j.cubeSet:(L.complete?L.m3:null), kg=L.complete||j.cubeSet!=null?L.kg:0;
