@@ -444,7 +444,7 @@ function workDaysBetween(a,b){ if(!a||!b||b<a) return 0; var n=0; for(var x=new 
 var VEHICLE_CLASSES=[
   {t:"SWB panel van",    m3:8,  kg:1000,  licence:"B",  note:"small drop, no tail lift"},
   {t:"LWB panel van",    m3:13, kg:1000,  licence:"B",  note:"no tail lift"},
-  {t:"3.5 tonne Luton",  m3:VAN_M3, kg:VAN_KG, licence:"B", note:"our vans"},
+  {t:"3.5 tonne Luton",  m3:VAN_M3, kg:VAN_KG, licence:"B", note:"our vehicles"},
   {t:"7.5 tonne box",    m3:32, kg:2600,  licence:"C1", note:"tail lift; hire with a driver unless someone holds C1"},
   {t:"12 tonne box",     m3:40, kg:6000,  licence:"C",  note:"haulier with driver; check site access and parking"},
   {t:"18 tonne box",     m3:55, kg:9500,  licence:"C", tall:true,  note:"haulier with driver; needs a proper loading bay or wide access"},
@@ -498,7 +498,7 @@ function partsOf(desc){
     var k=m[1].toLowerCase(), v=m[2].trim(), none=/^(no|none)$/i.test(v);
     if(k==="production") P.production=!none;
     else if(k==="site") P.site=none?"":v;
-    else if(k==="transport"){ P.transport=none?"":v; P.ours=/^our van/i.test(v); }
+    else if(k==="transport"){ P.transport=none?"":v; P.ours=/^our (van|vehicle)/i.test(v); }
     else if(k==="labour"||k==="warehouse"||k==="yard"||k==="goods in and out") P.labour=none?"":v;
   });
   // "unload in on 2026-09-16; load out on 2026-09-23" is two legs on two days (a contractor refurb)
