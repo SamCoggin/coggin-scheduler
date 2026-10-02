@@ -1561,7 +1561,10 @@ var SNAP=null, DETAIL={};
       var arriveOf=function(j){ var tm=jobTiming(j,k); return tm?tm.arrive:1e9; }; mineP=mineP.slice().sort(function(a,b){ return (a.site?0:1)-(b.site?0:1)||arriveOf(a)-arriveOf(b); });
       mineP.forEach(function(j){ var m=minsFor(j,w); var tm=jobTiming(j,k); if(j.site){ seg("s",(m||0)+(j.onRound?0:(j.drive||0))); line("Transport","s",j.title.split(" - ").slice(1).join(" - ")||j.title,(tm&&j.onRound?hmStr(tm.arrive):"")+(past?doneOf(j.isLeg?j.leg:j):""),(m!=null?fmt(m):"no time")+(j.site&&!j.onRound&&j.drive?" + "+fmt(j.drive):"")); }
         else { seg("p",m||0); line(j.isLeg&&j.leg&&j.leg.type==="production"?"Production":"Labour Operations","p",j.title.split(" - ").slice(1).join(" - ")||j.title,past?doneOf(j.isLeg?j.leg:j):"",m!=null?fmt(m):"no time"); } });
-      if(load[w].c!=="off"&&load[w].c!=="office"&&load[w].rec>=30){ seg("r",load[w].rec); if(past){ line("Available","r","the rest of the day","",fmt(load[w].rec)); } else line("Available","r",r?"after the round":(lines.length?"the rest of the day":"nothing booked, available all day"),"",fmt(load[w].rec)); }
+      // NO "AVAILABLE" ONCE THE DAY IS GONE (Sam, 2 Oct 2026: "Why is it showing that Brad and Bart still have capacity when
+      // they did not have capacity left in the day?"): a past day, or today after 16:30, has no time left to offer.
+      var gone=past||load[w].c==="past";
+      if(!gone&&load[w].c!=="off"&&load[w].c!=="office"&&load[w].rec>=30){ seg("r",load[w].rec); line("Available","r",r?"after the round":(lines.length?"the rest of the day":"nothing booked, available all day"),"",fmt(load[w].rec)); }
       var planned=segs.reduce(function(t,x){return t+x.mins;},0), over=Math.max(0,planned-DAY_MINS), scale=Math.max(DAY_MINS,planned);
       if(over) warns.push(fmt(over)+" over the day"); if(tlw.driveOver) warns.push("Driving over 10 hours"); if(tlw.longDay) warns.push("Day over 11 hours");
       // NO BAR FOR THE BACKUP (Sam, 1 Oct 2026: "Why is it showing a capacity bar for me?!"): Sam's day is not crew
