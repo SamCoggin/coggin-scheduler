@@ -3,7 +3,7 @@ const html=fs.readFileSync(process.env.D+'/scheduler.html','utf8');
 const shared=fs.readFileSync(process.env.D+'/shared.js','utf8'); const scripts=[shared,...[...html.matchAll(/<script>([\s\S]*?)<\/script>/g)].map(m=>m[1]).filter(b=>!/document\.write/.test(b))];
 function mk(tag){ return { tag, dataset:{}, querySelector(){return null;}, querySelectorAll(){return [];}, scrollTop:0, className:'', textContent:'', children:[], style:{}, value:'', hidden:false, parentNode:null, classList:{add(){},contains(){return false;}}, appendChild(c){c.parentNode=this;this.children.push(c);return c;}, removeChild(c){this.children=this.children.filter(x=>x!==c);}, setAttribute(){}, set innerHTML(v){this.children=[];}, get innerHTML(){return '';} }; }
 const reg={}; const body=mk('body'); global.document={ body, createElement:mk, createTextNode:t=>({tag:'#text',textContent:String(t),children:[]}), querySelector:s=>s==='.veil'?null:(reg[s]||(reg[s]=mk('div'))) };
-const lists=[{id:'l1',name:'Workshop Jobs - Not Started'},{id:'l2',name:'Removals / Recycling / Skips / Stock / Plastic'},{id:'l3',name:'Holidays / Leave'},{id:'l4',name:'Job Sign-off (Sam)'}];
+const lists=[{id:'l1',name:'Workshop Jobs - Not Started'},{id:'l2',name:'Removals / Recycling / Skips / Stock / Plastic'},{id:'l3',name:'Holidays / Leave'},{id:'l4',name:'Job Sign-off (Sam)'},{id:'l5',name:'Workshop Jobs - Ready for Delivery / Collection'}];
 const cards=[{id:'c1',name:'Skipton - C4B36B - Harrison Drury',idList:'l1',due:'2026-09-15T12:00:00.000Z',start:null,labels:[{name:'Delivery/Installation'}],members:[{fullName:'Bart H'}],desc:'x',customFieldItems:[]},
              {id:'c2',name:'Blackpool - 5FAEDC - James Knowles',idList:'l2',due:'2026-09-14T12:00:00.000Z',labels:[{name:'Removal Job'}],members:[],desc:'**Clearance Details**\n\n**Job**\nRef: **5FAEDC**\n\n**Site Contact**\nMichael Knowles \u2014 **07946508174**\n\n**Collection Address**\n**20 Dickson Road, Blackpool, FY1 2AE**\n\n**Items to Clear**\n{"metal\\_filing\\_cabinets":5}\n\n**Sign-off link:** [Open the sign-off form](https://x.y/z)'},
              {id:'c4',name:'Bath - 1476F6 - Elite Office Furniture - 111321',idList:'l2',due:'2026-09-16T07:00:00.000Z',labels:[{name:'Clearance - Sub-contractor'}],members:[],desc:'**Clearance Details**\n\nRef: **1476F6**\n\n**Items to Clear**\n194 x Swivel chairs\n\n**Parts**\nProduction: no\nSite: no\nTransport: Example Haulage, customer loads\nLabour: unload at Forton',customFieldItems:[]},
@@ -18,8 +18,10 @@ const cards=[{id:'c1',name:'Skipton - C4B36B - Harrison Drury',idList:'l1',due:'
              {id:'c8',name:'Bolton - AB12CE - Example Ltd',idList:'l2',due:'2026-09-15T12:00:00.000Z',start:null,labels:[{name:'Delivery/Installation'}],members:[{fullName:'Bart H'}],desc:'**Delivery details**\nExample Ltd, BL6 4LJ',customFieldItems:[]},
              // A COMPLETED CARD KEEPS ITS HOURS ON ITS DAY (29 Sep 2026): Rob's 2h on 14 Sep still counts once the card is in Jobs Completed
              {id:'c10',name:'Lancaster - AB12CG - Example School',idList:'l4',due:'2026-09-14T12:00:00.000Z',start:null,labels:[{name:'Delivery/Installation'}],members:[],desc:'**Delivery details**\nExample School, LA1 1AA',customFieldItems:[]},
+             // FINISHED PRODUCTION KEEPS ITS HOURS (2 Oct 2026): a card moved on to Ready, its production done on the 14th by Jack
+             {id:'c11',name:'Preston - AB12CH - Example Firm',idList:'l5',due:'2026-09-17T12:00:00.000Z',start:null,labels:[{name:'Resale - Delivery/Installation'}],members:[],desc:'x',customFieldItems:[]},
              {id:'c3',name:'Rob (Annual Leave)',idList:'l3',due:'2026-09-18T12:00:00.000Z',labels:[],members:[]}];
-global.window={__TODAY:'2026-09-14T12:00',TrelloPowerUp:{iframe(){return { lists:()=>Promise.resolve(lists), cards:()=>Promise.resolve(cards), board:()=>Promise.resolve({name:'Jobs - Planning Board',members:[]}), get:(a,b,c,d)=>Promise.resolve((a==='c7'||a==='c8')&&c==='sched'?{who:['Bart H'],mins:60,vehicle:'FX75 BKG'}:(a==='c10'&&c==='sched'?{who:['Rob D'],mins:120,drive:60,vehicle:'FX73 CWF'}:d)), set:()=>Promise.resolve() };}}};
+global.window={__TODAY:'2026-09-14T12:00',TrelloPowerUp:{iframe(){return { lists:()=>Promise.resolve(lists), cards:()=>Promise.resolve(cards), board:()=>Promise.resolve({name:'Jobs - Planning Board',members:[]}), get:(a,b,c,d)=>Promise.resolve((a==='c7'||a==='c8')&&c==='sched'?{who:['Bart H'],mins:60,vehicle:'FX75 BKG'}:(a==='c10'&&c==='sched'?{who:['Rob D'],mins:120,drive:60,vehicle:'FX73 CWF'}:(a==='c11'&&c==='sched'?{who:[],prep:{who:['Jack C'],mins:120,start:'2026-09-14',date:'2026-09-14'}}:d))), set:(a,b,c,v)=>{ (global.__sets=global.__sets||{})[a]=v; return Promise.resolve(); } };}}};
 global.TrelloPowerUp=global.window.TrelloPowerUp;
 try{ new Function(scripts.join('\n')+'\nglobal.roundFor=roundFor; global.frontBadges=frontBadges; global.badgeText=badgeText;')(); }catch(e){ console.log('SYNC THROW',e.stack.split('\n').slice(0,3).join('\n')); }
 setTimeout(()=>{ const src=reg['#src'].textContent; console.log('src:',src); console.log('board loaded:', !/Could not read the board/.test(src)); console.log('title:',reg['#title'].textContent); },200);
@@ -67,6 +69,11 @@ setTimeout(()=>{ reg['#next'].onclick(); const walk0=(n,o=[])=>{o.push(n);(n.chi
 // the completed card: still on Rob's day, counted, labelled Completed, never in To plan
 setTimeout(()=>{ const walk=(n,o=[])=>{o.push(n);(n.children||[]).forEach(c=>walk(c,o));return o;}; reg['#prev'].onclick(); const T=walk(reg['#board']).map(x=>x.textContent).filter(Boolean).join(' ');
   console.log('completed keeps hours:', /Lancaster - AB12CG/.test(T)&&/Completed/.test(T)&&/Rob D Driver Out all day/.test(T)&&/2h \+ 1h/.test(T)); },1100);
+
+// FINISHED PRODUCTION: the card in Ready keeps its plan when saved, and Jack's day still shows its 2h as finished
+setTimeout(()=>{ const walk=(n,o=[])=>{o.push(n);(n.children||[]).forEach(c=>walk(c,o));return o;}; const T=walk(reg['#board']).map(x=>x.textContent).filter(Boolean).join(' ');
+  const kept=global.__sets&&global.__sets.c11&&global.__sets.c11.prep&&global.__sets.c11.prep.date==='2026-09-14';
+  console.log('finished production keeps hours:', !!kept && /Jack C Driver 5h 45m free Production AB12CH\s+finished 2h/.test(T)); },1500);
 
 // A PRODUCTION'S OPERATIVES ARE READ ACROSS ITS DAYS (30 Sep 2026: "it is saying operatives are free on the 22nd?"):
 // every working day still to come, never the start day alone.

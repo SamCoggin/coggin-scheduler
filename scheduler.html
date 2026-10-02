@@ -544,6 +544,10 @@ var SNAP=null, DETAIL={};
   // HELD PRODUCTION (Sam, 17 Sep 2026): a held Resale job also holds its production time on its production
   // due day, as a striped card in the Production column that counts against the day. Never plannable.
   function prepJobs(){ return JOBS.concat(HOLDS.filter(function(h){ return !!h.prep; })); }
+  // finished production, for the hours only: who worked and when, read-only, never planned or warned about
+  function finishedPreps(){ return JOBS.filter(function(j){ return !j.prep&&j.donePrep&&j.donePrep.date&&(j.donePrep.who||[]).length; }).map(function(j){ var P=j.donePrep;
+    return {id:j.id,short:j.short,title:j.title,label:j.label,isHold:false,prepDone:true,prep:{who:P.who.slice(),mins:P.mins,each:P.each,perDay:P.perDay!=null?P.perDay:null,start:P.start||null,date:P.date}}; }); }
+  function capPreps(k){ return prepJobs().concat(finishedPreps()).filter(function(j){ return j.prep&&j.prep.date&&daysOf(j.prep).indexOf(k)>=0; }); }
   window.__allJobs=allJobs; // reachable by check.mjs
   var prevWork=function(k){ var d=new Date(k+"T12:00"); do{ d.setDate(d.getDate()-1); }while(d.getDay()===0||d.getDay()===6); return iso(d); };
   // the list a card sits in says what it is:
@@ -597,6 +601,10 @@ var SNAP=null, DETAIL={};
       // DATE MOVED (Sam, 13 Sep 2026): the plan remembers the date it was made for. If sales move the card, the plan flags itself until someone presses Replanned.
       if(d.date&&d.date!==j.date&&((d.who&&d.who.length)||d.mins!=null||d.vehicle)) j.moved={from:d.date}; if(d.hireRef) j.hireRef=d.hireRef; if(d.hireBooked) j.hireBooked=true;
       if(d.prep&&j.prep){ j.prep.who=d.prep.who||[]; j.prep.mins=d.prep.mins; j.prep.perDay=d.prep.perDay!=null?d.prep.perDay:null; if(d.prep.each) j.prep.each=d.prep.each; j.prep.start=d.prep.start||null; j.prep.date=d.prep.date||null; if(d.prep.done&&d.prep.done.status) j.prep.done=d.prep.done; }
+      // FINISHED PRODUCTION KEEPS ITS PLAN (Sam, 2 Oct 2026: "I don't think is taking into concideration they have also
+      // completed to other jobs"): a card moved on to Ready or beyond has no production part any more, but the plan says
+      // who worked on it and when, so it is kept, saved back unchanged, and its hours stay on those days as finished work.
+      if(d.prep&&!j.prep&&d.prep.date) j.donePrep=d.prep;
       if(d.prodDue&&j.prep){ j.prodDue=d.prodDue; j.prodDueSet=true; }
       (d.legs||[]).forEach(function(L){ LEGS.push({parent:j.id,type:(L.type==="yard"||L.type==="warehouse")?"labour":L.type,date:L.date,who:L.who||[],mins:L.mins,each:L.each||undefined,drive:L.drive,where:L.where||"",from:L.from||null,by:L.by||null,pc:L.pc||null,src:L.src||null}); });
     });
@@ -660,7 +668,7 @@ var SNAP=null, DETAIL={};
     return {need:need,avail:avail,overTime:need>avail,trips:trips,vans:vans,overVans:trips>vans,holds:jobs.filter(function(j){return j.isHold;}).length};
   }
   function loadOn(k){
-    var jobs=allJobs().filter(function(j){return onDay(j,k);}), preps=prepJobs().filter(function(j){return j.prep&&j.prep.date&&daysOf(j.prep).indexOf(k)>=0;}), rounds=roundsOn(k,jobs), out={};
+    var jobs=allJobs().filter(function(j){return onDay(j,k);}), preps=capPreps(k), rounds=roundsOn(k,jobs), out={};
     var off=LEAVE.filter(function(l){return l.date===k;}).map(function(l){return crewOf(l.text.split(" ")[0]);});
     TEAM.forEach(function(w){
       if(off.indexOf(w)>=0){ var lvw=LEAVE.filter(function(l){return l.date===k&&crewOf(l.text.split(" ")[0])===w;})[0]; out[w]={t:lvw&&lvw.bh?"bank holiday":lvw&&lvw.off?"off today":"annual leave",c:"off",mins:0,rec:0,avail:0,s:"Off",d:lvw&&lvw.bh?"bank holiday":lvw&&lvw.off?"off today":"annual leave",r:3}; return; }
@@ -670,7 +678,7 @@ var SNAP=null, DETAIL={};
       // WHAT IS ALREADY DONE TODAY (Sam, 2 Oct 2026: "I want it automated when the job card moves to complete"): a card in a
       // completed list, and the legs of one, has used its time; whatever is left of today is free once the unfinished work
       // is taken off it, so a job finished early hands its spare time back by itself.
-      var doneMins=mine.filter(function(j){ return j.completed||(j.isLeg&&j.parentJob&&j.parentJob.completed); }).reduce(function(s,j){ return s+(minsFor(j,w)||0)+(j.site&&!j.onRound?(j.drive||0):0); },0);
+      var doneMins=mine.filter(function(j){ return j.completed||(j.isLeg&&j.parentJob&&j.parentJob.completed); }).reduce(function(s,j){ return s+(minsFor(j,w)||0)+(j.site&&!j.onRound?(j.drive||0):0); },0)+myPreps.filter(function(j){ return j.prepDone; }).reduce(function(s,j){ return s+prepShare(j,w); },0);
       var away=mine.filter(function(j){return j.site;}), allDay=away.some(function(j){return !j.at;}), until=away.filter(function(j){return j.at;}).map(function(j){return endOf(j.at,(minsFor(j,w)||0)+(j.drive||0));}).sort().pop();
       out[w]= !n ? {t:fmt(DAY_MINS)+" available",c:"free"} : allDay ? {t:"out on site all day",c:"busy"} : mins>DAY_H*60 ? {t:"over capacity by "+fmt(mins-DAY_MINS),c:"over"} : !mins ? {t:n+(n===1?" job":" jobs")+", no time set",c:"busy"} : {t:fmt(Math.max(0,DAY_MINS-mins))+" available"+(until?", out until "+until:"")+(n>1?", "+n+" jobs":""),c:"busy"};
       // ONE SHORT STATUS AND ITS DETAIL (Sam, 29 Sep 2026: "the UI here sucks"). The
@@ -730,7 +738,7 @@ var SNAP=null, DETAIL={};
   function persist(){
     if(!t) return;
     JOBS.forEach(function(j){
-      tidyEach(j); var d={date:j.moved?j.moved.from:j.date,who:j.who,mins:j.mins,each:j.each||undefined,drive:j.drive,driveAuto:!!j.driveAuto,at:j.at||undefined,cube:j.cubeSet,ignore:j.ignore&&j.ignore.length?j.ignore:undefined,items:j.manual&&j.manual.length?j.manual:undefined,load:j.load&&j.load.any?{m3:j.load.m3,kg:j.load.kg,complete:j.load.complete,rows:j.load.rows.map(function(r){return {n:r.n,type:r.type,m3:r.m3,kg:r.kg,built:r.built,est:r.est};}),unmatched:j.load.unmatched}:undefined,contractor:j.contractor||"",from:j.from||null,by:j.by||null,collectAt:j.collectAt||undefined,vehicle:j.vehicle||null,soloOk:j.soloOk||"",qc:j.qc||null,done:j.done||null,hireRef:j.hireRef||"",hireBooked:!!j.hireBooked,prodDue:j.prodDueSet?j.prodDue:null,prep:j.prep?{who:j.prep.who,mins:j.prep.mins,perDay:j.prep.perDay!=null?j.prep.perDay:undefined,each:j.prep.each&&Object.keys(j.prep.each).length?j.prep.each:undefined,start:j.prep.start,date:j.prep.date,done:j.prep.done||null}:null,
+      tidyEach(j); var d={date:j.moved?j.moved.from:j.date,who:j.who,mins:j.mins,each:j.each||undefined,drive:j.drive,driveAuto:!!j.driveAuto,at:j.at||undefined,cube:j.cubeSet,ignore:j.ignore&&j.ignore.length?j.ignore:undefined,items:j.manual&&j.manual.length?j.manual:undefined,load:j.load&&j.load.any?{m3:j.load.m3,kg:j.load.kg,complete:j.load.complete,rows:j.load.rows.map(function(r){return {n:r.n,type:r.type,m3:r.m3,kg:r.kg,built:r.built,est:r.est};}),unmatched:j.load.unmatched}:undefined,contractor:j.contractor||"",from:j.from||null,by:j.by||null,collectAt:j.collectAt||undefined,vehicle:j.vehicle||null,soloOk:j.soloOk||"",qc:j.qc||null,done:j.done||null,hireRef:j.hireRef||"",hireBooked:!!j.hireBooked,prodDue:j.prodDueSet?j.prodDue:null,prep:j.prep?{who:j.prep.who,mins:j.prep.mins,perDay:j.prep.perDay!=null?j.prep.perDay:undefined,each:j.prep.each&&Object.keys(j.prep.each).length?j.prep.each:undefined,start:j.prep.start,date:j.prep.date,done:j.prep.done||null}:(j.donePrep||null),
         legs:LEGS.filter(function(L){return L.parent===j.id;}).map(function(L){ tidyEach(L); return {type:L.type,date:L.date,who:L.who,mins:L.mins,each:L.each||undefined,drive:L.drive,where:L.where,from:L.from||null,by:L.by||null,pc:L.pc||null,src:L.src||null};})};
       var js=JSON.stringify(d); if(lastSaved[j.id]===js) return; lastSaved[j.id]=js; t.set(j.id,"shared","sched",d); syncCardMembers(j.id,d,CRM_KEY,inWorkshop(j));
     });
@@ -1527,7 +1535,7 @@ var SNAP=null, DETAIL={};
     });
     // people column: what each person has, and what they are on
     var pl=el("div","list"+(isToday?" today":"")); var ph=el("h2"); var phl=el(isToday?"em":"span",null,"Operatives"); phl.appendChild(tip("people")); ph.appendChild(phl); var load=loadOn(k); ph.appendChild(el("span",null,(k<iso(TODAY))?FIELD_CREW.length+" operatives":freeCount(load,k))); pl.appendChild(ph);
-    var pc=el("div","cards oplist"); jobs=allJobsDay; preps=prepJobs().filter(function(j){return j.prep&&j.prep.date&&daysOf(j.prep).indexOf(k)>=0;}); rounds=roundsOn(k,jobs);
+    var pc=el("div","cards oplist"); jobs=allJobsDay; preps=capPreps(k); rounds=roundsOn(k,jobs);
     // OFF ONCE, AT THE TOP (Sam, 1 Oct 2026: "Rob is showing on leave twice on this list and i JUST NEED IT ONCE AT THE
     // TOP OF THE LIST"). The banner names who is off and why; someone marked off here gets Back in on it, and their
     // own row below is gone.
@@ -1554,7 +1562,7 @@ var SNAP=null, DETAIL={};
       var seg=function(cls,mins){ if(mins>0) segs.push({cls:cls,mins:mins}); };
       if(isOff&&OFF_WHY[k+"|"+w]) line("Off","r",OFF_WHY[k+"|"+w],"","");
       if(!past&&load[w].c==="off") line("Off","r",load[w].d||load[w].t,"","");
-      prepsP.forEach(function(j){ var nd=daysOf(j.prep).length||1, me=minsFor(j.prep,w), today=Math.round(prepShare(j,w)); seg("p",today); line("Production","p",j.title.split(" - ").slice(1).join(" - ")||j.title,(nd>1?"day "+(daysOf(j.prep).indexOf(k)+1)+" of "+nd:"")+(past?doneOf(j.prep):""),me!=null?fmt(today):"no time"); });
+      prepsP.forEach(function(j){ var nd=daysOf(j.prep).length||1, me=minsFor(j.prep,w), today=Math.round(prepShare(j,w)); seg("p",today); line("Production","p",j.title.split(" - ").slice(1).join(" - ")||j.title,(nd>1?"day "+(daysOf(j.prep).indexOf(k)+1)+" of "+nd:"")+(j.prepDone?(nd>1?" · ":"")+"finished":"")+(past&&!j.prepDone?doneOf(j.prep):""),me!=null?fmt(today):"no time"); });
       var r=rounds.filter(function(x){return x.who===w;})[0], tlw=dayTimeline(k,w);
       if(r){ seg("s",r.drive||0); line("Transport","round",r.stops.map(function(j){return j.title.split(" - ")[0];}).join(", ")+(r.start&&r.start!==HOME_PC?" \u00b7 from "+placeName(r.start):"")+(tlw.back?" \u00b7 back "+hmStr(tlw.back)+" with breaks":""),"",r.drive?fmt(r.drive)+" driving":"no travel yet"); }
       // stops in the order the day runs them, not the order the cards sit in (Sam's screenshot, 29 Sep 2026: York 11:20 above Bolton 08:40)
@@ -1611,7 +1619,7 @@ var SNAP=null, DETAIL={};
         if(k>=iso(TODAY)){ var nUn=jobs.filter(function(j){ return !j.isHold&&!j.completed&&!j.who.length&&!(j.contractor); }).length; if(nUn) pills.appendChild(el("span","l",nUn+" unassigned")); }
         }
         lv.forEach(function(l){ pills.appendChild(el("span","l",l.off?crewOf(l.text.split(" ")[0])+" off":l.text)); });
-        var capM=dayCapacity(k,allJobs().filter(function(j){return onDay(j,k);}),prepJobs().filter(function(j){return j.prep&&j.prep.date&&daysOf(j.prep).indexOf(k)>=0;})); if(capM.overTime||capM.overVans) pills.appendChild(el("span","ov","Over if holds land"));
+        var capM=dayCapacity(k,allJobs().filter(function(j){return onDay(j,k);}),capPreps(k)); if(capM.overTime||capM.overVans) pills.appendChild(el("span","ov","Over if holds land"));
         var load=loadOn(k); var over=FIELD_CREW.filter(function(x){return load[x].c==="over";}); if(over.length) pills.appendChild(el("span","ov",over.map(function(x){return x.split(" ")[0];}).join(", ")+" over"));
         c.appendChild(pills);
         c.onclick=(function(kk){return function(){ dayCur=kk; view="day"; render(); };})(k);
