@@ -2756,10 +2756,10 @@ var SNAP=null, DETAIL={};
           y+=bh+2; } });
       if(o.lines.length){ doc.setDrawColor(215); doc.setLineWidth(0.25); doc.line(L,y,L+W,y); doc.setDrawColor(0); }
       // when you finish
-      if(y+34>278) cont(); y+=5; var ph2=30; doc.setFillColor(17,17,17); doc.roundedRect(L,y,W,ph2,2,2,"F"); doc.setTextColor(255); doc.setFont("helvetica","bold"); doc.setFontSize(12); doc.text("WHEN YOU FINISH",L+5,y+7.5);
-      var sw=(W-10-30-8)/2, sy=y+10.5, shh=16; [["STEP 2","Tick off the checklist on the Trello card"],["STEP 3","Move the job into Ready for Delivery / Collection"]].forEach(function(st,i){ var sx=L+5+i*(sw+4); doc.setFillColor(255,255,255); doc.roundedRect(sx,sy,sw,shh,1.2,1.2,"F");
+      if(y+38>278) cont(); y+=5; var ph2=34; doc.setFillColor(17,17,17); doc.roundedRect(L,y,W,ph2,2,2,"F"); doc.setTextColor(255); doc.setFont("helvetica","bold"); doc.setFontSize(12); doc.text("WHEN YOU FINISH",L+5,y+7.5);
+      var sw=(W-10-30-8)/2, sy=y+10.5, shh=20; [["STEP 2","Tick off the checklist on the Trello card"],["STEP 3","Move the job into Ready for Delivery / Collection"]].forEach(function(st,i){ var sx=L+5+i*(sw+4); doc.setFillColor(255,255,255); doc.roundedRect(sx,sy,sw,shh,1.2,1.2,"F");
         doc.setDrawColor(17); doc.setLineWidth(0.5); doc.roundedRect(sx+3,sy+3,4.5,4.5,0.5,0.5); doc.setDrawColor(0); doc.setTextColor(110); doc.setFont("helvetica","bold"); doc.setFontSize(7); doc.text(st[0],sx+10,sy+6.3,{charSpace:0.2}); doc.setTextColor(17); doc.setFontSize(9.5); doc.text(doc.splitTextToSize(st[1],sw-13).slice(0,2),sx+10,sy+11); });
-      var qbx2=L+W-5-30; doc.setFillColor(255,255,255); doc.roundedRect(qbx2,sy,30,shh,1.2,1.2,"F"); qr(o.code,qbx2+9.5,sy+1,11); doc.setTextColor(17); doc.setFont("helvetica","bold"); doc.setFontSize(6); doc.text("Trello card",qbx2+15,sy+14.8,{align:"center"});
+      var qbx2=L+W-5-30; doc.setFillColor(255,255,255); doc.roundedRect(qbx2,sy,30,shh,1.2,1.2,"F"); qr(o.code,qbx2+8,sy+1.5,14); doc.setTextColor(17); doc.setFont("helvetica","bold"); doc.setFontSize(6); doc.text("Trello card",qbx2+15,sy+18.6,{align:"center"});
       doc.setTextColor(0); y+=ph2+4; setFoot(o.crew); };
     // a labour page: what is happening, what moves, a code to sign off, the photos prompt
     kit.labour=function(j,info,crewTxt,sub,timeTxt){ var d=info.d, nm=j.title.split(" - ").slice(1).join(" - ")||j.title;
