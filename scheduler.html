@@ -2586,7 +2586,7 @@ var SNAP=null, DETAIL={};
     var noPhoto=function(x,y0,w,h){ doc.setDrawColor(170); doc.setLineDashPattern([0.8,0.8],0); doc.rect(x,y0,w,h); doc.setLineDashPattern([],0); doc.setFont("helvetica","bold"); doc.setFontSize(6); doc.setTextColor(120); doc.text("no photo",x+w/2,y0+h/2+1,{align:"center"}); doc.setTextColor(0); doc.setDrawColor(0); };
     var box=function(x,y0,s0){ doc.setLineWidth(0.45); doc.setDrawColor(17); doc.roundedRect(x,y0,s0,s0,0.5,0.5); doc.setDrawColor(0); };
     var crewFoot="";
-    var newPage=function(text){ doc.addPage(); y=15; foots.push({page:doc.getNumberOfPages(),text:text||crewFoot}); };
+    var newPage=function(text){ doc.addPage(); y=15; foots.push({page:doc.getNumberOfPages(),text:text||""}); };   // no crew names in the footer (Sam, 2 Oct 2026): the name tags at the top say who
     var setFoot=function(t){ if(foots.length) foots[foots.length-1].text=t; };
     var rule=function(t){ doc.setLineWidth(t||0.9); doc.setDrawColor(17); doc.line(L,y,L+W,y); doc.setDrawColor(0); };
     var heading=function(n,t){ if(n){ doc.setFillColor(17,17,17); doc.circle(L+2.6,y+2.1,2.6,"F"); doc.setTextColor(255); doc.setFont("helvetica","bold"); doc.setFontSize(8); doc.text(String(n),L+2.6,y+3.2,{align:"center"}); doc.setTextColor(0); }
@@ -2655,8 +2655,8 @@ var SNAP=null, DETAIL={};
       doc.setFillColor(17,17,17); doc.roundedRect(L,y,40,rh,1.5,1.5,"F"); doc.rect(L+38,y,2,rh,"F"); doc.setLineWidth(0.7); doc.setDrawColor(17); doc.roundedRect(L,y,W,rh,1.5,1.5); doc.setDrawColor(0);
       doc.setTextColor(255); doc.setFont("helvetica","bold"); doc.setFontSize(9); doc.text(["BLANKET","EVERY ITEM"],L+20,y+rh/2-0.8,{align:"center"}); doc.setTextColor(0); doc.setFont("helvetica","normal"); doc.text(rl,L+44,y+rh/2-(rl.length-1)*2+1.2); y+=rh+6;
       if(!loadOrder.length){ doc.setFont("helvetica","normal"); doc.setFontSize(9.5); doc.text("Nothing to load: every stop is a collection.",L,y+3); y+=8; }
-      var cLoad=L+W-36, cBlank=L+W-12, rowH=16;
-      var colHead=function(){ doc.setFont("helvetica","bold"); doc.setFontSize(7); doc.setTextColor(110); doc.text("QTY",L+26,y,{align:"center"}); doc.text("ITEM",L+34,y); doc.text("LOADED",cLoad,y,{align:"center"}); doc.text("BLANKETED",cBlank,y,{align:"center"}); doc.setTextColor(0); y+=2.5; };
+      var cLoad=L+W-16, rowH=16;   // one tick, Loaded & Secured (Sam, 2 Oct 2026: "Remove blanketed")
+      var colHead=function(){ doc.setFont("helvetica","bold"); doc.setFontSize(7); doc.setTextColor(110); doc.text("QTY",L+26,y,{align:"center"}); doc.text("ITEM",L+34,y); doc.text("LOADED & SECURED",cLoad,y,{align:"center"}); doc.setTextColor(0); y+=2.5; };
       if(loadOrder.length) colHead();
       loadOrder.forEach(function(s0,i){ var items=s0.items.length?s0.items:[{qty:"",name:"No items on the card. Write them in.",photo:""}];
         var gHead=function(cont){ doc.setFillColor(17,17,17); doc.roundedRect(L,y,W,8,1.5,1.5,"F"); doc.rect(L,y+4,W,4,"F");
@@ -2670,7 +2670,7 @@ var SNAP=null, DETAIL={};
           if(!img(it.photo,L+4,y+1.5,17,13)) noPhoto(L+4,y+1.5,17,13);
           doc.setFont("helvetica","bold"); doc.setFontSize(14); doc.text(String(it.qty),L+26,y+10,{align:"center"});
           doc.setFont("helvetica","normal"); doc.setFontSize(10); var nl=doc.splitTextToSize(it.name,cLoad-L-44).slice(0,2); doc.text(nl,L+34,y+(nl.length>1?7.6:9.6));
-          box(cLoad-2.75,y+5.25,5.5); box(cBlank-2.75,y+5.25,5.5); y+=rowH; });
+          box(cLoad-2.75,y+5.25,5.5); y+=rowH; });
         closeSeg(); y+=4; });
       if(y+32>278){ setFoot("Loading carries on over the page."); yardHead(true); }
       y+=3; heading(2,"Check you have what you need");
@@ -2774,7 +2774,7 @@ var SNAP=null, DETAIL={};
       var sw=(W-10-30-8)/2, sy=y+10.5, shh=20; [["STEP 2","Tick off the checklist on the Trello card"],["STEP 3","Move the job into Ready for Delivery / Collection"]].forEach(function(st,i){ var sx=L+5+i*(sw+4); doc.setFillColor(255,255,255); doc.roundedRect(sx,sy,sw,shh,1.2,1.2,"F");
         doc.setDrawColor(17); doc.setLineWidth(0.5); doc.roundedRect(sx+3,sy+3,4.5,4.5,0.5,0.5); doc.setDrawColor(0); doc.setTextColor(110); doc.setFont("helvetica","bold"); doc.setFontSize(7); doc.text(st[0],sx+10,sy+6.3,{charSpace:0.2}); doc.setTextColor(17); doc.setFontSize(9.5); doc.text(doc.splitTextToSize(st[1],sw-13).slice(0,2),sx+10,sy+11); });
       var qbx2=L+W-5-30; doc.setFillColor(255,255,255); doc.roundedRect(qbx2,sy,30,shh,1.2,1.2,"F"); qr(o.code,qbx2+8,sy+1.5,14); doc.setTextColor(17); doc.setFont("helvetica","bold"); doc.setFontSize(6); doc.text("Trello card",qbx2+15,sy+18.6,{align:"center"});
-      doc.setTextColor(0); y+=ph2+4; setFoot(o.crew); };
+      doc.setTextColor(0); y+=ph2+4; setFoot(""); };
     // THE LABOUR PAGE, UPGRADED (Sam, 2 Oct 2026, mock approved, then "merge step 2 and 3 as why not do this at the same
     // time?"): name and crew, four fact boxes, know before you go, the items as tiles, then one Before they leave panel with
     // the sign-off (when the card has one and it is not a donation) and photos plus Job Completed as one step.
