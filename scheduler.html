@@ -266,12 +266,12 @@
   .wcrew{display:grid;grid-template-columns:52px minmax(0,1fr) 62px;gap:6px;align-items:center;font-size:12px;margin:2px 0}
   .wcrew .wn{font-weight:700} .wcrew .wt{text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums} .wcrew .wt.over{color:var(--red);font-weight:700} .wcrew .wt.free{color:var(--muted)} .wcrew .wt.todo{color:var(--amber)}
   .wbar2{height:6px;border-radius:3px;background:var(--line);overflow:hidden} .wbar2 i{display:block;height:100%;background:#378add} .wbar2 i.o{background:var(--red)} .wcrew .wbk{color:var(--muted);font-size:11px}
-  .actrow{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1.5fr) minmax(0,1fr);gap:10px;align-items:center;padding:8px 0;border-top:1px solid var(--line);position:relative}
+  .actrow{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1.5fr) minmax(0,1fr);gap:10px;align-items:center;padding:8px 24px;border-top:1px solid var(--line);position:relative}
   .actrow b{display:block;font-size:14px} .actrow small{display:block;color:var(--muted);font-size:12px} .actrow.nd{opacity:.55}
   .actwho{display:flex;flex-wrap:wrap;gap:4px} .actwho button{border:1px solid var(--line);background:var(--card);border-radius:6px;padding:3px 7px;font-size:12px;font-weight:600;cursor:pointer} .actwho button.on{background:#172b4d;color:#fff;border-color:#172b4d}
   .acttime{display:flex;flex-wrap:wrap;align-items:center;gap:4px;font-size:12px} .acttime input[type=number]{width:52px} .actnd{display:block;width:100%;color:var(--muted);font-size:12px}
-  .acttyped{position:absolute;right:0;top:6px;font-size:11px;color:var(--green);font-weight:700}
-  .timrow{display:grid;grid-template-columns:minmax(0,1.6fr) 50px 80px 80px 90px minmax(0,1fr);gap:8px;padding:5px 0;border-top:1px solid var(--line);font-size:13px;font-variant-numeric:tabular-nums} .timrow.head{color:var(--muted);font-size:12px;border-top:0} .timrow.over span:nth-child(5){color:var(--red);font-weight:700} .timrow.under span:nth-child(5){color:var(--green);font-weight:700}
+  .acttyped{position:absolute;right:24px;top:6px;font-size:11px;color:var(--green);font-weight:700}
+  .timrow{display:grid;grid-template-columns:minmax(0,1.6fr) 50px 80px 80px 90px minmax(0,1fr);gap:8px;padding:5px 24px;border-top:1px solid var(--line);font-size:13px;font-variant-numeric:tabular-nums} .timrow.head{color:var(--muted);font-size:12px;border-top:0} .timrow.over span:nth-child(5){color:var(--red);font-weight:700} .timrow.under span:nth-child(5){color:var(--green);font-weight:700}
   .wmore{display:block;width:100%;text-align:left;border:0;background:transparent;color:var(--blue);font-weight:700;font-size:12px;padding:2px 4px;cursor:pointer}
   .tot .chip{border-radius:6px;padding:2px 7px;background:var(--list);white-space:nowrap;font-weight:600}
   .tot .chip b{font-weight:800}
@@ -801,7 +801,7 @@ var SNAP=null, DETAIL={};
       fetch(CRM_ACTUALS_URL,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({key:CRM_KEY,action:"save",rows:rows})}).then(function(x){return x.json();}).then(function(res){ if(!(res&&res.ok)) throw new Error(res&&res.error||"not saved");
         rows.forEach(function(r){ ACTUALS[r.row_key]={row_key:r.row_key,date:r.date,card_id:r.card_id,part:r.part,title:r.title,work:r.work,movement:r.movement,planned_who:r.planned_who,planned_mins:r.planned_mins,actual_who:r.actual_who,actual_mins:r.actual_mins,not_done:r.not_done}; });
         ACT_OPEN=null; ACT_DRAFT=null; render(); }).catch(function(e){ sv.disabled=false; msg.className="hint far"; msg.textContent="Could not save: "+(e&&e.message||e)+". Try again."; }); };
-    var ft=el("div","row"); ft.style.marginTop="14px"; ft.appendChild(sv); ft.appendChild(msg); m.appendChild(ft);
+    var ft=el("div","row"); ft.style.margin="14px 24px 20px"; ft.appendChild(sv); ft.appendChild(msg); m.appendChild(ft);
     veil.appendChild(m); return veil;
   }
   // planned against actual over the last four weeks, by kind of work and by person
@@ -812,7 +812,7 @@ var SNAP=null, DETAIL={};
     var cl=el("button","close","Close"); cl.onclick=function(){ TIMINGS_OPEN=false; render(); }; head.appendChild(cl); m.appendChild(head);
     var from=iso(addDays(TODAY,-28)), rows=Object.keys(ACTUALS).map(function(kk){return ACTUALS[kk];}).filter(function(a){ return a.date>=from&&!a.not_done&&a.actual_mins!=null&&a.planned_mins!=null; });
     if(!rows.length){ m.appendChild(el("div","hint","No day sheets typed in yet. Enter day sheet on the Day view fills this.")); veil.appendChild(m); return veil; }
-    var table=function(title,byPerson,keyOf){ m.appendChild(el("div","lbl",title)); var g={};
+    var table=function(title,byPerson,keyOf){ var lb0=el("div","lbl",title); lb0.style.padding="0 24px"; m.appendChild(lb0); var g={};
       rows.forEach(function(a){ keyOf(a).forEach(function(kk){ var x=g[kk]=g[kk]||{n:0,plan:0,act:0,pp:0,pa:0}; x.n++; x.plan+=byPerson?a.planned_mins:a.planned_mins*Math.max(1,(a.planned_who||[]).length); x.act+=byPerson?a.actual_mins:a.actual_mins*Math.max(1,(a.actual_who||[]).length); x.pp+=(a.planned_who||[]).length; x.pa+=(a.actual_who||[]).length; }); });
       var hd=el("div","timrow head"); ["","Jobs","Planned","Actual","Against plan",byPerson?"":"People planned / used"].forEach(function(t){ hd.appendChild(el("span",null,t)); }); m.appendChild(hd);
       Object.keys(g).sort(function(a,b){ return g[b].act-g[a].act; }).forEach(function(kk){ var x=g[kk], pct=x.plan?Math.round(x.act/x.plan*100):null; var r=el("div","timrow"+(pct!=null&&pct>120?" over":pct!=null&&pct<85?" under":""));
