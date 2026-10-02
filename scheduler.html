@@ -2064,21 +2064,48 @@ var SNAP=null, DETAIL={};
     var name=function(j){ var t=(j.title||"").split(" - "); return t.length>1?t.slice(1).join(" - "):j.title; };
     var each=function(who,f){ var ms=who.filter(field).map(f), sh=ms.filter(function(m){ return m!=null; }); if(!sh.length) return ""; var same=sh.every(function(m){ return m===sh[0]; });
       return same?fmt(sh[0])+(who.filter(field).length>1?" each":""):who.filter(field).map(function(w){ return w.split(" ")[0]+" "+fmt(f(w)); }).join(", "); };
-    var prod=[], road=[], lab=[];
+    // BY PERSON (Sam, 2 Oct 2026: "how we can make the day sheet in order of who is doing what rather than looking through
+    // to see which are your jobs", mock approved). Each job is one entry with its part, who is on it, each person's time
+    // and a start time when it has one; the entries are then dealt out to a bar per person further down.
+    var rows=[], hm=function(t){ var m=String(t||"").match(/^(\d{1,2}):(\d{2})/); return m?(+m[1])*60+(+m[2]):null; };
+    var A4=function(r){ rows.push(r); };
     // A REPRINT LEAVES OUT WHAT IS DONE (Sam, 2 Oct 2026: "jobs moved to the completed list do not need to show on the
     // updated day sheet"). A card in a completed list, its legs, and production marked finished all drop off, so a sheet
     // printed again after jobs were added carries only the work still to do. The print time at the top tells versions apart.
     var finished=function(j){ return !!(j.completed||(j.isLeg&&j.parentJob&&j.parentJob.completed)); };
+    var leftOff=allJobs().filter(function(j){ return onDay(j,k)&&!j.isHold&&finished(j); }).length;
     prepJobs().filter(function(j){ return !j.isHold&&!finished(j)&&!(j.prep&&j.prep.done&&j.prep.done.status==="done")&&j.prep&&j.prep.date&&daysOf(j.prep).indexOf(k)>=0; }).forEach(function(j){ var nd=daysOf(j.prep).length;
-      prod.push([name(j),nd>1?"Day "+(daysOf(j.prep).indexOf(k)+1)+" of "+nd:"",j.prep.who.join(", ")||"Nobody yet",each(j.prep.who,function(w){ return Math.round(prepShare(j,w)); }),j.short||j.id]); });
+      A4({key:"p"+j.id,part:"Production",name:name(j),sub:nd>1?"Day "+(daysOf(j.prep).indexOf(k)+1)+" of "+nd:"",who:j.prep.who.slice(),contractor:"",mins:function(w){ return Math.round(prepShare(j,w)); },extra:"",at:null,cid:j.short||j.id}); });
     allJobs().filter(function(j){ return onDay(j,k)&&!j.isHold&&!finished(j); }).forEach(function(j){ var pj=j.isLeg&&j.parentJob?j.parentJob:j, cid=pj.short||pj.id;
-      var who=j.who.length?j.who.join(", "):(j.contractor||"Nobody yet"), tm=each(j.who,function(w){ return minsFor(j,w); });
-      if(j.isLeg&&j.leg&&j.leg.type==="production"){ prod.push([name(j),"",who,tm,cid]); return; }
+      var base={key:"j"+j.id,name:name(j),who:j.who.slice(),contractor:j.who.length?"":(j.contractor||""),mins:function(w){ return minsFor(j,w); },extra:"",at:null,cid:cid};
+      if(j.isLeg&&j.leg&&j.leg.type==="production"){ base.part="Production"; base.sub=""; A4(base); return; }
       if(j.site){ var d0=DETAIL[j.id]?parseDesc(DETAIL[j.id].desc||""):null, where=j.isLeg?(j.leg.where||""):(d0&&d0.where[0]?d0.where[0]:""), tmg=jobTiming(j,k);
-        var sub=[j.movement||"", tmg&&tmg.arrive!=null?"arrive about "+hmStr(tmg.arrive):(j.at?"start "+j.at:""), where, ourJob(j)&&j.vehicle?(j.vehicle==="hire"?"hire van":j.vehicle):(ourJob(j)?"no van set":"")].filter(Boolean).join(" · ");
-        road.push([name(j),sub,who,tm+(j.drive&&tm?" + "+fmt(j.drive)+" travel":""),cid]); return; }
-      var sub2=j.arrive&&!j.isLeg?(arrivalText(j.arrive,j.from,j.by,j.collectAt)||(ARRIVAL_WHO[j.arrive]||"Arriving")+", time not given yet"):(j.isLeg?(j.leg.where||""):[j.work,j.movement].filter(Boolean).join(", "));
-      lab.push([name(j),sub2,who,tm,cid]); });
+        base.part="Transport"; base.at=tmg&&tmg.arrive!=null?tmg.arrive:hm(j.at);
+        base.sub=[j.movement||"", tmg&&tmg.arrive!=null?"arrive about "+hmStr(tmg.arrive):(j.at?"start "+j.at:""), where, ourJob(j)&&j.vehicle?(j.vehicle==="hire"?"hire van":j.vehicle):(ourJob(j)?"no van set":"")].filter(Boolean).join(" · ");
+        base.extra=j.drive?" + "+fmt(j.drive)+" travel":""; A4(base); return; }
+      base.part="Labour"; base.at=j.arrive&&!j.isLeg?hm(j.from):null;
+      base.sub=j.arrive&&!j.isLeg?(arrivalText(j.arrive,j.from,j.by,j.collectAt)||(ARRIVAL_WHO[j.arrive]||"Arriving")+", time not given yet"):(j.isLeg?(j.leg.where||""):[j.work,j.movement].filter(Boolean).join(", "));
+      A4(base); });
+    // one bar per person; people whose jobs are exactly the same get one joint bar ("Jack C + Jordan I")
+    var people=TEAM.filter(function(w){ return rows.some(function(r){ return r.who.indexOf(w)>=0; }); });
+    var sig={}; people.forEach(function(w){ sig[w]=rows.filter(function(r){ return r.who.indexOf(w)>=0; }).map(function(r){ return r.key; }).join("|"); });
+    var groups=[]; people.forEach(function(w){ var g=groups.filter(function(x){ return sig[x[0]]===sig[w]; })[0]; if(g) g.push(w); else groups.push([w]); });
+    var order=function(list){ return list.map(function(r,i){ return {r:r,i:i}; }).sort(function(a,b){ var x=a.r.at==null?1e4:a.r.at, y2=b.r.at==null?1e4:b.r.at; return x-y2||a.i-b.i; }).map(function(o){ return o.r; }); };
+    var firstAt=function(g){ var t=rows.filter(function(r){ return r.who.indexOf(g[0])>=0&&r.at!=null; }).map(function(r){ return r.at; }); return t.length?Math.min.apply(null,t):1e4; };
+    groups.sort(function(a,b){ return firstAt(a)-firstAt(b)||TEAM.indexOf(a[0])-TEAM.indexOf(b[0]); });
+    var bars=groups.map(function(g){
+      var mine=order(rows.filter(function(r){ return r.who.indexOf(g[0])>=0; }));
+      var cells=mine.map(function(r){ var others=r.who.filter(function(w){ return g.indexOf(w)<0; }), ms=g.map(function(w){ return r.mins(w); }), have=ms.filter(function(m){ return m!=null; });
+        var tm=!have.length?"":g.length===1||have.every(function(m){ return m===have[0]; })?fmt(have[0])+(g.length>1?" each":""):g.map(function(w){ return w.split(" ")[0]+" "+(r.mins(w)!=null?fmt(r.mins(w)):"?"); }).join(", ");
+        return [r.name,r.part+(r.sub?" · "+r.sub:""),others.length?"with "+others.join(", "):"",tm?tm+r.extra:"",r.cid]; });
+      var booked=Math.round((load[g[0]]||{}).mins||0), backup=FIELD_CREW.indexOf(g[0])<0;
+      return {title:g.join(" + "),right:[g.length>1?"Together all day":"", backup?"Backup":booked?fmt(booked)+" booked"+(g.length>1?" each":""):"", cells.length+(cells.length===1?" job":" jobs")].filter(Boolean).join(" · "),cells:cells}; });
+    var nobody=order(rows.filter(function(r){ return !r.who.length&&!r.contractor; })).map(function(r){ return [r.name,r.part+(r.sub?" · "+r.sub:""),"Needs someone",r.mins(null)!=null?fmt(r.mins(null)):"",r.cid]; });
+    var subs=order(rows.filter(function(r){ return !r.who.length&&r.contractor; })).map(function(r){ return [r.name,r.part+(r.sub?" · "+r.sub:""),r.contractor,"",r.cid]; });
+    if(nobody.length) bars.push({title:"Nobody yet",right:nobody.length+(nobody.length===1?" job":" jobs"),cells:nobody});
+    if(subs.length) bars.push({title:"Subcontractors and couriers",right:subs.length+(subs.length===1?" job":" jobs"),cells:subs});
+    // which sheet this one replaces: the last print of this day, kept in this browser only
+    var lastPrint=null; try{ lastPrint=window.localStorage.getItem("coggin.daysheet."+k); }catch(e){}
     var off=LEAVE.filter(function(l){ return l.date===k; }).map(function(l){ var w=crewOf(l.text.split(" ")[0]); return l.bh?"Bank holiday":(w+(OFF_WHY[k+"|"+w]?" ("+OFF_WHY[k+"|"+w]+")":/leave/i.test(l.text)?" (annual leave)":"")); });
     var rec=FIELD_CREW.filter(function(w){ return load[w]&&load[w].c!=="off"&&(load[w].rec||0)>=15; }).sort(function(a,b){ return load[b].rec-load[a].rec; }).map(function(w){ return w+" "+fmt(load[w].rec); });
     var recW=FIELD_CREW.filter(function(w){ return load[w]&&load[w].c!=="off"&&(load[w].rec||0)>=15; }).sort(function(a,b){ return load[b].rec-load[a].rec; }).map(function(w){ return {w:w,m:load[w].rec}; });
@@ -2099,18 +2126,20 @@ var SNAP=null, DETAIL={};
       var doc=new J({orientation:"portrait",unit:"mm",format:"a4"}), L=14, W=182, G=5, CW=(W-G)/2, fs=10.5*sc, qs=Math.max(11,15*sc), y=17, STRIP=12.5;
       // A BUSY DAY RUNS ONTO A SECOND PAGE (2 Oct 2026): with the write-in strip on every job, squeezing a busy day onto one
       // page made the type too small to write against, so it carries on, the date at the top of each page.
-      var foot=function(){ doc.setFont("helvetica","normal"); doc.setFontSize(8); doc.setTextColor(90); doc.text("Tick each job when done. Scan a code to open the job in Trello. Hand the sheet back at the end of the day.",L,287); doc.text("Coggin SOS",L+W,287,{align:"right"}); doc.setTextColor(0); };
+      var foot=function(){ doc.setFont("helvetica","normal"); doc.setFontSize(8); doc.setTextColor(90); doc.text("Find your name on a black bar. Tick each job when done. Scan a code to open it in Trello.",L,287); doc.text("Coggin SOS",L+W,287,{align:"right"}); doc.setTextColor(0); };
       var newPage=function(){ foot(); doc.addPage(); y=14; doc.setFont("helvetica","bold"); doc.setFontSize(12); doc.text(niceDay(k)+", continued",L,y); y+=6; };
       doc.setFont("helvetica","bold"); doc.setFontSize(21); doc.text(niceDay(k),L,y);
       doc.setFont("helvetica","normal"); doc.setFontSize(8.5); doc.setTextColor(90); var pr=new Date();
-      doc.text("Day sheet · 8:00 to 16:30",L+W,y-4.5,{align:"right"}); doc.text("Printed "+niceShort(iso(pr))+" "+String(pr.getHours()).padStart(2,"0")+":"+String(pr.getMinutes()).padStart(2,"0"),L+W,y,{align:"right"}); doc.setTextColor(0); y+=5;
+      doc.text("Day sheet · 8:00 to 16:30",L+W,y-4.5,{align:"right"}); var prT=String(pr.getHours()).padStart(2,"0")+":"+String(pr.getMinutes()).padStart(2,"0");
+      doc.text("Printed "+niceShort(iso(pr))+" "+prT+(lastPrint?", replaces the "+lastPrint+" sheet":""),L+W,y,{align:"right"});
+      if(leftOff){ doc.text(leftOff+(leftOff===1?" job":" jobs")+" done, left off",L+W,y+4,{align:"right"}); } doc.setTextColor(0); y+=leftOff?8:5;
       // the crew strip
       var n=crew.length, tw=(W-(n-1)*3)/n;
       crew.forEach(function(c,i){ var x=L+i*(tw+3); doc.setLineWidth(c.off?0.25:0.5); doc.setDrawColor(c.off?170:17); doc.roundedRect(x,y,tw,12,1,1); doc.setDrawColor(0);
         doc.setTextColor(c.off?140:17); doc.setFont("helvetica","bold"); doc.setFontSize(10); doc.text(c.w+(c.over?"  over":""),x+2.5,y+5);
         doc.setFont("helvetica","normal"); doc.setFontSize(8.5); doc.text(doc.splitTextToSize(c.t,tw-4)[0],x+2.5,y+9.5); doc.setTextColor(0); });
       y+=17;
-      var bar=function(title,count){ doc.setFillColor(17,17,17); doc.roundedRect(L,y,W,6.5,0.8,0.8,"F"); doc.setTextColor(255); doc.setFont("helvetica","bold"); doc.setFontSize(8.5); doc.text(title.toUpperCase(),L+3,y+4.5); if(count) doc.text(count,L+W-3,y+4.5,{align:"right"}); doc.setTextColor(0); y+=9.5; };
+      var bar=function(title,count){ doc.setFillColor(17,17,17); doc.roundedRect(L,y,W,6.5,0.8,0.8,"F"); doc.setTextColor(255); doc.setFont("helvetica","bold"); doc.setFontSize(8.5); doc.text(title.toUpperCase(),L+3,y+4.5); if(count){ doc.setFont("helvetica","normal"); doc.text(count,L+W-3,y+4.5,{align:"right"}); } doc.setTextColor(0); y+=9.5; };
       var tx0=function(x){ return x+qs+6; }, tw0=CW-qs-15;
       var need=function(r){ var h=3.5; doc.setFont("helvetica","bold"); doc.setFontSize(fs+1); h+=doc.splitTextToSize(r[0],tw0).length*(fs+1)*0.4; doc.setFont("helvetica","normal"); doc.setFontSize(fs-1.5); if(r[1]) h+=doc.splitTextToSize(r[1],tw0).length*(fs-1.5)*0.4+0.6; h+=fs*0.45+2.5; return Math.max(qs+6,h+2)+STRIP; };
       var box=function(r,x,y0,h){ doc.setDrawColor(150); doc.setLineWidth(0.3); doc.roundedRect(x,y0,CW,h,1.2,1.2); doc.setDrawColor(0);
@@ -2127,9 +2156,9 @@ var SNAP=null, DETAIL={};
         doc.setFontSize(7.5); doc.text("Actual time each",x+3,sy+9); var lx=x+3+doc.getTextWidth("Actual time each")+2; doc.setLineWidth(0.25); doc.line(lx,sy+9.4,lx+10,sy+9.4); doc.text("h",lx+11,sy+9); doc.line(lx+15,sy+9.4,lx+25,sy+9.4); doc.text("min",lx+26,sy+9);
         var by=y0+h-STRIP-1.5; doc.setFont("helvetica","normal"); doc.setFontSize(fs-0.5); doc.text(doc.splitTextToSize(r[2],CW-qs-6-30)[0],tx,by);
         if(r[3]){ doc.setFont("helvetica","bold"); doc.setFontSize(fs+0.5); doc.text(r[3],x+CW-3,by,{align:"right"}); } };
-      var sect=function(title,rows){ if(!rows.length) return; if(paged){ var h0=Math.max(need(rows[0]),rows[1]?need(rows[1]):0); if(y+9.5+h0>280) newPage(); }   /* a heading never sits alone at the foot of a page */ bar(title,rows.length+(rows.length===1?" job":" jobs"));
+      var sect=function(title,rows,right){ if(!rows.length) return; if(paged){ var h0=Math.max(need(rows[0]),rows[1]?need(rows[1]):0); if(y+9.5+h0>280) newPage(); }   /* a heading never sits alone at the foot of a page */ bar(title,right||(rows.length+(rows.length===1?" job":" jobs")));
         for(var i=0;i<rows.length;i+=2){ var h=Math.max(need(rows[i]),rows[i+1]?need(rows[i+1]):0); if(paged&&y+h>280){ newPage(); bar(title+", continued",""); } box(rows[i],L,y,h); if(rows[i+1]) box(rows[i+1],L+CW+G,y,h); y+=h+3.5; } y+=1; };
-      sect("Production",prod); sect("Transport",road); sect("Labour operations",lab);
+      bars.forEach(function(b){ sect(b.title,b.cells,b.right); });
       // AVAILABLE TIME (Sam, 1 Oct 2026: "remove notes and improve the UI of this section", no tick boxes): the order as two
       // numbered steps, then a box per person with their spare time in bold. Notes are gone.
       if(recW.length&&paged&&y+11+Math.ceil(recW.length/2)*13>280) newPage();
@@ -2144,6 +2173,7 @@ var SNAP=null, DETAIL={};
     };
     var r=null; for(var sc=1;sc>=0.85;sc-=0.05){ r=build(sc,false); if(r.fits&&r.doc.getNumberOfPages()===1) break; r=null; }
     if(!r) r=build(1,true);
+    try{ var pn=new Date(); window.localStorage.setItem("coggin.daysheet."+k,String(pn.getHours()).padStart(2,"0")+":"+String(pn.getMinutes()).padStart(2,"0")); }catch(e){}
     r.doc.save("day-sheet-"+k+".pdf");
   }
   function crewSheetsPdf(k,onlyW){
