@@ -367,7 +367,10 @@
         pr.appendChild(el("span",null,"From")); pr.appendChild(d1); pr.appendChild(el("span",null,"to")); pr.appendChild(d2); var clr=el("button","p","Clear"); clr.onclick=function(){ d.prep.start=null; d.prep.date=null; save(); render(); }; pr.appendChild(clr); ed.appendChild(pr);
         ed.appendChild(el("div","hint","Set the days and it appears under Production in the Scheduler.")); dueEd(ed); var pf=prodFit(d.prep.mins,d.prep.date?workDays(d.prep.start||d.prep.date,d.prep.date).length:0); if(pf) ed.appendChild(el("div","hint far",pf)); },d.prep.date?"":(prodFit(d.prep.mins,d.prep.date?workDays(d.prep.start||d.prep.date,d.prep.date).length:0)?"todo":"")));
       var pnd=prepDayCount(d.prep);
-      ps.appendChild(rowEl("ptime",(d.prep.who.length>1?"Time per operative":"Time")+(pnd>1?", each day":""),d.prep.mins!=null?fmt(pnd>1?prepPerDay(d.prep):d.prep.mins)+(pnd>1?" a day":"")+(d.prep.who.length>1?" each":""):(pstd?"Not set, estimated "+fmt(pstd.mins):"Not set"),function(ed){
+      /* SAYS WHO GETS WHAT (Sam, 2 Oct 2026: "it say 30 mins each when i want it 30 mins for one and 15 for the other"):
+         once somebody has their own time, the row names each person's time instead of "each". */
+      var pDiff=d.prep.who.length>1&&d.prep.mins!=null&&d.prep.who.some(function(w){ return minsFor(d.prep,w)!==d.prep.mins; });
+      ps.appendChild(rowEl("ptime",(d.prep.who.length>1?"Time per operative":"Time")+(pnd>1?", each day":""),pDiff?d.prep.who.map(function(w){ var m=minsFor(d.prep,w); return w.split(" ")[0]+" "+(m!=null?fmt(pnd>1?Math.round(m/pnd):m):"?"); }).join(", ")+(pnd>1?" a day":""):d.prep.mins!=null?fmt(pnd>1?prepPerDay(d.prep):d.prep.mins)+(pnd>1?" a day":"")+(d.prep.who.length>1?" each":""):(pstd?"Not set, estimated "+fmt(pstd.mins):"Not set"),function(ed){
         if(pstd){ var sb=el("div","stdbox"); sb.appendChild(el("b",null,"Estimate: "+pstd.crew+(pstd.crew===1?" operative":" operatives")+", "+fmt(pstd.mins)+(pstd.crew>1?" each":"")+(pstd.days>1?", "+pstd.days+" days":""))); sb.appendChild(el("div","hint",pstd.why));
           var br=el("div","row"); br.style.marginTop="6px"; if(d.prep.who.length&&d.prep.mins!==pstd.mins){ var ub=el("button","p","Use the estimate for the "+d.prep.who.length+" chosen"); ub.onclick=function(){ d.prep.mins=pstd.mins; save(); render(); }; br.appendChild(ub); } sb.appendChild(br); ed.appendChild(sb); }
         else if(ESTIMATE_ON) ed.appendChild(el("div","hint","The estimate comes from the items on the card. "+(Lp.unmatched.length?"Some items are not in the table: "+Lp.unmatched.join("; ")+".":Lp.rows.length?"":"No items found on the card.")));
@@ -375,7 +378,7 @@
         // SOMEBODY BREAKING OFF (Sam, 18 Sep 2026: "an operative might have to break off a job onto something
         // else"). One time for everybody is the norm; where it is not, set that person's own time here and the
         // day view, the capacity and the job sheets all follow it.
-        if(d.prep.who.length>1){ ed.appendChild(el("div","lbl","Different for somebody"));
+        if(d.prep.who.length>1){ ed.appendChild(el("div","lbl","Different time for somebody? Set theirs here"));
           d.prep.who.forEach(function(w){ var r=el("div","row"); r.appendChild(el("span",null,w));
             r.appendChild(hm(function(){ return minsFor(d.prep,w); },function(v){ d.prep.each=d.prep.each||{}; if(v==null||v===d.prep.mins) delete d.prep.each[w]; else d.prep.each[w]=v; },w+" production time"));
             ed.appendChild(r); });
