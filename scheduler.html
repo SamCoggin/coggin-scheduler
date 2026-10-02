@@ -2395,7 +2395,7 @@ var SNAP=null, DETAIL={};
       // tick box on every line and every custom build part, photo, quantity, name, location and SKU. Read from the CRM
       // when Download is pressed, built by the CRM's own pick-line rules.
       if(PICK&&order.length){
-        var pickHead=function(cont){ doc.addPage(); y=14; doc.setFont("helvetica","bold"); doc.setFontSize(cont?12:19); doc.text("Picking · "+niceDay(k)+(cont?", continued":""),L,y+(cont?0:2));
+        var pickHead=function(cont){ doc.addPage(); y=14; doc.setFont("helvetica","bold"); doc.setFontSize(cont?12:19); doc.text("Picking and finishing · "+niceDay(k)+(cont?", continued":""),L,y+(cont?0:2));   // Sam, 2 Oct 2026: "Change the heading to Picking and finishing"
           // no "Read from the CRM when printed" line (Sam, 2 Oct 2026: "this is not required")
           y+=cont?6:9; };
         var pfoot=function(){ doc.setFont("helvetica","normal"); doc.setFontSize(8); doc.setTextColor(90); doc.text("Tick each line as it comes off the rack. Write what was finished today on each line.",L,287); doc.text("Coggin SOS",L+W,287,{align:"right"}); doc.setTextColor(0); };
