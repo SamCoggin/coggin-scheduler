@@ -571,3 +571,39 @@ function prepDayCount(P){ if(!P||!P.date) return 0; var a=P.start&&P.start<P.dat
 function prepPerDay(P){ var n=prepDayCount(P); if(n<=1) return P.mins; return P.perDay!=null?P.perDay:(P.mins!=null?Math.round(P.mins/n):null); }
 function setPrepPerDay(P,v){ var n=prepDayCount(P); if(n<=1){ P.mins=v; P.perDay=null; return; } P.perDay=v; P.mins=v==null?null:v*n; }
 function syncPrepTotal(P){ if(P&&P.perDay!=null&&P.date){ var n=prepDayCount(P); if(n>1) P.mins=P.perDay*n; else { P.mins=P.perDay; P.perDay=null; } } }
+
+// WHO IS COMING TO FORTON, AND WHEN (Sam, 2 Oct 2026: "I need to be able to add collection and drop-off times for
+// incoming", then "what about waste collections and exchanges", "window for waste, two times for delivers and
+// collects"). A job where somebody else turns up at Forton carries the time they are expected, so the labour is
+// there for them. Saved on the plan as from (and by for a waste carrier's window, collectAt for the collection half
+// of a deliver-and-collect). Read the same way by the Scheduler, the card and the day sheet.
+function arrivalKind(labels,title,desc){
+  var mv=String(movementOf(labels,desc)||""), all=labelNames(labels).join(" ")+" "+String(title||"");
+  if(/Plastic Collection/i.test(all)) return "buyer";
+  if(/Plastic Delivery|Stock Delivery/i.test(all)) return "supplier";
+  if(/Delivers and Collects/i.test(mv)) return "both";
+  if(/Customer Collects|Collects$/i.test(mv)) return "collects";
+  if(/Customer Delivers|Seller Delivers|Delivers$/i.test(mv)) return "delivers";
+  if(/Skip Exchange|\bwaste\b|\bskip\b|\bscrap\b/i.test(all)) return "waste";
+  if(/Plastic Collection/i.test(all)) return "buyer";
+  if(/Plastic Delivery|Stock Delivery/i.test(all)) return "supplier";
+  return "";
+}
+var ARRIVAL_WHO={collects:"Customer collecting",delivers:"Customer arriving",both:"Customer",waste:"Waste carrier",buyer:"Buyer collecting",supplier:"Supplier arriving"};
+function arrivalText(kind,from,by,collectAt){
+  if(!kind) return "";
+  if(kind==="both"){ var bits=[]; if(from) bits.push("arrives around "+from); if(collectAt) bits.push("collects around "+collectAt); return bits.length?"Customer "+bits.join(", "):""; }
+  if(kind==="waste"){ if(from&&by) return "Waste carrier between "+from+" and "+by; if(from) return "Waste carrier around "+from; return ""; }
+  return from?ARRIVAL_WHO[kind]+" around "+from:"";
+}
+function arrivalMissing(kind,from,by,collectAt){ if(!kind) return false; if(kind==="both") return !from||!collectAt; return !from; }
+function arrivalWarning(kind,day){
+  return ({collects:"customer collecting "+day+" with no time. Ask them when, so the labour is ready.",
+    delivers:"customer delivering "+day+" with no time. Ask them when, so the labour is ready.",
+    both:"customer delivering and collecting "+day+" without both times. Ask them when, so the labour is ready.",
+    waste:"waste carrier coming "+day+" with no time. Ask for their window.",
+    buyer:"buyer collecting "+day+" with no time. Ask them when.",
+    supplier:"supplier delivering "+day+" with no time. Ask them when."})[kind]||"";
+}
+// the CRM's drop-off plan writes "Arriving: 10:00 am" on the card; take it as the arrival time until someone changes it
+function arrivalFromDesc(desc){ var m=/Arriving:\s*(\d{1,2})[:.](\d{2})\s*(am|pm)?/i.exec(String(desc||"")); if(!m) return ""; var h=parseInt(m[1],10); if(m[3]&&/pm/i.test(m[3])&&h<12) h+=12; if(m[3]&&/am/i.test(m[3])&&h===12) h=0; return String(h).padStart(2,"0")+":"+m[2]; }
