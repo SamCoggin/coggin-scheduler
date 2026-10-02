@@ -768,7 +768,11 @@ var SNAP=null, DETAIL={};
   var CRM_ACTUALS_URL="https://coggin-sos-os.base44.app/api/apps/69c930a6240fba922f369aa2/functions/jobActuals";
   var CRM_PICKING_URL="https://coggin-sos-os.base44.app/api/apps/69c930a6240fba922f369aa2/functions/pickingSheets";
   var ACTUALS={}, ACTUALS_OK=false, ACT_OPEN=null, ACT_DRAFT=null, TIMINGS_OPEN=false;
-  function fetchActuals(){ if(!CRM_KEY) return Promise.resolve();
+  // DAY SHEET ENTRY SWITCHED OFF (Sam, 2 Oct 2026: the sheet's who-did-it and actual-time strip became notes, "yes switch it
+  // off"). Enter day sheet, the "day sheets to type in" rail and Timings read what was typed from that strip, so all three
+  // are off. The code and the CRM's JobActual rows stay; set this true to bring them back.
+  var ACTUALS_ON=false;
+  function fetchActuals(){ if(!ACTUALS_ON||!CRM_KEY) return Promise.resolve();
     return fetch(CRM_ACTUALS_URL,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({key:CRM_KEY,action:"list",from:iso(addDays(TODAY,-60)),to:iso(TODAY)})}).then(function(x){return x.json();}).then(function(r){ if(!(r&&r.ok)) return; ACTUALS={}; (r.rows||[]).forEach(function(a){ ACTUALS[a.row_key]=a; }); ACTUALS_OK=true; }).catch(function(){}); }
   function jobName(j){ var t=(j.title||"").split(" - "); return t.length>1?t.slice(1).join(" - "):j.title; }
   // the jobs on that day's sheet, one row each, with what was planned
@@ -783,7 +787,7 @@ var SNAP=null, DETAIL={};
     return out;
   }
   function dayGone(k){ return k<iso(TODAY)||(k===iso(TODAY)&&minsLeftOn(k)===0); }
-  function unrecorded(k){ if(!ACTUALS_OK||!dayGone(k)) return []; return dayParts(k).filter(function(p){ return !ACTUALS[p.key]&&(p.who.length||p.mins!=null); }); }
+  function unrecorded(k){ if(!ACTUALS_ON||!ACTUALS_OK||!dayGone(k)) return []; return dayParts(k).filter(function(p){ return !ACTUALS[p.key]&&(p.who.length||p.mins!=null); }); }
   function actualsModal(){
     var k=ACT_OPEN; if(!k) return null;
     var parts=dayParts(k);
@@ -2407,8 +2411,8 @@ var SNAP=null, DETAIL={};
     persist();
     $("#pdf").onclick=function(){ try{ schedulePdf(); }catch(e){ alert("The PDF could not be built: "+(e&&e.message||e)); } };
     $("#pdf").textContent="Download schedule"; $("#sheets").hidden=view!=="day"; $("#sheets").textContent="Download day sheet"; $("#sheets").title="One page for the day in view, to print and hand to the operatives"; $("#sheets").onclick=function(){ daySheetDownload(dayCur).catch(function(e){ alert("The day sheet could not be built: "+(e&&e.message||e)); }); };
-    $("#actuals").hidden=!(view==="day"&&dayCur<=iso(TODAY)); var unN=view==="day"?unrecorded(dayCur).length:0; $("#actuals").textContent="Enter day sheet"+(unN?" ("+unN+" to do)":""); $("#actuals").onclick=function(){ ACT_OPEN=dayCur; ACT_DRAFT=null; render(); };
-    $("#timings").hidden=!(view==="day"||view==="week"); $("#timings").onclick=function(){ TIMINGS_OPEN=true; render(); }; $("#guide").onclick=function(){ location.href="./guide.html"; };
+    $("#actuals").hidden=!ACTUALS_ON||!(view==="day"&&dayCur<=iso(TODAY)); var unN=view==="day"?unrecorded(dayCur).length:0; $("#actuals").textContent="Enter day sheet"+(unN?" ("+unN+" to do)":""); $("#actuals").onclick=function(){ ACT_OPEN=dayCur; ACT_DRAFT=null; render(); };
+    $("#timings").hidden=!ACTUALS_ON||!(view==="day"||view==="week"); $("#timings").onclick=function(){ TIMINGS_OPEN=true; render(); }; $("#guide").onclick=function(){ location.href="./guide.html"; };
     if(t&&view!=="manager"&&view!=="month") setTimeout(refreshRounds,0);
     $("#need").hidden=true; /* Outstanding, Download schedule and Guide are off the toolbar (Sam, 29 Sep 2026); the week view keeps its Outstanding tile */ $("#pdf").hidden=true; $("#guide").hidden=true; $("#need").className=NEED?"on":""; var nTP=toPlanCount(); $("#need").textContent="Outstanding"+(nTP?" ("+nTP+")":""); $("#need").title=nTP?nTP+(nTP===1?" job still needs":" jobs still need")+" operatives, time, travel or a van on the "+(view==="day"?"day":view==="month"?"month":"week")+" in view":"Everything in view is planned"; $("#need").onclick=function(){ NEED=!NEED; render(); };
     document.body.onclick=function(){ if(tipOpen){ tipOpen=null; render(); } };
