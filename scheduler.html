@@ -2788,13 +2788,13 @@ var SNAP=null, DETAIL={};
       // before they leave: equal step boxes, each with the code it needs
       var steps=[]; if(!don&&d.signoff) steps.push(["Get the customer to sign it off",d.signoff,"Sign-off"]);
       steps.push(["Add photos of the load to the Trello card and move the job to Job Completed","https://trello.com/c/"+(j.short||j.id),"Trello card"]);
-      var ph=56; if(y+ph+6>278) cont(); y+=2; doc.setFillColor(17,17,17); doc.roundedRect(L,y,W,ph,2,2,"F"); doc.setTextColor(255); doc.setFont("helvetica","bold"); doc.setFontSize(12); doc.text("BEFORE THEY LEAVE",L+5,y+7.5);
+      var ph=45; if(y+ph+6>278) cont(); y+=2; doc.setFillColor(17,17,17); doc.roundedRect(L,y,W,ph,2,2,"F"); doc.setTextColor(255); doc.setFont("helvetica","bold"); doc.setFontSize(12); doc.text("BEFORE THEY LEAVE",L+5,y+7.5);
       var n=steps.length, gw=4, sw=(W-10-gw*(n-1))/n, sy=y+11, shh=ph-15;
       steps.forEach(function(st,i){ var sx=L+5+i*(sw+gw); doc.setFillColor(255,255,255); doc.roundedRect(sx,sy,sw,shh,1.2,1.2,"F");
         doc.setDrawColor(17); doc.setLineWidth(0.5); doc.roundedRect(sx+3,sy+3,4.5,4.5,0.5,0.5); doc.setDrawColor(0);
         doc.setTextColor(110); doc.setFont("helvetica","bold"); doc.setFontSize(7); doc.text("STEP "+(i+1),sx+10,sy+6.3,{charSpace:0.2});
         doc.setTextColor(17); doc.setFontSize(10); var tl2=doc.splitTextToSize(st[0],sw-30).slice(0,4); doc.text(tl2,sx+3,sy+13);
-        qr(st[1],sx+sw-25,sy+3,22); doc.setFont("helvetica","bold"); doc.setFontSize(6.5); doc.text(st[2],sx+sw-14,sy+28.5,{align:"center"}); });
+        qr(st[1],sx+sw-23,sy+2.5,20); doc.setFont("helvetica","bold"); doc.setFontSize(6.5); doc.text(st[2],sx+sw-13,sy+26.3,{align:"center"}); });
       doc.setTextColor(0); y+=ph+4; setFoot("Any problem? Call the operations manager."); };
     return kit; }
   async function daySheetDownload(k){
