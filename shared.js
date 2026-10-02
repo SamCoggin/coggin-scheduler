@@ -286,7 +286,9 @@ function frontBadges(d,site,round){
   // one row (Sam, 29 Sep 2026: "why can't travel and installation be on the same row"). Trello clips a badge at about
   // 31 characters, so the front drops the names (the card's members already show them) and uses tight units: "Installation 30m · round 4h35".
   var tight=function(m){ if(m==null) return ""; var h=Math.floor(m/60), r=m%60; return h?(h+"h"+(r?String(r).padStart(2,"0"):"")):(r+"m"); };
-  var word=tag?tag.replace(/: $/,""):(who.join(", "));
+  // A FORTON JOB SAYS LABOUR (Sam, 2 Oct 2026: "why is it saying Bradley H no time on this trello card?"). It sat under
+  // "Production: Bradley H, 30 min" with no word for which part it was. The tier name now leads, as production's does.
+  var word=tag?tag.replace(/: $/,""):"Labour: "+who.join(", ")+(d.mins==null?",":"");
   var travel=!site?"":(round?(round.total==null?" · no round travel":" · round "+tight(round.total)):(d.drive==null?" · no travel":" · travel "+tight(d.drive)));
   var missing=d.mins==null||(site&&(round?round.total==null:d.drive==null));
   out.push({text:word+(d.mins==null?" no time":" "+tight(d.mins)+(who.length>1?" each":""))+travel,color:missing?"yellow":"green"});
