@@ -2522,6 +2522,10 @@ var SNAP=null, DETAIL={};
       if(kv){ var k0=kv[1].toLowerCase().trim(), v=kv[2].trim(); if(/^(address|delivery address|collection address|postcode)$/.test(k0)){ if(!out.address&&!NOT_SET.test(v)) out.address=v; return; } if(!NOT_SET.test(v)) out.kv[k0]=v; return; }
       if(/^access$/.test(head)&&!NOT_SET.test(l)) out.access.push(l); });
     if(!out.address){ var pc=pcOf(j); if(pc&&!/^area:/.test(pc)) out.address=pc; }
+    // DONATION CARDS WRITE IT AS LINES (2 Oct 2026, Bluebird showed "Not on the card"): "Site Contact Name:" and "Mobile Number:"
+    if(!out.contacts.length){ var kv0=out.kv, nm0=kv0["site contact name"]||kv0["contact name"]||kv0["name"]||"", ph0=kv0["mobile number"]||kv0["contact phone/mobile number"]||kv0["phone"]||kv0["number"]||"";
+      if(nm0||ph0) out.contacts.push([nm0,ph0].filter(Boolean).join(" · ")); }
+    if(!out.access.length&&out.kv.access) out.access.push(out.kv.access);
     return out; }
   function knowRows(d){ var kv=d.kv, rows=[], g=function(k){ return kv[k]||""; };
     var getIn=[g("floor"),g("lift")?"Lift: "+g("lift"):"",g("stairs")?"Stairs: "+g("stairs"):"",g("distance to entrance")?g("distance to entrance")+" from the van":"",g("loading")?g("loading"):"",g("loading bay")?"Loading bay: "+g("loading bay"):""].filter(Boolean).join(", ");
@@ -2644,7 +2648,7 @@ var SNAP=null, DETAIL={};
       var stopHead=function(cont){ newPage(); label("Stop "+(si+1)+" of "+nStops+" · "+run.crew.join(" + ")+(cont?", continued":""),L,y+1);
         if(cont){ doc.setFont("helvetica","bold"); doc.setFontSize(14); doc.text(nm,L,y+7); y+=10; rule(); y+=5; return; }
         doc.setFont("helvetica","bold"); doc.setFontSize(20); var tl=doc.splitTextToSize(nm,W-48).slice(0,2); doc.text(tl,L,y+9); var ty=y+9+(tl.length-1)*7.5;
-        doc.setFontSize(11); doc.text([s.arrive!=null?etaText(s.arrive):"",mins!=null?fmt(mins)+" "+word:"",j.from?"not before "+j.from:"",j.by?"finish by "+j.by:""].filter(Boolean).join(" · ")||(collect?"Collection":"Delivery"),L,ty+6.5);
+        doc.setFontSize(11); doc.text([/* no ETA time (Sam, 2 Oct 2026) */ mins!=null?fmt(mins)+" "+word:"",j.from?"not before "+j.from:"",j.by?"finish by "+j.by:""].filter(Boolean).join(" · ")||(collect?"Collection":"Delivery"),L,ty+6.5);
         var cy=ty+12; label("Address",L,cy); label("Site contact",L+72,cy);
         doc.setFont("helvetica","normal"); doc.setFontSize(10.5); var al=doc.splitTextToSize(d.address||"Not on the card",66).slice(0,4); doc.text(al,L,cy+5);
         doc.setFont("helvetica","bold"); doc.setFontSize(11.5); var cl=[]; (d.contacts.length?d.contacts:["Not on the card"]).slice(0,2).forEach(function(c){ c.split(" · ").forEach(function(p0){ cl.push(p0); }); }); cl=cl.slice(0,4); doc.text(cl,L+72,cy+5);
