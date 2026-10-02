@@ -2283,20 +2283,22 @@ var SNAP=null, DETAIL={};
       if(i.error||!(i.lines&&i.lines.length)) return {kind:"none",main:"No stock reserved",rest:""};
       if(!pickMeta[r.card]) pickMeta[r.card]={name:r.name,part:r.part+(r.sub?" · "+r.sub:""),who:r.who.join(" + "),ref:i.ref||""};
       var n=i.lines.length; return {kind:"sheet",card:r.card,main:"Page "+(i.page||"?"),rest:n+(n===1?" line":" lines")}; };
-    // one bar per person; people whose jobs are exactly the same get one joint bar ("Jack C + Jordan I")
-    var people=TEAM.filter(function(w){ return rows.some(function(r){ return r.who.indexOf(w)>=0; }); });
-    var sig={}; people.forEach(function(w){ sig[w]=rows.filter(function(r){ return r.who.indexOf(w)>=0; }).map(function(r){ return r.key; }).join("|"); });
-    var groups=[]; people.forEach(function(w){ var g=groups.filter(function(x){ return sig[x[0]]===sig[w]; })[0]; if(g) g.push(w); else groups.push([w]); });
+    // ONE BAR PER CREW, EACH JOB ONCE (Sam, 2 Oct 2026: "Can we not merge when working together as this looks a little
+    // confusing?"). A job sits under the bar for exactly the people on it, "Bradley H + Bart H", so a shared job prints
+    // once; what one of them does alone goes under their own bar. Bars run in the order their first job starts.
+    var crewKey=function(r){ return TEAM.filter(function(w){ return r.who.indexOf(w)>=0; }); };
+    var groups=[]; rows.forEach(function(r){ if(!r.who.length) return; var g=crewKey(r); if(!g.length) return; var k0=g.join("|"); if(!groups.some(function(x){ return x.join("|")===k0; })) groups.push(g); });
     var order=function(list){ return list.map(function(r,i){ return {r:r,i:i}; }).sort(function(a,b){ var x=a.r.at==null?1e4:a.r.at, y2=b.r.at==null?1e4:b.r.at; return x-y2||a.i-b.i; }).map(function(o){ return o.r; }); };
-    var firstAt=function(g){ var t=rows.filter(function(r){ return r.who.indexOf(g[0])>=0&&r.at!=null; }).map(function(r){ return r.at; }); return t.length?Math.min.apply(null,t):1e4; };
-    groups.sort(function(a,b){ return firstAt(a)-firstAt(b)||TEAM.indexOf(a[0])-TEAM.indexOf(b[0]); });
+    var rowsOf=function(g){ var k0=g.join("|"); return rows.filter(function(r){ return crewKey(r).join("|")===k0; }); };
+    var firstAt=function(g){ var t=rowsOf(g).filter(function(r){ return r.at!=null; }).map(function(r){ return r.at; }); return t.length?Math.min.apply(null,t):1e4; };
+    groups.sort(function(a,b){ return firstAt(a)-firstAt(b)||b.length-a.length||TEAM.indexOf(a[0])-TEAM.indexOf(b[0]); });
     var bars=groups.map(function(g){
-      var mine=order(rows.filter(function(r){ return r.who.indexOf(g[0])>=0; }));
-      var cells=mine.map(function(r){ var others=r.who.filter(function(w){ return g.indexOf(w)<0; }), ms=g.map(function(w){ return r.mins(w); }), have=ms.filter(function(m){ return m!=null; });
+      var mine=order(rowsOf(g));
+      var cells=mine.map(function(r){ var ms=g.map(function(w){ return r.mins(w); }), have=ms.filter(function(m){ return m!=null; });
         var tm=!have.length?"":g.length===1||have.every(function(m){ return m===have[0]; })?fmt(have[0])+(g.length>1?" each":""):g.map(function(w){ return w.split(" ")[0]+" "+(r.mins(w)!=null?fmt(r.mins(w)):"?"); }).join(", ");
-        return [r.name,r.part+(r.sub?" · "+r.sub:""),others.length?"with "+others.join(", "):"",tm?tm+r.extra:"",r.cid,pickOf(r)]; });
-      var booked=Math.round((load[g[0]]||{}).mins||0), backup=FIELD_CREW.indexOf(g[0])<0;
-      return {title:g.join(" + "),right:[g.length>1?"Together all day":"", backup?"Backup":booked?fmt(booked)+" booked"+(g.length>1?" each":""):"", cells.length+(cells.length===1?" job":" jobs")].filter(Boolean).join(" · "),cells:cells}; });
+        return [r.name,r.part+(r.sub?" · "+r.sub:""),"",tm?tm+r.extra:"",r.cid,pickOf(r)]; });
+      var backup=g.length===1&&FIELD_CREW.indexOf(g[0])<0;
+      return {title:g.join(" + "),right:[g.length>1?"Together":"",backup?"Backup":"",cells.length+(cells.length===1?" job":" jobs")].filter(Boolean).join(" · "),cells:cells}; });
     var nobody=order(rows.filter(function(r){ return !r.who.length&&!r.contractor; })).map(function(r){ return [r.name,r.part+(r.sub?" · "+r.sub:""),"Needs someone",r.mins(null)!=null?fmt(r.mins(null)):"",r.cid,pickOf(r)]; });
     var subs=order(rows.filter(function(r){ return !r.who.length&&r.contractor; })).map(function(r){ return [r.name,r.part+(r.sub?" · "+r.sub:""),r.contractor,"",r.cid,pickOf(r)]; });
     if(nobody.length) bars.push({title:"Nobody yet",right:nobody.length+(nobody.length===1?" job":" jobs"),cells:nobody});
