@@ -2119,12 +2119,12 @@ var SNAP=null, DETAIL={};
     // THE PICKING LINE (Sam, 2 Oct 2026, mock approved): a job picks on its first production day, or on its own day when
     // it has no production; its own picking sheet from the CRM goes behind the day sheet.
     if(mode==="cards"){ var seenC={}; return rows.filter(function(r){ return r.card&&r.pickable&&!seenC[r.card]&&(seenC[r.card]=1); }).map(function(r){ return {id:r.card,short:r.short}; }); }
+    var MON3=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
     var pickOf=function(r){ var i=PICK&&r.card&&r.pickable?PICK[r.card]:null; if(!i||!i.picks) return null;
-      if(r.pickable==="later") return {kind:"later",text:"Picked on day 1."};
-      if(!i.url) return {kind:"none",text:"No picking sheet yet. Update card on the deal makes one."};
-      if(i.failed) return {kind:"none",text:"The picking sheet would not load. Open it from the Trello card."};
-      var md=i.made?new Date(i.made):null, mdT=md&&!isNaN(md)?" Made "+md.getDate()+" "+["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"][md.getMonth()]+" "+String(md.getHours()).padStart(2,"0")+":"+String(md.getMinutes()).padStart(2,"0")+".":"";
-      return {kind:"sheet",card:r.card,text:(i.page?(/ to /.test(i.page)?"Picking sheet, pages ":"Picking sheet, page ")+i.page+".":"Picking sheet behind this one.")+mdT}; };
+      if(!i.url) return {kind:"none",main:"No sheet yet",rest:"press Update card"};
+      if(i.failed) return {kind:"none",main:"Would not load",rest:"see the Trello card"};
+      var md=i.made?new Date(i.made):null, ok=md&&!isNaN(md);
+      return {kind:"sheet",card:r.card,main:i.page?(/ to /.test(i.page)?"Pages ":"Page ")+i.page:"Behind this sheet",rest:ok?"sheet of "+md.getDate()+" "+MON3[md.getMonth()]:""}; };
     // one bar per person; people whose jobs are exactly the same get one joint bar ("Jack C + Jordan I")
     var people=TEAM.filter(function(w){ return rows.some(function(r){ return r.who.indexOf(w)>=0; }); });
     var sig={}; people.forEach(function(w){ sig[w]=rows.filter(function(r){ return r.who.indexOf(w)>=0; }).map(function(r){ return r.key; }).join("|"); });
@@ -2181,25 +2181,32 @@ var SNAP=null, DETAIL={};
         doc.setFont("helvetica","normal"); doc.setFontSize(8.5); doc.text(doc.splitTextToSize(c.t,tw-4)[0],x+2.5,y+9.5); doc.setTextColor(0); });
       y+=17;
       var bar=function(title,count){ doc.setFillColor(17,17,17); doc.roundedRect(L,y,W,6.5,0.8,0.8,"F"); doc.setTextColor(255); doc.setFont("helvetica","bold"); doc.setFontSize(8.5); doc.text(title.toUpperCase(),L+3,y+4.5); if(count){ doc.setFont("helvetica","normal"); doc.text(count,L+W-3,y+4.5,{align:"right"}); } doc.setTextColor(0); y+=9.5; };
+      // THE JOB BOX, CLEANER (Sam, 2 Oct 2026, mock approved): the name with the time beside it, one grey line for the part,
+      // the day and who else is on it, and PICK as one tag. Nothing wraps that does not have to.
       var tx0=function(x){ return x+qs+6; }, tw0=CW-qs-15;
-      // the picking line wraps rather than clips: its own lines, measured the way box() draws them
-      var pickLines=function(r){ var pk=r[5]; if(!pk) return []; doc.setFont("helvetica",pk.kind==="later"?"normal":"bold"); doc.setFontSize(fs-2); return doc.splitTextToSize(pk.text,CW-qs-6-(pk.kind==="later"?3:14)); };
-      var pickH=function(r){ var n=pickLines(r).length; return n?5.5+n*(fs-2)*0.42:0; };
-      var need=function(r){ var h=3.5; doc.setFont("helvetica","bold"); doc.setFontSize(fs+1); h+=doc.splitTextToSize(r[0],tw0).length*(fs+1)*0.4; doc.setFont("helvetica","normal"); doc.setFontSize(fs-1.5); if(r[1]) h+=doc.splitTextToSize(r[1],tw0).length*(fs-1.5)*0.4+0.6; h+=fs*0.45+2.5; return Math.max(qs+6,h+2)+STRIP+pickH(r); };
+      var timeW=function(r){ if(!r[3]) return 0; doc.setFont("helvetica","bold"); doc.setFontSize(fs+1); return doc.getTextWidth(r[3])+3; };
+      var nameLines=function(r){ doc.setFont("helvetica","bold"); doc.setFontSize(fs+1); return doc.splitTextToSize(r[0],Math.max(20,tw0-timeW(r))); };
+      var subText=function(r){ return [r[1],r[2]].filter(Boolean).join(" · "); };
+      var subLines=function(r){ var t=subText(r); if(!t) return []; doc.setFont("helvetica","normal"); doc.setFontSize(fs-1.5); return doc.splitTextToSize(t,tw0); };
+      var need=function(r){ var h=3.5+nameLines(r).length*(fs+1)*0.4; var sl=subLines(r).length; if(sl) h+=sl*(fs-1.5)*0.4+0.8; if(r[5]) h+=7.2; return Math.max(qs+6,h+3); };
       var box=function(r,x,y0,h){ doc.setDrawColor(150); doc.setLineWidth(0.3); doc.roundedRect(x,y0,CW,h,1.2,1.2); doc.setDrawColor(0);
         if(r[4]) qrAt(doc,"https://trello.com/c/"+r[4],x+3,y0+3,qs);
         doc.setLineWidth(0.45); doc.setDrawColor(17); doc.roundedRect(x+CW-8,y0+3,5,5,0.6,0.6); doc.setDrawColor(0);
-        var tx=tx0(x), ty=y0+3.5+(fs+1)*0.33; doc.setFont("helvetica","bold"); doc.setFontSize(fs+1); var nl=doc.splitTextToSize(r[0],tw0); doc.text(nl,tx,ty); ty+=(nl.length-1)*(fs+1)*0.4+1;
-        if(r[1]){ doc.setFont("helvetica","normal"); doc.setFontSize(fs-1.5); doc.setTextColor(85); var sl=doc.splitTextToSize(r[1],tw0); doc.text(sl,tx,ty+(fs-1.5)*0.35); ty+=sl.length*(fs-1.5)*0.4+0.6; doc.setTextColor(0); }
-        var pk=r[5], ph=pickH(r), by=y0+h-STRIP-1.5-ph;
-        if(pk){ var pls=pickLines(r), ly=by+2.4, py=ly+4.2; if(pk.kind==="sheet"&&order.indexOf(pk.card)<0) order.push(pk.card);
-          doc.setDrawColor(150); doc.setLineDashPattern([0.8,0.8],0); doc.line(tx,ly,x+CW-3,ly); doc.setLineDashPattern([],0); doc.setDrawColor(0);
-          if(pk.kind!=="later"){ doc.setLineWidth(0.4); if(pk.kind==="none") doc.setLineDashPattern([0.7,0.6],0); doc.roundedRect(tx,py-3.2,9,4.2,0.5,0.5); doc.setLineDashPattern([],0);
-            doc.setFont("helvetica","bold"); doc.setFontSize(6.8); doc.text("PICK",tx+4.5,py-0.2,{align:"center"}); }
-          doc.setFont("helvetica",pk.kind==="later"?"normal":"bold"); doc.setFontSize(fs-2); if(pk.kind==="later") doc.setTextColor(85);
-          doc.text(pls,tx+(pk.kind==="later"?0:11),py); doc.setTextColor(0); }
-        doc.setFont("helvetica","normal"); doc.setFontSize(fs-0.5); doc.text(doc.splitTextToSize(r[2],CW-qs-6-30)[0],tx,by);
-        if(r[3]){ doc.setFont("helvetica","bold"); doc.setFontSize(fs+0.5); doc.text(r[3],x+CW-3,by,{align:"right"}); } };
+        var tx=tx0(x), right=x+CW-10.5, ty=y0+3.5+(fs+1)*0.33, nl=nameLines(r);
+        doc.setFont("helvetica","bold"); doc.setFontSize(fs+1); doc.text(nl,tx,ty);
+        if(r[3]) doc.text(r[3],right,ty,{align:"right"});
+        ty+=(nl.length-1)*(fs+1)*0.4+1;
+        var sl=subLines(r); if(sl.length){ doc.setFont("helvetica","normal"); doc.setFontSize(fs-1.5); doc.setTextColor(85); doc.text(sl,tx,ty+(fs-1.5)*0.35); ty+=sl.length*(fs-1.5)*0.4+0.8; doc.setTextColor(0); }
+        var pk=r[5]; if(pk){ if(pk.kind==="sheet"&&order.indexOf(pk.card)<0) order.push(pk.card);
+          var th=4.6, top=ty+1.4, fsz=fs-2; doc.setFont("helvetica","bold"); doc.setFontSize(6.8); var kw=doc.getTextWidth("PICK")+3.6;
+          doc.setFontSize(fsz); var mw=doc.getTextWidth(pk.main); doc.setFont("helvetica","normal"); var rest=pk.rest?" · "+pk.rest:"", rw=doc.getTextWidth(rest);
+          var room=tw0-kw-3; if(mw+rw>room){ while(rest.length>4&&doc.getTextWidth(rest+"...")>room-mw) rest=rest.slice(0,-1); rest=rest.replace(/\s+$/,"")+"..."; rw=doc.getTextWidth(rest); }
+          var tw=kw+mw+rw+3.2; doc.setLineWidth(0.4); doc.setDrawColor(17);
+          if(pk.kind==="none"){ doc.setLineDashPattern([0.7,0.6],0); doc.roundedRect(tx,top,tw,th,0.6,0.6); doc.line(tx+kw,top,tx+kw,top+th); doc.setLineDashPattern([],0); doc.setTextColor(17); }
+          else { doc.setFillColor(17,17,17); doc.roundedRect(tx,top,tw,th,0.6,0.6,"F"); doc.setFillColor(255,255,255); doc.rect(tx+kw,top+0.25,tw-kw-0.25,th-0.5,"F"); doc.roundedRect(tx,top,tw,th,0.6,0.6,"S"); doc.setTextColor(255); }
+          doc.setFont("helvetica","bold"); doc.setFontSize(6.8); doc.text("PICK",tx+kw/2,top+3.25,{align:"center"}); doc.setTextColor(0);
+          doc.setFontSize(fsz); doc.text(pk.main,tx+kw+1.6,top+3.3); if(rest){ doc.setFont("helvetica","normal"); doc.setTextColor(85); doc.text(rest,tx+kw+1.6+mw,top+3.3); doc.setTextColor(0); } }
+      };
       var sect=function(title,rows,right){ if(!rows.length) return; if(paged){ var h0=Math.max(need(rows[0]),rows[1]?need(rows[1]):0); if(y+9.5+h0>280) newPage(); }   /* a heading never sits alone at the foot of a page */ bar(title,right||(rows.length+(rows.length===1?" job":" jobs")));
         for(var i=0;i<rows.length;i+=2){ var h=Math.max(need(rows[i]),rows[i+1]?need(rows[i+1]):0); if(paged&&y+h>280){ newPage(); bar(title+", continued",""); } box(rows[i],L,y,h); if(rows[i+1]) box(rows[i+1],L+CW+G,y,h); y+=h+3.5; } y+=1; };
       bars.forEach(function(b){ sect(b.title,b.cells,b.right); });
