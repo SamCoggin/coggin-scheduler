@@ -345,7 +345,19 @@
   @media (max-width:420px){ .each-p{grid-template-columns:1fr} }
   .items{list-style:none;margin:8px 0 0;padding:0}
   .items li{padding:5px 0;border-top:1px solid var(--line);font-size:13px;display:flex;gap:8px;align-items:flex-start}
-  .ithumb.zoom{cursor:zoom-in} .ithumb.zoom:hover,.ithumb.zoom:focus-visible{border-color:#1D3058;outline:none;box-shadow:0 0 0 2px rgba(29,48,88,.25)}
+  .bh .rpill{margin-left:auto;font-size:12px;font-weight:700;background:#e8eef9;color:#1D3058;border-radius:999px;padding:3px 9px;letter-spacing:0;text-transform:none}
+  .rwho{font-size:13px;color:var(--muted);margin:2px 0 10px}
+  .rroute{list-style:none;margin:0 0 10px;padding:0}
+  .rroute li{display:grid;grid-template-columns:16px minmax(0,1fr) auto;gap:10px;align-items:center;padding:5px 0;font-size:13.5px;position:relative}
+  .rroute li:not(:last-child)::after{content:"";position:absolute;left:7px;top:calc(50% + 7px);height:calc(100% - 4px);width:2px;background:var(--line)}
+  .rroute .rdot{width:12px;height:12px;border-radius:50%;border:2px solid #9aa4b5;background:#fff;box-sizing:border-box;margin-left:1px;position:relative;z-index:1}
+  .rroute .home .rdot{border-radius:3px;background:#9aa4b5}
+  .rroute .me{font-weight:700;color:#1D3058} .rroute .me .rdot{background:#1D3058;border-color:#1D3058;box-shadow:0 0 0 3px rgba(29,48,88,.18)}
+  .rroute .rname{min-width:0;overflow-wrap:anywhere} .rroute .rt{font-variant-numeric:tabular-nums;color:var(--muted);font-size:12.5px} .rroute .me .rt{color:#1D3058}
+  .rroute .rtag{font-size:11px;font-weight:700;color:#1D3058;background:#e8eef9;border-radius:4px;padding:1px 6px;margin-left:6px;white-space:nowrap}
+  .rfoot{display:flex;justify-content:space-between;align-items:center;gap:10px;border-top:1px solid var(--line);padding-top:10px;font-size:13px} .rfoot b{font-variant-numeric:tabular-nums}
+  .rbtn{font:inherit;font-size:13px;font-weight:600;color:#1D3058;background:#fff;border:1px solid #c4cbd8;border-radius:8px;padding:6px 12px;cursor:pointer} .rbtn:hover,.rbtn:focus-visible{border-color:#1D3058;outline:none}
+    .ithumb.zoom{cursor:zoom-in} .ithumb.zoom:hover,.ithumb.zoom:focus-visible{border-color:#1D3058;outline:none;box-shadow:0 0 0 2px rgba(29,48,88,.25)}
   .photopop{position:fixed;inset:0;background:rgba(9,14,28,.72);z-index:10000;display:flex;align-items:center;justify-content:center;padding:24px}
   .photopop .pbox{position:relative;background:#fff;border-radius:10px;padding:16px;max-width:min(900px,94vw);max-height:90vh;display:flex;flex-direction:column;gap:10px;box-shadow:0 20px 50px rgba(0,0,0,.35)}
   .photopop img{max-width:100%;max-height:calc(90vh - 90px);object-fit:contain;display:block;margin:0 auto}
@@ -1177,9 +1189,22 @@ var SNAP=null, DETAIL={};
         var qrow=el("div","row"); var qname=el("select"); TEAM.concat(["Sam","Ash"].filter(function(n){return TEAM.indexOf(crewOf(n))<0;})).forEach(function(w){ var op=el("option",null,w); op.value=w; qname.appendChild(op); }); qname.setAttribute("aria-label","Who checked it"); var qbtn=el("button","close","Pass QC"); qbtn.onclick=function(){ j.qc={by:qname.value,at:iso(new Date())}; persist(); render(); }; var qna=el("button","close","Not applicable"); qna.onclick=function(){ j.qc={by:qname.value,at:iso(new Date()),na:true}; persist(); render(); }; qrow.appendChild(el("span","hint","Checked by")); qrow.appendChild(qname); qrow.appendChild(qbtn); qrow.appendChild(qna); qb.appendChild(qrow); qb.appendChild(el("div","hint","Not applicable is for jobs with nothing to check, such as a site visit or a straight collection.")); }
       right.appendChild(qb); }
     var rdNow=(!o.shop&&j.site&&!contractorOnly&&j.date)?inRound(j,j.date).filter(function(r){return part.who.indexOf(r.who)>=0;})[0]:null;
+    // THE ROUND, DRAWN (Sam, 2 Oct 2026: "crap UI here", mock approved): Forton, every stop in the order it runs with its
+    // arrival, back at Forton. This job is marked. Times only where travel is known; no sentence about where travel lives.
     if(rdNow){ var rdb=block("Delivery round","drive"); var stopN=(rdNow.order&&rdNow.order.indexOf(j.id)>=0?rdNow.order.indexOf(j.id):rdNow.stops.indexOf(j))+1;
-      rdb.appendChild(el("div","hint","Stop "+stopN+" of "+rdNow.stops.length+" on "+rdNow.who+"'s round"+(rdNow.start&&rdNow.start!==HOME_PC?", setting off from "+rdNow.start:"")+". Travel lives on the round, not here."+(rdNow.drive!=null?" Driving "+fmt(rdNow.drive)+" in all.":" No travel set yet.")));
-      var ob=el("button","p","Open the round"); ob.onclick=function(){ openRound=rdNow.key; open=null; render(); }; rdb.appendChild(ob); right.appendChild(rdb); }
+      rdb.querySelector(".bh").appendChild(el("span","rpill","Stop "+stopN+" of "+rdNow.stops.length));
+      var fromName=rdNow.start&&rdNow.start!==HOME_PC?placeName(rdNow.start):"Forton";
+      rdb.appendChild(el("div","rwho",rdNow.who+", setting off from "+fromName));
+      var tlr=dayTimeline(j.date,rdNow.who), known=tlr.stops.some(function(x){return !x.noDrive;}), rs0=roundsOn(j.date,allJobs().filter(function(x){return onDay(x,j.date);})).filter(function(x){return x.who===rdNow.who;})[0];
+      var setOff=rs0&&rs0.setOff&&parseHM(rs0.setOff)!=null?parseHM(rs0.setOff):DAY_START;
+      var ol=el("ol","rroute"), rrow=function(cls,name,time,mine){ var li=el("li",cls); li.appendChild(el("span","rdot")); var nm=el("span","rname",name); if(mine) nm.appendChild(el("span","rtag","This job")); li.appendChild(nm); li.appendChild(el("span","rt",time||"")); ol.appendChild(li); };
+      rrow("home",fromName,known?hmStr(setOff):"");
+      var seq=tlr.stops.length?tlr.stops.map(function(x){return {j:x.j,t:x.noDrive?"":hmStr(x.arrive)};}):rdNow.stops.map(function(x){return {j:x,t:""};});
+      seq.forEach(function(x){ rrow(x.j===j?"me":"",x.j.title,x.t,x.j===j); });
+      rrow("home","Back at Forton",known?hmStr(tlr.back):"");
+      rdb.appendChild(ol);
+      var rf=el("div","rfoot"); var dv=el("span","rdrv"); if(rdNow.drive!=null){ dv.appendChild(document.createTextNode("Driving ")); dv.appendChild(el("b",null,fmt(rdNow.drive))); dv.appendChild(document.createTextNode(" in all")); } else dv.textContent="No travel set yet"; rf.appendChild(dv);
+      var ob=el("button","rbtn","Edit the round"); ob.onclick=function(){ openRound=rdNow.key; open=null; render(); }; rf.appendChild(ob); rdb.appendChild(rf); right.appendChild(rdb); }
     if(!o.shop && j.site && !contractorOnly && !rdNow){ var drb=block("Travel Time, return","drive"); var r2=el("div","row"); r2.appendChild(hmBoxes(function(){return j.drive;},setDrive,"Drive")); drb.appendChild(r2);
       drb.appendChild(el("div","hint",j.drive!=null?(j.driveAuto?"Road time from OpenStreetMap routing"+(j.roadMiles?", "+j.roadMiles+" miles each way":"")+", plus 20 percent for traffic. Change it if you know better.":"Estimated from the postcode area, plus 20 percent for traffic. Change it if you know better."):(function(){ var dd=DETAIL[j.id], m=PC_FULL.exec(String(j.isLeg?(j.leg.where||""):(dd&&dd.desc)||"").replace(/\*\*/g,""));   // the estimate is off (28 Sep 2026), so a blank box is normal: say where it is going, never "no postcode" when there is one (Sam, 2 Oct 2026, Bluebird PR1 4PD)
       return m?"Going to "+(m[1]+" "+m[2]).toUpperCase()+". Type the return travel time.":"No postcode on the card. Type the return travel time."; })()));
