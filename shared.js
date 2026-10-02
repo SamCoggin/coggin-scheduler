@@ -591,10 +591,13 @@ function arrivalKind(labels,title,desc){
 }
 var ARRIVAL_WHO={collects:"Customer collecting",delivers:"Customer arriving",both:"Customer",waste:"Waste carrier",buyer:"Buyer collecting",supplier:"Supplier arriving"};
 function arrivalText(kind,from,by,collectAt){
+  // ANY ARRIVAL CAN BE A WINDOW (Sam, 2 Oct 2026: "Drop off can be estimated also at times"): one time reads "around",
+  // two read "between"
   if(!kind) return "";
-  if(kind==="both"){ var bits=[]; if(from) bits.push("arrives around "+from); if(collectAt) bits.push("collects around "+collectAt); return bits.length?"Customer "+bits.join(", "):""; }
-  if(kind==="waste"){ if(from&&by) return "Waste carrier between "+from+" and "+by; if(from) return "Waste carrier around "+from; return ""; }
-  return from?ARRIVAL_WHO[kind]+" around "+from:"";
+  var when=function(a,b){ return a&&b?"between "+a+" and "+b:a?"around "+a:""; };
+  if(kind==="both"){ var bits=[]; if(from) bits.push("arrives "+when(from,by)); if(collectAt) bits.push("collects around "+collectAt); return bits.length?"Customer "+bits.join(", "):""; }
+  if(kind==="waste") return from?"Waste carrier "+when(from,by):"";
+  return from?ARRIVAL_WHO[kind]+" "+when(from,by):"";
 }
 function arrivalMissing(kind,from,by,collectAt){ if(!kind) return false; if(kind==="both") return !from||!collectAt; return !from; }
 function arrivalWarning(kind,day){

@@ -1141,8 +1141,8 @@ var SNAP=null, DETAIL={};
     if(!o.shop && !o.leg && !j.site && j.arrive){ var ak=j.arrive, cwb=block(ak==="collects"?"Collection Slot":"Arrival","slot"); var cwr=el("div","row tw");
       var mkC=function(lbl,key){ var lab=el("label",null,lbl); var inp=el("input"); inp.type="time"; inp.step="300"; inp.value=j[key]||""; inp.setAttribute("aria-label",lbl); inp.onchange=function(){ j[key]=inp.value||null; if(key==="from") j.fromAuto=false; persist(); render(); }; lab.appendChild(inp); return lab; };
       if(ak==="waste"){ cwr.appendChild(mkC("Waste carrier arrives between","from")); cwr.appendChild(mkC("and","by")); }
-      else if(ak==="both"){ cwr.appendChild(mkC("Customer arrives","from")); cwr.appendChild(mkC("Customer collects","collectAt")); }
-      else cwr.appendChild(mkC(ak==="collects"?"Estimated collection time":ak==="buyer"?"Buyer collects around":ak==="supplier"?"Supplier arrives around":"Customer arrives around","from"));
+      else if(ak==="both"){ cwr.appendChild(mkC("Customer arrives","from")); cwr.appendChild(mkC("or between that and","by")); cwr.appendChild(mkC("Customer collects","collectAt")); }
+      else { cwr.appendChild(mkC(ak==="collects"?"Estimated collection time":ak==="buyer"?"Buyer collects around":ak==="supplier"?"Supplier arrives around":"Customer arrives around","from")); cwr.appendChild(mkC("or between that and","by")); }
       cwb.appendChild(cwr);
       var atx=arrivalText(ak,j.from,j.by,j.collectAt);
       cwb.appendChild(el("div","hint",atx?atx+(j.fromAuto?", taken from the drop-off plan on the deal":"")+"."+(ak==="waste"&&!j.by?" Leave the second time blank if they gave one time.":""):(ak==="waste"?"Put in the carrier's window when they give it. Leave the second time blank if they give one time.":"Leave blank until they give a time. Put it in when they do, so Forton is not empty when they turn up.")));

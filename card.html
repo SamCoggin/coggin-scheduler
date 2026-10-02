@@ -472,8 +472,8 @@
           var aTxt=arrivalText(ak,d.from,d.by,d.collectAt)||(ak==="waste"?"No window from the carrier yet":"No time given yet");
           ts.appendChild(rowEl("slot",ak==="collects"?"Collection slot":ak==="waste"?"Carrier window":ak==="both"?"Arrives and collects":"Expected arrival",aTxt+(d.fromAuto?", from the CRM":""),function(ed){
             if(ak==="waste"){ ed.appendChild(tIn("Arrives between","from")); ed.appendChild(tIn("and","by")); ed.appendChild(el("div","hint","Leave the second time blank if they give one time.")); }
-            else if(ak==="both"){ ed.appendChild(tIn("Customer arrives","from")); ed.appendChild(tIn("Customer collects","collectAt")); }
-            else ed.appendChild(tIn(ak==="collects"?"Estimated collection time":"Expected around","from"));
+            else if(ak==="both"){ ed.appendChild(tIn("Customer arrives","from")); ed.appendChild(tIn("or between that and","by")); ed.appendChild(tIn("Customer collects","collectAt")); }
+            else { ed.appendChild(tIn(ak==="collects"?"Estimated collection time":"Expected around","from")); ed.appendChild(tIn("or between that and","by")); ed.appendChild(el("div","hint","Fill the second time only when they give a window.")); }
             ed.appendChild(el("div","hint",d.fromAuto?"Taken from the drop-off plan on the deal. Change it if they give another time.":"Leave blank until they give a time. Put it in when they do, so Forton is not empty when they turn up."));
           },arrivalMissing(ak,d.from,d.by,d.collectAt)?"todo":"")); }
         if(qcApplies&&!qcPlaced) ts.appendChild(qcRow());
