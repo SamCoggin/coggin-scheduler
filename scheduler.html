@@ -2447,7 +2447,7 @@ var SNAP=null, DETAIL={};
               kit.header("Job · Production · "+b.title,r.name,[c[3],j.prodDue?"due "+niceDay(j.prodDue):"",j.date?"for "+(j.site?"delivery ":"")+niceDay(j.date):"",i.ref?"Ref "+i.ref:""].filter(Boolean).join(" · "),"https://trello.com/c/"+(j.short||j.id),"Scan to open the Trello card");
               starts[r.key]=doc.getNumberOfPages();
               // STEPS AS SAM WROTE THEM (2 Oct 2026); a job already In-progress has step 1 done
-              kit.steps([{t:"Move the job into In-progress",done:j.stage==="In progress"},"When complete, tick off the checklist","Move the job into the completed list"]);
+              kit.steps([{t:"Move the job into In-progress",done:j.stage==="In progress"},"When complete, tick off the checklist","Move the job into Ready for Delivery / Collection"]);
               kit.heading(0,i.allPicked?"All finished":fin?"Items to finish":"Pick and finish"); y=kit.getY();
               if(lines.length){ lines.forEach(function(l){ if(y+lineH(l)>278){ kit.setFoot("This job carries on over the page."); kit.header("Job · Production · "+b.title,r.name,"",null,"",true); y=kit.getY(); } drawLine(l); }); kit.setY(y); }
               else { var inf=DATA.info[r.card]||(DATA.byCard[r.card]?{items:DATA.byCard[r.card].stop.items}:null); kit.items(inf&&inf.items?inf.items:[],function(){ kit.setFoot("This job carries on over the page."); kit.header("Job · Production · "+b.title,r.name,"",null,"",true); }); }
