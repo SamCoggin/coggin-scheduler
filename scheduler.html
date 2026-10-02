@@ -266,6 +266,12 @@
   .wcrew{display:grid;grid-template-columns:52px minmax(0,1fr) 62px;gap:6px;align-items:center;font-size:12px;margin:2px 0}
   .wcrew .wn{font-weight:700} .wcrew .wt{text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums} .wcrew .wt.over{color:var(--red);font-weight:700} .wcrew .wt.free{color:var(--muted)} .wcrew .wt.todo{color:var(--amber)}
   .wbar2{height:6px;border-radius:3px;background:var(--line);overflow:hidden} .wbar2 i{display:block;height:100%;background:#378add} .wbar2 i.o{background:var(--red)} .wcrew .wbk{color:var(--muted);font-size:11px}
+  .actrow{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1.5fr) minmax(0,1fr);gap:10px;align-items:center;padding:8px 0;border-top:1px solid var(--line);position:relative}
+  .actrow b{display:block;font-size:14px} .actrow small{display:block;color:var(--muted);font-size:12px} .actrow.nd{opacity:.55}
+  .actwho{display:flex;flex-wrap:wrap;gap:4px} .actwho button{border:1px solid var(--line);background:var(--card);border-radius:6px;padding:3px 7px;font-size:12px;font-weight:600;cursor:pointer} .actwho button.on{background:#172b4d;color:#fff;border-color:#172b4d}
+  .acttime{display:flex;flex-wrap:wrap;align-items:center;gap:4px;font-size:12px} .acttime input[type=number]{width:52px} .actnd{display:block;width:100%;color:var(--muted);font-size:12px}
+  .acttyped{position:absolute;right:0;top:6px;font-size:11px;color:var(--green);font-weight:700}
+  .timrow{display:grid;grid-template-columns:minmax(0,1.6fr) 50px 80px 80px 90px minmax(0,1fr);gap:8px;padding:5px 0;border-top:1px solid var(--line);font-size:13px;font-variant-numeric:tabular-nums} .timrow.head{color:var(--muted);font-size:12px;border-top:0} .timrow.over span:nth-child(5){color:var(--red);font-weight:700} .timrow.under span:nth-child(5){color:var(--green);font-weight:700}
   .wmore{display:block;width:100%;text-align:left;border:0;background:transparent;color:var(--blue);font-weight:700;font-size:12px;padding:2px 4px;cursor:pointer}
   .tot .chip{border-radius:6px;padding:2px 7px;background:var(--list);white-space:nowrap;font-weight:600}
   .tot .chip b{font-weight:800}
@@ -415,7 +421,7 @@
   <h1>Scheduler</h1>
   <span class="src" id="src">Reading the board...</span>
   <span class="views"><button id="vday" class="on">Day</button><button id="vweek">Week</button><button id="vmonth">Month</button></span>
-  <button id="need" hidden title="Show only the jobs still missing operatives, time, travel or a van">Outstanding</button><button id="prev">Back</button><span class="t" id="title"></span><button id="next">Next</button><button id="pdf" title="Download as a PDF file" hidden>Download schedule</button><button id="sheets" title="One page per operative for the day in view, to hand out in the morning and hand back at night" hidden>Job sheets</button><button id="guide" title="How to use the Scheduler" hidden>Guide</button>
+  <button id="need" hidden title="Show only the jobs still missing operatives, time, travel or a van">Outstanding</button><button id="prev">Back</button><span class="t" id="title"></span><button id="next">Next</button><button id="pdf" title="Download as a PDF file" hidden>Download schedule</button><button id="sheets" title="One page per operative for the day in view, to hand out in the morning and hand back at night" hidden>Job sheets</button><button id="guide" title="How to use the Scheduler" hidden>Guide</button><button id="actuals" title="Type in what came back on the day sheet: who did each job and the actual time" hidden>Enter day sheet</button><button id="timings" title="Planned against actual over the last four weeks" hidden>Timings</button>
 </div>
 <div class="strip" id="strip" hidden></div>
 <div class="board" id="board"></div>
@@ -749,6 +755,72 @@ var SNAP=null, DETAIL={};
   var TALLIES={};   // "date|who" -> {units, notes, target, minutes, shredding:[{material,cages,kg}]}
   var SHRED_OPEN=null;   // the operative whose shredding rows are open on the Day view
   function tallyKey(k,w){ return k+"|"+w; }
+
+  // ── WHAT REALLY HAPPENED (Sam, 1 Oct 2026: "I also want the operatives to add the actual time taken and who actually
+  // did the job so I can get insight to timings and people needed", paper first, typed in by operations). The day sheet
+  // has a strip on every job for ticking who did it and writing the time; Enter day sheet types it in, saved to the
+  // CRM's JobActual (Trello card data is too small for it). A day that has gone with jobs not typed in shows in the
+  // week's Needs a decision. Timings compares planned with actual over four weeks.
+  var CRM_ACTUALS_URL="https://coggin-sos-os.base44.app/api/apps/69c930a6240fba922f369aa2/functions/jobActuals";
+  var ACTUALS={}, ACTUALS_OK=false, ACT_OPEN=null, ACT_DRAFT=null, TIMINGS_OPEN=false;
+  function fetchActuals(){ if(!CRM_KEY) return Promise.resolve();
+    return fetch(CRM_ACTUALS_URL,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({key:CRM_KEY,action:"list",from:iso(addDays(TODAY,-60)),to:iso(TODAY)})}).then(function(x){return x.json();}).then(function(r){ if(!(r&&r.ok)) return; ACTUALS={}; (r.rows||[]).forEach(function(a){ ACTUALS[a.row_key]=a; }); ACTUALS_OK=true; }).catch(function(){}); }
+  function jobName(j){ var t=(j.title||"").split(" - "); return t.length>1?t.slice(1).join(" - "):j.title; }
+  // the jobs on that day's sheet, one row each, with what was planned
+  function dayParts(k){
+    var out=[];
+    prepJobs().filter(function(j){ return !j.isHold&&j.prep&&j.prep.date&&daysOf(j.prep).indexOf(k)>=0; }).forEach(function(j){
+      var w0=j.prep.who[0]; out.push({key:k+"|"+j.id+"|prep",card:j.id,part:"production",title:jobName(j),sub:"Production",work:j.work||"",movement:j.movement||"",who:j.prep.who.slice(),mins:j.prep.mins!=null?Math.round(prepShare(j,w0)):null}); });
+    allJobs().filter(function(j){ return onDay(j,k)&&!j.isHold&&!(j.contractor&&!j.who.length); }).forEach(function(j){
+      if(j.isLeg&&j.leg){ var pj=j.parentJob||j, part=j.leg.type==="production"?"production":(j.leg.type==="labour"?"labour":"transport");
+        out.push({key:k+"|"+pj.id+"|"+j.leg.type+"|"+(j.leg.where||""),card:pj.id,part:part,title:jobName(pj),sub:(part==="production"?"Production":"Labour")+(j.leg.where?", "+j.leg.where:""),work:pj.work||"",movement:j.leg.type,who:(j.who||[]).slice(),mins:j.mins!=null?j.mins:null}); return; }
+      out.push({key:k+"|"+j.id+"|job",card:j.id,part:j.site?"transport":"labour",title:jobName(j),sub:j.site?"Transport":"Labour Operations",work:j.work||"",movement:j.movement||"",who:(j.who||[]).slice(),mins:j.who.length?minsFor(j,j.who[0]):j.mins}); });
+    return out;
+  }
+  function dayGone(k){ return k<iso(TODAY)||(k===iso(TODAY)&&minsLeftOn(k)===0); }
+  function unrecorded(k){ if(!ACTUALS_OK||!dayGone(k)) return []; return dayParts(k).filter(function(p){ return !ACTUALS[p.key]&&(p.who.length||p.mins!=null); }); }
+  function actualsModal(){
+    var k=ACT_OPEN; if(!k) return null;
+    var parts=dayParts(k);
+    if(!ACT_DRAFT||ACT_DRAFT.k!==k){ ACT_DRAFT={k:k,rows:parts.map(function(p){ var a=ACTUALS[p.key]; return {p:p,who:a?(a.actual_who||[]).slice():p.who.slice(),mins:a?a.actual_mins:(p.mins!=null?p.mins:null),not_done:a?!!a.not_done:false,typed:!!a}; })}; }
+    var veil=el("div","veil"); veil.onclick=function(e){ if(e.target===veil){ ACT_OPEN=null; ACT_DRAFT=null; render(); } };
+    var m=el("div","modal wide"); var head=el("div","head"); var ht=el("div"); ht.appendChild(el("h3",null,"Day sheet, "+niceDay(k))); ht.appendChild(el("div","sub","Type in what came back on the sheet: who did each job and the actual time each. Planned is filled in, so change only what was different.")); head.appendChild(ht);
+    var cl=el("button","close","Close"); cl.onclick=function(){ ACT_OPEN=null; ACT_DRAFT=null; render(); }; head.appendChild(cl); m.appendChild(head);
+    if(!CRM_KEY){ m.appendChild(el("div","hint far","The CRM key is not set on this board, so nothing can be saved.")); veil.appendChild(m); return veil; }
+    if(!parts.length) m.appendChild(el("div","hint","Nothing was booked on this day."));
+    ACT_DRAFT.rows.forEach(function(r){ var row=el("div","actrow"+(r.not_done?" nd":""));
+      var c1=el("div"); c1.appendChild(el("b",null,r.p.title)); c1.appendChild(el("small",null,r.p.sub+" · planned "+(r.p.who.length?r.p.who.map(function(w){return w.split(" ")[0];}).join(", "):"nobody")+(r.p.mins!=null?", "+fmt(r.p.mins)+(r.p.who.length>1?" each":""):""))); row.appendChild(c1);
+      var c2=el("div","actwho"); TEAM.forEach(function(w){ var on=r.who.indexOf(w)>=0; var b=el("button",on?"on":"",w.split(" ")[0]); b.onclick=function(){ var i=r.who.indexOf(w); if(i>=0) r.who.splice(i,1); else r.who.push(w); render(); }; c2.appendChild(b); }); row.appendChild(c2);
+      var c3=el("div","acttime"); var hh=el("input"); hh.type="number"; hh.min="0"; hh.placeholder="h"; hh.value=r.mins!=null?String(Math.floor(r.mins/60)):""; hh.setAttribute("aria-label",r.p.title+" actual hours"); var mm=el("input"); mm.type="number"; mm.min="0"; mm.step="5"; mm.placeholder="min"; mm.value=r.mins!=null?String(r.mins%60):""; mm.setAttribute("aria-label",r.p.title+" actual minutes");
+        var upd=function(){ var h=parseInt(hh.value,10), mi=parseInt(mm.value,10); r.mins=(isNaN(h)&&isNaN(mi))?null:(h||0)*60+(mi||0); }; hh.onchange=upd; mm.onchange=upd; c3.appendChild(hh); c3.appendChild(el("span",null,"h")); c3.appendChild(mm); c3.appendChild(el("span",null,"min"));
+        var nd=el("label","actnd"); var cb=el("input"); cb.type="checkbox"; cb.checked=r.not_done; cb.onchange=function(){ r.not_done=cb.checked; render(); }; nd.appendChild(cb); nd.appendChild(document.createTextNode(" did not happen")); c3.appendChild(nd); row.appendChild(c3);
+      if(r.typed) row.appendChild(el("span","acttyped","saved")); m.appendChild(row); });
+    var msg=el("div","hint"); var sv=el("button","p","Save the day sheet"); sv.onclick=function(){
+      var rows=ACT_DRAFT.rows.map(function(r){ return {date:k,row_key:r.p.key,card_id:r.p.card,part:r.p.part,title:r.p.title,work:r.p.work,movement:r.p.movement,planned_who:r.p.who,planned_mins:r.p.mins,actual_who:r.not_done?[]:r.who,actual_mins:r.not_done?null:r.mins,not_done:r.not_done,entered_by:"scheduler"}; });
+      sv.disabled=true; msg.textContent="Saving...";
+      fetch(CRM_ACTUALS_URL,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({key:CRM_KEY,action:"save",rows:rows})}).then(function(x){return x.json();}).then(function(res){ if(!(res&&res.ok)) throw new Error(res&&res.error||"not saved");
+        rows.forEach(function(r){ ACTUALS[r.row_key]={row_key:r.row_key,date:r.date,card_id:r.card_id,part:r.part,title:r.title,work:r.work,movement:r.movement,planned_who:r.planned_who,planned_mins:r.planned_mins,actual_who:r.actual_who,actual_mins:r.actual_mins,not_done:r.not_done}; });
+        ACT_OPEN=null; ACT_DRAFT=null; render(); }).catch(function(e){ sv.disabled=false; msg.className="hint far"; msg.textContent="Could not save: "+(e&&e.message||e)+". Try again."; }); };
+    var ft=el("div","row"); ft.style.marginTop="14px"; ft.appendChild(sv); ft.appendChild(msg); m.appendChild(ft);
+    veil.appendChild(m); return veil;
+  }
+  // planned against actual over the last four weeks, by kind of work and by person
+  function timingsModal(){
+    if(!TIMINGS_OPEN) return null;
+    var veil=el("div","veil"); veil.onclick=function(e){ if(e.target===veil){ TIMINGS_OPEN=false; render(); } };
+    var m=el("div","modal wide"); var head=el("div","head"); var ht=el("div"); ht.appendChild(el("h3",null,"Timings, last four weeks")); ht.appendChild(el("div","sub","Planned against actual, from the day sheets typed in. Over 100 percent means jobs took longer than planned.")); head.appendChild(ht);
+    var cl=el("button","close","Close"); cl.onclick=function(){ TIMINGS_OPEN=false; render(); }; head.appendChild(cl); m.appendChild(head);
+    var from=iso(addDays(TODAY,-28)), rows=Object.keys(ACTUALS).map(function(kk){return ACTUALS[kk];}).filter(function(a){ return a.date>=from&&!a.not_done&&a.actual_mins!=null&&a.planned_mins!=null; });
+    if(!rows.length){ m.appendChild(el("div","hint","No day sheets typed in yet. Enter day sheet on the Day view fills this.")); veil.appendChild(m); return veil; }
+    var table=function(title,byPerson,keyOf){ m.appendChild(el("div","lbl",title)); var g={};
+      rows.forEach(function(a){ keyOf(a).forEach(function(kk){ var x=g[kk]=g[kk]||{n:0,plan:0,act:0,pp:0,pa:0}; x.n++; x.plan+=byPerson?a.planned_mins:a.planned_mins*Math.max(1,(a.planned_who||[]).length); x.act+=byPerson?a.actual_mins:a.actual_mins*Math.max(1,(a.actual_who||[]).length); x.pp+=(a.planned_who||[]).length; x.pa+=(a.actual_who||[]).length; }); });
+      var hd=el("div","timrow head"); ["","Jobs","Planned","Actual","Against plan",byPerson?"":"People planned / used"].forEach(function(t){ hd.appendChild(el("span",null,t)); }); m.appendChild(hd);
+      Object.keys(g).sort(function(a,b){ return g[b].act-g[a].act; }).forEach(function(kk){ var x=g[kk], pct=x.plan?Math.round(x.act/x.plan*100):null; var r=el("div","timrow"+(pct!=null&&pct>120?" over":pct!=null&&pct<85?" under":""));
+        r.appendChild(el("b",null,kk)); r.appendChild(el("span",null,String(x.n))); r.appendChild(el("span",null,fmt(x.plan))); r.appendChild(el("span",null,fmt(x.act))); r.appendChild(el("span",null,pct==null?"":pct+"%")); r.appendChild(el("span",null,byPerson?"":(x.pp/x.n).toFixed(1)+" / "+(x.pa/x.n).toFixed(1))); m.appendChild(r); }); };
+    table("By kind of work",false,function(a){ return [(a.part==="production"?"Production":a.part==="transport"?"Transport":"Labour")+(a.work?", "+a.work:"")]; });
+    table("By person",true,function(a){ return (a.actual_who||[]).slice(); });
+    veil.appendChild(m); return veil;
+  }
   function fetchTallies(){ if(!CRM_KEY) return Promise.resolve();
     return fetch(CRM_TALLY_URL,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({key:CRM_KEY,action:"list",from:iso(addDays(TODAY,-35)),to:iso(addDays(TODAY,14))})}).then(function(x){return x.json();}).then(function(r){ if(!(r&&r.ok)) return; (r.rows||[]).forEach(function(t){ TALLIES[tallyKey(String(t.date).slice(0,10),t.operative)]={units:t.units,notes:t.notes||"",target:t.target,minutes:t.minutes,shredding:t.shredding||[]}; }); }).catch(function(){}); }
   // THE OPERATIVE ROW, one shape for the job dialog and the day view (Sam, 29 Sep
@@ -1464,7 +1536,7 @@ var SNAP=null, DETAIL={};
       pc.appendChild(row);
     });
     pl.appendChild(pc); b.appendChild(pl);
-    var mo=openRound?roundModal():modal(); if(mo){ document.body.appendChild(mo); if(window.__keepScroll) mo.scrollTop=window.__keepScroll; }
+    var mo=ACT_OPEN?actualsModal():TIMINGS_OPEN?timingsModal():openRound?roundModal():modal(); if(mo){ document.body.appendChild(mo); if(window.__keepScroll) mo.scrollTop=window.__keepScroll; }
     $("#prev").onclick=function(){ var x=new Date(dayCur+"T12:00"); do{x.setDate(x.getDate()-1);}while(x.getDay()===0||x.getDay()===6); dayCur=iso(x); render(); };
     $("#next").onclick=function(){ var x=new Date(dayCur+"T12:00"); do{x.setDate(x.getDate()+1);}while(x.getDay()===0||x.getDay()===6); dayCur=iso(x); render(); };
   }
@@ -2012,8 +2084,12 @@ var SNAP=null, DETAIL={};
       var m=Math.round(l.mins||0); return {w:w,t:m?fmt(m)+" booked":"Nothing booked",over:m>DAY_MINS}; });
     TEAM.filter(function(w){ return !field(w)&&load[w]&&load[w].c!=="office"&&load[w].c!=="off"; }).forEach(function(w){ crew.push({w:w,t:"Backup"}); });
     crew.sort(function(a,b){ return (a.off?1:0)-(b.off?1:0); });   // anyone off goes at the end of the strip
-    var build=function(sc){
-      var doc=new J({orientation:"portrait",unit:"mm",format:"a4"}), L=14, W=182, G=5, CW=(W-G)/2, fs=10.5*sc, qs=Math.max(11,15*sc), y=17;
+    var build=function(sc,paged){
+      var doc=new J({orientation:"portrait",unit:"mm",format:"a4"}), L=14, W=182, G=5, CW=(W-G)/2, fs=10.5*sc, qs=Math.max(11,15*sc), y=17, STRIP=12.5;
+      // A BUSY DAY RUNS ONTO A SECOND PAGE (2 Oct 2026): with the write-in strip on every job, squeezing a busy day onto one
+      // page made the type too small to write against, so it carries on, the date at the top of each page.
+      var foot=function(){ doc.setFont("helvetica","normal"); doc.setFontSize(8); doc.setTextColor(90); doc.text("Tick each job when done. Scan a code to open the job in Trello. Hand the sheet back at the end of the day.",L,287); doc.text("Coggin SOS",L+W,287,{align:"right"}); doc.setTextColor(0); };
+      var newPage=function(){ foot(); doc.addPage(); y=14; doc.setFont("helvetica","bold"); doc.setFontSize(12); doc.text(niceDay(k)+", continued",L,y); y+=6; };
       doc.setFont("helvetica","bold"); doc.setFontSize(21); doc.text(niceDay(k),L,y);
       doc.setFont("helvetica","normal"); doc.setFontSize(8.5); doc.setTextColor(90); var pr=new Date();
       doc.text("Day sheet · 8:00 to 16:30",L+W,y-4.5,{align:"right"}); doc.text("Printed "+niceShort(iso(pr))+" "+String(pr.getHours()).padStart(2,"0")+":"+String(pr.getMinutes()).padStart(2,"0"),L+W,y,{align:"right"}); doc.setTextColor(0); y+=5;
@@ -2025,29 +2101,38 @@ var SNAP=null, DETAIL={};
       y+=17;
       var bar=function(title,count){ doc.setFillColor(17,17,17); doc.roundedRect(L,y,W,6.5,0.8,0.8,"F"); doc.setTextColor(255); doc.setFont("helvetica","bold"); doc.setFontSize(8.5); doc.text(title.toUpperCase(),L+3,y+4.5); if(count) doc.text(count,L+W-3,y+4.5,{align:"right"}); doc.setTextColor(0); y+=9.5; };
       var tx0=function(x){ return x+qs+6; }, tw0=CW-qs-15;
-      var need=function(r){ var h=3.5; doc.setFont("helvetica","bold"); doc.setFontSize(fs+1); h+=doc.splitTextToSize(r[0],tw0).length*(fs+1)*0.4; doc.setFont("helvetica","normal"); doc.setFontSize(fs-1.5); if(r[1]) h+=doc.splitTextToSize(r[1],tw0).length*(fs-1.5)*0.4+0.6; h+=fs*0.45+2.5; return Math.max(qs+6,h+2); };
+      var need=function(r){ var h=3.5; doc.setFont("helvetica","bold"); doc.setFontSize(fs+1); h+=doc.splitTextToSize(r[0],tw0).length*(fs+1)*0.4; doc.setFont("helvetica","normal"); doc.setFontSize(fs-1.5); if(r[1]) h+=doc.splitTextToSize(r[1],tw0).length*(fs-1.5)*0.4+0.6; h+=fs*0.45+2.5; return Math.max(qs+6,h+2)+STRIP; };
       var box=function(r,x,y0,h){ doc.setDrawColor(150); doc.setLineWidth(0.3); doc.roundedRect(x,y0,CW,h,1.2,1.2); doc.setDrawColor(0);
         if(r[4]) qrAt(doc,"https://trello.com/c/"+r[4],x+3,y0+3,qs);
         doc.setLineWidth(0.45); doc.setDrawColor(17); doc.roundedRect(x+CW-8,y0+3,5,5,0.6,0.6); doc.setDrawColor(0);
         var tx=tx0(x), ty=y0+3.5+(fs+1)*0.33; doc.setFont("helvetica","bold"); doc.setFontSize(fs+1); var nl=doc.splitTextToSize(r[0],tw0); doc.text(nl,tx,ty); ty+=(nl.length-1)*(fs+1)*0.4+1;
         if(r[1]){ doc.setFont("helvetica","normal"); doc.setFontSize(fs-1.5); doc.setTextColor(85); var sl=doc.splitTextToSize(r[1],tw0); doc.text(sl,tx,ty+(fs-1.5)*0.35); ty+=sl.length*(fs-1.5)*0.4+0.6; doc.setTextColor(0); }
-        var by=y0+h-3; doc.setFont("helvetica","normal"); doc.setFontSize(fs-0.5); doc.text(doc.splitTextToSize(r[2],CW-qs-6-30)[0],tx,by);
+        // WHAT REALLY HAPPENED, written on the sheet (Sam, 1 Oct 2026): tick who did it, write the time each
+        var sy=y0+h-STRIP+1.5; doc.setDrawColor(150); doc.setLineDashPattern([0.8,0.8],0); doc.line(x+3,sy,x+CW-3,sy); doc.setLineDashPattern([],0); doc.setDrawColor(0);
+        doc.setFont("helvetica","bold"); doc.setFontSize(6.5); doc.setTextColor(90); doc.text("WHO DID IT",x+3,sy+3.6); doc.setTextColor(0); doc.setFont("helvetica","normal"); doc.setFontSize(7.5);
+        var fns=TEAM.map(function(w){return w.split(" ")[0];}), room=CW-3-19, fsz=7.5, need0=function(){ doc.setFontSize(fsz); return fns.reduce(function(t,f){return t+doc.getTextWidth(f)+3.4;},0); };
+        while(need0()>room-2*(fns.length-1)&&fsz>5.5) fsz-=0.25; var gap=Math.max(1.5,(room-need0())/Math.max(1,fns.length-1)); doc.setFontSize(fsz);
+        var nx=x+19; fns.forEach(function(fn){ doc.setLineWidth(0.25); doc.rect(nx,sy+1.3,2.6,2.6); doc.text(fn,nx+3.4,sy+3.6); nx+=doc.getTextWidth(fn)+3.4+gap; });
+        doc.setFontSize(7.5); doc.text("Actual time each",x+3,sy+9); var lx=x+3+doc.getTextWidth("Actual time each")+2; doc.setLineWidth(0.25); doc.line(lx,sy+9.4,lx+10,sy+9.4); doc.text("h",lx+11,sy+9); doc.line(lx+15,sy+9.4,lx+25,sy+9.4); doc.text("min",lx+26,sy+9);
+        var by=y0+h-STRIP-1.5; doc.setFont("helvetica","normal"); doc.setFontSize(fs-0.5); doc.text(doc.splitTextToSize(r[2],CW-qs-6-30)[0],tx,by);
         if(r[3]){ doc.setFont("helvetica","bold"); doc.setFontSize(fs+0.5); doc.text(r[3],x+CW-3,by,{align:"right"}); } };
-      var sect=function(title,rows){ if(!rows.length) return; bar(title,rows.length+(rows.length===1?" job":" jobs"));
-        for(var i=0;i<rows.length;i+=2){ var h=Math.max(need(rows[i]),rows[i+1]?need(rows[i+1]):0); box(rows[i],L,y,h); if(rows[i+1]) box(rows[i+1],L+CW+G,y,h); y+=h+3.5; } y+=1; };
+      var sect=function(title,rows){ if(!rows.length) return; if(paged){ var h0=Math.max(need(rows[0]),rows[1]?need(rows[1]):0); if(y+9.5+h0>280) newPage(); }   /* a heading never sits alone at the foot of a page */ bar(title,rows.length+(rows.length===1?" job":" jobs"));
+        for(var i=0;i<rows.length;i+=2){ var h=Math.max(need(rows[i]),rows[i+1]?need(rows[i+1]):0); if(paged&&y+h>280){ newPage(); bar(title+", continued",""); } box(rows[i],L,y,h); if(rows[i+1]) box(rows[i+1],L+CW+G,y,h); y+=h+3.5; } y+=1; };
       sect("Production",prod); sect("Transport",road); sect("Labour operations",lab);
       // AVAILABLE TIME (Sam, 1 Oct 2026: "remove notes and improve the UI of this section", no tick boxes): the order as two
       // numbered steps, then a box per person with their spare time in bold. Notes are gone.
+      if(recW.length&&paged&&y+11+Math.ceil(recW.length/2)*13>280) newPage();
       if(recW.length){ bar("Available time",recW.length+(recW.length===1?" person":" people"));
         var stp=function(n,x,bold,rest){ doc.setFillColor(17,17,17); doc.circle(x+2.6,y+1.2,2.6,"F"); doc.setTextColor(255); doc.setFont("helvetica","bold"); doc.setFontSize(9); doc.text(String(n),x+2.6,y+2.4,{align:"center"}); doc.setTextColor(0);
           doc.setFontSize(9.5); doc.text(bold,x+7,y+2.2); var bw=doc.getTextWidth(bold+" "); doc.setFont("helvetica","normal"); var rl2=doc.splitTextToSize(rest,CW-9-bw); doc.text(rl2[0],x+7+bw,y+2.2); if(rl2.length>1) doc.text(doc.splitTextToSize(rl2.slice(1).join(" "),CW-9),x+7,y+6.2); };
         stp(1,L,"Production support first.","Help where it is needed."); stp(2,L+CW+G,"Not needed?","Report to the operations manager."); y+=11;
         for(var ai=0;ai<recW.length;ai+=2){ [0,1].forEach(function(o2){ var a=recW[ai+o2]; if(!a) return; var x=L+o2*(CW+G); doc.setDrawColor(150); doc.setLineWidth(0.3); doc.roundedRect(x,y,CW,10,1.2,1.2); doc.setDrawColor(0);
             doc.setFont("helvetica","bold"); doc.setFontSize(11); doc.text(a.w,x+3.5,y+6.6); doc.setFontSize(13); doc.text(fmt(a.m),x+CW-3.5,y+6.8,{align:"right"}); }); y+=13; } }
-      doc.setFont("helvetica","normal"); doc.setFontSize(8); doc.setTextColor(90); doc.text("Tick each job when done. Scan a code to open the job in Trello. Hand the sheet back at the end of the day.",L,287); doc.text("Coggin SOS",L+W,287,{align:"right"}); doc.setTextColor(0);
+      foot();
       return {doc:doc,fits:y<281};
     };
-    var r=null; for(var sc=1;sc>=0.6;sc-=0.05){ r=build(sc); if(r.fits) break; }
+    var r=null; for(var sc=1;sc>=0.85;sc-=0.05){ r=build(sc,false); if(r.fits&&r.doc.getNumberOfPages()===1) break; r=null; }
+    if(!r) r=build(1,true);
     r.doc.save("day-sheet-"+k+".pdf");
   }
   function crewSheetsPdf(k,onlyW){
@@ -2223,7 +2308,9 @@ var SNAP=null, DETAIL={};
   function render(){
     persist();
     $("#pdf").onclick=function(){ try{ schedulePdf(); }catch(e){ alert("The PDF could not be built: "+(e&&e.message||e)); } };
-    $("#pdf").textContent="Download schedule"; $("#sheets").hidden=view!=="day"; $("#sheets").textContent="Download day sheet"; $("#sheets").title="One page for the day in view, to print and hand to the operatives"; $("#sheets").onclick=function(){ try{ daySheetPdf(dayCur); }catch(e){ alert("The day sheet could not be built: "+(e&&e.message||e)); } }; $("#guide").onclick=function(){ location.href="./guide.html"; };
+    $("#pdf").textContent="Download schedule"; $("#sheets").hidden=view!=="day"; $("#sheets").textContent="Download day sheet"; $("#sheets").title="One page for the day in view, to print and hand to the operatives"; $("#sheets").onclick=function(){ try{ daySheetPdf(dayCur); }catch(e){ alert("The day sheet could not be built: "+(e&&e.message||e)); } };
+    $("#actuals").hidden=!(view==="day"&&dayCur<=iso(TODAY)); var unN=view==="day"?unrecorded(dayCur).length:0; $("#actuals").textContent="Enter day sheet"+(unN?" ("+unN+" to do)":""); $("#actuals").onclick=function(){ ACT_OPEN=dayCur; ACT_DRAFT=null; render(); };
+    $("#timings").hidden=!(view==="day"||view==="week"); $("#timings").onclick=function(){ TIMINGS_OPEN=true; render(); }; $("#guide").onclick=function(){ location.href="./guide.html"; };
     if(t&&view!=="manager"&&view!=="month") setTimeout(refreshRounds,0);
     $("#need").hidden=true; /* Outstanding, Download schedule and Guide are off the toolbar (Sam, 29 Sep 2026); the week view keeps its Outstanding tile */ $("#pdf").hidden=true; $("#guide").hidden=true; $("#need").className=NEED?"on":""; var nTP=toPlanCount(); $("#need").textContent="Outstanding"+(nTP?" ("+nTP+")":""); $("#need").title=nTP?nTP+(nTP===1?" job still needs":" jobs still need")+" operatives, time, travel or a van on the "+(view==="day"?"day":view==="month"?"month":"week")+" in view":"Everything in view is planned"; $("#need").onclick=function(){ NEED=!NEED; render(); };
     document.body.onclick=function(){ if(tipOpen){ tipOpen=null; render(); } };
@@ -2323,12 +2410,15 @@ var SNAP=null, DETAIL={};
       else if(st.planned&&st.cls==="late"&&j.prep.date>=iso(mon)&&j.prep.date<=wkEnd) LATEQ.push({k:j.prep.date,title:short(j),j:j,prep:true,amber:false,text:st.full}); });
     if(PLANQ.length){ railItems.unshift.apply(railItems,[{sep:PLANQ.length+" needs planning"}].concat(PLANQ)); }
     if(LATEQ.length){ railItems.splice(PLANQ.length?PLANQ.length+1:0,0,{sep:LATEQ.length+" production late"}); railItems.splice.apply(railItems,[PLANQ.length?PLANQ.length+2:1,0].concat(LATEQ)); }
-    if(ISSUES.length&&(TOPLAN.length||REQUESTS.length||TORECORD.length||PLANQ.length||LATEQ.length)) railItems.push({sep:"Warnings"});
+    // DAY SHEETS NOT TYPED IN (1 Oct 2026): a day that has gone with jobs still to record, so gaps get chased while people remember
+    var SHEETQ=[]; for(var di=0;di<5;di++){ var dk=iso(addDays(mon,di)), un=unrecorded(dk); if(un.length) SHEETQ.push({k:dk,title:"Day sheet",sheet:true,amber:true,text:un.length+(un.length===1?" job":" jobs")+" not typed in yet"}); }
+    if(SHEETQ.length){ railItems.push({sep:SHEETQ.length+(SHEETQ.length===1?" day sheet":" day sheets")+" to type in"}); railItems=railItems.concat(SHEETQ); }
+    if(ISSUES.length&&(TOPLAN.length||REQUESTS.length||TORECORD.length||PLANQ.length||LATEQ.length||SHEETQ.length)) railItems.push({sep:"Warnings"});
     try{ var rcount=railItems.filter(function(x){return !x.sep;}).length+ISSUES.length+TOPLAN.length+TORECORD.length; rh.lastChild.textContent=rcount?String(rcount):""; }catch(e){}
     railItems=railItems.concat(ISSUES); if(TOPLAN.length){ railItems.push({sep:TOPLAN.length+" outstanding this week"}); railItems=railItems.concat(TOPLAN); } if(TORECORD.length){ railItems.push({sep:TORECORD.length+" to record"}); railItems=railItems.concat(TORECORD); }
     var hiddenN=0; railItems=railItems.filter(function(x){ if(x.sep||x.req||!DISMISSED[warnKey(x)]||SHOW_DISMISSED) return true; hiddenN++; return false; });
     var dismissBtn=function(x){ var xb=el("button","dis",DISMISSED[warnKey(x)]?"Bring back":"\u00d7"); xb.title=DISMISSED[warnKey(x)]?"Show this warning again":"Dismiss this warning. It comes back if what it says changes."; xb.onclick=function(e){ e.stopPropagation(); if(DISMISSED[warnKey(x)]) delete DISMISSED[warnKey(x)]; else DISMISSED[warnKey(x)]=true; persist(); render(); }; return xb; };
-    railItems.forEach(function(x){ if(x.sep){ rc.appendChild(el("div","sec-h",x.sep)); return; } if(x.req){ var itr=el("button","iss amber"); itr.appendChild(el("b",null,x.title)); itr.appendChild(el("span",null,x.text)); itr.onclick=function(){ window.open(x.url,"_blank"); }; rc.appendChild(itr); return; } if(x.prep){ var itp=el("button","iss"+(x.amber===false?"":" amber")+(DISMISSED[warnKey(x)]?" dim":"")); itp.appendChild(el("b",null,shortDay(x.k)+" \u00b7 "+x.title)); itp.appendChild(el("span",null,x.text)); itp.appendChild(dismissBtn(x)); itp.onclick=function(){ open=x.j.id+":prep"; render(); }; rc.appendChild(itp); return; } var it=el("button","iss"+(x.amber?" amber":"")+(DISMISSED[warnKey(x)]?" dim":"")); it.appendChild(el("b",null,shortDay(x.k)+" \u00b7 "+x.title)); it.appendChild(el("span",null,x.text)); it.appendChild(dismissBtn(x)); if(x.j&&!x.j.isHold){ it.onclick=function(){ open=x.j.id; render(); }; } else { it.onclick=function(){ dayCur=x.k; view="day"; render(); }; } rc.appendChild(it); });
+    railItems.forEach(function(x){ if(x.sep){ rc.appendChild(el("div","sec-h",x.sep)); return; } if(x.sheet){ var its=el("button","iss amber"); its.appendChild(el("b",null,shortDay(x.k)+" \u00b7 "+x.title)); its.appendChild(el("span",null,x.text)); its.onclick=function(){ dayCur=x.k; view="day"; ACT_OPEN=x.k; ACT_DRAFT=null; render(); }; rc.appendChild(its); return; } if(x.req){ var itr=el("button","iss amber"); itr.appendChild(el("b",null,x.title)); itr.appendChild(el("span",null,x.text)); itr.onclick=function(){ window.open(x.url,"_blank"); }; rc.appendChild(itr); return; } if(x.prep){ var itp=el("button","iss"+(x.amber===false?"":" amber")+(DISMISSED[warnKey(x)]?" dim":"")); itp.appendChild(el("b",null,shortDay(x.k)+" \u00b7 "+x.title)); itp.appendChild(el("span",null,x.text)); itp.appendChild(dismissBtn(x)); itp.onclick=function(){ open=x.j.id+":prep"; render(); }; rc.appendChild(itp); return; } var it=el("button","iss"+(x.amber?" amber":"")+(DISMISSED[warnKey(x)]?" dim":"")); it.appendChild(el("b",null,shortDay(x.k)+" \u00b7 "+x.title)); it.appendChild(el("span",null,x.text)); it.appendChild(dismissBtn(x)); if(x.j&&!x.j.isHold){ it.onclick=function(){ open=x.j.id; render(); }; } else { it.onclick=function(){ dayCur=x.k; view="day"; render(); }; } rc.appendChild(it); });
     if(hiddenN||SHOW_DISMISSED){ var sd=el("button","dis-toggle",SHOW_DISMISSED?"Hide dismissed":hiddenN+(hiddenN===1?" dismissed warning, show":" dismissed warnings, show")); sd.onclick=function(){ SHOW_DISMISSED=!SHOW_DISMISSED; render(); }; rc.appendChild(sd); }
     rail.appendChild(rc); b.appendChild(rail);
     var strip=$("#strip"); strip.hidden=false; strip.innerHTML="";
@@ -2356,12 +2446,12 @@ var SNAP=null, DETAIL={};
             ci.onchange=upd; ki.onchange=upd; rowm.appendChild(ci); rowm.appendChild(ki); form.appendChild(rowm); });
           tk.appendChild(form); } });
       if(!CRM_KEY) tk.appendChild(el("span","low","Paste the CRM key in the Manager view to save the tally.")); b.appendChild(tk); }
-    var mo=openRound?roundModal():modal(); if(mo){ document.body.appendChild(mo); if(window.__keepScroll) mo.scrollTop=window.__keepScroll; }
+    var mo=ACT_OPEN?actualsModal():TIMINGS_OPEN?timingsModal():openRound?roundModal():modal(); if(mo){ document.body.appendChild(mo); if(window.__keepScroll) mo.scrollTop=window.__keepScroll; }
     $("#prev").onclick=function(){week--;render();}; $("#next").onclick=function(){week++;render();};
   }
   if(t){
     $("#src").textContent="Reading the board...";
-    loadBoard().then(function(snap){ buildFromSnap(snap); lastSaved={}; try{ var rq=new URLSearchParams(location.search).get("round"); if(rq&&/^\d{4}-\d{2}-\d{2}\|/.test(rq)){ dayCur=rq.split("|")[0]; view="day"; openRound=rq; } }catch(e){} render(); if(Object.keys(STALE_LEGS).length){ persist(); STALE_LEGS={}; } refreshDrive(); setTimeout(refreshRounds,1500); fetchTallies().then(function(){ if(view==="day"||view==="manager") render(); }); }).catch(function(e){ $("#src").textContent="Could not read the board: "+(e&&e.message||e); });
+    loadBoard().then(function(snap){ buildFromSnap(snap); lastSaved={}; try{ var rq=new URLSearchParams(location.search).get("round"); if(rq&&/^\d{4}-\d{2}-\d{2}\|/.test(rq)){ dayCur=rq.split("|")[0]; view="day"; openRound=rq; } }catch(e){} render(); if(Object.keys(STALE_LEGS).length){ persist(); STALE_LEGS={}; } refreshDrive(); setTimeout(refreshRounds,1500); fetchTallies().then(function(){ if(view==="day"||view==="manager") render(); }); fetchActuals().then(function(){ render(); }); }).catch(function(e){ $("#src").textContent="Could not read the board: "+(e&&e.message||e); });
   } else { $("#src").textContent="Open this from the Scheduler button on the Trello board."; }
 })();
 </script>
