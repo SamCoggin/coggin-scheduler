@@ -1143,7 +1143,7 @@ var SNAP=null, DETAIL={};
         var sum=el("div","psum one"); var sd=el("div"); sd.appendChild(el("small",null,"Finished")); sd.appendChild(el("b",null,tf+" of "+tq)); var br=el("div","pbar"), bi=el("i","fn"); bi.style.width=(tq?Math.round(tf/tq*100):0)+"%"; br.appendChild(bi); sd.appendChild(br); sum.appendChild(sd); pb.appendChild(sum);
         // STILL PICKING IN STAGES (2 Oct 2026): an In-progress job keeps its picking pages on the day sheet
         var stg=el("label","pstage"); var sc=el("input"); sc.type="checkbox"; sc.checked=!!j.prep.stages; sc.onchange=function(){ if(sc.checked) j.prep.stages=true; else delete j.prep.stages; window.__keepScroll=(document.querySelector(".veil")||{}).scrollTop||0; persist(); render(); };
-        stg.appendChild(sc); var stx=el("span"); stx.appendChild(el("b",null,"Still picking in stages")); stx.appendChild(el("small",null,j.prep.stages?"Picking pages print every day until it is all finished.":"Once In-progress, the day sheet prints a To finish list, not picking pages.")); stg.appendChild(stx); pb.appendChild(stg);
+        stg.appendChild(sc); var stx=el("span"); stx.appendChild(el("b",null,"Still picking in stages")); stx.appendChild(el("small",null,j.prep.stages?"Picking pages print every day until it is all finished.":"Once In-progress, it drops off the picking pages.")); stg.appendChild(stx); pb.appendChild(stg);
         var keep=function(){ window.__keepScroll=(document.querySelector(".veil")||{}).scrollTop||0; };
         var setF=function(l,f){ var c=pickCount(j.prep.picked||{},l); f=Math.max(0,Math.min(c.q,Math.round(f))); var P=Object.assign({},j.prep.picked||{}), k0=pickKey(l), old=P[k0]||{}, log=(old.log||[]).filter(function(x){return x.on!==iso(TODAY);});
           if(f===0){ delete P[k0]; } else { log.push({on:iso(TODAY),f:f}); P[k0]={f:f,on:iso(TODAY),log:log.slice(-30)}; } j.prep.picked=P; keep(); persist(); render(); };
@@ -2282,7 +2282,7 @@ var SNAP=null, DETAIL={};
       if(i.allPicked) return {kind:"none",main:"All finished",rest:""};
       if(i.error||!(i.lines&&i.lines.length)) return {kind:"none",main:"No stock reserved",rest:""};
       if(!pickMeta[r.card]) pickMeta[r.card]={name:r.name,part:r.part+(r.sub?" · "+r.sub:""),who:r.who.join(" + "),ref:i.ref||""};
-      var n=i.lines.length; return {kind:"sheet",card:r.card,main:(i.finish?"To finish, page ":"Page ")+(i.page||"?"),rest:n+(n===1?" line":" lines")}; };
+      var n=i.lines.length; return {kind:"sheet",card:r.card,main:"Page "+(i.page||"?"),rest:n+(n===1?" line":" lines")}; };
     // one bar per person; people whose jobs are exactly the same get one joint bar ("Jack C + Jordan I")
     var people=TEAM.filter(function(w){ return rows.some(function(r){ return r.who.indexOf(w)>=0; }); });
     var sig={}; people.forEach(function(w){ sig[w]=rows.filter(function(r){ return r.who.indexOf(w)>=0; }).map(function(r){ return r.key; }).join("|"); });
@@ -2429,16 +2429,9 @@ var SNAP=null, DETAIL={};
         order.forEach(function(id){ var i=PICK[id], m=pickMeta[id]; if(!i||!m||!(i.lines&&i.lines.length)) return;
           if(y+9.5+lineH(i.lines[0])>282){ pfoot(); pickHead(true); }
           starts[id]=doc.getNumberOfPages();
-          var right=[i.finish?"To finish":"",m.part,m.who,m.ref?"Ref "+m.ref:""].filter(Boolean).join(" · ");
+          var right=[m.part,m.who,m.ref?"Ref "+m.ref:""].filter(Boolean).join(" · ");
           doc.setFillColor(17,17,17); doc.roundedRect(L,y,W,6.5,0.8,0.8,"F"); doc.setTextColor(255); doc.setFont("helvetica","bold"); doc.setFontSize(8.5); doc.text(String(m.name).toUpperCase(),L+3,y+4.5);
           var tw=doc.getTextWidth(String(m.name).toUpperCase()); doc.setFont("helvetica","normal"); doc.setFontSize(8); var rt=right; while(rt.length>6&&doc.getTextWidth(rt)>W-tw-12) rt=rt.slice(0,-2); if(rt!==right) rt=rt.replace(/\s+$/,"")+"..."; doc.text(rt,L+W-3,y+4.5,{align:"right"}); doc.setTextColor(0); y+=8;
-          if(i.finish){ doc.setFont("helvetica","normal"); doc.setFontSize(8.5); doc.setTextColor(70); doc.text("Already picked and in the workshop. Write how many were finished today.",L,y+3); doc.setTextColor(0); y+=6;
-            i.lines.forEach(function(l){ if(y+10>282){ pfoot(); pickHead(true); } var y0=y+1;
-              doc.setFont("helvetica","bold"); doc.setFontSize(12); doc.text(String(l.qty||0),L+1,y0+5.2);
-              doc.setFontSize(10); var nmL=doc.splitTextToSize(l.name||"",W-110)[0]; doc.text(nmL,L+16,y0+5.2);
-              doc.setFont("helvetica","normal"); doc.setFontSize(8.5); doc.setTextColor(70); doc.text((l._already||0)+" of "+(l._of||l.qty||0)+" finished",L+W-62,y0+5.2); doc.setTextColor(0);
-              doc.text("Finished today: ______",L+W-1,y0+5.2,{align:"right"});
-              y+=9; doc.setDrawColor(205); doc.setLineWidth(0.25); doc.line(L,y,L+W,y); doc.setDrawColor(0); }); y+=4; return; }
           i.lines.forEach(function(l){ if(y+lineH(l)>282){ pfoot(); pickHead(true); } drawLine(l); }); y+=4; });
         pfoot(); }
       return {doc:doc,fits:fitsDs,dsPages:dsPages,order:order,starts:starts};
@@ -2468,12 +2461,13 @@ var SNAP=null, DETAIL={};
         var res=await fetch(CRM_PICKING_URL,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({key:CRM_KEY,action:"lines",cards:cards})}).then(function(x){ return x.json(); }).catch(function(){ return null; });
         if(res&&res.ok&&res.lines){ PICK={}; Object.keys(res.lines).forEach(function(id){ var e=res.lines[id]; var all=e.lines||[], pk=pickedOf(id), jj=JOBS.filter(function(x){return x.id===id;})[0], multi=!!(jj&&jj.prep&&jj.prep.date);   // every production line gets Finished today, one day or many (2 Oct 2026, the Alcove Booth line had none)
             var left=[]; all.forEach(function(l){ var c=pickCount(pk,l), rem=c.q-c.f; if(rem<=0) return; left.push(c.f>0||multi?Object.assign({},l,{qty:rem,headerCustomer:c.f>0?String(rem):l.headerCustomer,headerBreakdown:c.f>0?null:l.headerBreakdown,_already:c.f,_of:c.q,_write:multi}):l); });
-            // PICK WHILE NOT STARTED, FINISH WHILE IN PROGRESS (Sam, 2 Oct 2026: "when the jobs are still in the list not started the
-            // picking list should show and when in progress the picking list is removed"). An In-progress job gets a short To finish
-            // list instead of picking pages, unless it is ticked Still picking in stages (Sketch Studios).
+            // PICK WHILE NOT STARTED, NOTHING ONCE IN PROGRESS (Sam, 2 Oct 2026: "when the jobs are still in the list not started the
+            // picking list should show and when in progress the picking list is removed", then the To finish list was dropped too:
+            // "Why do we need this when this is on the workday sheet?"). An In-progress job prints no picking pages unless it is
+            // ticked Still picking in stages (Sketch Studios).
             var fin=!!(jj&&jj.prep&&jj.stage==="In progress"&&!jj.prep.stages);
-            PICK[id]={picks:!!e.picks,lines:left,finish:fin,allPicked:all.length>0&&!left.length,error:e.error||"",ref:e.ref||""}; });
-          var urls={}; Object.keys(PICK).forEach(function(id){ if(PICK[id].finish) return; PICK[id].lines.forEach(function(l){ [l.product_photo,l.storage_photo].forEach(function(u){ if(u&&!PICK_IMG[u]) urls[u]=1; }); }); });
+            PICK[id]={picks:!!e.picks&&!fin,lines:fin?[]:left,allPicked:all.length>0&&!left.length,error:e.error||"",ref:e.ref||""}; });
+          var urls={}; Object.keys(PICK).forEach(function(id){ PICK[id].lines.forEach(function(l){ [l.product_photo,l.storage_photo].forEach(function(u){ if(u&&!PICK_IMG[u]) urls[u]=1; }); }); });
           await Promise.all(Object.keys(urls).slice(0,150).map(loadPickPhoto)); } }
       // number the picking sections; a second pass settles it if the numbers changed the day sheet's length
       var r=daySheetPdf(k,PICK);
