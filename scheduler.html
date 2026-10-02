@@ -2622,7 +2622,7 @@ var SNAP=null, DETAIL={};
     // the yard page for a van: load in drop order with photos, the blanket rule, the kit check
     kit.yard=function(run){ var nStops=run.stops.length, crewTxt=run.crew.join(" + "), dels=run.stops.filter(function(s){ return !takesOn(s.j); });
       var yardHead=function(cont){ newPage(); label("Transport · "+crewTxt+(cont?", continued":""),L,y+1); doc.setFont("helvetica","bold"); doc.setFontSize(cont?14:20); doc.text("Before you leave Forton",L,y+(cont?7:9));
-        doc.setFontSize(10); doc.text([run.van||"No van set",nStops+(nStops===1?" stop":" stops"),"load from "+hmStr(DAY_START)+", set off "+hmStr(run.setOff)].join(" · "),L,y+(cont?12.5:15)); y+=cont?15.5:18.5; rule(); y+=5; };
+        doc.setFontSize(10); doc.text([run.van||"No van set",nStops+(nStops===1?" stop":" stops")].join(" · "),   /* no load or set-off times (Sam, 2 Oct 2026) */L,y+(cont?12.5:15)); y+=cont?15.5:18.5; rule(); y+=5; };
       yardHead(false); heading(1,"Load the van");
       doc.setLineWidth(0.6); doc.setDrawColor(17); var rt="Nothing goes against the side of the van, and nothing sits next to another item, without a blanket or cardboard between them. That stops rubbing and damage on the way.";
       doc.setFont("helvetica","normal"); doc.setFontSize(9); var rl=doc.splitTextToSize(rt,W-36); doc.roundedRect(L,y,W,4+rl.length*3.9+2,1,1); doc.setFont("helvetica","bold"); doc.text("Blanket every item.",L+3,y+5); doc.setFont("helvetica","normal"); doc.text(rl,L+33,y+5); y+=4+rl.length*3.9+5; doc.setDrawColor(0);
