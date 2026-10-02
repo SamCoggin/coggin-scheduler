@@ -281,7 +281,7 @@
   .bar i{display:block;height:100%;background:var(--green)}
   .bar i.over{background:var(--red)}
 
-  .veil{position:fixed;inset:0;background:rgba(0,0,0,.55);display:block;padding:24px 16px 0;overflow-y:auto;z-index:10}
+  .veil{position:fixed;inset:0;background:rgba(0,0,0,.55);display:block;padding:24px 16px 24px;overflow-y:auto;z-index:10}
   .modal{zoom:.88;background:var(--card);border-radius:12px;width:min(640px,100%);margin:0 auto;box-shadow:0 8px 24px rgba(9,30,66,.35);padding:22px 26px 26px}
   .modal .head{display:flex;align-items:flex-start;gap:12px;margin-bottom:6px}
   .modal h3{margin:0;font-size:20px;font-weight:700;flex:1;line-height:1.3}
@@ -801,7 +801,7 @@ var SNAP=null, DETAIL={};
       fetch(CRM_ACTUALS_URL,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({key:CRM_KEY,action:"save",rows:rows})}).then(function(x){return x.json();}).then(function(res){ if(!(res&&res.ok)) throw new Error(res&&res.error||"not saved");
         rows.forEach(function(r){ ACTUALS[r.row_key]={row_key:r.row_key,date:r.date,card_id:r.card_id,part:r.part,title:r.title,work:r.work,movement:r.movement,planned_who:r.planned_who,planned_mins:r.planned_mins,actual_who:r.actual_who,actual_mins:r.actual_mins,not_done:r.not_done}; });
         ACT_OPEN=null; ACT_DRAFT=null; render(); }).catch(function(e){ sv.disabled=false; msg.className="hint far"; msg.textContent="Could not save: "+(e&&e.message||e)+". Try again."; }); };
-    var ft=el("div","row"); ft.style.margin="14px 24px 20px"; ft.appendChild(sv); ft.appendChild(msg); m.appendChild(ft);
+    var ft=el("div","row"); ft.style.margin="0"; ft.style.padding="16px 24px 24px"; ft.style.borderTop="1px solid var(--line)";   /* padding, not margin: a margin on the last child slips outside the dialog */ ft.appendChild(sv); ft.appendChild(msg); m.appendChild(ft);
     veil.appendChild(m); return veil;
   }
   // planned against actual over the last four weeks, by kind of work and by person
@@ -819,6 +819,7 @@ var SNAP=null, DETAIL={};
         r.appendChild(el("b",null,kk)); r.appendChild(el("span",null,String(x.n))); r.appendChild(el("span",null,fmt(x.plan))); r.appendChild(el("span",null,fmt(x.act))); r.appendChild(el("span",null,pct==null?"":pct+"%")); r.appendChild(el("span",null,byPerson?"":(x.pp/x.n).toFixed(1)+" / "+(x.pa/x.n).toFixed(1))); m.appendChild(r); }); };
     table("By kind of work",false,function(a){ return [(a.part==="production"?"Production":a.part==="transport"?"Transport":"Labour")+(a.work?", "+a.work:"")]; });
     table("By person",true,function(a){ return (a.actual_who||[]).slice(); });
+    var tail=el("div"); tail.style.height="20px"; m.appendChild(tail);
     veil.appendChild(m); return veil;
   }
   function fetchTallies(){ if(!CRM_KEY) return Promise.resolve();
