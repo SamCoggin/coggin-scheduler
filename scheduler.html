@@ -2267,7 +2267,10 @@ var SNAP=null, DETAIL={};
       if(j.isLeg&&j.leg&&j.leg.type==="production"){ base.part="Production"; base.sub=""; A4(base); return; }
       if(j.site){ var d0=DETAIL[j.id]?parseDesc(DETAIL[j.id].desc||""):null, where=j.isLeg?(j.leg.where||""):(d0&&d0.where[0]?d0.where[0]:""), tmg=jobTiming(j,k);
         base.part="Transport"; base.at=tmg&&tmg.arrive!=null?tmg.arrive:hm(j.at);
-        base.sub=[j.movement||"", tmg&&tmg.arrive!=null?"arrive about "+hmStr(tmg.arrive):(j.at?"start "+j.at:""), where, ourJob(j)&&j.vehicle?(j.vehicle==="hire"?"hire van":j.vehicle):(ourJob(j)?"no van set":"")].filter(Boolean).join(" · ");
+        base.sub=[j.movement||"", tmg&&tmg.arrive!=null?"arrive about "+hmStr(tmg.arrive):(j.at?"start "+j.at:""), where, (function(){ if(!ourJob(j)) return ""; if(j.vehicle) return j.vehicle==="hire"?"hire van":j.vehicle;
+          // A STOP ON A ROUND RIDES IN THE ROUND'S VAN (Sam, 2 Oct 2026: CUBE HR said "no van set" while Bluebird, the other
+          // stop on the same round, had FX75 BKG). The editor already read it this way; the day sheet now does too.
+          var rv=roundVanOf(j,roundsOn(k,allJobs().filter(function(x){return onDay(x,k);}))); return rv||"no van set"; })()].filter(Boolean).join(" · ");
         base.extra=j.drive?" + "+fmt(j.drive)+" travel":""; A4(base); return; }
       base.part="Labour"; base.at=j.arrive&&!j.isLeg?hm(j.from):null;
       base.sub=j.arrive&&!j.isLeg?(arrivalText(j.arrive,j.from,j.by,j.collectAt)||(ARRIVAL_WHO[j.arrive]||"Arriving")+", time not given yet"):(j.isLeg?(j.leg.where||""):[j.work,j.movement].filter(Boolean).join(", "));
@@ -2345,17 +2348,21 @@ var SNAP=null, DETAIL={};
       // the day and who else is on it, and PICK as one tag. Nothing wraps that does not have to.
       var tx0=function(x){ return x+qs+6; }, tw0=CW-qs-15;
       var timeW=function(r){ if(!r[3]) return 0; doc.setFont("helvetica","bold"); doc.setFontSize(fs+1); return doc.getTextWidth(r[3])+3; };
-      var nameLines=function(r){ doc.setFont("helvetica","bold"); doc.setFontSize(fs+1); return doc.splitTextToSize(r[0],Math.max(20,tw0-timeW(r))); };
+      // THE TIME DROPS UNDER THE NAME WHEN IT WILL NOT FIT BESIDE IT (Sam, 2 Oct 2026: "CUBE HR" printed over "30 min each +
+      // 1h travel"). Beside the name when the name fits on one line next to it, otherwise on its own line under the name.
+      var timeBelow=function(r){ if(!r[3]) return false; doc.setFont("helvetica","bold"); doc.setFontSize(fs+1); return doc.getTextWidth(r[0])>tw0-timeW(r); };
+      var nameLines=function(r){ doc.setFont("helvetica","bold"); doc.setFontSize(fs+1); return doc.splitTextToSize(r[0],timeBelow(r)?tw0:tw0-timeW(r)); };
       var subText=function(r){ return [r[1],r[2]].filter(Boolean).join(" · "); };
       var subLines=function(r){ var t=subText(r); if(!t) return []; doc.setFont("helvetica","normal"); doc.setFontSize(fs-1.5); return doc.splitTextToSize(t,tw0); };
-      var need=function(r){ var h=3.5+nameLines(r).length*(fs+1)*0.4; var sl=subLines(r).length; if(sl) h+=sl*(fs-1.5)*0.4+0.8; if(r[5]) h+=7.2; return Math.max(qs+6,h+3); };
+      var need=function(r){ var h=3.5+nameLines(r).length*(fs+1)*0.4+(timeBelow(r)?(fs+1)*0.4:0); var sl=subLines(r).length; if(sl) h+=sl*(fs-1.5)*0.4+0.8; if(r[5]) h+=7.2; return Math.max(qs+6,h+3); };
       var box=function(r,x,y0,h){ doc.setDrawColor(150); doc.setLineWidth(0.3); doc.roundedRect(x,y0,CW,h,1.2,1.2); doc.setDrawColor(0);
         if(r[4]) qrAt(doc,"https://trello.com/c/"+r[4],x+3,y0+3,qs);
         doc.setLineWidth(0.45); doc.setDrawColor(17); doc.roundedRect(x+CW-8,y0+3,5,5,0.6,0.6); doc.setDrawColor(0);
         var tx=tx0(x), right=x+CW-10.5, ty=y0+3.5+(fs+1)*0.33, nl=nameLines(r);
         doc.setFont("helvetica","bold"); doc.setFontSize(fs+1); doc.text(nl,tx,ty);
-        if(r[3]) doc.text(r[3],right,ty,{align:"right"});
+        if(r[3]&&!timeBelow(r)) doc.text(r[3],right,ty,{align:"right"});
         ty+=(nl.length-1)*(fs+1)*0.4+1;
+        if(r[3]&&timeBelow(r)){ ty+=(fs+1)*0.4; doc.text(r[3],tx,ty-1); }
         var sl=subLines(r); if(sl.length){ doc.setFont("helvetica","normal"); doc.setFontSize(fs-1.5); doc.setTextColor(85); doc.text(sl,tx,ty+(fs-1.5)*0.35); ty+=sl.length*(fs-1.5)*0.4+0.8; doc.setTextColor(0); }
         var pk=r[5]; if(pk){ if(pk.kind==="sheet"&&order.indexOf(pk.card)<0) order.push(pk.card);
           var th=4.6, top=ty+1.4, fsz=fs-2; doc.setFont("helvetica","bold"); doc.setFontSize(6.8); var kw=doc.getTextWidth("PICK")+3.6;
