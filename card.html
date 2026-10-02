@@ -127,7 +127,7 @@
         var cc=[]; (x.checklists||[]).forEach(function(cl){ (cl.checkItems||[]).forEach(function(it){ cc.push({n:it.name||""}); }); });
         var L=loadOf(itemsOf(x.desc||"",cc).concat((p&&p.items)||[])); if(!L.any&&p&&p.load) L=p.load;
         var cube=p&&p.cube!=null?p.cube:(L.complete?L.m3:null);
-        return {id:x.id,name:nameOf[x.id],due:x.due.slice(0,10),start:x.start?x.start.slice(0,10):null,site:isSiteLabels(x.labels,x.desc),plan:p||{who:[]},cube:cube,kg:L.complete?L.kg:0,why:cube!=null?"":(L.unmatched&&L.unmatched.length?"items not matched":"no items on the card")}; }); }));
+        return {id:x.id,done:/complet|sign-?off/i.test(listName[x.idList]||""),name:nameOf[x.id],due:x.due.slice(0,10),start:x.start?x.start.slice(0,10):null,site:isSiteLabels(x.labels,x.desc),plan:p||{who:[]},cube:cube,kg:L.complete?L.kg:0,why:cube!=null?"":(L.unmatched&&L.unmatched.length?"items not matched":"no items on the card")}; }); }));
     }).then(function(list){ OTHERS=list; OTHERS_OK=true; }).catch(function(){ OTHERS=[]; OTHERS_OK=false; });
   }
   function todayIso(){ var t=new Date(); t.setHours(12,0,0,0); return t.toISOString().slice(0,10); }
@@ -142,17 +142,17 @@
   // the Scheduler's Mark as off, which lives on the board, not as a card in Holidays / Leave, so this panel never saw it.
   // THIS CARD'S OTHER PARTS COUNT TOO: Jack and Jordan in production on this card are not free for its loading.
   function loadOn(k,skip){
-    var out={}; CREW.forEach(function(w){ out[w]={mins:0,n:0,away:[],forton:0}; });
+    var out={}; CREW.forEach(function(w){ out[w]={mins:0,done:0,n:0,away:[],forton:0}; });
     LEAVE.forEach(function(l){ if(l.date===k&&out[l.who]){ out[l.who].off=true; out[l.who].why="annual leave"; } });
     var offW=(boardData.off||{})[k]||[], offWhy=boardData.offWhy||{};
     offW.forEach(function(n){ var w=crewOf(n); if(!out[w]) return; out[w].off=true; var why=offWhy[k+"|"+n]||offWhy[k+"|"+w]; if(!why) Object.keys(offWhy).forEach(function(key){ var p=key.split("|"); if(p[0]===k&&crewOf(p[1])===w) why=offWhy[key]; }); if(why) out[w].why=why; });
     var mine=[]; if(card&&d&&card.due){ mine.push({name:"this job",due:card.due.slice(0,10),start:null,site:site,plan:{who:skip===d?[]:(d.who||[]),mins:d.mins,drive:d.drive,at:d.at,each:d.each,prep:skip===d.prep?null:d.prep,legs:(d.legs||[]).filter(function(L){return L!==skip;})}}); }
     OTHERS.concat(mine).forEach(function(o){ var p=o.plan;
-      if(workDays(o.start&&o.start<o.due?o.start:o.due,o.due).indexOf(k)>=0){ (p.who||[]).forEach(function(w){ if(!out[w]) return; out[w].n++; out[w].mins+=(minsFor(p,w)||0)+(o.site?(p.drive||0):0); if(o.site) out[w].away.push({name:o.name,until:p.at?endOf(p.at,(p.mins||0)+(p.drive||0)):null}); else out[w].forton++; }); }
+      if(workDays(o.start&&o.start<o.due?o.start:o.due,o.due).indexOf(k)>=0){ (p.who||[]).forEach(function(w){ if(!out[w]) return; out[w].n++; out[w].mins+=(minsFor(p,w)||0)+(o.site?(p.drive||0):0); if(o.done) out[w].done+=(minsFor(p,w)||0)+(o.site?(p.drive||0):0); if(o.site) out[w].away.push({name:o.name,until:p.at?endOf(p.at,(p.mins||0)+(p.drive||0)):null}); else out[w].forton++; }); }
       // production time is the total for each person, spread over its working days, as the Scheduler counts it
       var pd=p.prep&&p.prep.date?workDays(p.prep.start&&p.prep.start<p.prep.date?p.prep.start:p.prep.date,p.prep.date):[];
       if(pd.indexOf(k)>=0){ (p.prep.who||[]).forEach(function(w){ if(!out[w]) return; out[w].n++; out[w].mins+=Math.round((minsFor(p.prep,w)||0)/(pd.length||1)); out[w].forton++; }); }
-      (p.legs||[]).forEach(function(L){ if(L.date===k) (L.who||[]).forEach(function(w){ if(!out[w]) return; out[w].n++; out[w].mins+=(minsFor(L,w)||0)+(L.drive||0); out[w].forton++; }); });
+      (p.legs||[]).forEach(function(L){ if(L.date===k) (L.who||[]).forEach(function(w){ if(!out[w]) return; out[w].n++; out[w].mins+=(minsFor(L,w)||0)+(L.drive||0); if(o.done) out[w].done+=(minsFor(L,w)||0)+(L.drive||0); out[w].forton++; }); });
     });
     CREW.forEach(function(w){ var x=out[w]; x.avail=x.off?0:Math.max(0,DAY_MINS-x.mins); x.t=x.off?"on leave":!x.n?"available":x.mins>DAY_MINS?fmt(x.mins)+", over capacity":!x.mins?x.n+(x.n===1?" job, no time":" jobs, no time"):fmt(x.mins)+" allocated"; x.c=x.off?"off":!x.n?"free":x.mins>DAY_MINS?"over":"busy"; });
     return out;
@@ -176,8 +176,9 @@
         else if(used>DAY_MINS){ txt="Full, "+fmt(used-DAY_MINS)+" over"; cls="d"; rank=2; }
         else if(l.n&&!used){ txt=l.n+(l.n===1?" job":" jobs")+", no time set"; cls="m"; rank=1; }
         else if(leftK===0){ txt="Day over"; cls="m"; rank=3; }
-        else if(leftK!=null&&Math.min(DAY_MINS-used,leftK)<=0){ txt="Full for the rest of today"; cls="d"; rank=2; }
-        else { txt=fmt(leftK!=null?Math.min(DAY_MINS-used,leftK):DAY_MINS-used)+(leftK!=null&&leftK<DAY_MINS?" left today":" free")+(until?", back "+until:""); cls="g"; rank=0; }
+        // TODAY: what is left of the day less the work not yet done; a job moved to Completed early gives its spare time back (2 Oct 2026)
+        else if(leftK!=null&&Math.max(0,leftK-Math.max(0,used-Math.round(l.done||0)))<=0){ txt="Full for the rest of today"; cls="d"; rank=2; }
+        else { txt=fmt(leftK!=null?Math.max(0,leftK-Math.max(0,used-Math.round(l.done||0))):DAY_MINS-used)+(leftK!=null&&leftK<DAY_MINS?" left today":" free")+(until?", back "+until:""); cls="g"; rank=0; }
         return {w:w,txt:txt,cls:cls,rank:rank,free:l.off?-1:DAY_MINS-used,used:l.off?0:used}; }).filter(Boolean);
       rows.sort(function(a,b){ return a.rank-b.rank||b.free-a.free||CREW.indexOf(a.w)-CREW.indexOf(b.w); });
       rows.forEach(function(r){ var row=el("div","wrow"); var nm=el("span","wname",r.w); if(DRIVERS.indexOf(r.w)>=0) nm.appendChild(el("i",null,"driver")); row.appendChild(nm);
