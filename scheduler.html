@@ -2413,7 +2413,7 @@ var SNAP=null, DETAIL={};
         for(var ai=0;ai<recW.length;ai+=2){ [0,1].forEach(function(o2){ var a=recW[ai+o2]; if(!a) return; var x=L+o2*(CW+G); doc.setDrawColor(150); doc.setLineWidth(0.3); doc.roundedRect(x,y,CW,10,1.2,1.2); doc.setDrawColor(0);
             doc.setFont("helvetica","bold"); doc.setFontSize(11); doc.text(a.w,x+3.5,y+6.6); doc.setFontSize(13); doc.text(fmt(a.m),x+CW-3.5,y+6.8,{align:"right"}); }); y+=13; } }
       foot();
-      var dsPages=doc.getNumberOfPages(), fitsDs=y<281, starts={};
+      var dsPages=doc.getNumberOfPages(), fitsDs=y<281, starts={}, jobOnly=false;
       // THE DAY SHEET'S OWN PICKING PAGES (Sam, 2 Oct 2026, mock approved): one black bar per job in day sheet order, a
       // tick box on every line and every custom build part, photo, quantity, name, location and SKU. Read from the CRM
       // when Download is pressed, built by the CRM's own pick-line rules.
@@ -2474,9 +2474,15 @@ var SNAP=null, DETAIL={};
             if(r.part==="Transport"){ var bc=DATA.byCard[r.card]; if(!bc) return; if(!yardDone[bc.run.key]){ yardDone[bc.run.key]=1; kit.yard(bc.run); }
               var before=doc.getNumberOfPages(); kit.stop(bc.run,bc.stop); starts[r.key]=before+1; return; }
             if(r.part==="Labour"){ var lb=DATA.info[r.card]; if(!lb) return; var before2=doc.getNumberOfPages(); kit.labour(j,lb,b.title,r.sub,c[3]); starts[r.key]=before2+1; } }); });
-        var totalP=doc.getNumberOfPages(); foots.forEach(function(f){ doc.setPage(f.page); doc.setDrawColor(200); doc.setLineWidth(0.25); doc.line(15,284,195,284); doc.setDrawColor(0); doc.setFont("helvetica","normal"); doc.setFontSize(8); doc.setTextColor(100); if(f.text) doc.text(f.text,15,288.5); doc.text("Page "+f.page+" of "+totalP,195,288.5,{align:"right"}); doc.setTextColor(0); }); doc.setPage(totalP);
+        // JOB PAGES ONLY (Sam, 2 Oct 2026: "just their job pages"): the day sheet in front is dropped, so the pages are numbered
+        // from the first job page. Every page carries the hand-back strip (Sam: "make sure the operatives give me the sheets
+        // back either when they have completed a job or at the end of the day").
+        var totalP=doc.getNumberOfPages(), jobN=totalP-dsPages; foots.forEach(function(f){ doc.setPage(f.page);
+          doc.setFillColor(17,17,17); doc.roundedRect(15,279.5,180,7,1.2,1.2,"F"); doc.setTextColor(255); doc.setFont("helvetica","bold"); doc.setFontSize(8.5); doc.text("HAND THIS SHEET BACK to the operations manager when the job is done, or at the end of the day.",105,284.2,{align:"center"});
+          doc.setFont("helvetica","normal"); doc.setFontSize(8); doc.setTextColor(100); if(f.text) doc.text(f.text,15,291.5); doc.text("Page "+(f.page-dsPages)+" of "+jobN,195,291.5,{align:"right"}); doc.setTextColor(0); });
+        if(jobN>0){ for(var dp=0;dp<dsPages;dp++) doc.deletePage(1); jobOnly=true; }
       }
-      return {doc:doc,fits:fitsDs,dsPages:dsPages,order:order,starts:starts};
+      return {doc:doc,fits:fitsDs,dsPages:dsPages,order:order,starts:starts,jobOnly:jobOnly};
     };
     var r=null; for(var sc=1;sc>=0.85;sc-=0.05){ r=build(sc,false); if(r.fits&&r.dsPages===1) break; r=null; }
     if(!r) r=build(1,true);
@@ -2809,7 +2815,7 @@ var SNAP=null, DETAIL={};
       doc.setTextColor(0); y+=ph+4; setFoot("Any issues, contact the operations manager."); };
     return kit; }
   async function daySheetDownload(k){
-    var btn=$("#sheets"), was=btn?btn.textContent:""; if(btn){ btn.disabled=true; btn.textContent="Building the day sheet..."; }
+    var btn=$("#sheets"), was=btn?btn.textContent:""; if(btn){ btn.disabled=true; btn.textContent="Building the job sheets..."; }
     try{
       var PICK=null, cards=daySheetPdf(k,null,"cards")||[];
       if(cards.length&&CRM_KEY){
@@ -2836,8 +2842,9 @@ var SNAP=null, DETAIL={};
         if(PICK.__range!==range){ PICK.__range=range; changed=true; }
         if(!changed) break; r=daySheetPdf(k,PICK); }
       try{ var pn=new Date(); window.localStorage.setItem("coggin.daysheet."+k,String(pn.getHours()).padStart(2,"0")+":"+String(pn.getMinutes()).padStart(2,"0")); }catch(e){}
-      r.doc.save("day-sheet-"+k+".pdf");
-    } finally { if(btn){ btn.disabled=false; btn.textContent=was||"Download day sheet"; } }
+      if(!r.jobOnly){ alert("Nobody has a job with a card on "+niceDay(k)+", so there are no job sheets to print."); return; }
+      r.doc.save("job-sheets-"+k+".pdf");
+    } finally { if(btn){ btn.disabled=false; btn.textContent=was||"Download job sheets"; } }
   }
   function crewSheetsPdf(k,onlyW){
     var dj=allJobs().filter(function(j){return onDay(j,k)&&!j.isHold;});
@@ -3013,7 +3020,7 @@ var SNAP=null, DETAIL={};
     if(!window.__arrFilled&&JOBS.length){ window.__arrFilled=true; JOBS.forEach(function(j){ if((j.arrive==="delivers"||j.arrive==="both")&&!j.from){ var dd=DETAIL[j.id], t0=arrivalFromDesc(dd?dd.desc:""); if(t0){ j.from=t0; j.fromAuto=true; } } }); }
     persist();
     $("#pdf").onclick=function(){ try{ schedulePdf(); }catch(e){ alert("The PDF could not be built: "+(e&&e.message||e)); } };
-    $("#pdf").textContent="Download schedule"; $("#sheets").hidden=view!=="day"; $("#sheets").textContent="Download day sheet"; $("#sheets").title="One page for the day in view, to print and hand to the operatives"; $("#sheets").onclick=function(){ daySheetDownload(dayCur).catch(function(e){ alert("The day sheet could not be built: "+(e&&e.message||e)); }); };
+    $("#pdf").textContent="Download schedule"; $("#sheets").hidden=view!=="day"; $("#sheets").textContent="Download job sheets"; $("#sheets").title="Every job's page for the day in view, grouped by crew, to print and hand to the operatives"; $("#sheets").onclick=function(){ daySheetDownload(dayCur).catch(function(e){ alert("The day sheet could not be built: "+(e&&e.message||e)); }); };
     $("#actuals").hidden=!ACTUALS_ON||!(view==="day"&&dayCur<=iso(TODAY)); var unN=view==="day"?unrecorded(dayCur).length:0; $("#actuals").textContent="Enter day sheet"+(unN?" ("+unN+" to do)":""); $("#actuals").onclick=function(){ ACT_OPEN=dayCur; ACT_DRAFT=null; render(); };
     $("#timings").hidden=!ACTUALS_ON||!(view==="day"||view==="week"); $("#timings").onclick=function(){ TIMINGS_OPEN=true; render(); }; $("#guide").onclick=function(){ location.href="./guide.html"; };
     if(t&&view!=="manager"&&view!=="month") setTimeout(refreshRounds,0);
