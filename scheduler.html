@@ -2235,7 +2235,7 @@ var SNAP=null, DETAIL={};
           if(!cont){ doc.setFont("helvetica","normal"); doc.setFontSize(8.5); doc.setTextColor(90); doc.text("Read from the CRM when printed, "+prT,L+W,y+2,{align:"right"}); doc.setTextColor(0); }
           y+=cont?6:9; };
         var pfoot=function(){ doc.setFont("helvetica","normal"); doc.setFontSize(8); doc.setTextColor(90); doc.text("Tick each line as it comes off the rack.",L,287); doc.text("Coggin SOS",L+W,287,{align:"right"}); doc.setTextColor(0); };
-        var PH=17, PW=21, TX=L+56, RW=30, TW=W-56-RW-2;
+        var PH=17, PW=21, TX=L+56, RW=40, TW=W-56-RW-2;
         var photo=function(url,x,y0,label){ doc.setDrawColor(190); doc.setLineWidth(0.25);
           if(!url){ doc.setLineDashPattern([0.8,0.8],0); doc.setFillColor(246,246,246); doc.rect(x,y0,PW,PH,"FD"); doc.setLineDashPattern([],0); doc.setFont("helvetica","bold"); doc.setFontSize(6.5); doc.setTextColor(90); doc.text("no photo",x+PW/2,y0+PH/2+1,{align:"center"}); doc.setTextColor(0); doc.setDrawColor(0); return; }
           doc.rect(x,y0,PW,PH); var im=PICK_IMG[url]; if(im){ try{ var r0=im.w/im.h, dw=PW-1, dh=PH-1; if(r0>dw/dh) dh=dw/r0; else dw=dh*r0; doc.addImage(im.d,"JPEG",x+(PW-dw)/2,y0+(PH-dh)/2,dw,dh,undefined,"FAST"); }catch(e){} }
@@ -2252,8 +2252,11 @@ var SNAP=null, DETAIL={};
           var det=[l.attr_colour,l.attr_features,l.attr_dims].filter(Boolean).join(" · ");
           if(det){ doc.setFont("helvetica","normal"); doc.setFontSize(8.5); doc.setTextColor(85); var dl=doc.splitTextToSize(det,TW).slice(0,2); doc.text(dl,TX,ty+0.6); ty+=dl.length*3.6; doc.setTextColor(0); }
           if(l.attr_pick){ doc.setFont("helvetica","bold"); doc.setFontSize(8.5); doc.text(doc.splitTextToSize("Pick: "+l.attr_pick,TW)[0],TX,ty+1); ty+=4; }
-          doc.setFont("courier","bold"); doc.setFontSize(11.5); if(l.stock_location) doc.text(doc.splitTextToSize(String(l.stock_location),RW)[0],L+W-1,y0+4.6,{align:"right"});
-          doc.setFontSize(8.5); doc.setTextColor(90); if(l.sku) doc.text(String(l.sku),L+W-1,y0+9,{align:"right"}); doc.setTextColor(0); doc.setFont("helvetica","normal");
+          // THE WHOLE LOCATION (Sam, 2 Oct 2026: "Locations titles are being cut off"): smaller type to fit the column, then a
+          // second line, never clipped. "Fabric Storage Room" is the longest at 19 characters.
+          doc.setFont("courier","bold"); var lf=11.5, loc=String(l.stock_location||""); doc.setFontSize(lf); while(loc&&lf>9&&doc.getTextWidth(loc)>RW){ lf-=0.5; doc.setFontSize(lf); }
+          var ll=loc?doc.splitTextToSize(loc,RW).slice(0,2):[]; ll.forEach(function(t,li){ doc.text(t,L+W-1,y0+4.6+li*lf*0.4,{align:"right"}); });
+          doc.setFontSize(8.5); doc.setTextColor(90); if(l.sku) doc.text(String(l.sku),L+W-1,y0+4.6+Math.max(1,ll.length)*lf*0.4+0.2,{align:"right"}); doc.setTextColor(0); doc.setFont("helvetica","normal");
           y=Math.max(y0+PH+2,ty)+1;
           if(l.cut_down&&l.cut_down.to){ var cn=l.cut_down.count, nn=String(l.cut_down.noun||"TOP"), fr=l.cut_down.from?" FROM "+l.cut_down.from:"";
             var ct=cn?"CUT "+cn+"x "+nn+(cn===1?"":"S")+" DOWN"+fr+" TO "+l.cut_down.to+"MM":"CUT THIS "+nn+" DOWN"+fr+" TO "+l.cut_down.to+"MM";
