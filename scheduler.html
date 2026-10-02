@@ -2065,9 +2065,13 @@ var SNAP=null, DETAIL={};
     var each=function(who,f){ var ms=who.filter(field).map(f), sh=ms.filter(function(m){ return m!=null; }); if(!sh.length) return ""; var same=sh.every(function(m){ return m===sh[0]; });
       return same?fmt(sh[0])+(who.filter(field).length>1?" each":""):who.filter(field).map(function(w){ return w.split(" ")[0]+" "+fmt(f(w)); }).join(", "); };
     var prod=[], road=[], lab=[];
-    prepJobs().filter(function(j){ return !j.isHold&&j.prep&&j.prep.date&&daysOf(j.prep).indexOf(k)>=0; }).forEach(function(j){ var nd=daysOf(j.prep).length;
+    // A REPRINT LEAVES OUT WHAT IS DONE (Sam, 2 Oct 2026: "jobs moved to the completed list do not need to show on the
+    // updated day sheet"). A card in a completed list, its legs, and production marked finished all drop off, so a sheet
+    // printed again after jobs were added carries only the work still to do. The print time at the top tells versions apart.
+    var finished=function(j){ return !!(j.completed||(j.isLeg&&j.parentJob&&j.parentJob.completed)); };
+    prepJobs().filter(function(j){ return !j.isHold&&!finished(j)&&!(j.prep&&j.prep.done&&j.prep.done.status==="done")&&j.prep&&j.prep.date&&daysOf(j.prep).indexOf(k)>=0; }).forEach(function(j){ var nd=daysOf(j.prep).length;
       prod.push([name(j),nd>1?"Day "+(daysOf(j.prep).indexOf(k)+1)+" of "+nd:"",j.prep.who.join(", ")||"Nobody yet",each(j.prep.who,function(w){ return Math.round(prepShare(j,w)); }),j.short||j.id]); });
-    allJobs().filter(function(j){ return onDay(j,k)&&!j.isHold&&!j.completed; }).forEach(function(j){ var pj=j.isLeg&&j.parentJob?j.parentJob:j, cid=pj.short||pj.id;
+    allJobs().filter(function(j){ return onDay(j,k)&&!j.isHold&&!finished(j); }).forEach(function(j){ var pj=j.isLeg&&j.parentJob?j.parentJob:j, cid=pj.short||pj.id;
       var who=j.who.length?j.who.join(", "):(j.contractor||"Nobody yet"), tm=each(j.who,function(w){ return minsFor(j,w); });
       if(j.isLeg&&j.leg&&j.leg.type==="production"){ prod.push([name(j),"",who,tm,cid]); return; }
       if(j.site){ var d0=DETAIL[j.id]?parseDesc(DETAIL[j.id].desc||""):null, where=j.isLeg?(j.leg.where||""):(d0&&d0.where[0]?d0.where[0]:""), tmg=jobTiming(j,k);
