@@ -2787,10 +2787,9 @@ var SNAP=null, DETAIL={};
         // and email from the card, in one box of equal columns; a second contact goes on a line under the first
         var c0=(d.contacts[0]||"").split(" · "), nm0=c0[0]||"", ph0=c0.slice(1).join(" "), em0=d.kv.email||d.kv["contact email"]||d.kv["email address"]||"";
         if(/^\+?\d[\d\s]+$/.test(nm0)&&!ph0){ ph0=nm0; nm0=""; }
-        var cols=[["Name",nm0||"Not on the card"],["Phone",ph0||"Not on the card"]]; if(em0) cols.push(["Email",em0]);
-        var cw=W/cols.length, ch=d.contacts[1]?20:15; doc.setLineWidth(0.5); doc.setDrawColor(17); doc.roundedRect(L,y,W,ch,1.5,1.5); for(var ci=1;ci<cols.length;ci++) doc.line(L+ci*cw,y,L+ci*cw,y+ch); doc.setDrawColor(0);
+        var cols=[["Contact name",nm0||"Not on the card"],["Contact number",ph0||"Not on the card"]];   // name and number only (Sam, 2 Oct 2026)
+        var cw=W/cols.length, ch=15; doc.setLineWidth(0.5); doc.setDrawColor(17); doc.roundedRect(L,y,W,ch,1.5,1.5); for(var ci=1;ci<cols.length;ci++) doc.line(L+ci*cw,y,L+ci*cw,y+ch); doc.setDrawColor(0);
         cols.forEach(function(c,ci){ label(c[0],L+ci*cw+4,y+5); doc.setFont("helvetica","bold"); doc.setFontSize(c[0]==="Email"?9.5:12); doc.text(doc.splitTextToSize(c[1],cw-8)[0],L+ci*cw+4,y+11.2); });
-        if(d.contacts[1]){ doc.setFont("helvetica","normal"); doc.setFontSize(9); doc.text("Also: "+d.contacts[1],L+4,y+17); }
         y+=ch+6; };
       var cont=function(){ setFoot("This job carries on over the page."); head(true); };
       head(false);
