@@ -260,6 +260,11 @@
     return w;
   }
   function fld(label){ var f=el("div","fld"); if(label) f.appendChild(el("div","lbl",label)); return f; }
+  // DIFFERENT TIME FOR SOMEBODY, on any part with two or more on it (2 Oct 2026: production had it; labour and transport now too)
+  function eachBox(ed,part,what){ if(((part&&part.who)||[]).length<2) return;
+    ed.appendChild(el("div","lbl","Different time for somebody? Set theirs here"));
+    part.who.forEach(function(w){ var r=el("div","row"); r.appendChild(el("span",null,w)); r.appendChild(hm(function(){ return minsFor(part,w); },function(v){ setEach(part,w,v); },w+" "+what)); ed.appendChild(r); });
+    ed.appendChild(el("div","hint","Leave these alone unless one of them is on it for less or more.")); }
   function timeField(part,label,getT,setT){ getT=getT||function(){ return part.mins; }; setT=setT||function(v){ part.mins=v; };
     var f=fld(label);
     var seg=el("div","seg"); QUICK.forEach(function(q){ var x=el("button",getT()===q[0]?"on":"",q[1]); x.onclick=function(){ setT(q[0]); save(); render(); }; seg.appendChild(x); }); f.appendChild(seg);
@@ -380,7 +385,7 @@
         // day view, the capacity and the job sheets all follow it.
         if(d.prep.who.length>1){ ed.appendChild(el("div","lbl","Different time for somebody? Set theirs here"));
           d.prep.who.forEach(function(w){ var r=el("div","row"); r.appendChild(el("span",null,w));
-            r.appendChild(hm(function(){ return minsFor(d.prep,w); },function(v){ d.prep.each=d.prep.each||{}; if(v==null||v===d.prep.mins) delete d.prep.each[w]; else d.prep.each[w]=v; },w+" production time"));
+            r.appendChild(hm(function(){ return minsFor(d.prep,w); },function(v){ setEach(d.prep,w,v); },w+" production time"));
             ed.appendChild(r); });
           ed.appendChild(el("div","hint","Leave these alone unless one of them is on it for less. The job's remaining work is worked out from what is set here."));
         } },d.prep.mins!=null?"":(d.prep.who.length?"bad":"todo")));
@@ -426,11 +431,11 @@
         // this card's operatives makes a round; this card then shows the round and points at it.
         var rdDay=due?due.slice(0,10):""; var rdWith=(site&&!contractorOnly&&d.who.length&&rdDay)?OTHERS.filter(function(o){ return o.site&&o.due===rdDay&&(o.plan.who||[]).some(function(w){return d.who.indexOf(w)>=0;}); }):[];
         var onRound=rdWith.length>0, rdDriver=onRound?d.who.filter(function(w){return rdWith.some(function(o){return (o.plan.who||[]).indexOf(w)>=0;});})[0]||d.who[0]:null;
-        var timeTxt=(d.mins!=null?fmt(d.mins)+(d.who.length>1?" each":"")+(site?" on site":""):(site?"No site time":"No time set"))+(site?(onRound?", travel on the round":(d.drive!=null?", travel "+fmt(d.drive)+" return":", no travel time")):"");
+        var timeTxt=(d.mins!=null?eachText(d)+(site?" on site":""):(site?"No site time":"No time set"))+(site?(onRound?", travel on the round":(d.drive!=null?", travel "+fmt(d.drive)+" return":", no travel time")):"");
         ts.appendChild(rowEl("time",site?"Time":"Time",timeTxt,function(ed){
           if(std){ var sb=el("div","stdbox"); sb.appendChild(el("b",null,"Estimate: "+std.crew+(std.crew===1?" operative":" operatives")+(std.mins!=null?", "+fmt(std.mins)+(std.crew>1?" each":""):""))); sb.appendChild(el("div","hint",/[.]$/.test(std.why)?std.why:std.why+"."));
             if(std.mins!=null){ var br=el("div","row"); br.style.marginTop="6px"; if(d.mins!==std.mins){ var ub=el("button","p","Use the estimate"); ub.onclick=function(){ d.mins=std.mins; save(); render(); }; br.appendChild(ub); } sb.appendChild(br); } ed.appendChild(sb); }
-          ed.appendChild(el("div","lbl",site?"Site time per operative":(loading?"Loading time per operative":"Labour time per operative"))); ed.appendChild(timeField(d,""));
+          ed.appendChild(el("div","lbl",site?"Site time per operative":(loading?"Loading time per operative":"Labour time per operative"))); ed.appendChild(timeField(d,"")); eachBox(ed,d,site?"site time":"labour time");
           if(site&&!onRound){ ed.appendChild(el("div","lbl","Travel time, return")); ed.appendChild(hm(function(){return d.drive;},function(v){d.drive=v;},"Travel")); ed.appendChild(el("div","hint","There and back, typed. When this job shares a van with another the same day, the travel moves to the round.")); if(d.drive!=null&&d.drive>360) ed.appendChild(el("div","warn","More than a day's travel with the job in between. Consider a courier or subcontractor.")); }
         },(d.mins==null&&d.who.length&&!contractorOnly)?"bad":(d.mins==null||(site&&d.drive==null))?"todo":""));
         // STARTS AT (Sam, 28 Sep 2026: "what happens if it is just a morning or a couple hours"). Optional, site jobs
@@ -547,9 +552,9 @@
       if(overW) ws.appendChild(banner("Above the estimate: "+overW+"."));
       ws.appendChild(rowEl("wwho",W.who.length===1?"Operative":"Operatives",W.who.length?W.who.join(", "):"Unassigned",function(ed){ ed.appendChild(people(W,false,function(){ var s3=standardFor(isSkipCard()?"Skip Exchange":(/unload|receive/i.test(W.where)?"Labour unload":"Labour load"),loadNow()); return s3&&s3.mins!=null?s3.mins:null; },W.date?[W.date]:[])); ed.appendChild(availability(W.date?[W.date]:[],W)); },W.who.length?"":"bad"));
       ws.appendChild(rowEl("wdate","Day",W.date?niceShort(W.date):"Not set",function(ed){ var wr=el("div","row"); var wd=el("input"); wd.type="date"; wd.value=W.date||""; wd.onchange=function(){ W.date=wd.value||null; save(); render(); }; wr.appendChild(wd); ed.appendChild(wr); ed.appendChild(el("div","hint","The day the truck is unloaded or the load is put out. It shows under Labour Operations in the Scheduler.")); },W.date?"":"todo"));
-      ws.appendChild(rowEl("wtime",W.who.length>1?"Time per operative":"Time",W.mins!=null?fmt(W.mins)+(W.who.length>1?" each":""):(wstd&&wstd.mins!=null?"Not set, estimated "+fmt(wstd.mins):"Not set"),function(ed){
+      ws.appendChild(rowEl("wtime",W.who.length>1?"Time per operative":"Time",W.mins!=null?eachText(W):(wstd&&wstd.mins!=null?"Not set, estimated "+fmt(wstd.mins):"Not set"),function(ed){
         if(wstd&&wstd.mins!=null){ var sb=el("div","stdbox"); sb.appendChild(el("b",null,"Estimate: "+wstd.crew+(wstd.crew===1?" operative":" operatives")+", "+fmt(wstd.mins)+(wstd.crew>1?" each":""))); sb.appendChild(el("div","hint",wstd.why)); ed.appendChild(sb); }
-        ed.appendChild(el("div","lbl","Labour time per operative")); ed.appendChild(timeField(W,"")); },W.mins!=null?"":(W.who.length?"bad":"todo")));
+        ed.appendChild(el("div","lbl","Labour time per operative")); ed.appendChild(timeField(W,"")); eachBox(ed,W,"labour time"); },W.mins!=null?"":(W.who.length?"bad":"todo")));
       app.appendChild(ws);
     });
     var otherLegs=(d.legs||[]).filter(function(L){return L.type!=="labour";});

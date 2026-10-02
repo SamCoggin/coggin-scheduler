@@ -394,6 +394,15 @@ function prodStandardFor(load,crewNow,daysAvail){
 // A part carries one time for everybody; when that is not true, part.each holds the minutes for the people who
 // differ, and everything reads the time through here.
 function minsFor(part,w){ if(!part) return null; var e=part.each&&part.each[w]; return (e===0||e)?e:(part.mins!=null?part.mins:null); }
+// ONE TIME, OR EACH PERSON'S (Sam, 2 Oct 2026: "30 mins for one and 15 for the other"): "30 min each" while everybody
+// has the same, "Bradley 30 min, Jordan 15 min" once somebody differs. div turns a total into a day's share.
+function eachDiffers(part){ var who=(part&&part.who)||[]; return who.length>1&&part.mins!=null&&who.some(function(w){ return minsFor(part,w)!==part.mins; }); }
+function eachText(part,div){ div=div||1; var who=(part&&part.who)||[], f=function(m){ return m==null?"?":fmt(div>1?Math.round(m/div):m); };
+  if(eachDiffers(part)) return who.map(function(w){ return w.split(" ")[0]+" "+f(minsFor(part,w)); }).join(", ");
+  return part&&part.mins!=null?f(part.mins)+(who.length>1?" each":""):""; }
+// set one person's own time; the same as everybody's clears it. Times for people no longer on the part are dropped.
+function setEach(part,w,v){ part.each=part.each||{}; if(v==null||v===part.mins) delete part.each[w]; else part.each[w]=v; tidyEach(part); }
+function tidyEach(part){ if(!part||!part.each) return; Object.keys(part.each).forEach(function(w){ if((part.who||[]).indexOf(w)<0) delete part.each[w]; }); if(!Object.keys(part.each).length) delete part.each; }
 // what the crew are actually giving a production job, in crew minutes
 function plannedProdMins(part){ return ((part&&part.who)||[]).reduce(function(t,w){ var m=minsFor(part,w); return t+(m||0); },0); }
 function aboveProdStandard(std,who,mins,start,end){

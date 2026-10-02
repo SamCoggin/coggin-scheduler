@@ -527,7 +527,7 @@ var SNAP=null, DETAIL={};
       // Upholstery, for Harper Interiors", not the parent's name. Labour legs keep the parent's name; their block says the rest.
       var customer=parent.title.split(" - ").slice(1).join(" - ")||parent.title;
       var legTitle=L.type==="to_sub"?"Deliver to "+(L.where||"subcontractor")+", for "+customer:L.type==="from_sub"?"Collect from "+(L.where||"subcontractor")+", for "+customer:L.type==="site"?"Site visit"+(L.where?" at "+L.where:"")+", for "+customer:parent.title;
-      var j={id:L.parent+":leg"+i,leg:L,parentJob:parent,title:legTitle,label:parent.label,work:parent.work,stageLabel:tdef[1]+(L.where?": "+L.where:""),date:L.date,start:null,who:L.who,contractor:"",mins:L.mins,site:tdef[2],drive:L.drive,from:L.from||null,by:L.by||null,isLeg:true,pc:L.pc||parent.pc};
+      var j={id:L.parent+":leg"+i,leg:L,each:L.each,parentJob:parent,title:legTitle,label:parent.label,work:parent.work,stageLabel:tdef[1]+(L.where?": "+L.where:""),date:L.date,start:null,who:L.who,contractor:"",mins:L.mins,site:tdef[2],drive:L.drive,from:L.from||null,by:L.by||null,isLeg:true,pc:L.pc||parent.pc};
       // a labour leg carries the parent's load, and its standard is a labour load or unload of that load
       if(L.type==="labour"){ j.movement=/unload|receive/i.test(L.where||"")?"Labour unload":"Labour load"; j.work=parent.work; j.load=parent.load; j.items=parent.items; j.allItems=parent.allItems; j.cubeSet=parent.cubeSet; }
       return j; }).filter(Boolean);
@@ -586,12 +586,12 @@ var SNAP=null, DETAIL={};
     // who is coming to Forton, and the CRM's "Arriving:" time when nothing is set yet (2 Oct 2026)
     JOBS.forEach(function(j){ var dd=DETAIL[j.id]; j.arrive=arrivalKind(j.labels,j.title,dd?dd.desc:""); });
     SNAP.cards.forEach(function(c){ var d=c.saved; if(!d) return; var j=JOBS.filter(function(x){return x.id===c.id;})[0]; if(!j) return;
-      if(d.who) j.who=d.who.slice(); if(d.cube!=null) j.cubeSet=d.cube; if(d.ignore&&d.ignore.length){ j.ignore=d.ignore.slice(); j.items=j.allItems.filter(function(l){return j.ignore.indexOf(l)<0;}); } if(d.items&&d.items.length){ j.manual=d.items.slice(); } j.load=loadOf(j.items.concat(j.manual).concat(j.loanItems||[])); if(d.mins!=null) j.mins=d.mins; if(d.at) j.at=d.at; if(d.drive!=null) j.drive=d.drive; if(d.driveAuto) j.driveAuto=true; if(!ESTIMATE_ON&&j.driveAuto){ j.drive=null; j.driveAuto=false; } if(d.contractor) j.contractor=d.contractor; if(d.from) j.from=d.from; if(d.by) j.by=d.by; if(d.collectAt) j.collectAt=d.collectAt; if(d.vehicle) j.vehicle=d.vehicle; if(d.soloOk) j.soloOk=d.soloOk; if(d.qc&&d.qc.by) j.qc=d.qc; if(d.done&&d.done.status) j.done=(d.done.status==="no"&&d.date&&d.date!==j.date)?null:d.done;   // a did-not-go record clears once the card has a new date
+      if(d.who) j.who=d.who.slice(); if(d.cube!=null) j.cubeSet=d.cube; if(d.ignore&&d.ignore.length){ j.ignore=d.ignore.slice(); j.items=j.allItems.filter(function(l){return j.ignore.indexOf(l)<0;}); } if(d.items&&d.items.length){ j.manual=d.items.slice(); } j.load=loadOf(j.items.concat(j.manual).concat(j.loanItems||[])); if(d.mins!=null) j.mins=d.mins; if(d.each) j.each=d.each; if(d.at) j.at=d.at; if(d.drive!=null) j.drive=d.drive; if(d.driveAuto) j.driveAuto=true; if(!ESTIMATE_ON&&j.driveAuto){ j.drive=null; j.driveAuto=false; } if(d.contractor) j.contractor=d.contractor; if(d.from) j.from=d.from; if(d.by) j.by=d.by; if(d.collectAt) j.collectAt=d.collectAt; if(d.vehicle) j.vehicle=d.vehicle; if(d.soloOk) j.soloOk=d.soloOk; if(d.qc&&d.qc.by) j.qc=d.qc; if(d.done&&d.done.status) j.done=(d.done.status==="no"&&d.date&&d.date!==j.date)?null:d.done;   // a did-not-go record clears once the card has a new date
       // DATE MOVED (Sam, 13 Sep 2026): the plan remembers the date it was made for. If sales move the card, the plan flags itself until someone presses Replanned.
       if(d.date&&d.date!==j.date&&((d.who&&d.who.length)||d.mins!=null||d.vehicle)) j.moved={from:d.date}; if(d.hireRef) j.hireRef=d.hireRef; if(d.hireBooked) j.hireBooked=true;
       if(d.prep&&j.prep){ j.prep.who=d.prep.who||[]; j.prep.mins=d.prep.mins; j.prep.perDay=d.prep.perDay!=null?d.prep.perDay:null; if(d.prep.each) j.prep.each=d.prep.each; j.prep.start=d.prep.start||null; j.prep.date=d.prep.date||null; if(d.prep.done&&d.prep.done.status) j.prep.done=d.prep.done; }
       if(d.prodDue&&j.prep){ j.prodDue=d.prodDue; j.prodDueSet=true; }
-      (d.legs||[]).forEach(function(L){ LEGS.push({parent:j.id,type:(L.type==="yard"||L.type==="warehouse")?"labour":L.type,date:L.date,who:L.who||[],mins:L.mins,drive:L.drive,where:L.where||"",from:L.from||null,by:L.by||null,pc:L.pc||null,src:L.src||null}); });
+      (d.legs||[]).forEach(function(L){ LEGS.push({parent:j.id,type:(L.type==="yard"||L.type==="warehouse")?"labour":L.type,date:L.date,who:L.who||[],mins:L.mins,each:L.each||undefined,drive:L.drive,where:L.where||"",from:L.from||null,by:L.by||null,pc:L.pc||null,src:L.src||null}); });
     });
     // legs the CRM wrote on the card: seed them once, then the plan on the card owns them
     JOBS.forEach(function(j){ if(LEGS.some(function(L){return L.parent===j.id;})) return; var dd=DETAIL[j.id]; if(!dd) return;
@@ -719,8 +719,8 @@ var SNAP=null, DETAIL={};
   function persist(){
     if(!t) return;
     JOBS.forEach(function(j){
-      var d={date:j.moved?j.moved.from:j.date,who:j.who,mins:j.mins,drive:j.drive,driveAuto:!!j.driveAuto,at:j.at||undefined,cube:j.cubeSet,ignore:j.ignore&&j.ignore.length?j.ignore:undefined,items:j.manual&&j.manual.length?j.manual:undefined,load:j.load&&j.load.any?{m3:j.load.m3,kg:j.load.kg,complete:j.load.complete,rows:j.load.rows.map(function(r){return {n:r.n,type:r.type,m3:r.m3,kg:r.kg,built:r.built,est:r.est};}),unmatched:j.load.unmatched}:undefined,contractor:j.contractor||"",from:j.from||null,by:j.by||null,collectAt:j.collectAt||undefined,vehicle:j.vehicle||null,soloOk:j.soloOk||"",qc:j.qc||null,done:j.done||null,hireRef:j.hireRef||"",hireBooked:!!j.hireBooked,prodDue:j.prodDueSet?j.prodDue:null,prep:j.prep?{who:j.prep.who,mins:j.prep.mins,perDay:j.prep.perDay!=null?j.prep.perDay:undefined,each:j.prep.each&&Object.keys(j.prep.each).length?j.prep.each:undefined,start:j.prep.start,date:j.prep.date,done:j.prep.done||null}:null,
-        legs:LEGS.filter(function(L){return L.parent===j.id;}).map(function(L){return {type:L.type,date:L.date,who:L.who,mins:L.mins,drive:L.drive,where:L.where,from:L.from||null,by:L.by||null,pc:L.pc||null,src:L.src||null};})};
+      tidyEach(j); var d={date:j.moved?j.moved.from:j.date,who:j.who,mins:j.mins,each:j.each||undefined,drive:j.drive,driveAuto:!!j.driveAuto,at:j.at||undefined,cube:j.cubeSet,ignore:j.ignore&&j.ignore.length?j.ignore:undefined,items:j.manual&&j.manual.length?j.manual:undefined,load:j.load&&j.load.any?{m3:j.load.m3,kg:j.load.kg,complete:j.load.complete,rows:j.load.rows.map(function(r){return {n:r.n,type:r.type,m3:r.m3,kg:r.kg,built:r.built,est:r.est};}),unmatched:j.load.unmatched}:undefined,contractor:j.contractor||"",from:j.from||null,by:j.by||null,collectAt:j.collectAt||undefined,vehicle:j.vehicle||null,soloOk:j.soloOk||"",qc:j.qc||null,done:j.done||null,hireRef:j.hireRef||"",hireBooked:!!j.hireBooked,prodDue:j.prodDueSet?j.prodDue:null,prep:j.prep?{who:j.prep.who,mins:j.prep.mins,perDay:j.prep.perDay!=null?j.prep.perDay:undefined,each:j.prep.each&&Object.keys(j.prep.each).length?j.prep.each:undefined,start:j.prep.start,date:j.prep.date,done:j.prep.done||null}:null,
+        legs:LEGS.filter(function(L){return L.parent===j.id;}).map(function(L){ tidyEach(L); return {type:L.type,date:L.date,who:L.who,mins:L.mins,each:L.each||undefined,drive:L.drive,where:L.where,from:L.from||null,by:L.by||null,pc:L.pc||null,src:L.src||null};})};
       var js=JSON.stringify(d); if(lastSaved[j.id]===js) return; lastSaved[j.id]=js; t.set(j.id,"shared","sched",d); syncCardMembers(j.id,d,CRM_KEY,inWorkshop(j));
     });
     var extra=CONTRACTORS.filter(function(c){return ["MAK Installations","Courier","Other contractor"].indexOf(c)<0;});
@@ -971,7 +971,7 @@ var SNAP=null, DETAIL={};
     var cls="bdg "+(isToday?"now":"todo");
     if(part.contractor&&!part.who.length) return el("span","bdg sub",(/courier/i.test(part.contractor)?"Courier: ":"Subcontractor: ")+part.contractor);
     if(!part.who.length) return el("span",cls,"Unassigned");
-    if(part.isPrep){ if(part.mins==null) return el("span",cls,"No production time"); return el("span","bdg",fmt(part.mins)+(part.who.length>1?" each":"")); }
+    if(part.isPrep){ if(part.mins==null) return el("span",cls,"No production time"); return el("span","bdg",eachText(part)); }
     var missing=[];
     if(part.site&&part.drive==null&&!part.onRound) missing.push("No travel time");
     if(part.site&&!part.vehicle&&!part.roundVan&&!attending(part)) missing.push("No van"); else if(part.site&&hireDue(part)) missing.push("Hire not booked");
@@ -1218,6 +1218,11 @@ var SNAP=null, DETAIL={};
       var q=el("div","seg"); QUICK.forEach(function(qq){ var b=el("button",getT()===qq[0]?"on":"",qq[1]); b.onclick=function(){ setT(qq[0]); render(); }; q.appendChild(b); }); tb.appendChild(q);
       var r3=el("div","row"); r3.appendChild(el("span","hint","or exactly")); r3.appendChild(hmBoxes(getT,setT,"Time")); tb.appendChild(r3);
       if(perDayP) tb.appendChild(el("div","hint",prepDayCount(part)+" working days, so "+(part.mins!=null?fmt(part.mins)+" each in all":"no total yet")+"."));
+      // DIFFERENT TIME FOR SOMEBODY (Sam, 2 Oct 2026: "add it to labour, transport and the scheduler editor"), the same
+      // box as the card's. On a production over several days the times here are a day's, like the main time above.
+      if(part.who.length>1){ var nd0=perDayP?prepDayCount(part):1; tb.appendChild(el("div","lbl","Different time for somebody? Set theirs here"));
+        part.who.forEach(function(w){ var er=el("div","row"); er.appendChild(el("span","hint",w)); er.appendChild(hmBoxes(function(){ var m=minsFor(part,w); return m==null?null:Math.round(m/nd0); },function(v){ setEach(part,w,v==null?null:v*nd0); if(part.leg) part.leg.each=part.each; },w+" time")); tb.appendChild(er); });
+        tb.appendChild(el("div","hint","Leave these alone unless one of them is on it for less or more.")); }
       right.appendChild(tb); }
     var blocks=Array.prototype.slice.call(right.children); blocks.sort(function(a,b){ return (+a.dataset.order||15)-(+b.dataset.order||15); });
     right.innerHTML=""; var more=null; blocks.forEach(function(bk){ if((+bk.dataset.order||15)>=20){ if(!more){ more=el("details","more"); more.summ=el("summary",null,"More"); more.appendChild(more.summ); right.appendChild(more); } more.appendChild(bk); } else right.appendChild(bk); });
@@ -1226,7 +1231,7 @@ var SNAP=null, DETAIL={};
     var sumBits=[]; if(contractorOnly) sumBits.push(j.contractor); else sumBits.push(part.who.length?part.who.join(", "):"Unassigned");
     if(!o.shop&&j.site&&!contractorOnly) sumBits.push(j.vehicle?(j.vehicle==="hire"?"Hire"+(j.hireBooked?" booked":" not booked"):j.vehicle):(rv?rv+", on the round":(attending(j)?"Attending, with "+j.contractor:"No van")));
     if(!o.shop&&j.site&&!contractorOnly&&part.who.length){ var tls=dayTimeline(j.date,part.who[0]), sts=tls.stops.filter(function(x){return x.j===j;})[0]; if(sts&&!sts.noDrive) sumBits.push("leave 8:00, arrive "+hmStr(sts.arrive)+", back "+hmStr(tls.back)); else if(j.drive!=null) sumBits.push(fmt(j.drive)+" travel"); }
-    sumBits.push(part.mins!=null?fmt(part.mins)+(o.shop?" production":j.site?" on site":" labour")+(part.who.length>1?" each":""):"no time set");
+    sumBits.push(part.mins!=null?(eachDiffers(part)?eachText(part)+(o.shop?" production":j.site?" on site":" labour"):fmt(part.mins)+(o.shop?" production":j.site?" on site":" labour")+(part.who.length>1?" each":"")):"no time set");
     if(!o.shop&&j.site&&cubeOf(j)!=null&&!attending(j)) sumBits.push(fmtM3(cubeOf(j))+(daysN(j)>1?", about "+fmtM3(cubeOn(j))+" a day over "+daysN(j)+" days":""));
     var sumEl=el("div","plan-sum"); sumBits.forEach(function(t,i){ var sp=el("span",/Unassigned|No van|not booked|no time set/.test(t)?"bad":"",t); sumEl.appendChild(sp); }); ht.appendChild(sumEl);
     cols.appendChild(left); cols.appendChild(right); m.appendChild(cols);
