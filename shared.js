@@ -403,6 +403,28 @@ function eachText(part,div){ div=div||1; var who=(part&&part.who)||[], f=functio
 // set one person's own time; the same as everybody's clears it. Times for people no longer on the part are dropped.
 function setEach(part,w,v){ part.each=part.each||{}; if(v==null||v===part.mins) delete part.each[w]; else part.each[w]=v; tidyEach(part); }
 function tidyEach(part){ if(!part||!part.each) return; Object.keys(part.each).forEach(function(w){ if((part.who||[]).indexOf(w)<0) delete part.each[w]; }); if(!Object.keys(part.each).length) delete part.each; }
+// THE EACH-PERSON BOX (Sam, 2 Oct 2026: "This UI needs an upgrade", mock approved). One row per person: "Same" follows
+// the main time, quick times for the usual answers, a small hours and minutes box for anything else, and a line saying
+// how an own time differs. div shows a several-day production's times as a day's share. commit() saves and redraws.
+function eachPersonBox(mk,part,o){ o=o||{}; var div=o.div||1, who=(part&&part.who)||[]; if(who.length<2) return null;
+  var tm=function(m){ return m==null?"":fmt(m); }, mainShown=part.mins!=null?Math.round(part.mins/div):null;
+  var box=mk("div","eachbox"), head=mk("div","each-h"); head.appendChild(mk("b",null,"Each person")); head.appendChild(mk("span",null,mainShown!=null?"Main time "+tm(mainShown)+(div>1?" a day":""):"No main time yet")); box.appendChild(head);
+  var quick=[15,30,45,60].filter(function(q){ return q!==mainShown; }).slice(0,3);
+  who.forEach(function(w){ var own=!!(part.each&&part.each[w]!=null), cur=minsFor(part,w), shown=cur==null?null:Math.round(cur/div);
+    var row=mk("div","each-p"), nm=mk("div","each-n",w); nm.appendChild(mk("small",null,own?"Own time":"Same as main")); row.appendChild(nm);
+    var right=mk("div",null), chips=mk("div","each-c");
+    var set=function(v){ setEach(part,w,v==null?null:v*div); o.commit(); };
+    var same=mk("button","c same"+(own?"":" on"),"Same"+(mainShown!=null?", "+tm(mainShown):"")); same.type="button"; same.onclick=function(){ set(null); }; chips.appendChild(same);
+    quick.forEach(function(q){ var b=mk("button","c"+(own&&shown===q?" on":""),q<60?q+"m":(q%60?Math.floor(q/60)+"h"+(q%60):(q/60)+"h")); b.type="button"; b.onclick=function(){ set(q); }; chips.appendChild(b); });
+    var oth=mk("span","each-o"), h=mk("input"), m=mk("input"); h.type="number"; h.min="0"; h.placeholder="0"; m.type="number"; m.min="0"; m.max="55"; m.step="5"; m.placeholder="0";
+    h.setAttribute("aria-label",w+" hours"); m.setAttribute("aria-label",w+" minutes");
+    if(own&&quick.indexOf(shown)<0&&shown!=null){ h.value=String(Math.floor(shown/60)); m.value=String(shown%60); }
+    var upd=function(){ if(h.value===""&&m.value==="") return; set((parseInt(h.value,10)||0)*60+(parseInt(m.value,10)||0)); }; h.onchange=upd; m.onchange=upd;
+    oth.appendChild(mk("span",null,"or")); oth.appendChild(h); oth.appendChild(mk("span",null,"h")); oth.appendChild(m); oth.appendChild(mk("span",null,"min")); right.appendChild(chips); right.appendChild(oth);
+    if(own&&mainShown!=null&&shown!=null&&shown!==mainShown) right.appendChild(mk("div","each-d",tm(Math.abs(shown-mainShown))+(shown>mainShown?" longer":" shorter")+" than the main time"+(div>1?", each day":"")));
+    row.appendChild(right); box.appendChild(row); });
+  box.appendChild(mk("div","hint","Only change someone who is on it for less or more."));
+  return box; }
 // what the crew are actually giving a production job, in crew minutes
 function plannedProdMins(part){ return ((part&&part.who)||[]).reduce(function(t,w){ var m=minsFor(part,w); return t+(m||0); },0); }
 function aboveProdStandard(std,who,mins,start,end){

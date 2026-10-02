@@ -337,6 +337,11 @@
   .over{background:var(--list);border-radius:10px;padding:12px 14px;margin-top:8px}
   .over pre{white-space:pre-wrap;font-family:inherit;margin:0;font-size:13px;line-height:1.5;color:var(--text)}
   .over h4{margin:0 0 4px;font-size:12px;text-transform:uppercase;color:var(--muted);letter-spacing:.03em}
+  .eachbox{margin-top:12px;border-top:1px solid var(--line);padding-top:10px} .each-h{display:flex;justify-content:space-between;align-items:baseline;gap:8px;padding-bottom:8px;border-bottom:1px solid var(--line)} .each-h b{font-size:16px} .each-h span{font-size:13px;color:var(--muted)}
+  .each-p{display:grid;grid-template-columns:88px minmax(0,1fr);gap:8px;align-items:center;padding:8px 0} .each-p+.each-p{border-top:1px dashed var(--line)} .each-n{font-weight:800} .each-n small{display:block;font-weight:600;font-size:12px;color:var(--muted)}
+  .each-c{display:flex;gap:6px;flex-wrap:wrap;align-items:center} .each-c .c{border:2px solid var(--line);background:#fff;color:inherit;border-radius:8px;padding:4px 10px;font-weight:700;font-size:14px;cursor:pointer} .each-c .c.same{border-style:dashed} .each-c .c.on{background:var(--blue);border-color:var(--blue);color:#fff;border-style:solid}
+  .each-o{display:flex;align-items:center;gap:5px;font-size:13px;color:var(--muted);margin-top:6px} .each-o input[type=number]{width:44px;padding:4px 5px} .each-d{font-size:12px;font-weight:700;color:var(--blue);margin-top:4px}
+  @media (max-width:420px){ .each-p{grid-template-columns:1fr} }
   .items{list-style:none;margin:8px 0 0;padding:0}
   .items li{padding:5px 0;border-top:1px solid var(--line);font-size:13px;display:flex;gap:8px;align-items:flex-start}
   .items.plain li{align-items:center} .ithumb{width:56px;height:56px;object-fit:contain;background:#fff;border:1px solid var(--line);border-radius:4px;flex:0 0 56px} .ithumb.none{display:flex;align-items:center;justify-content:center;font-size:9px;color:var(--muted);text-align:center}
@@ -1240,9 +1245,7 @@ var SNAP=null, DETAIL={};
       if(perDayP) tb.appendChild(el("div","hint",prepDayCount(part)+" working days, so "+(part.mins!=null?fmt(part.mins)+" each in all":"no total yet")+"."));
       // DIFFERENT TIME FOR SOMEBODY (Sam, 2 Oct 2026: "add it to labour, transport and the scheduler editor"), the same
       // box as the card's. On a production over several days the times here are a day's, like the main time above.
-      if(part.who.length>1){ var nd0=perDayP?prepDayCount(part):1; tb.appendChild(el("div","lbl","Different time for somebody? Set theirs here"));
-        part.who.forEach(function(w){ var er=el("div","row"); er.appendChild(el("span","hint",w)); er.appendChild(hmBoxes(function(){ var m=minsFor(part,w); return m==null?null:Math.round(m/nd0); },function(v){ setEach(part,w,v==null?null:v*nd0); if(part.leg) part.leg.each=part.each; },w+" time")); tb.appendChild(er); });
-        tb.appendChild(el("div","hint","Leave these alone unless one of them is on it for less or more.")); }
+      var ebx=eachPersonBox(el,part,{div:perDayP?prepDayCount(part):1,commit:function(){ if(part.leg) part.leg.each=part.each; render(); }}); if(ebx) tb.appendChild(ebx);
       right.appendChild(tb); }
     var blocks=Array.prototype.slice.call(right.children); blocks.sort(function(a,b){ return (+a.dataset.order||15)-(+b.dataset.order||15); });
     right.innerHTML=""; var more=null; blocks.forEach(function(bk){ if((+bk.dataset.order||15)>=20){ if(!more){ more=el("details","more"); more.summ=el("summary",null,"More"); more.appendChild(more.summ); right.appendChild(more); } more.appendChild(bk); } else right.appendChild(bk); });

@@ -25,6 +25,11 @@
   .fld:last-child{border-bottom:0}
   .lbl{font-size:13px;font-weight:800;text-transform:uppercase;letter-spacing:.03em;margin-bottom:8px}
   .people{display:flex;flex-wrap:wrap;gap:8px}
+  .eachbox{margin-top:12px;border-top:1px solid var(--line);padding-top:10px} .each-h{display:flex;justify-content:space-between;align-items:baseline;gap:8px;padding-bottom:8px;border-bottom:1px solid var(--line)} .each-h b{font-size:16px} .each-h span{font-size:13px;color:var(--muted)}
+  .each-p{display:grid;grid-template-columns:88px minmax(0,1fr);gap:8px;align-items:center;padding:8px 0} .each-p+.each-p{border-top:1px dashed var(--line)} .each-n{font-weight:800} .each-n small{display:block;font-weight:600;font-size:12px;color:var(--muted)}
+  .each-c{display:flex;gap:6px;flex-wrap:wrap;align-items:center} .each-c .c{border:2px solid var(--line);background:#fff;color:inherit;border-radius:8px;padding:4px 10px;font-weight:700;font-size:14px;cursor:pointer} .each-c .c.same{border-style:dashed} .each-c .c.on{background:var(--blue);border-color:var(--blue);color:#fff;border-style:solid}
+  .each-o{display:flex;align-items:center;gap:5px;font-size:13px;color:var(--muted);margin-top:6px} .each-o input[type=number]{width:44px;padding:4px 5px} .each-d{font-size:12px;font-weight:700;color:var(--blue);margin-top:4px}
+  @media (max-width:420px){ .each-p{grid-template-columns:1fr} }
   .p{border:2px solid var(--line);background:var(--card);border-radius:8px;padding:7px 12px;font-weight:700}
   .p.on{border-color:var(--blue);background:var(--blue);color:#fff}
   .p.off{opacity:.45;cursor:not-allowed;background:#eef0f3} .p.away{color:#b45309;background:#fff7ed;border-color:#fed7aa}
@@ -261,10 +266,8 @@
   }
   function fld(label){ var f=el("div","fld"); if(label) f.appendChild(el("div","lbl",label)); return f; }
   // DIFFERENT TIME FOR SOMEBODY, on any part with two or more on it (2 Oct 2026: production had it; labour and transport now too)
-  function eachBox(ed,part,what){ if(((part&&part.who)||[]).length<2) return;
-    ed.appendChild(el("div","lbl","Different time for somebody? Set theirs here"));
-    part.who.forEach(function(w){ var r=el("div","row"); r.appendChild(el("span",null,w)); r.appendChild(hm(function(){ return minsFor(part,w); },function(v){ setEach(part,w,v); },w+" "+what)); ed.appendChild(r); });
-    ed.appendChild(el("div","hint","Leave these alone unless one of them is on it for less or more.")); }
+  // DIFFERENT TIME FOR SOMEBODY, the each-person box in shared.js (2 Oct 2026, mock approved)
+  function eachBox(ed,part,what,div){ var b=eachPersonBox(el,part,{div:div||1,commit:function(){ save(); render(); }}); if(b) ed.appendChild(b); }
   function timeField(part,label,getT,setT){ getT=getT||function(){ return part.mins; }; setT=setT||function(v){ part.mins=v; };
     var f=fld(label);
     var seg=el("div","seg"); QUICK.forEach(function(q){ var x=el("button",getT()===q[0]?"on":"",q[1]); x.onclick=function(){ setT(q[0]); save(); render(); }; seg.appendChild(x); }); f.appendChild(seg);
@@ -383,12 +386,8 @@
         // SOMEBODY BREAKING OFF (Sam, 18 Sep 2026: "an operative might have to break off a job onto something
         // else"). One time for everybody is the norm; where it is not, set that person's own time here and the
         // day view, the capacity and the job sheets all follow it.
-        if(d.prep.who.length>1){ ed.appendChild(el("div","lbl","Different time for somebody? Set theirs here"));
-          d.prep.who.forEach(function(w){ var r=el("div","row"); r.appendChild(el("span",null,w));
-            r.appendChild(hm(function(){ return minsFor(d.prep,w); },function(v){ setEach(d.prep,w,v); },w+" production time"));
-            ed.appendChild(r); });
-          ed.appendChild(el("div","hint","Leave these alone unless one of them is on it for less. The job's remaining work is worked out from what is set here."));
-        } },d.prep.mins!=null?"":(d.prep.who.length?"bad":"todo")));
+        eachBox(ed,d.prep,"production time",pnd);
+ },d.prep.mins!=null?"":(d.prep.who.length?"bad":"todo")));
       ps.insertBefore(ps.lastChild,pdaysRow);   // time before days
       // ON TIME OR NOT, the same line the Scheduler's production card shows (Sam, 1 Oct 2026: "add it to the trello card too")
       var pst=cardProdStatus(prodDue);
