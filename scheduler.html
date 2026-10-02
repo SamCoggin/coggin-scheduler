@@ -2623,13 +2623,13 @@ var SNAP=null, DETAIL={};
         doc.setFont("helvetica","normal"); doc.setFontSize(10.5); var al=doc.splitTextToSize(d.address||"Not on the card",66).slice(0,4); doc.text(al,L,cy+5);
         doc.setFont("helvetica","bold"); doc.setFontSize(11.5); var cl=[]; (d.contacts.length?d.contacts:["Not on the card"]).slice(0,2).forEach(function(c){ c.split(" · ").forEach(function(p0){ cl.push(p0); }); }); cl=cl.slice(0,4); doc.text(cl,L+72,cy+5);
         var qx=L+W-38; if(qr(d.signoff,qx,y,38)){ doc.setFont("helvetica","bold"); doc.setFontSize(8.5); doc.text(["Scan to sign off","before you leave"],qx+19,y+42,{align:"center"}); }
-        else { doc.setDrawColor(150); doc.setLineDashPattern([0.8,0.8],0); doc.rect(qx,y,38,38); doc.setLineDashPattern([],0); doc.setDrawColor(0); doc.setFont("helvetica","bold"); doc.setFontSize(8); doc.text(doc.splitTextToSize("No sign-off link on the card. Ring the office.",32),qx+19,y+17,{align:"center"}); }
+        else { doc.setDrawColor(150); doc.setLineDashPattern([0.8,0.8],0); doc.rect(qx,y,38,38); doc.setLineDashPattern([],0); doc.setDrawColor(0); doc.setFont("helvetica","bold"); doc.setFontSize(8); doc.text(doc.splitTextToSize("No sign-off link on the card. Call the operations manager.",32),qx+19,y+17,{align:"center"}); }
         y=Math.max(cy+5+Math.max(al.length,cl.length)*4.8,y+47)+2; rule(); y+=5; };
       var cont=function(){ setFoot("This stop carries on over the page."); stopHead(true); };
       stopHead(false); kit.steps(["Tick the checklist on the Trello card as each item is done","Sign off and add your photos","Move the card to Job Completed"]);
       heading(0,collect?"Collect":"Unload"); kit.items(s.items,cont);
       kit.photosBox("TAKE PHOTOS BEFORE YOU LEAVE",j,cont); kit.know(d,cont);
-      setFoot("Problems? Ring the office before you leave site. No sign-off, no invoice."); };
+      setFoot("Problems? Call the operations manager before you leave site. No sign-off, no invoice."); };
     // a labour page: what is happening, what moves, a code to sign off, the photos prompt
     kit.labour=function(j,info,crewTxt,sub,timeTxt){ var d=info.d, nm=j.title.split(" - ").slice(1).join(" - ")||j.title;
       var code=d.signoff||("https://trello.com/c/"+(j.short||j.id)), codeLabel=d.signoff?"Scan to sign off when it leaves":"Scan to open the Trello card";
@@ -2637,7 +2637,7 @@ var SNAP=null, DETAIL={};
       var cont=function(){ setFoot("This job carries on over the page."); kit.header("Job · Labour · "+crewTxt,nm,"",null,"",true); };
       kit.steps(["Tick the checklist on the Trello card as each item is done","Sign off and add your photos","Move the card to Job Completed"]);
       heading(0,"Items"); kit.items(info.items,cont); kit.photosBox("TAKE PHOTOS BEFORE THEY LEAVE",j,cont); kit.know(d,cont);
-      setFoot("Ring the office with any problem."); };
+      setFoot("Any problem? Call the operations manager."); };
     return kit; }
   async function daySheetDownload(k){
     var btn=$("#sheets"), was=btn?btn.textContent:""; if(btn){ btn.disabled=true; btn.textContent="Building the day sheet..."; }
