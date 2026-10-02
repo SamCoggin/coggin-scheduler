@@ -443,7 +443,6 @@ var SNAP=null, DETAIL={};
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
 <script>document.write('<script src="./shared.js?v='+Math.floor(Date.now()/60000)+'"><\/script>');</script>
 <script>
 (function(){
@@ -2126,11 +2125,12 @@ var SNAP=null, DETAIL={};
     // it has no production; its own picking sheet from the CRM goes behind the day sheet.
     if(mode==="cards"){ var seenC={}; return rows.filter(function(r){ return r.card&&r.pickable&&!seenC[r.card]&&(seenC[r.card]=1); }).map(function(r){ return {id:r.card,short:r.short}; }); }
     var MON3=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+    // the job each picking section belongs to, from the first box it appears in on the day sheet
+    var pickMeta={};
     var pickOf=function(r){ var i=PICK&&r.card&&r.pickable?PICK[r.card]:null; if(!i||!i.picks) return null;
-      if(!i.url) return {kind:"none",main:"No sheet yet",rest:"press Update card"};
-      if(i.failed) return {kind:"none",main:"Would not load",rest:"see the Trello card"};
-      var md=i.made?new Date(i.made):null, ok=md&&!isNaN(md);
-      return {kind:"sheet",card:r.card,main:i.page?(/ to /.test(i.page)?"Pages ":"Page ")+i.page:"Behind this sheet",rest:ok?"sheet of "+md.getDate()+" "+MON3[md.getMonth()]:""}; };
+      if(i.error||!(i.lines&&i.lines.length)) return {kind:"none",main:"No stock reserved",rest:""};
+      if(!pickMeta[r.card]) pickMeta[r.card]={name:r.name,part:r.part+(r.sub?" · "+r.sub:""),who:r.who.join(" + "),ref:i.ref||""};
+      var n=i.lines.length; return {kind:"sheet",card:r.card,main:i.page?"Page "+i.page:"Picking pages",rest:n+(n===1?" line":" lines")}; };
     // one bar per person; people whose jobs are exactly the same get one joint bar ("Jack C + Jordan I")
     var people=TEAM.filter(function(w){ return rows.some(function(r){ return r.who.indexOf(w)>=0; }); });
     var sig={}; people.forEach(function(w){ sig[w]=rows.filter(function(r){ return r.who.indexOf(w)>=0; }).map(function(r){ return r.key; }).join("|"); });
@@ -2177,7 +2177,7 @@ var SNAP=null, DETAIL={};
       doc.setFont("helvetica","normal"); doc.setFontSize(8.5); doc.setTextColor(90); var pr=new Date();
       doc.text("Day sheet · 8:00 to 16:30",L+W,y-4.5,{align:"right"}); var prT=String(pr.getHours()).padStart(2,"0")+":"+String(pr.getMinutes()).padStart(2,"0");
       doc.text("Printed "+niceShort(iso(pr))+" "+prT+(lastPrint?", replaces the "+lastPrint+" sheet":""),L+W,y,{align:"right"});
-      var pickNote=PICK&&PICK.__range?"Picking sheets for "+PICK.__n+(PICK.__n===1?" job on ":" jobs on ")+PICK.__range:"";
+      var pickNote=PICK&&PICK.__range?"Picking for "+PICK.__n+(PICK.__n===1?" job on ":" jobs on ")+PICK.__range:"";
       var hl=[leftOff?leftOff+(leftOff===1?" job":" jobs")+" done, left off":"",pickNote].filter(Boolean);
       hl.forEach(function(t,i){ doc.text(t,L+W,y+4*(i+1),{align:"right"}); }); doc.setTextColor(0); y+=5+4*hl.length;
       // the crew strip
@@ -2226,9 +2226,60 @@ var SNAP=null, DETAIL={};
         for(var ai=0;ai<recW.length;ai+=2){ [0,1].forEach(function(o2){ var a=recW[ai+o2]; if(!a) return; var x=L+o2*(CW+G); doc.setDrawColor(150); doc.setLineWidth(0.3); doc.roundedRect(x,y,CW,10,1.2,1.2); doc.setDrawColor(0);
             doc.setFont("helvetica","bold"); doc.setFontSize(11); doc.text(a.w,x+3.5,y+6.6); doc.setFontSize(13); doc.text(fmt(a.m),x+CW-3.5,y+6.8,{align:"right"}); }); y+=13; } }
       foot();
-      return {doc:doc,fits:y<281,order:order};
+      var dsPages=doc.getNumberOfPages(), fitsDs=y<281, starts={};
+      // THE DAY SHEET'S OWN PICKING PAGES (Sam, 2 Oct 2026, mock approved): one black bar per job in day sheet order, a
+      // tick box on every line and every custom build part, photo, quantity, name, location and SKU. Read from the CRM
+      // when Download is pressed, built by the CRM's own pick-line rules.
+      if(PICK&&order.length){
+        var pickHead=function(cont){ doc.addPage(); y=14; doc.setFont("helvetica","bold"); doc.setFontSize(cont?12:19); doc.text("Picking · "+niceDay(k)+(cont?", continued":""),L,y+(cont?0:2));
+          if(!cont){ doc.setFont("helvetica","normal"); doc.setFontSize(8.5); doc.setTextColor(90); doc.text("Read from the CRM when printed, "+prT,L+W,y+2,{align:"right"}); doc.setTextColor(0); }
+          y+=cont?6:9; };
+        var pfoot=function(){ doc.setFont("helvetica","normal"); doc.setFontSize(8); doc.setTextColor(90); doc.text("Tick each line as it comes off the rack.",L,287); doc.text("Coggin SOS",L+W,287,{align:"right"}); doc.setTextColor(0); };
+        var PH=17, PW=21, TX=L+56, RW=30, TW=W-56-RW-2;
+        var photo=function(url,x,y0,label){ doc.setDrawColor(190); doc.setLineWidth(0.25);
+          if(!url){ doc.setLineDashPattern([0.8,0.8],0); doc.setFillColor(246,246,246); doc.rect(x,y0,PW,PH,"FD"); doc.setLineDashPattern([],0); doc.setFont("helvetica","bold"); doc.setFontSize(6.5); doc.setTextColor(90); doc.text("no photo",x+PW/2,y0+PH/2+1,{align:"center"}); doc.setTextColor(0); doc.setDrawColor(0); return; }
+          doc.rect(x,y0,PW,PH); var im=PICK_IMG[url]; if(im){ try{ var r0=im.w/im.h, dw=PW-1, dh=PH-1; if(r0>dw/dh) dh=dw/r0; else dw=dh*r0; doc.addImage(im.d,"JPEG",x+(PW-dw)/2,y0+(PH-dh)/2,dw,dh,undefined,"FAST"); }catch(e){} }
+          doc.setFillColor(255,255,255); doc.setFont("helvetica","bold"); doc.setFontSize(5.5); var lw=doc.getTextWidth(label)+1.6; doc.rect(x+0.3,y0+0.3,lw,2.4,"F"); doc.setTextColor(90); doc.text(label,x+1.1,y0+2.1); doc.setTextColor(0); doc.setDrawColor(0); };
+        var lineH=function(l){ doc.setFont("helvetica","bold"); doc.setFontSize(10.5); var h=7.5+doc.splitTextToSize(l.name||"",TW).length*4.3; var det=[l.attr_colour,l.attr_features,l.attr_dims].filter(Boolean).join(" · ");
+          if(det){ doc.setFont("helvetica","normal"); doc.setFontSize(8.5); h+=Math.min(2,doc.splitTextToSize(det,TW).length)*3.6; } if(l.attr_pick) h+=4; var rh=Math.max(PH+2,h)+3;
+          if(l.cut_down&&l.cut_down.to) rh+=9; if(l.spec_notes) rh+=8; var cs=Array.isArray(l.build_components)?l.build_components:[]; if(cs.length) rh+=7+cs.length*6; return rh; };
+        var drawLine=function(l){ var y0=y+2.5;
+          doc.setLineWidth(0.5); doc.setDrawColor(17); doc.roundedRect(L+0.5,y0,5.5,5.5,0.7,0.7); doc.setDrawColor(0);
+          photo(l.product_photo||"",L+9,y0,l.photo_is_build?"build":"product"); photo(l.storage_photo||"",L+9+PW+2,y0,"storage");
+          var ty=y0+4.6; doc.setFont("helvetica","bold"); doc.setFontSize(14); var q=l.headerCustomer||String(l.qty||0); doc.text(q,TX,ty);
+          if(l.headerBreakdown){ var qw=doc.getTextWidth(q); doc.setFont("helvetica","normal"); doc.setFontSize(9); doc.setTextColor(90); doc.text("from "+l.headerBreakdown,TX+qw+2,ty); doc.setTextColor(0); }
+          ty+=5.2; doc.setFont("helvetica","bold"); doc.setFontSize(10.5); var nl=doc.splitTextToSize(l.name||"",TW); doc.text(nl,TX,ty); ty+=nl.length*4.3-0.6;
+          var det=[l.attr_colour,l.attr_features,l.attr_dims].filter(Boolean).join(" · ");
+          if(det){ doc.setFont("helvetica","normal"); doc.setFontSize(8.5); doc.setTextColor(85); var dl=doc.splitTextToSize(det,TW).slice(0,2); doc.text(dl,TX,ty+0.6); ty+=dl.length*3.6; doc.setTextColor(0); }
+          if(l.attr_pick){ doc.setFont("helvetica","bold"); doc.setFontSize(8.5); doc.text(doc.splitTextToSize("Pick: "+l.attr_pick,TW)[0],TX,ty+1); ty+=4; }
+          doc.setFont("courier","bold"); doc.setFontSize(11.5); if(l.stock_location) doc.text(doc.splitTextToSize(String(l.stock_location),RW)[0],L+W-1,y0+4.6,{align:"right"});
+          doc.setFontSize(8.5); doc.setTextColor(90); if(l.sku) doc.text(String(l.sku),L+W-1,y0+9,{align:"right"}); doc.setTextColor(0); doc.setFont("helvetica","normal");
+          y=Math.max(y0+PH+2,ty)+1;
+          if(l.cut_down&&l.cut_down.to){ var cn=l.cut_down.count, nn=String(l.cut_down.noun||"TOP"), fr=l.cut_down.from?" FROM "+l.cut_down.from:"";
+            var ct=cn?"CUT "+cn+"x "+nn+(cn===1?"":"S")+" DOWN"+fr+" TO "+l.cut_down.to+"MM":"CUT THIS "+nn+" DOWN"+fr+" TO "+l.cut_down.to+"MM";
+            doc.setFillColor(244,244,244); doc.setDrawColor(17); doc.setLineWidth(0.7); doc.rect(L,y,W,7,"FD"); doc.setFont("helvetica","bold"); doc.setFontSize(9); doc.text(ct,L+3,y+4.7); y+=9; }
+          if(l.spec_notes){ doc.setFillColor(244,244,244); doc.setDrawColor(150); doc.setLineWidth(0.25); doc.rect(L,y,W,6,"FD"); doc.setFont("helvetica","bold"); doc.setFontSize(8.5); doc.text(doc.splitTextToSize("Spec: "+l.spec_notes,W-6)[0],L+3,y+4.1); y+=8; }
+          var cs=Array.isArray(l.build_components)?l.build_components:[];
+          if(cs.length){ var bh=7+cs.length*6; doc.setFillColor(244,244,244); doc.setDrawColor(17); doc.setLineWidth(0.35); doc.rect(L,y,W,bh,"FD");
+            doc.setFont("helvetica","bold"); doc.setFontSize(8.5); doc.text("Custom build: these parts make the item above, nothing extra",L+3,y+4.6);
+            cs.forEach(function(c,ci){ var cy=y+7+ci*6; doc.setLineWidth(0.4); doc.setDrawColor(17); doc.setFillColor(255,255,255); doc.roundedRect(L+3,cy,4,4,0.5,0.5,"FD");
+              doc.setFont("helvetica","bold"); doc.setFontSize(9); doc.text((c.qty||1)+"x",L+9.5,cy+3.3); doc.setFont("helvetica","normal");
+              doc.text(doc.splitTextToSize([c.name,c.sku].filter(Boolean).join(" · ")+(c.role==="top"||c.replaces_role==="top"?" · top only, not the frame or legs":""),W-60)[0],L+19,cy+3.3);
+              if(c.location){ doc.setFont("courier","bold"); doc.text(String(c.location),L+W-3,cy+3.3,{align:"right"}); doc.setFont("helvetica","normal"); } });
+            y+=bh+2; }
+          doc.setDrawColor(205); doc.setLineWidth(0.25); doc.line(L,y,L+W,y); doc.setDrawColor(0); };
+        pickHead(false);
+        order.forEach(function(id){ var i=PICK[id], m=pickMeta[id]; if(!i||!m||!(i.lines&&i.lines.length)) return;
+          if(y+9.5+lineH(i.lines[0])>282){ pfoot(); pickHead(true); }
+          starts[id]=doc.getNumberOfPages();
+          var right=[m.part,m.who,m.ref?"Ref "+m.ref:""].filter(Boolean).join(" · ");
+          doc.setFillColor(17,17,17); doc.roundedRect(L,y,W,6.5,0.8,0.8,"F"); doc.setTextColor(255); doc.setFont("helvetica","bold"); doc.setFontSize(8.5); doc.text(String(m.name).toUpperCase(),L+3,y+4.5);
+          var tw=doc.getTextWidth(String(m.name).toUpperCase()); doc.setFont("helvetica","normal"); doc.setFontSize(8); var rt=right; while(rt.length>6&&doc.getTextWidth(rt)>W-tw-12) rt=rt.slice(0,-2); if(rt!==right) rt=rt.replace(/\s+$/,"")+"..."; doc.text(rt,L+W-3,y+4.5,{align:"right"}); doc.setTextColor(0); y+=8;
+          i.lines.forEach(function(l){ if(y+lineH(l)>282){ pfoot(); pickHead(true); } drawLine(l); }); y+=4; });
+        pfoot(); }
+      return {doc:doc,fits:fitsDs,dsPages:dsPages,order:order,starts:starts};
     };
-    var r=null; for(var sc=1;sc>=0.85;sc-=0.05){ r=build(sc,false); if(r.fits&&r.doc.getNumberOfPages()===1) break; r=null; }
+    var r=null; for(var sc=1;sc>=0.85;sc-=0.05){ r=build(sc,false); if(r.fits&&r.dsPages===1) break; r=null; }
     if(!r) r=build(1,true);
     return r;
   }
@@ -2236,30 +2287,33 @@ var SNAP=null, DETAIL={};
   // day's cards pick stock and where their picking sheet is; the PDFs are fetched, counted, numbered on the day sheet
   // and joined behind it in the order the jobs appear. Anything that fails leaves the day sheet as it was, with the
   // line on that job saying so.
+  // ONE DOWNLOAD: THE DAY SHEET, THEN ITS OWN PICKING PAGES (Sam, 2 Oct 2026, mock approved). The CRM sends the day's pick
+  // lines, read fresh; the photos are loaded and shrunk to JPEG; the pages are drawn after the day sheet in its black and
+  // white, and each PICK tag is numbered from where that job's section starts. If the CRM cannot be reached the day sheet
+  // still downloads, without picking pages.
+  var PICK_IMG={};
+  function loadPickPhoto(url){ return fetch(url).then(function(x){ if(!x.ok) throw new Error(x.status); return x.blob(); }).then(function(b){ return new Promise(function(res,rej){
+      var u=URL.createObjectURL(b), im=new Image(); im.onload=function(){ try{ var mx=600, sc=Math.min(1,mx/Math.max(im.width,im.height)), c=document.createElement("canvas"); c.width=Math.max(1,Math.round(im.width*sc)); c.height=Math.max(1,Math.round(im.height*sc));
+        var g=c.getContext("2d"); g.fillStyle="#fff"; g.fillRect(0,0,c.width,c.height); g.drawImage(im,0,0,c.width,c.height); PICK_IMG[url]={d:c.toDataURL("image/jpeg",0.82),w:c.width,h:c.height}; URL.revokeObjectURL(u); res(); }catch(e){ rej(e); } };
+      im.onerror=function(){ URL.revokeObjectURL(u); rej(new Error("image")); }; im.src=u; }); }).catch(function(){}); }
   async function daySheetDownload(k){
     var btn=$("#sheets"), was=btn?btn.textContent:""; if(btn){ btn.disabled=true; btn.textContent="Building the day sheet..."; }
     try{
-      var PICK=null, pdfs={}, cards=daySheetPdf(k,null,"cards")||[];
+      var PICK=null, cards=daySheetPdf(k,null,"cards")||[];
       if(cards.length&&CRM_KEY){
-        var res=await fetch(CRM_PICKING_URL,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({key:CRM_KEY,cards:cards})}).then(function(x){ return x.json(); }).catch(function(){ return null; });
-        if(res&&res.ok){ PICK={}; (res.sheets||[]).forEach(function(sh){ PICK[sh.card]={picks:!!sh.picks,url:sh.url||"",made:sh.made||""}; });
-          await Promise.all(Object.keys(PICK).map(async function(id){ var i=PICK[id]; if(!i.picks||!i.url||!window.PDFLib) return;
-            try{ var buf=await fetch(i.url).then(function(x){ if(!x.ok) throw new Error(x.status); return x.arrayBuffer(); }); var pd=await PDFLib.PDFDocument.load(buf,{ignoreEncryption:true}); pdfs[id]=pd; i.pages=pd.getPageCount(); }
-            catch(e){ i.failed=true; } })); } }
-      // number the sheets after the day sheet's own pages; a second pass settles it if the numbers changed its length
+        var res=await fetch(CRM_PICKING_URL,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({key:CRM_KEY,action:"lines",cards:cards})}).then(function(x){ return x.json(); }).catch(function(){ return null; });
+        if(res&&res.ok&&res.lines){ PICK={}; Object.keys(res.lines).forEach(function(id){ var e=res.lines[id]; PICK[id]={picks:!!e.picks,lines:e.lines||[],error:e.error||"",ref:e.ref||""}; });
+          var urls={}; Object.keys(PICK).forEach(function(id){ PICK[id].lines.forEach(function(l){ [l.product_photo,l.storage_photo].forEach(function(u){ if(u&&!PICK_IMG[u]) urls[u]=1; }); }); });
+          await Promise.all(Object.keys(urls).slice(0,150).map(loadPickPhoto)); } }
+      // number the picking sections; a second pass settles it if the numbers changed the day sheet's length
       var r=daySheetPdf(k,PICK);
-      for(var pass=0;pass<3&&PICK;pass++){ var D=r.doc.getNumberOfPages(), at=D+1, first=0, last=0, n=0, changed=false;
-        r.order.forEach(function(id){ var i=PICK[id]; if(!pdfs[id]) return; var pg=i.pages>1?at+" to "+(at+i.pages-1):String(at); if(i.page!==pg){ i.page=pg; changed=true; } if(!first) first=at; last=at+i.pages-1; at+=i.pages; n++; });
-        var range=n?(first===last?"page "+first:"pages "+first+" to "+last):""; if(PICK.__range!==range){ PICK.__range=range; PICK.__n=n; changed=true; }
+      for(var pass=0;pass<3&&PICK;pass++){ var changed=false, ids=Object.keys(r.starts||{});
+        ids.forEach(function(id){ var pg=String(r.starts[id]); if(PICK[id].page!==pg){ PICK[id].page=pg; changed=true; } });
+        var total=r.doc.getNumberOfPages(), first=r.dsPages+1, range=ids.length?(first===total?"page "+first:"pages "+first+" to "+total):"";
+        if(PICK.__range!==range||PICK.__n!==ids.length){ PICK.__range=range; PICK.__n=ids.length; changed=true; }
         if(!changed) break; r=daySheetPdf(k,PICK); }
-      var name="day-sheet-"+k+".pdf";
       try{ var pn=new Date(); window.localStorage.setItem("coggin.daysheet."+k,String(pn.getHours()).padStart(2,"0")+":"+String(pn.getMinutes()).padStart(2,"0")); }catch(e){}
-      var ids=(r.order||[]).filter(function(id){ return pdfs[id]; });
-      if(!ids.length||!window.PDFLib){ r.doc.save(name); return; }
-      var out=await PDFLib.PDFDocument.load(r.doc.output("arraybuffer"));
-      for(var q=0;q<ids.length;q++){ var src=pdfs[ids[q]]; var pages=await out.copyPages(src,src.getPageIndices()); pages.forEach(function(pg){ out.addPage(pg); }); }
-      var bytes=await out.save(), blob=new Blob([bytes],{type:"application/pdf"}), a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download=name; document.body.appendChild(a); a.click();
-      setTimeout(function(){ URL.revokeObjectURL(a.href); a.remove(); },4000);
+      r.doc.save("day-sheet-"+k+".pdf");
     } finally { if(btn){ btn.disabled=false; btn.textContent=was||"Download day sheet"; } }
   }
   function crewSheetsPdf(k,onlyW){
