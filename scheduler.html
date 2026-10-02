@@ -2463,13 +2463,10 @@ var SNAP=null, DETAIL={};
         bars.forEach(function(b){ if(!b.crew) return; kit.crew(b.title);
           b.cells.forEach(function(c){ var r=c[6]; if(!r||!r.card) return; var j=JOBS.filter(function(q){ return q.id===r.card; })[0]; if(!j) return;
             if(r.part==="Production"){ var i=PICK[r.card]||{}, lines=i.lines||[], fin=j.stage==="In progress"&&!(j.prep&&j.prep.stages);
-              kit.header("Job · Production · "+b.title,r.name,[c[3],j.prodDue?"due "+niceDay(j.prodDue):"",j.date?"for "+(j.site?"delivery ":"")+niceDay(j.date):"",i.ref?"Ref "+i.ref:""].filter(Boolean).join(" · "),"https://trello.com/c/"+(j.short||j.id),"Scan to open the Trello card");
-              starts[r.key]=doc.getNumberOfPages();
-              // STEPS AS SAM WROTE THEM (2 Oct 2026); a job already In-progress has step 1 done
-              kit.steps([{t:"Move the job into In-progress",done:j.stage==="In progress"},"When complete, tick off the checklist","Move the job into Ready for Delivery / Collection"]);
-              kit.heading(0,i.allPicked?"All finished":fin?"Items to finish":"Pick and finish"); y=kit.getY();
-              if(lines.length){ lines.forEach(function(l){ if(y+lineH(l)>278){ kit.setFoot("This job carries on over the page."); kit.header("Job · Production · "+b.title,r.name,"",null,"",true); y=kit.getY(); } drawLine(l); }); kit.setY(y); }
-              else { var inf=DATA.info[r.card]||(DATA.byCard[r.card]?{items:DATA.byCard[r.card].stop.items}:null); kit.items(inf&&inf.items?inf.items:[],function(){ kit.setFoot("This job carries on over the page."); kit.header("Job · Production · "+b.title,r.name,"",null,"",true); }); }
+              var inf=DATA.info[r.card]||(DATA.byCard[r.card]?{items:DATA.byCard[r.card].stop.items}:null);
+              var beforeP=doc.getNumberOfPages(); kit.production({crew:b.title,name:r.name,code:"https://trello.com/c/"+(j.short||j.id),started:j.stage==="In progress",title:i.allPicked?"All finished":fin?"Items to finish":"Pick and finish",
+                facts:[["Time",c[3]],["Due",j.prodDue?niceDay(j.prodDue):""],[j.site?"Delivery":"Ready by",j.date?niceDay(j.date):""],["Ref",i.ref||""]],lines:lines,items:inf&&inf.items?inf.items:[]});
+              starts[r.key]=beforeP+1;
               return; }
             if(r.part==="Transport"){ var bc=DATA.byCard[r.card]; if(!bc) return; if(!yardDone[bc.run.key]){ yardDone[bc.run.key]=1; kit.yard(bc.run); }
               var before=doc.getNumberOfPages(); kit.stop(bc.run,bc.stop); starts[r.key]=before+1; return; }
@@ -2708,6 +2705,57 @@ var SNAP=null, DETAIL={};
       var qbx=L+W-5-30; doc.setFillColor(255,255,255); doc.roundedRect(qbx,sy,30,shh+0.01,1.2,1.2,"F"); qr("https://trello.com/c/"+(j.short||j.id),qbx+8,sy+1.5,14); doc.setTextColor(17); doc.setFont("helvetica","bold"); doc.setFontSize(6.5); doc.text("Trello card",qbx+15,sy+18.6,{align:"center"});
       doc.setTextColor(220); doc.setFont("helvetica","normal"); doc.setFontSize(8); doc.text("Photos are used for marketing and as proof of delivery.",L+5,y+ph-3.5); doc.setTextColor(0); y+=ph+4;
       setFoot(don?"Problems? Call the operations manager before you leave site.":"Problems? Call the operations manager before you leave site. No sign-off, no invoice."); };
+    // THE PRODUCTION PAGE, UPGRADED (Sam, 2 Oct 2026, mock approved): the name and a small Trello code, four even fact boxes,
+    // Before you start (step 1, ticked when the job is already In-progress), the items with even rows, then a black When you
+    // finish panel with steps 2 and 3.
+    kit.production=function(o){ var head=function(cont){ newPage(); label("Production · "+o.crew+(cont?", continued":""),L,y+1);
+        if(cont){ doc.setFont("helvetica","bold"); doc.setFontSize(14); doc.text(o.name,L,y+7); y+=10; rule(); y+=5; return; }
+        var qs0=24, top=y; doc.setFont("helvetica","bold"); doc.setFontSize(20); var tl=doc.splitTextToSize(o.name,W-qs0-8).slice(0,2); doc.text(tl,L,y+9);
+        if(qr(o.code,L+W-qs0,top,qs0)){ doc.setFont("helvetica","bold"); doc.setFontSize(7); doc.text("Trello card",L+W-qs0/2,top+qs0+3,{align:"center"}); }
+        y=Math.max(y+9+(tl.length-1)*7.5+5,top+qs0+6);
+        var facts=o.facts.filter(function(f){ return f[1]; }), fw=(W-(facts.length-1)*3)/Math.max(1,facts.length);
+        facts.forEach(function(f,i){ var fx=L+i*(fw+3); doc.setLineWidth(0.5); doc.setDrawColor(17); doc.roundedRect(fx,y,fw,11,1.2,1.2); doc.setDrawColor(0); label(f[0],fx+3,y+4); doc.setFont("helvetica","bold"); doc.setFontSize(10); doc.text(doc.splitTextToSize(f[1],fw-5)[0],fx+3,y+8.8); });
+        y+=15;
+        // before you start
+        doc.setFillColor(17,17,17); doc.roundedRect(L,y,38,10,1.5,1.5,"F"); doc.rect(L+36,y,2,10,"F"); doc.setLineWidth(0.5); doc.setDrawColor(17); doc.roundedRect(L,y,W,10,1.5,1.5); doc.setDrawColor(0);
+        doc.setTextColor(255); doc.setFont("helvetica","bold"); doc.setFontSize(8); doc.text("BEFORE YOU START",L+19,y+6.3,{align:"center"}); doc.setTextColor(0);
+        box(L+42,y+2.5,5); if(o.started){ doc.setLineWidth(0.7); doc.setDrawColor(17); doc.line(L+43,y+5.1,L+44.4,y+6.5); doc.line(L+44.4,y+6.5,L+46.3,y+3.5); doc.setDrawColor(0); }
+        doc.setTextColor(o.started?140:0); doc.setFontSize(10); doc.text("Move the job into In-progress"+(o.started?" · done":""),L+50,y+6.5); doc.setTextColor(0); y+=16; };
+      var cont=function(){ setFoot("This job carries on over the page."); head(true); };
+      head(false);
+      doc.setFont("helvetica","bold"); doc.setFontSize(9.5); doc.text(o.title.toUpperCase(),L,y+3,{charSpace:0.3}); doc.setFont("helvetica","normal"); doc.setFontSize(8); doc.setTextColor(100); doc.text("Tick when finished",L+W,y+3,{align:"right"}); doc.setTextColor(0); y+=5;
+      var RW=44, TX=L+56, TW=W-56-RW-2;
+      var ph=function(url,x,y0,lbl){ doc.setDrawColor(180); doc.setLineWidth(0.3); if(!url||!img(url,x+0.5,y0+0.5,19,17)){ doc.setLineDashPattern([0.8,0.8],0); doc.rect(x,y0,20,18); doc.setLineDashPattern([],0); doc.setFont("helvetica","bold"); doc.setFontSize(6); doc.setTextColor(130); doc.text(lbl,x+10,y0+10,{align:"center"}); doc.setTextColor(0); doc.setDrawColor(0); return; }
+        doc.rect(x,y0,20,18); doc.setFillColor(255,255,255); doc.setFont("helvetica","bold"); doc.setFontSize(5.5); var lw=doc.getTextWidth(lbl)+1.4; doc.rect(x+0.3,y0+0.3,lw,2.4,"F"); doc.setTextColor(100); doc.text(lbl,x+1,y0+2.1); doc.setTextColor(0); doc.setDrawColor(0); };
+      var rowH=function(l){ var h=27; if(l.cut_down&&l.cut_down.to) h+=9; if(l.spec_notes) h+=8; var cs=Array.isArray(l.build_components)?l.build_components:[]; if(cs.length) h+=7+cs.length*6; return h; };
+      if(!o.lines.length){ kit.items(o.items||[],cont); }
+      o.lines.forEach(function(l,li){ if(y+rowH(l)>262) cont(); var y0=y;
+        if(li>0||true){ doc.setDrawColor(215); doc.setLineWidth(0.25); doc.line(L,y,L+W,y); doc.setDrawColor(0); }
+        box(L+0.5,y0+11,5.5); ph(l.product_photo||"",L+9,y0+4.5,l.photo_is_build?"build":"product"); ph(l.storage_photo||"",L+31,y0+4.5,"storage");
+        var parts=String(l.name||"").split(/\s*\|\s*/), main=parts[0], det=[parts.slice(1).join(" · "),l.attr_colour,l.attr_features,l.attr_dims].filter(Boolean).join(" · ");
+        doc.setFont("helvetica","bold"); doc.setFontSize(16); doc.text(l.headerCustomer||String(l.qty||0),TX,y0+9);
+        doc.setFontSize(11); var nl=doc.splitTextToSize(main,TW).slice(0,1); doc.text(nl,TX,y0+14.5);
+        doc.setFont("helvetica","normal"); doc.setFontSize(8.5); doc.setTextColor(100); var dl=det?doc.splitTextToSize(det,TW).slice(0,2):[]; if(dl.length) doc.text(dl,TX,y0+18.5);
+        if(l._already) doc.text(l._already+" of "+l._of+" already finished",TX,y0+18.5+dl.length*3.6); doc.setTextColor(0);
+        // the right: location tag, SKU, finished today box
+        var loc=String(l.stock_location||""); if(loc){ doc.setFont("courier","bold"); doc.setFontSize(10); var lw2=Math.min(RW,doc.getTextWidth(loc)+4); doc.setFillColor(17,17,17); doc.roundedRect(L+W-lw2,y0+3,lw2,6,0.8,0.8,"F"); doc.setTextColor(255); doc.text(doc.splitTextToSize(loc,RW-4)[0],L+W-2,y0+7.2,{align:"right"}); doc.setTextColor(0); }
+        if(l.sku){ doc.setFont("courier","bold"); doc.setFontSize(8); doc.setTextColor(100); doc.text(String(l.sku),L+W-1,y0+13,{align:"right"}); doc.setTextColor(0); }
+        doc.setFont("helvetica","bold"); doc.setFontSize(7); doc.setTextColor(70); doc.text(["FINISHED","TODAY"],L+W-14,y0+18.5,{align:"right"}); doc.setTextColor(0); doc.setLineWidth(0.5); doc.setDrawColor(17); doc.roundedRect(L+W-12,y0+16,12,7,0.8,0.8); doc.setDrawColor(0);
+        y=y0+27;
+        if(l.cut_down&&l.cut_down.to){ var cn=l.cut_down.count, nn=String(l.cut_down.noun||"TOP"), fr=l.cut_down.from?" FROM "+l.cut_down.from:""; var ct=cn?"CUT "+cn+"x "+nn+(cn===1?"":"S")+" DOWN"+fr+" TO "+l.cut_down.to+"MM":"CUT THIS "+nn+" DOWN"+fr+" TO "+l.cut_down.to+"MM";
+          doc.setFillColor(244,244,244); doc.setDrawColor(17); doc.setLineWidth(0.7); doc.rect(L,y,W,7,"FD"); doc.setFont("helvetica","bold"); doc.setFontSize(9); doc.text(ct,L+3,y+4.7); y+=9; }
+        if(l.spec_notes){ doc.setFillColor(244,244,244); doc.setDrawColor(150); doc.setLineWidth(0.25); doc.rect(L,y,W,6,"FD"); doc.setFont("helvetica","bold"); doc.setFontSize(8.5); doc.text(doc.splitTextToSize("Spec: "+l.spec_notes,W-6)[0],L+3,y+4.1); y+=8; }
+        var cs=Array.isArray(l.build_components)?l.build_components:[];
+        if(cs.length){ var bh=7+cs.length*6; doc.setFillColor(244,244,244); doc.setDrawColor(17); doc.setLineWidth(0.35); doc.rect(L,y,W,bh,"FD"); doc.setFont("helvetica","bold"); doc.setFontSize(8.5); doc.text("Custom build: these parts make the item above, nothing extra",L+3,y+4.6);
+          cs.forEach(function(c,ci){ var cy=y+7+ci*6; doc.setLineWidth(0.4); doc.setDrawColor(17); doc.setFillColor(255,255,255); doc.roundedRect(L+3,cy,4,4,0.5,0.5,"FD"); doc.setFont("helvetica","bold"); doc.setFontSize(9); doc.text((c.qty||1)+"x",L+9.5,cy+3.3); doc.setFont("helvetica","normal");
+            doc.text(doc.splitTextToSize([c.name,c.sku].filter(Boolean).join(" · "),W-60)[0],L+19,cy+3.3); if(c.location){ doc.setFont("courier","bold"); doc.text(String(c.location),L+W-3,cy+3.3,{align:"right"}); doc.setFont("helvetica","normal"); } });
+          y+=bh+2; } });
+      if(o.lines.length){ doc.setDrawColor(215); doc.setLineWidth(0.25); doc.line(L,y,L+W,y); doc.setDrawColor(0); }
+      // when you finish
+      if(y+34>278) cont(); y+=5; var ph2=30; doc.setFillColor(17,17,17); doc.roundedRect(L,y,W,ph2,2,2,"F"); doc.setTextColor(255); doc.setFont("helvetica","bold"); doc.setFontSize(12); doc.text("WHEN YOU FINISH",L+5,y+7.5);
+      var sw=(W-14)/2, sy=y+10.5, shh=16; [["STEP 2","Tick off the checklist on the Trello card"],["STEP 3","Move the job into Ready for Delivery / Collection"]].forEach(function(st,i){ var sx=L+5+i*(sw+4); doc.setFillColor(255,255,255); doc.roundedRect(sx,sy,sw,shh,1.2,1.2,"F");
+        doc.setDrawColor(17); doc.setLineWidth(0.5); doc.roundedRect(sx+3,sy+3,4.5,4.5,0.5,0.5); doc.setDrawColor(0); doc.setTextColor(110); doc.setFont("helvetica","bold"); doc.setFontSize(7); doc.text(st[0],sx+10,sy+6.3,{charSpace:0.2}); doc.setTextColor(17); doc.setFontSize(9.5); doc.text(doc.splitTextToSize(st[1],sw-13).slice(0,2),sx+10,sy+11); });
+      doc.setTextColor(0); y+=ph2+4; setFoot(o.crew); };
     // a labour page: what is happening, what moves, a code to sign off, the photos prompt
     kit.labour=function(j,info,crewTxt,sub,timeTxt){ var d=info.d, nm=j.title.split(" - ").slice(1).join(" - ")||j.title;
       var don=isDonation(j), code=(!don&&d.signoff)||("https://trello.com/c/"+(j.short||j.id)), codeLabel=(!don&&d.signoff)?"Scan to sign off when it leaves":"Scan to open the Trello card";
