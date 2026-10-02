@@ -350,7 +350,7 @@
   .psum{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:6px 0 12px} .psum>div{border:1px solid var(--line);border-radius:9px;padding:8px 10px}
   .psum small{display:block;font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.04em} .psum b{font-size:17px;font-variant-numeric:tabular-nums}
   .pbar{height:6px;border-radius:99px;background:#eef1f5;overflow:hidden;margin-top:6px} .pbar i{display:block;height:100%} .pbar .pk{background:#5b8def} .pbar .fn{background:#1f845a}
-  .psum.one{grid-template-columns:1fr} .picks2.one li{grid-template-columns:minmax(0,1fr) 128px;height:72px;box-sizing:border-box;padding-top:0;padding-bottom:0} .picks2.one .pnm b{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden} .picks2.one .pnm small{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .psum.one{grid-template-columns:1fr} .picks2.one li{grid-template-columns:56px minmax(0,1fr) 128px;height:72px;box-sizing:border-box;padding-top:0;padding-bottom:0} .picks2.one .pnm b{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden} .picks2.one .pnm small{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .picks2{list-style:none;margin:0;padding:0;border:1px solid var(--line);border-radius:9px;overflow:hidden}
   .picks2 li{display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:12px;align-items:center;padding:10px 12px} .picks2 li+li{border-top:1px solid var(--line)}
   .picks2 li.done{background:#f3faf6} .picks2 li.done .pnm b{color:#1f845a}
@@ -1147,8 +1147,13 @@ var SNAP=null, DETAIL={};
           mi.onclick=function(){ onSet(val-1); }; pl.onclick=function(){ onSet(val+1); }; inp.onchange=function(){ var v=parseInt(inp.value,10); onSet(isNaN(v)?0:v); }; inp.onkeydown=function(e){ if(e.key==="Enter") inp.blur(); };
           st.appendChild(mi); st.appendChild(inp); st.appendChild(pl); w.appendChild(st); w.appendChild(el("span","of","of "+max)); return w; };
         var pul=el("ul","picks2 one");
+        // THE PRODUCT, NOT ITS SECTION (Sam, 2 Oct 2026: two rows both read "2 x BOOTHS", "It is not obvious which one is
+        // which"). label is the picking sheet's section heading; the name and the photo tell the lines apart.
         plc.lines.forEach(function(l){ var c=pickCount(P0,l), all=c.f>=c.q&&c.q>0, li=el("li",all?"done":"");
-          var nm=el("div","pnm"); nm.appendChild(el("b",null,c.q+" x "+(l.label||l.name))); nm.appendChild(el("small",null,[l.section||"",l.stock_location?"Location "+l.stock_location:"",all?"all finished":(c.on?"updated "+niceDay(c.on):"")].filter(Boolean).join(" \u00b7 "))); li.appendChild(nm);
+          var ph=l.product_photo||l.storage_photo||"", nmTxt=l.name||l.label||"";
+          if(ph){ var im=el("img","ithumb zoom"); im.src=ph; im.alt=nmTxt; im.loading="lazy"; im.tabIndex=0; im.title="Click to see it bigger"; im.setAttribute("role","button"); im.onclick=function(e){ e.stopPropagation(); photoPopup(ph,nmTxt); }; im.onkeydown=function(e){ if(e.key==="Enter"||e.key===" "){ e.preventDefault(); photoPopup(ph,nmTxt); } }; li.appendChild(im); }
+          else li.appendChild(el("span","ithumb none","No photo"));
+          var nm=el("div","pnm"); nm.appendChild(el("b",null,c.q+" x "+nmTxt)); nm.appendChild(el("small",null,[l.section&&!/^other$/i.test(l.section)?l.section:"",l.stock_location?"Location "+l.stock_location:"",all?"all finished":(c.on?"updated "+niceDay(c.on):"")].filter(Boolean).join(" \u00b7 "))); li.appendChild(nm);
           li.appendChild(stepper("Finished",c.f,c.q,function(v){ setF(l,v); }));
           pul.appendChild(li); });
         pb.appendChild(pul);
