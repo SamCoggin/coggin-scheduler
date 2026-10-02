@@ -2287,8 +2287,9 @@ var SNAP=null, DETAIL={};
     var pickMeta={};
     // EVERY JOB POINTS TO ITS OWN PAGE (2 Oct 2026, mock approved: "a per job, job sheet for the day"). A job with a card and
     // a crew gets a page behind the day sheet; its box carries "JOB Page n". The numbers settle on the second build.
-    var pickOf=function(r){ if(!(PICK&&PICK.__data)||!r.card||!r.who.length) return null; var pg=PICK.__pages&&PICK.__pages[r.key];
-      return {kind:"sheet",card:r.key,main:"Page "+(pg||"?"),rest:""}; };
+    // NO PAGE TAG ON THE BOX (Sam, 2 Oct 2026: "we do not need these tab on the day sheet"): the job pages follow in the
+    // same crew order, so the box stays clean.
+    var pickOf=function(){ return null; };
     // ONE BAR PER CREW, EACH JOB ONCE (Sam, 2 Oct 2026: "Can we not merge when working together as this looks a little
     // confusing?"). A job sits under the bar for exactly the people on it, "Bradley H + Bart H", so a shared job prints
     // once; what one of them does alone goes under their own bar. Bars run in the order their first job starts.
