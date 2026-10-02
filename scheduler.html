@@ -2176,9 +2176,9 @@ var SNAP=null, DETAIL={};
       doc.setFont("helvetica","bold"); doc.setFontSize(21); doc.text(niceDay(k),L,y);
       doc.setFont("helvetica","normal"); doc.setFontSize(8.5); doc.setTextColor(90); var pr=new Date();
       doc.text("Day sheet · 8:00 to 16:30",L+W,y-4.5,{align:"right"}); var prT=String(pr.getHours()).padStart(2,"0")+":"+String(pr.getMinutes()).padStart(2,"0");
-      doc.text("Printed "+niceShort(iso(pr))+" "+prT+(lastPrint?", replaces the "+lastPrint+" sheet":""),L+W,y,{align:"right"});
+      doc.text("Printed "+niceShort(iso(pr))+" "+prT,L+W,y,{align:"right"});   /* no "replaces" or "left off" lines (Sam, 2 Oct 2026: "the day sheet is the day sheet") */
       var pickNote=PICK&&PICK.__range?"Picking for "+PICK.__n+(PICK.__n===1?" job on ":" jobs on ")+PICK.__range:"";
-      var hl=[leftOff?leftOff+(leftOff===1?" job":" jobs")+" done, left off":"",pickNote].filter(Boolean);
+      var hl=[pickNote].filter(Boolean);
       hl.forEach(function(t,i){ doc.text(t,L+W,y+4*(i+1),{align:"right"}); }); doc.setTextColor(0); y+=5+4*hl.length;
       // the crew strip
       var n=crew.length, tw=(W-(n-1)*3)/n;
