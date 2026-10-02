@@ -107,7 +107,8 @@
   .prow2 .drv{font-style:normal;font-weight:700;font-size:11px;color:var(--blue);margin-left:6px;border:1px solid var(--blue);border-radius:4px;padding:1px 5px}
   .banner button.close{margin-left:10px;background:#fff;color:var(--red)}
   .banner{margin:10px 0 0;padding:10px 14px;border-radius:8px;background:var(--red);color:#fff;font-weight:800;font-size:14px}
-  .save.sticky{position:sticky;bottom:0;z-index:3;background:var(--card);border-top:2px solid #3d4451;box-shadow:0 -6px 14px rgba(9,30,66,.18);padding:12px 24px 16px;margin-top:8px}
+  /* down to the window edge (Sam, 2 Oct 2026: "Why is there a gap under the footer bar?"): the veil's 24px bottom padding left a strip where the job scrolled through */
+  .save.sticky{position:sticky;bottom:-28px;padding-bottom:42px!important;z-index:3;background:var(--card);border-top:2px solid #3d4451;box-shadow:0 -6px 14px rgba(9,30,66,.18);padding:12px 24px 16px;margin-top:8px}
   .modal.wide .save.sticky{padding:12px 24px 16px;margin-top:8px}
   .crew{display:flex;flex-wrap:wrap;gap:6px;padding:8px 14px;border-bottom:1px solid var(--line)}
   .crew span{font-size:13px;font-weight:700;border-radius:6px;padding:4px 9px;border:1px solid var(--line);background:var(--list)}
@@ -1039,7 +1040,8 @@ var SNAP=null, DETAIL={};
     // NO ACCESS ROW (Sam, 2 Oct 2026: "remove the access details from the scheduler editor"): it is on the card and the sheets.
     [["Contact",g.contact],["Where",g.where],["Notes",g.notes]].forEach(function(f){ var r=field(f[0],f[1]); if(r) box.appendChild(r); });
     if(!box.children.length) box.appendChild(el("div","hint","Nothing written on the card yet."));
-    jb.appendChild(box); left.appendChild(jb);
+    /* NO JOB DETAILS BLOCK (Sam, 2 Oct 2026: "Why is job details still showing on the schedule editor also?"): contact and
+       address are on the Trello card, a click away with Open in Trello. */
     // A PHOTO BESIDE EACH ITEM (Sam, 2 Oct 2026: "I want to see the photo of the item in this view"). The CRM sends the
     // deal's quoted items with a photo each, once per card per visit; a line takes the photo whose name it carries.
     var pcard=j.isLeg&&j.parentJob?j.parentJob:j, photos=ITEM_PHOTOS[pcard.id];
