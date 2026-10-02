@@ -558,7 +558,7 @@ var SNAP=null, DETAIL={};
   // operations and these need to be used on the operatives section so everything matches"). A line in the Operatives
   // panel is named after the column its job sits in: Production, Transport or Labour Operations. This replaced the
   // card-label names tried earlier the same day.
-  var LEG_TYPES=[["to_sub","Deliver to subcontractor",true],["from_sub","Collect from subcontractor",true],["production","Production",false],["site","Site visit",true],["labour","Labour",false]];
+  var LEG_TYPES=[["to_sub","Deliver to subcontractor",true],["from_sub","Collect from subcontractor",true],["production","Production",false],["site","Site visit",true],["labour","Goods In and Out",false]];
   // DISMISSED WARNINGS (Sam, 15 Sep 2026: "I need to be able to dismiss these notifications"). Keyed on the warning's
   // own words, saved on the board, so a dismissed warning stays gone until what it says changes.
   var DISMISSED={}, SHOW_DISMISSED=false;
@@ -862,8 +862,8 @@ var SNAP=null, DETAIL={};
       var w0=j.prep.who[0]; out.push({key:k+"|"+j.id+"|prep",card:j.id,part:"production",title:jobName(j),sub:"Production",work:j.work||"",movement:j.movement||"",who:j.prep.who.slice(),mins:j.prep.mins!=null?Math.round(prepShare(j,w0)):null}); });
     allJobs().filter(function(j){ return onDay(j,k)&&!j.isHold&&!(j.contractor&&!j.who.length); }).forEach(function(j){
       if(j.isLeg&&j.leg){ var pj=j.parentJob||j, part=j.leg.type==="production"?"production":(j.leg.type==="labour"?"labour":"transport");
-        out.push({key:k+"|"+pj.id+"|"+j.leg.type+"|"+(j.leg.where||""),card:pj.id,part:part,title:jobName(pj),sub:(part==="production"?"Production":"Labour")+(j.leg.where?", "+j.leg.where:""),work:pj.work||"",movement:j.leg.type,who:(j.who||[]).slice(),mins:j.mins!=null?j.mins:null}); return; }
-      out.push({key:k+"|"+j.id+"|job",card:j.id,part:j.site?"transport":"labour",title:jobName(j),sub:j.site?"Transport":"Labour Operations",work:j.work||"",movement:j.movement||"",who:(j.who||[]).slice(),mins:j.who.length?minsFor(j,j.who[0]):j.mins}); });
+        out.push({key:k+"|"+pj.id+"|"+j.leg.type+"|"+(j.leg.where||""),card:pj.id,part:part,title:jobName(pj),sub:(part==="production"?"Production":"Goods In and Out")+(j.leg.where?", "+j.leg.where:""),work:pj.work||"",movement:j.leg.type,who:(j.who||[]).slice(),mins:j.mins!=null?j.mins:null}); return; }
+      out.push({key:k+"|"+j.id+"|job",card:j.id,part:j.site?"transport":"labour",title:jobName(j),sub:j.site?"Transport":"Goods In and Out",work:j.work||"",movement:j.movement||"",who:(j.who||[]).slice(),mins:j.who.length?minsFor(j,j.who[0]):j.mins}); });
     return out;
   }
   function dayGone(k){ return k<iso(TODAY)||(k===iso(TODAY)&&minsLeftOn(k)===0); }
@@ -906,7 +906,7 @@ var SNAP=null, DETAIL={};
       var hd=el("div","timrow head"); ["","Jobs","Planned","Actual","Against plan",byPerson?"":"People planned / used"].forEach(function(t){ hd.appendChild(el("span",null,t)); }); m.appendChild(hd);
       Object.keys(g).sort(function(a,b){ return g[b].act-g[a].act; }).forEach(function(kk){ var x=g[kk], pct=x.plan?Math.round(x.act/x.plan*100):null; var r=el("div","timrow"+(pct!=null&&pct>120?" over":pct!=null&&pct<85?" under":""));
         r.appendChild(el("b",null,kk)); r.appendChild(el("span",null,String(x.n))); r.appendChild(el("span",null,fmt(x.plan))); r.appendChild(el("span",null,fmt(x.act))); r.appendChild(el("span",null,pct==null?"":pct+"%")); r.appendChild(el("span",null,byPerson?"":(x.pp/x.n).toFixed(1)+" / "+(x.pa/x.n).toFixed(1))); m.appendChild(r); }); };
-    table("By kind of work",false,function(a){ return [(a.part==="production"?"Production":a.part==="transport"?"Transport":"Labour")+(a.work?", "+a.work:"")]; });
+    table("By kind of work",false,function(a){ return [(a.part==="production"?"Production":a.part==="transport"?"Transport":"Goods In and Out")+(a.work?", "+a.work:"")]; });
     table("By person",true,function(a){ return (a.actual_who||[]).slice(); });
     var tail=el("div"); tail.style.height="20px"; m.appendChild(tail);
     veil.appendChild(m); return veil;
@@ -1072,7 +1072,7 @@ var SNAP=null, DETAIL={};
     var missing=[];
     if(part.site&&part.drive==null&&!part.onRound) missing.push("No travel time");
     if(part.site&&!part.vehicle&&!part.roundVan&&!attending(part)) missing.push("No van"); else if(part.site&&hireDue(part)) missing.push("Hire not booked");
-    if(part.mins==null) missing.push(part.site?"No site time":"No labour time");
+    if(part.mins==null) missing.push(part.site?"No site time":"No time set");
     var nr=notReady(part); if(nr) missing.push(nr);
     if(shortCrew(part)) missing.push("Needs 2 operatives");
     if(part.moved) missing.push("Date moved");
@@ -1084,7 +1084,7 @@ var SNAP=null, DETAIL={};
   function findOpen(){ if(!open) return null; var parts=open.split(":"); if(parts[1]&&parts[1].indexOf("leg")===0){ var lj=legJobs().filter(function(x){return x.id===open;})[0]; return lj?{job:lj,part:lj,shop:false,leg:true}:null; } var j=JOBS.filter(function(x){return x.id===parts[0];})[0]; if(!j) return null; return parts[1]==="prep"?{job:j,part:j.prep,shop:true}:{job:j,part:j,shop:false}; }
 
   // THE CARD BACK ORDER (Sam, 13 Sep 2026): blocks appear in the order you decide them. Anything at 20 or more folds under "More".
-  var BLOCK_ORDER={"This leg":0,"This labour":0,"This part":0,"Estimate for this job":1,"Estimate for this production":1,"Operatives":2,"Production Dates":1.4,"Production Day":1.4,"Transported By":4,"Vehicle":5,"Travel Time, return":6,"Time Window":7,"Collection Slot":7,"Arrival":7,"QC":7.5,"What happened":0.5,"Production Time per Operative":1.2,"Production Time per Operative, Each Day":1.2,"Site Time per Operative":8,"Labour Time per Operative":8,"Production":20,"Van Load":21,"Legs":22,"Labour":22};
+  var BLOCK_ORDER={"This leg":0,"This job at Forton":0,"This part":0,"Estimate for this job":1,"Estimate for this production":1,"Operatives":2,"Production Dates":1.4,"Production Day":1.4,"Transported By":4,"Vehicle":5,"Travel Time, return":6,"Time Window":7,"Collection Slot":7,"Arrival":7,"QC":7.5,"What happened":0.5,"Production Time per Operative":1.2,"Production Time per Operative, Each Day":1.2,"Site Time per Operative":8,"Goods In and Out Time per Operative":8,"Production":20,"Van Load":21,"Legs":22,"Goods In and Out":22};
   function block(title,tipKey){ var d=el("div","blk"); d.dataset.order=BLOCK_ORDER[title]!=null?BLOCK_ORDER[title]:15; var h=el("div","bh"); h.appendChild(el("span",null,title)); if(tipKey) h.appendChild(tip(tipKey)); d.appendChild(h); return d; }
   function modal(){
     var o=findOpen(); if(!o) return null;
@@ -1215,9 +1215,9 @@ var SNAP=null, DETAIL={};
         var okrow=el("div","row"); var why=el("input"); why.type="text"; why.placeholder="Why one is enough, e.g. ground floor, sack truck"; why.style.minWidth="260px"; why.setAttribute("aria-label","Why one operative is enough"); var okb=el("button","close","One operative is fine"); okb.onclick=function(){ var r=why.value.trim(); if(!r){ why.focus(); why.placeholder="Give the reason first"; return; } j.soloOk=r; persist(); render(); }; okrow.appendChild(why); okrow.appendChild(okb); wb.appendChild(okrow); }
       else wb.appendChild(el("div","hint","Two-person items on this job: "+tpi.slice(0,4).join(", ")+(tpi.length>4?" and more":"")+". Two are on it.")); } }
     right.appendChild(wb);
-    if(o.leg){ var lgIsLab=j.leg.type==="labour", lgb=block(lgIsLab?"This labour":"This part");   /* never "leg" (Sam, 1 Oct 2026) */ var lr=el("div","row"); var ld=el("input"); ld.type="date"; ld.value=j.leg.date; ld.onchange=function(){ if(ld.value){ j.leg.date=ld.value; render(); } }; lr.appendChild(el("span",null,"Date")); lr.appendChild(ld); lgb.appendChild(lr);
+    if(o.leg){ var lgIsLab=j.leg.type==="labour", lgb=block(lgIsLab?"This job at Forton":"This part");   /* never "leg" (Sam, 1 Oct 2026) */ var lr=el("div","row"); var ld=el("input"); ld.type="date"; ld.value=j.leg.date; ld.onchange=function(){ if(ld.value){ j.leg.date=ld.value; render(); } }; lr.appendChild(el("span",null,"Date")); lr.appendChild(ld); lgb.appendChild(lr);
       var wr=el("div","row"); var wi=el("input"); wi.type="text"; wi.value=j.leg.where||""; wi.placeholder="Subcontractor or site, with postcode"; wi.style.minWidth="260px"; wi.onchange=function(){ j.leg.where=wi.value; var pc=/\b([A-Z]{1,2})\d/i.exec(wi.value); j.leg.drive=pc&&DRIVE[pc[1].toUpperCase()]?Math.round(DRIVE[pc[1].toUpperCase()].h*2*60*TRAFFIC/5)*5:j.leg.drive; render(); }; wr.appendChild(el("span",null,"Where")); wr.appendChild(wi); lgb.appendChild(wr);
-      var rm=el("button","close",lgIsLab?"Remove this labour":"Remove this part"); rm.style.marginTop="8px"; rm.onclick=function(){ LEGS.splice(LEGS.indexOf(j.leg),1); open=null; render(); }; lgb.appendChild(rm); right.appendChild(lgb); }
+      var rm=el("button","close",lgIsLab?"Remove this job":"Remove this part"); rm.style.marginTop="8px"; rm.onclick=function(){ LEGS.splice(LEGS.indexOf(j.leg),1); open=null; render(); }; lgb.appendChild(rm); right.appendChild(lgb); }
     var oneDayP=o.shop&&part.mins!=null&&part.mins<=DAY_MINS&&!(part.start&&part.date&&part.start!==part.date);
     // MUST BE DONE BY, UNDER THE DAY (Sam, 1 Oct 2026: "match the scheduler editor too"): the due date is changed in
     // the same box as the day, as on the card, not in a box of its own.
@@ -1254,7 +1254,7 @@ var SNAP=null, DETAIL={};
       var addr=el("div","row"); var ai=el("input"); ai.type="text"; ai.placeholder="Add a subcontractor"; ai.style.minWidth="200px"; ai.setAttribute("aria-label","New subcontractor name");
       var ab2=el("button","close","Add"); ab2.onclick=function(){ var n=ai.value.trim(); if(!n) return; if(CONTRACTORS.indexOf(n)<0) CONTRACTORS.splice(CONTRACTORS.length-1,0,n); j.contractor=n; render(); };
       addr.appendChild(ai); addr.appendChild(ab2); cb.appendChild(addr);
-      if(contractorOnly) cb.appendChild(el("div","hint",j.contractor+" is carrying out this job, so no travel or labour time applies. Assign an operative above if one attends."));
+      if(contractorOnly) cb.appendChild(el("div","hint",j.contractor+" is carrying out this job, so no travel or time applies. Assign an operative above if one attends."));
       right.appendChild(cb); }
     var rv=(!o.shop&&j.site)?roundVanOf(j,roundsOn(j.date,allJobs().filter(function(x){return onDay(x,j.date);}))):"";
     if(!o.shop && j.site && !contractorOnly){ var vb=block("Vehicle","vehicle"); vb.className+=" veh"; var vseg=el("div","seg");
@@ -1348,7 +1348,7 @@ var SNAP=null, DETAIL={};
       if(j.cubeSet!=null){ var rs2=el("button","close","Use the estimate"); rs2.onclick=function(){ j.cubeSet=null; render(); }; vr.appendChild(rs2); } set.appendChild(vr);
       set.appendChild(el("div","hint","A Luton box is about "+VAN_M3+" cubic metres, payload about "+VAN_KG+" kg. Desks count flat unless the item says built; sit-stand desks always count built. Chair figures assume double stacking.")); vb.appendChild(set);
       right.appendChild(vb); }
-    if(!o.shop && !o.leg){ var lb2=block("Labour");   /* was "Legs" (Sam, 1 Oct 2026: "rename them to labour") */ var mine=LEGS.map(function(L,i){return {L:L,i:i};}).filter(function(x){return x.L.parent===j.id});
+    if(!o.shop && !o.leg){ var lb2=block("Goods In and Out");   /* was "Legs" (Sam, 1 Oct 2026: "rename them to labour") */ var mine=LEGS.map(function(L,i){return {L:L,i:i};}).filter(function(x){return x.L.parent===j.id});
       if(mine.length){ var lul=el("ul","items plain"); mine.forEach(function(x){ var t2=LEG_TYPES.filter(function(t){return t[0]===x.L.type;})[0]; var li=el("li",null,t2[1]+(x.L.where?" ("+x.L.where+")":"")+", "+niceDay(x.L.date)+(x.L.who.length?", "+x.L.who.join(", "):", unassigned")+(x.L.mins!=null?", "+fmt(x.L.mins):"")); var eb2=el("button","close","Edit"); eb2.style.marginLeft="8px"; eb2.onclick=function(){ open=j.id+":leg"+x.i; render(); }; li.appendChild(eb2); lul.appendChild(li); }); lb2.appendChild(lul); }
       else lb2.appendChild(el("div","hint","No extra legs. Add one when part of the job goes to a subcontractor or needs another visit."));
       var ar=el("div","row"); var ts=el("select"); LEG_TYPES.forEach(function(t){ var o3=el("option",null,t[1]); o3.value=t[0]; ts.appendChild(o3); }); var ad=el("input"); ad.type="date"; ad.value=j.date; var ab=el("button","close","Add leg"); ab.onclick=function(){ if(!ad.value) return; LEGS.push({parent:j.id,type:ts.value,date:ad.value,who:[],mins:null,drive:null,where:""}); open=j.id+":leg"+(LEGS.length-1); render(); }; ar.appendChild(ts); ar.appendChild(ad); ar.appendChild(ab); lb2.appendChild(ar); right.appendChild(lb2); }
@@ -1384,7 +1384,7 @@ var SNAP=null, DETAIL={};
         wh.appendChild(el("div","hint",plan)); var clr2=el("button","close","Clear the record"); clr2.onclick=function(){ part.done=null; persist(); render(); }; wh.appendChild(clr2); }
       right.appendChild(wh); }
     if(!contractorOnly){ var perDayP=o.shop&&prepDayCount(part)>1, getT=perDayP?function(){ return prepPerDay(part); }:function(){ return part.mins; }, setT=perDayP?function(v){ setPrepPerDay(part,v); }:setMins;
-      var tb=block(o.shop?(perDayP?"Production Time":"Production Time per Operative"):(j.site?"Site Time per Operative":"Labour Time per Operative"),"time");
+      var tb=block(o.shop?(perDayP?"Production Time":"Production Time per Operative"):(j.site?"Site Time per Operative":"Goods In and Out Time per Operative"),"time");
       // BIG JOBS IN DAYS, NOT HOURS (Sam, 2 Oct 2026, mock approved after Sketch Studios came out at 8h 22m a day): a
       // production over several days is Full days (7h 45m each, every day) or Part days (so many hours a day). No total
       // to work out; the total follows the days.
@@ -1409,7 +1409,7 @@ var SNAP=null, DETAIL={};
     var sumBits=[]; if(contractorOnly) sumBits.push(j.contractor); else sumBits.push(part.who.length?part.who.join(", "):"Unassigned");
     if(!o.shop&&j.site&&!contractorOnly) sumBits.push(j.vehicle?(j.vehicle==="hire"?"Hire"+(j.hireBooked?" booked":" not booked"):j.vehicle):(rv?rv+", on the round":(attending(j)?"Attending, with "+j.contractor:"No van")));
     if(!o.shop&&j.site&&!contractorOnly&&part.who.length){ var tls=dayTimeline(j.date,part.who[0]), sts=tls.stops.filter(function(x){return x.j===j;})[0]; if(sts&&!sts.noDrive){ var rsx=roundsOn(j.date,allJobs().filter(function(x){return onDay(x,j.date);})).filter(function(x){return x.who===part.who[0];})[0], so=rsx&&rsx.setOff&&parseHM(rsx.setOff)!=null?parseHM(rsx.setOff):DAY_START+LOAD_MINS; sumBits.push("leave "+hmStr(so)+", arrive "+hmStr(sts.arrive)+", back "+hmStr(tls.back)); } else if(j.drive!=null) sumBits.push(fmt(j.drive)+" travel"); }
-    sumBits.push(part.mins!=null?(eachDiffers(part)?eachText(part)+(o.shop?" production":j.site?" on site":" labour"):fmt(part.mins)+(o.shop?" production":j.site?" on site":" labour")+(part.who.length>1?" each":"")):"no time set");
+    sumBits.push(part.mins!=null?(eachDiffers(part)?eachText(part)+(o.shop?" production":j.site?" on site":" at Forton"):fmt(part.mins)+(o.shop?" production":j.site?" on site":" at Forton")+(part.who.length>1?" each":"")):"no time set");
     if(!o.shop&&j.site&&cubeOf(j)!=null&&!attending(j)) sumBits.push(fmtM3(cubeOf(j))+(daysN(j)>1?", about "+fmtM3(cubeOn(j))+" a day over "+daysN(j)+" days":""));
     var sumEl=el("div","plan-sum"); sumBits.forEach(function(t,i){ var sp=el("span",/Unassigned|No van|not booked|no time set/.test(t)?"bad":"",t); sumEl.appendChild(sp); }); ht.appendChild(sumEl);
     cols.appendChild(left); cols.appendChild(right); m.appendChild(cols);
@@ -1529,7 +1529,7 @@ var SNAP=null, DETAIL={};
   var TIPS={
     shop:"Production work: jobs being prepared in the workshop. Select a job to assign operatives, set production dates and allocate time per day.",
     road:"Transport: deliveries, installations, collections and site visits. Select a job for operatives, return travel time and site time. Two or more transport jobs for one operative on the same day form a delivery round.",
-    labour:"Labour operations: inbound recycling loads, skip exchanges, stock deliveries and other on-site work. Select a job for operatives and time.",
+    labour:"Goods In and Out: inbound recycling loads, skip exchanges, stock deliveries and other on-site work. Select a job for operatives and time.",
     leave:"Annual leave from the Holidays / Leave list on the board, bank holidays for England and Wales, and anyone marked as off in the day view. Mark as off is for sickness, a course or a breakdown on the day: press it on the operative, say why, and their jobs are flagged to reassign.",
     people:"Each operative's allocation for the day. Green is available, red is over capacity.",
     tot:"Each operative's allocated hours for the day, against a 7 hour 45 minute working day (38 hours 45 minutes a week, Monday to Friday). Amber means a job has no time allocated yet. Red means over the day.",
@@ -1552,7 +1552,7 @@ var SNAP=null, DETAIL={};
     slot:"A customer or courier collecting from Forton. Customer arrives after is the earliest they said they will come. Loaded and ready by is when it must be picked, checked and by the door. Someone has to be at Forton for it, so it takes operatives and time like any other labour job.",
     window:"When the site can take us. Arrive after is the earliest they will let us in. Finish by is when the loading bay, lift or building shuts. The day is worked out from an 8:00 start, and a job that misses its window is flagged in red.",
     drive:"Return travel time. Real road time from Forton to the postcode, from OpenStreetMap routing, plus 20 percent for traffic. Before that arrives, or when the routing service is down, an estimate from the postcode area. Overtype if you know better, and it stays as you typed it.",
-    time:"Labour time per operative. Use the quick options or enter hours and minutes."
+    time:"Time per operative. Use the quick options or enter hours and minutes."
   };
   var tipOpen=null;
   function tip(key,inst){
@@ -1569,7 +1569,7 @@ var SNAP=null, DETAIL={};
     var partX=isPrep?j.prep:j;
     var mid=el("div","mid"); mid.appendChild(el("span","ttl",j.title));
     // one line of context: what kind of work, who, which van
-    var ctx=[]; if(isPrep) ctx.push("Production"); else if(j.isLeg&&j.leg&&j.leg.type==="production") ctx.push("Production"); else if(j.isLeg){ var ltd=LEG_TYPES.filter(function(t){ return t[0]===(j.leg&&j.leg.type); })[0]; ctx.push((ltd?ltd[1]:"Labour")+(j.leg&&j.leg.where?", "+j.leg.where:"")); }   /* named for the work, never "Leg" (Sam, 1 Oct 2026) */   /* a production stint is production, not a leg (Sam, 1 Oct 2026: "why is it a leg?") */ else ctx.push([j.work,j.movement||j.label].filter(Boolean).join(", ")||"Job");
+    var ctx=[]; if(isPrep) ctx.push("Production"); else if(j.isLeg&&j.leg&&j.leg.type==="production") ctx.push("Production"); else if(j.isLeg){ var ltd=LEG_TYPES.filter(function(t){ return t[0]===(j.leg&&j.leg.type); })[0]; ctx.push((ltd?ltd[1]:"Goods In and Out")+(j.leg&&j.leg.where?", "+j.leg.where:"")); }   /* named for the work, never "Leg" (Sam, 1 Oct 2026) */   /* a production stint is production, not a leg (Sam, 1 Oct 2026: "why is it a leg?") */ else ctx.push([j.work,j.movement||j.label].filter(Boolean).join(", ")||"Job");
     if(!isPrep&&j.contractor&&!j.who.length) ctx.push(j.contractor); else if(!isPrep&&attending(j)) ctx.push(j.contractor+" \u00b7 "+partX.who.join(", ")+" attending"); else if(partX.who.length) ctx.push(partX.who.join(", "));
     if(!isPrep&&ourJob(j)&&j.vehicle) ctx.push(j.vehicle==="hire"?"Hire":j.vehicle.split(" ")[0]);
     mid.appendChild(el("span","for ctx",ctx.join(" \u00b7 ")));
@@ -1679,7 +1679,7 @@ var SNAP=null, DETAIL={};
     var jobs=allJobs().filter(function(j){return onDay(j,k);}), preps=prepJobs().filter(function(j){return j.prep&&j.prep.date&&daysOf(j.prep).indexOf(k)>=0;});
     var rounds=roundsOn(k,jobs); jobs.forEach(function(j){ j.onRound=rounds.some(function(r){return r.stops.indexOf(j)>=0;}); j.roundVan=roundVanOf(j,rounds); });
     var pf=planFilter(jobs,preps); var allJobsDay=jobs; jobs=pf.jobs; preps=pf.preps; if(NEED) rounds=[];
-    var cols=[["shop","Production",preps.concat(jobs.filter(function(j){return j.isLeg&&j.leg.type==="production";}))],["road","Transport",jobs.filter(function(j){return j.site;})],["labour","Labour Operations",jobs.filter(function(j){return !j.site&&!(j.isLeg&&j.leg.type==="production");})]];
+    var cols=[["shop","Production",preps.concat(jobs.filter(function(j){return j.isLeg&&j.leg.type==="production";}))],["road","Transport",jobs.filter(function(j){return j.site;})],["labour","Goods In and Out",jobs.filter(function(j){return !j.site&&!(j.isLeg&&j.leg.type==="production");})]];
     cols.forEach(function(g){
       var list=el("div","list"+(isToday?" today":"")); var h=el("h2"); var hl=el(isToday?"em":"span",null,g[1]); hl.appendChild(tip(g[0])); h.appendChild(hl); h.appendChild(el("span",null,g[2].length?g[2].length+(g[2].length===1?" job":" jobs"):"nothing")); list.appendChild(h);
       var cards=el("div","cards");
@@ -1733,7 +1733,7 @@ var SNAP=null, DETAIL={};
       // stops in the order the day runs them, not the order the cards sit in (Sam's screenshot, 29 Sep 2026: York 11:20 above Bolton 08:40)
       var arriveOf=function(j){ var tm=jobTiming(j,k); return tm?tm.arrive:1e9; }; mineP=mineP.slice().sort(function(a,b){ return (a.site?0:1)-(b.site?0:1)||arriveOf(a)-arriveOf(b); });
       mineP.forEach(function(j){ var m=minsFor(j,w); var tm=jobTiming(j,k); if(j.site){ seg("s",(m||0)+(j.onRound?0:(j.drive||0))); line("Transport","s",j.title.split(" - ").slice(1).join(" - ")||j.title,(tm&&j.onRound?hmStr(tm.arrive):"")+(past?doneOf(j.isLeg?j.leg:j):""),(m!=null?fmt(m):"no time")+(j.site&&!j.onRound&&j.drive?" + "+fmt(j.drive):"")); }
-        else { var isProdLeg=j.isLeg&&j.leg&&j.leg.type==="production"; seg(isProdLeg?"p":"l",m||0); line(isProdLeg?"Production":"Labour Operations",isProdLeg?"p":"l",j.title.split(" - ").slice(1).join(" - ")||j.title,past?doneOf(j.isLeg?j.leg:j):"",m!=null?fmt(m):"no time"); } });
+        else { var isProdLeg=j.isLeg&&j.leg&&j.leg.type==="production"; seg(isProdLeg?"p":"l",m||0); line(isProdLeg?"Production":"Goods In and Out",isProdLeg?"p":"l",j.title.split(" - ").slice(1).join(" - ")||j.title,past?doneOf(j.isLeg?j.leg:j):"",m!=null?fmt(m):"no time"); } });
       // NO "AVAILABLE" ONCE THE DAY IS GONE (Sam, 2 Oct 2026: "Why is it showing that Brad and Bart still have capacity when
       // they did not have capacity left in the day?"): a past day, or today after 16:30, has no time left to offer.
       var gone=past||load[w].c==="past";
@@ -1778,7 +1778,7 @@ var SNAP=null, DETAIL={};
         // THE TIER NAMES AND THE DAY VIEW'S FLAGS (month view mock, 1 Oct 2026)
         if(nP) pills.appendChild(el("span","p","Production "+nP));
         if(nT) pills.appendChild(el("span","t","Transport "+nT));
-        if(nY) pills.appendChild(el("span","y","Labour Ops "+nY));
+        if(nY) pills.appendChild(el("span","y","Goods In and Out "+nY));
         var nLate=preps.filter(function(j){ var st=prodStatus(j); return st&&st.planned&&st.cls==="late"; }).length; if(nLate) pills.appendChild(el("span","ov",nLate+" production late"));
         var nPlan=JOBS.filter(function(j){ var st=prodStatus(j); return st&&!st.planned&&(st.start||j.prodDue)===k; }).length; if(nPlan) pills.appendChild(el("span","l","Needs planning: "+nPlan));
         if(k>=iso(TODAY)){ var nUn=jobs.filter(function(j){ return !j.isHold&&!j.completed&&!j.who.length&&!(j.contractor); }).length; if(nUn) pills.appendChild(el("span","l",nUn+" unassigned")); }
@@ -1804,7 +1804,7 @@ var SNAP=null, DETAIL={};
   function cubeOn(j){ if(attending(j)) return 0; var c=cubeOf(j); return c==null?null:c/daysN(j); }
   function kgOn(j){ if(attending(j)) return 0; return kgOf(j)/daysN(j); }
   function kgOf(j){ return j.load&&j.load.complete?j.load.kg:0; }
-  var BASE={lat:53.940279,lng:-2.775468,name:"Coggin labour, Forton"};
+  var BASE={lat:53.940279,lng:-2.775468,name:"Coggin, Forton"};
   var DAYCOL=["#0c66e4","#1f845a","#ae4787","#e56910","#626f86"];
   var GEO={}; try{ GEO=JSON.parse(localStorage.getItem("cg-geo")||"{}"); }catch(e){ GEO={}; }
   var PC_FULL=/\b([A-Z]{1,2}\d[A-Z\d]?)\s*(\d[A-Z]{2})\b/i, PC_OUT=/\b([A-Z]{1,2}\d[A-Z\d]?)\b/;
@@ -1876,7 +1876,7 @@ var SNAP=null, DETAIL={};
     var horizon=iso(addDays(mon,42));
     var pool=all.filter(function(j){return weekJobs.indexOf(j)<0 && j.date>=days[0] && j.date<=horizon;});
     var wrap=el("div","mapwrap"); var lg=el("div","legend"); days.forEach(function(k,i){ var sp=el("span"); var dot=el("i"); dot.style.background=DAYCOL[i]; sp.appendChild(dot); sp.appendChild(document.createTextNode(niceDay(k))); lg.appendChild(sp); });
-    var sp0=el("span"); var d0=el("i"); d0.style.background="#172b4d"; sp0.appendChild(d0); sp0.appendChild(document.createTextNode("Labour")); lg.appendChild(sp0); lg.appendChild(tip("routes")); wrap.appendChild(lg);
+    var sp0=el("span"); var d0=el("i"); d0.style.background="#172b4d"; sp0.appendChild(d0); sp0.appendChild(document.createTextNode("Goods In and Out")); lg.appendChild(sp0); lg.appendChild(tip("routes")); wrap.appendChild(lg);
     var fleet=el("div","fleet"); fleet.appendChild(el("b",null,"Vans")); VEHICLES.forEach(function(v){ var off=VANS_OFF.indexOf(v.reg)>=0; var bt=el("button",off?"off":"on",v.name+": "+(off?"off the road":"on the road")); bt.title="Select to change"; bt.onclick=function(){ if(off) VANS_OFF=VANS_OFF.filter(function(r){return r!==v.reg;}); else VANS_OFF.push(v.reg); render(); }; fleet.appendChild(bt); });
     var vt=el("span","hint",vansOnRoad()+" of "+VEHICLES.length+" on the road. More than that on one day means hiring in."); vt.appendChild(tip("vehicles")); fleet.appendChild(vt); wrap.appendChild(fleet);
     var mapDiv=el("div"); mapDiv.id="map"; wrap.appendChild(mapDiv); b.appendChild(wrap);
@@ -1985,7 +1985,7 @@ var SNAP=null, DETAIL={};
         j.prep.who.forEach(function(w){ if(perOp[w]){ perOp[w].alloc+=j.prep.mins; if(std!=null) perOp[w].std+=std/j.prep.who.length; perOp[w].jobs++; } }); }
       // delivery or labour part
       if(j.date>=from&&j.date<=to&&j.who.length&&j.mins!=null&&!(j.contractor&&!j.who.length)){ var st=standardFor(j.movement||j.label,j.load); var alloc2=j.mins*j.who.length; var std2=st&&st.mins!=null?st.mins*st.crew:null;
-        rows.push({kind:j.site?"Delivery":"Labour",j:j,who:j.who,each:j.mins,alloc:alloc2,std:std2,date:j.date,items:j.load&&j.load.rows.length?j.load.rows.map(function(r){return qty(r.n,r.type)+(r.min?": "+r.min+" min to handle":"");}):[],note:st?(st.mins==null?"Needs the items to work out the standard":null):"No standard for this job type"});
+        rows.push({kind:j.site?"Delivery":"Goods In and Out",j:j,who:j.who,each:j.mins,alloc:alloc2,std:std2,date:j.date,items:j.load&&j.load.rows.length?j.load.rows.map(function(r){return qty(r.n,r.type)+(r.min?": "+r.min+" min to handle":"");}):[],note:st?(st.mins==null?"Needs the items to work out the standard":null):"No standard for this job type"});
         j.who.forEach(function(w){ if(perOp[w]){ perOp[w].alloc+=j.mins; if(std2!=null) perOp[w].std+=std2/j.who.length; perOp[w].jobs++; } }); }
     });
     rows.forEach(function(r){ r.ratio=r.std?r.alloc/r.std:null; });
@@ -2048,7 +2048,7 @@ var SNAP=null, DETAIL={};
         tb.appendChild(tr); };
       if(preps.length){ section("Production"); preps.forEach(function(j){ row(j,true); }); }
       var road=jobs.filter(function(j){return j.site;}); if(road.length){ section("Transport"); road.forEach(function(j){ row(j,false); }); }
-      var labour=jobs.filter(function(j){return !j.site&&!(j.isLeg&&j.leg.type==="production");}); if(labour.length){ section("Labour operations"); labour.forEach(function(j){ row(j,false); }); }
+      var labour=jobs.filter(function(j){return !j.site&&!(j.isLeg&&j.leg.type==="production");}); if(labour.length){ section("Goods In and Out"); labour.forEach(function(j){ row(j,false); }); }
       box.appendChild(tab);
       if(missing) hr.textContent=(jobs.length+preps.length)+((jobs.length+preps.length)===1?" item, ":" items, ")+missing+" blank"+(missing===1?"":"s")+" to fill in";
       var load=loadOn(k), ops=el("div","pops"); TEAM.forEach(function(w){ var sp=el("span"); sp.appendChild(el("b",null,w+": ")); sp.appendChild(document.createTextNode(load[w].c==="off"?"annual leave":load[w].c==="free"?"available all day":load[w].c==="office"?"office":fmt(load[w].mins)+" on jobs, "+fmt(load[w].rec)+" available")); ops.appendChild(sp); }); box.appendChild(ops);
@@ -2088,7 +2088,7 @@ var SNAP=null, DETAIL={};
         stops.forEach(function(x,n){ mk("circle",{cx:X(x.pt),cy:Y(x.pt),r:13,fill:DAYCOL[i],stroke:"#fff","stroke-width":2}); mk("text",{x:X(x.pt),y:Y(x.pt)+5,"text-anchor":"middle","font-size":14,"font-weight":"800",fill:"#fff"},String(n+1)); mk("text",{x:X(x.pt)+17,y:Y(x.pt)+5,"font-size":13,fill:"#222"},x.j.title.split(" - ")[0]); });
       });
     });
-    mk("rect",{x:X(BASE)-11,y:Y(BASE)-11,width:22,height:22,fill:"#172b4d",stroke:"#fff","stroke-width":2}); mk("text",{x:X(BASE)+17,y:Y(BASE)+5,"font-size":13,"font-weight":"800",fill:"#172b4d"},"Labour");
+    mk("rect",{x:X(BASE)-11,y:Y(BASE)-11,width:22,height:22,fill:"#172b4d",stroke:"#fff","stroke-width":2}); mk("text",{x:X(BASE)+17,y:Y(BASE)+5,"font-size":13,"font-weight":"800",fill:"#172b4d"},"Goods In and Out");
     var lx=W-pad-5*120, ly=H-10; days.forEach(function(k,i){ mk("circle",{cx:lx+8,cy:ly-5,r:7,fill:DAYCOL[i]}); mk("text",{x:lx+22,y:ly,"font-size":14,"font-weight":"700",fill:"#222"},niceShort(k)); lx+=120; });
     box.appendChild(svg);
     var td=function(tr,cls,t){ var c=el("td",cls||""); if(t!=null) c.textContent=t; tr.appendChild(c); return c; };
@@ -2243,7 +2243,7 @@ var SNAP=null, DETAIL={};
       var meta2=["Goes on after the deliveries are off",pcOf(j)||"postcode not on card",cubeOn(j)!=null?"needs "+fmtM3(cubeOn(j))+(kgOn(j)?", "+Math.round(kgOn(j))+" kg":"")+(daysN(j)>1?" today, of "+fmtM3(cubeOf(j))+" over "+daysN(j)+" days":""):"load not worked out",(j.from||j.by)?windowText(j).slice(2):"",f.access.length?"Access: "+f.access.join(". "):""].filter(Boolean).join("   ");
       var ml2=doc.splitTextToSize(meta2,186); doc.text(ml2,12,y+1); y+=ml2.length*4.5+3;
       var items2=itemLines(j), rows2=items2.map(function(l){ return ["",l,"",""]; }); if(!rows2.length) rows2=[["","No items on the card. Write them in.","",""],["","","",""],["","","",""]];
-      doc.autoTable({startY:y,margin:{left:12,right:12},head:[["","Item expected","On","Off at labour"]],body:rows2,styles:{font:"helvetica",fontSize:10,cellPadding:2,textColor:[17,17,17],lineColor:[207,212,218],lineWidth:.2,minCellHeight:8.5},headStyles:{fillColor:[232,235,239],textColor:[51,51,51],fontStyle:"bold",fontSize:8},columnStyles:{0:{cellWidth:8},1:{cellWidth:142},2:{cellWidth:16,halign:"center"},3:{cellWidth:20,halign:"center"}},
+      doc.autoTable({startY:y,margin:{left:12,right:12},head:[["","Item expected","On","Off at Forton"]],body:rows2,styles:{font:"helvetica",fontSize:10,cellPadding:2,textColor:[17,17,17],lineColor:[207,212,218],lineWidth:.2,minCellHeight:8.5},headStyles:{fillColor:[232,235,239],textColor:[51,51,51],fontStyle:"bold",fontSize:8},columnStyles:{0:{cellWidth:8},1:{cellWidth:142},2:{cellWidth:16,halign:"center"},3:{cellWidth:20,halign:"center"}},
         didDrawCell:function(d){ if(d.section!=="body") return; if(d.column.index===2||d.column.index===3){ doc.setDrawColor(90,90,90); doc.setLineWidth(.4); doc.rect(d.cell.x+d.cell.width/2-2.5,d.cell.y+d.cell.height/2-2.5,5,5); } }});
       y=doc.lastAutoTable.finalY+7;
     });
@@ -2296,7 +2296,7 @@ var SNAP=null, DETAIL={};
         // SAY WHAT THE TIME IS FOR (Sam, 2 Oct 2026: "it needs to say 30 mins install and 1h travel")
         base.word=/^Delivery$/.test(j.movement||"")?"install":/^Collect/.test(j.movement||"")?"collection":"on site";
         base.extra=j.drive?" and "+fmt(j.drive)+" travel":""; A4(base); return; }
-      base.part="Labour"; base.at=j.arrive&&!j.isLeg?hm(j.from):null;
+      base.part="Goods In and Out"; base.at=j.arrive&&!j.isLeg?hm(j.from):null;
       base.sub=j.arrive&&!j.isLeg?(arrivalText(j.arrive,j.from,j.by,j.collectAt)||(ARRIVAL_WHO[j.arrive]||"Arriving")+", time not given yet"):(j.isLeg?(j.leg.where||""):(j.work||""));
       A4(base); });
     // THE PICKING LINE (Sam, 2 Oct 2026, mock approved): a job picks on its first production day, or on its own day when
@@ -2473,7 +2473,7 @@ var SNAP=null, DETAIL={};
               return; }
             if(r.part==="Transport"){ var bc=DATA.byCard[r.card]; if(!bc) return; if(!yardDone[bc.run.key]){ yardDone[bc.run.key]=1; kit.yard(bc.run); }
               var before=doc.getNumberOfPages(); kit.stop(bc.run,bc.stop); starts[r.key]=before+1; return; }
-            if(r.part==="Labour"){ var lb=DATA.info[r.card]; if(!lb) return; var before2=doc.getNumberOfPages(); kit.labour(j,lb,b.title,r.sub,c[3]); starts[r.key]=before2+1; } }); });
+            if(r.part==="Goods In and Out"){ var lb=DATA.info[r.card]; if(!lb) return; var before2=doc.getNumberOfPages(); kit.labour(j,lb,b.title,r.sub,c[3]); starts[r.key]=before2+1; } }); });
         // JOB PAGES ONLY (Sam, 2 Oct 2026: "just their job pages"): the day sheet in front is dropped, so the pages are numbered
         // from the first job page. Every page carries the hand-back strip (Sam: "make sure the operatives give me the sheets
         // back either when they have completed a job or at the end of the day").
@@ -2779,7 +2779,7 @@ var SNAP=null, DETAIL={};
     // time?"): name and crew, four fact boxes, know before you go, the items as tiles, then one Before they leave panel with
     // the sign-off (when the card has one and it is not a donation) and photos plus Job Completed as one step.
     kit.labour=function(j,info,crewTxt,sub,timeTxt){ var d=info.d, nm=j.title.split(" - ").slice(1).join(" - ")||j.title, don=isDonation(j), crewL=crewTxt.split(" + ");
-      var head=function(cont){ newPage(); label(cont?"Labour · "+crewTxt+", continued":"Labour",L,y+1);
+      var head=function(cont){ newPage(); label(cont?"Goods In and Out · "+crewTxt+", continued":"Goods In and Out",L,y+1);
         doc.setFont("helvetica","bold"); doc.setFontSize(cont?14:20); var tl=doc.splitTextToSize(nm,W).slice(0,2); doc.text(tl,L,y+(cont?7:9)); y+=(cont?7:9)+(tl.length-1)*7.5+4;
         if(cont){ rule(); y+=5; return; }
         pillsAt(crewL,L,y); y+=11;
@@ -2947,7 +2947,7 @@ var SNAP=null, DETAIL={};
       routes.forEach(function(r){ var col=hex(r.col);
         if(r.line){ doc.setDrawColor(col[0],col[1],col[2]); doc.setLineWidth(.8); var prev=BASE; r.stops.forEach(function(x){ doc.line(X(prev),Y(prev),X(x.pt),Y(x.pt)); prev=x.pt; }); doc.line(X(prev),Y(prev),X(BASE),Y(BASE)); }
         r.stops.forEach(function(x,n){ doc.setFillColor(col[0],col[1],col[2]); doc.setDrawColor(255,255,255); doc.setLineWidth(.4); doc.circle(X(x.pt),Y(x.pt),3.2,"FD"); doc.setTextColor(255,255,255); doc.setFontSize(8); doc.setFont("helvetica","bold"); doc.text(String(n+1),X(x.pt),Y(x.pt)+1,{align:"center"}); doc.setTextColor(34,34,34); doc.setFont("helvetica","normal"); doc.setFontSize(8); doc.text(x.j.title.split(" - ")[0],X(x.pt)+4.5,Y(x.pt)+1); }); });
-      doc.setFillColor(23,43,77); doc.setDrawColor(255,255,255); doc.rect(X(BASE)-2.6,Y(BASE)-2.6,5.2,5.2,"FD"); doc.setTextColor(23,43,77); doc.setFont("helvetica","bold"); doc.setFontSize(8); doc.text("Labour",X(BASE)+4.5,Y(BASE)+1);
+      doc.setFillColor(23,43,77); doc.setDrawColor(255,255,255); doc.rect(X(BASE)-2.6,Y(BASE)-2.6,5.2,5.2,"FD"); doc.setTextColor(23,43,77); doc.setFont("helvetica","bold"); doc.setFontSize(8); doc.text("Goods In and Out",X(BASE)+4.5,Y(BASE)+1);
       var barLen=(20/69.17)*scale; doc.setDrawColor(51,51,51); doc.setLineWidth(.8); doc.line(x0+6,y0+H-5,x0+6+barLen,y0+H-5); doc.setFontSize(8); doc.setFont("helvetica","normal"); doc.setTextColor(51,51,51); doc.text("20 miles",x0+8+barLen,y0+H-4);
     }
     function mapImage(){
@@ -2971,7 +2971,7 @@ var SNAP=null, DETAIL={};
             routes.forEach(function(r){ if(!r.line) return; g.strokeStyle=r.col; g.lineWidth=1.2*S; g.beginPath(); var b0=P(BASE); g.moveTo(b0.x,b0.y); r.stops.forEach(function(x){ var q=P(x.pt); g.lineTo(q.x,q.y); }); g.lineTo(b0.x,b0.y); g.stroke(); });
             var label=function(t,x,y,col){ g.font="bold "+(3.2*S)+"px Helvetica, Arial, sans-serif"; var w=g.measureText(t).width; g.fillStyle="rgba(255,255,255,.85)"; g.fillRect(x-S,y-3*S,w+2*S,4*S); g.fillStyle=col; g.fillText(t,x,y); };
             routes.forEach(function(r){ r.stops.forEach(function(x,n){ var q=P(x.pt); g.fillStyle=r.col; g.strokeStyle="#fff"; g.lineWidth=1.5*S; g.beginPath(); g.arc(q.x,q.y,3*S,0,Math.PI*2); g.fill(); g.stroke(); g.fillStyle="#fff"; g.font="bold "+(2.8*S)+"px Helvetica, Arial, sans-serif"; g.textAlign="center"; g.fillText(String(n+1),q.x,q.y+S); g.textAlign="left"; label(x.j.title.split(" - ")[0],q.x+4.5*S,q.y+1.2*S,"#222"); }); });
-            var bq=P(BASE); g.fillStyle="#172b4d"; g.strokeStyle="#fff"; g.lineWidth=S; g.fillRect(bq.x-3*S,bq.y-3*S,6*S,6*S); g.strokeRect(bq.x-3*S,bq.y-3*S,6*S,6*S); label("Labour",bq.x+4.5*S,bq.y+1.2*S,"#172b4d");
+            var bq=P(BASE); g.fillStyle="#172b4d"; g.strokeStyle="#fff"; g.lineWidth=S; g.fillRect(bq.x-3*S,bq.y-3*S,6*S,6*S); g.strokeRect(bq.x-3*S,bq.y-3*S,6*S,6*S); label("Goods In and Out",bq.x+4.5*S,bq.y+1.2*S,"#172b4d");
             // scale bar: metres per pixel at this zoom and latitude
             var mpp=156543.03*Math.cos((minLat+maxLat)/2*Math.PI/180)/Math.pow(2,z), bar=20*1609.34/mpp; g.strokeStyle="#333"; g.lineWidth=.8*S; g.beginPath(); g.moveTo(4*S,hPx-4*S); g.lineTo(4*S+bar,hPx-4*S); g.stroke(); label("20 miles",6*S+bar,hPx-3*S,"#333");
             g.fillStyle="rgba(255,255,255,.8)"; g.font=(2.4*S)+"px Helvetica, Arial, sans-serif"; var at="\u00a9 OpenStreetMap contributors"; var aw=g.measureText(at).width; g.fillRect(wPx-aw-3*S,hPx-4*S,aw+3*S,4*S); g.fillStyle="#444"; g.fillText(at,wPx-aw-1.5*S,hPx-1.2*S);
@@ -3062,7 +3062,7 @@ var SNAP=null, DETAIL={};
       var lv=LEAVE.filter(function(l){return l.date===k;}); if(lv.length){ var lh=el("div","sec-h"); var lhl=el("span",null,lv.some(function(l){return l.bh;})?"Bank Holiday":"Off"); lhl.appendChild(tip("leave",k)); lh.appendChild(lhl); cards.appendChild(lh); leaveLines(lv).forEach(function(tx){ cards.appendChild(el("div","leave",tx)); }); }
       var rounds=roundsOn(k,jobs); jobs.forEach(function(j){ j.onRound=rounds.some(function(r){return r.stops.indexOf(j)>=0;}); j.roundVan=roundVanOf(j,rounds); });
       var pfw=planFilter(jobs,preps); var allJobsWeek=jobs, allPrepsWeek=preps; jobs=pfw.jobs; preps=pfw.preps; if(NEED) rounds=[];
-      var groups=[["shop","Production",preps],["road","Transport",jobs.filter(function(j){return j.site;})],["labour","Labour Operations",jobs.filter(function(j){return !j.site&&!(j.isLeg&&j.leg.type==="production");})]];
+      var groups=[["shop","Production",preps],["road","Transport",jobs.filter(function(j){return j.site;})],["labour","Goods In and Out",jobs.filter(function(j){return !j.site&&!(j.isLeg&&j.leg.type==="production");})]];
       var prodLegs=jobs.filter(function(j){return j.isLeg&&j.leg.type==="production";}); prodLegs.forEach(function(j){ groups[0][2]=groups[0][2].concat([j]); });
       groups.forEach(function(g){
         if(!g[2].length) return;

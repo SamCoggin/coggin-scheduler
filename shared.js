@@ -288,7 +288,7 @@ function frontBadges(d,site,round){
   var tight=function(m){ if(m==null) return ""; var h=Math.floor(m/60), r=m%60; return h?(h+"h"+(r?String(r).padStart(2,"0"):"")):(r+"m"); };
   // A FORTON JOB SAYS LABOUR (Sam, 2 Oct 2026: "why is it saying Bradley H no time on this trello card?"). It sat under
   // "Production: Bradley H, 30 min" with no word for which part it was. The tier name now leads, as production's does.
-  var word=tag?tag.replace(/: $/,""):"Labour: "+who.join(", ")+",";
+  var word=tag?tag.replace(/: $/,""):"Goods In and Out: "+who.join(", ")+",";
   var travel=!site?"":(round?(round.total==null?" · no round travel":" · round "+tight(round.total)):(d.drive==null?" · no travel":" · travel "+tight(d.drive)));
   var missing=d.mins==null||(site&&(round?round.total==null:d.drive==null));
   out.push({text:word+(d.mins==null?" no time":" "+tight(d.mins)+(who.length>1?" each":""))+travel,color:missing?"yellow":"green"});
@@ -494,12 +494,12 @@ function vehicleAdvice(m3,kg,lutonsOnRoad,opts){
 function partsOf(desc){
   var g=parseDesc(desc||""), P={production:false,site:"",transport:"",ours:false,labour:"",known:false};
   (g.parts||[]).forEach(function(l){
-    var m=/^(production|site|transport|labour|warehouse|yard):\s*(.*)$/i.exec(l.trim()); if(!m) return; P.known=true;
+    var m=/^(production|site|transport|labour|warehouse|yard|goods in and out):\s*(.*)$/i.exec(l.trim()); if(!m) return; P.known=true;   // "Goods in and out" is the name from 2 Oct 2026; older cards say Labour
     var k=m[1].toLowerCase(), v=m[2].trim(), none=/^(no|none)$/i.test(v);
     if(k==="production") P.production=!none;
     else if(k==="site") P.site=none?"":v;
     else if(k==="transport"){ P.transport=none?"":v; P.ours=/^our van/i.test(v); }
-    else if(k==="labour"||k==="warehouse"||k==="yard") P.labour=none?"":v;
+    else if(k==="labour"||k==="warehouse"||k==="yard"||k==="goods in and out") P.labour=none?"":v;
   });
   // "unload in on 2026-09-16; load out on 2026-09-23" is two legs on two days (a contractor refurb)
   P.labourLegs=P.labour?P.labour.split(";").map(function(x){ var m=/^(.*?)(?:\s+on\s+(\d{4}-\d{2}-\d{2}))?\s*$/.exec(x.trim()); return m&&m[1]?{where:m[1].trim(),date:m[2]||null}:null; }).filter(Boolean):[];
@@ -638,9 +638,9 @@ function arrivalText(kind,from,by,collectAt){
 }
 function arrivalMissing(kind,from,by,collectAt){ if(!kind) return false; if(kind==="both") return !from||!collectAt; return !from; }
 function arrivalWarning(kind,day){
-  return ({collects:"customer collecting "+day+" with no time. Ask them when, so the labour is ready.",
-    delivers:"customer delivering "+day+" with no time. Ask them when, so the labour is ready.",
-    both:"customer delivering and collecting "+day+" without both times. Ask them when, so the labour is ready.",
+  return ({collects:"customer collecting "+day+" with no time. Ask them when, so someone is ready.",
+    delivers:"customer delivering "+day+" with no time. Ask them when, so someone is ready.",
+    both:"customer delivering and collecting "+day+" without both times. Ask them when, so someone is ready.",
     waste:"waste carrier coming "+day+" with no time. Ask for their window.",
     buyer:"buyer collecting "+day+" with no time. Ask them when.",
     supplier:"supplier delivering "+day+" with no time. Ask them when."})[kind]||"";

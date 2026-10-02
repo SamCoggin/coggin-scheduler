@@ -82,7 +82,7 @@
   <div class="grid">
     <div class="kind" style="border-left-color:#0055cc"><b>Production</b><p>Work in the workshop before a job goes out. Cleaning, refurbishing, building. It has its own dates and its own operatives.</p></div>
     <div class="kind" style="border-left-color:#1f845a"><b>Transport</b><p>Anything with a van: deliveries, collections, site visits, clearances. It needs a driver, travel time and a van.</p></div>
-    <div class="kind" style="border-left-color:#44546f"><b>Labour Operations</b><p>Work at our labour: recycling loads in, skips, stock in, a customer collecting. It needs operatives and a time, no van.</p></div>
+    <div class="kind" style="border-left-color:#44546f"><b>Goods In and Out</b><p>Work at Forton: recycling loads in, skips, stock in, a customer collecting. It needs operatives and a time, no van.</p></div>
   </div>
   <h3>A job card</h3>
   <div class="mock" style="border-left:6px solid #1f845a">
@@ -141,7 +141,7 @@
   <p>Two or more transport jobs by the same operative on the same day make a Delivery Round, one trip with one travel time.</p>
   <ul>
     <li>The stops are put in driving order: deliveries before collections, then any cut-off times, then nearest first.</li>
-    <li>The round is routed as one trip, labour to each stop to labour, and the travel is the sum of the real legs plus a fifth for traffic. The round card says "Road time labour to 3 stops and back".</li>
+    <li>The round is routed as one trip, labour to each stop to labour, and the travel is the sum of the real legs plus a fifth for traffic. The round card says "Road time Forton to 3 stops and back".</li>
     <li>Until it is looked up, the round uses the longest single journey plus 20 minutes a stop, and the card says so.</li>
     <li>The day plan walks the real legs, so the arrival at each stop, any wait for a window, and the time back at Forton follow the road. The Routes view and the routes sheet show each leg's miles.</li>
     <li>Press the round card to type a different travel time. Yours is kept.</li>
@@ -165,7 +165,7 @@
     <dt>Not QC'd</dt><dd>The workshop has not passed the job for delivery. It shows on the delivery card so you do not send a van for something that is not ready. Trello clears it when the card's checklist is complete, or sign it off on the card back: QC, choose who checked it, Pass QC.</dd>
     <dt>Above standard</dt><dd>More people or more time than the items on the card need. Check it is deliberate.</dd>
     <dt>Delivery Round</dt><dd>Two or more transport jobs by one operative on the same day, in one trip. The travel is the real road time from Forton to each stop and back, looked up from OpenStreetMap routing, plus a fifth for traffic. Until it arrives it is the longest single journey plus 20 minutes a stop. Press the round card to change it.</dd>
-    <dt>Customer Collects</dt><dd>The customer or a courier picks up from Forton. It sits in Labour Operations because somebody has to be there to load it. Give it operatives and time like any other labour job, put the time they said they will come in the Collection Slot, and it is flagged if the workshop side is not ready.</dd>
+    <dt>Customer Collects</dt><dd>The customer or a courier picks up from Forton. It sits in Goods In and Out because somebody has to be there to load it. Give it operatives and time like any other labour job, put the time they said they will come in the Collection Slot, and it is flagged if the workshop side is not ready.</dd>
     <dt>Held for sales</dt><dd>A striped card. Sales have asked to hold a date but the customer has not confirmed. It counts against the day so you do not overbook, and it drops off on the date shown if not confirmed. You cannot plan it.</dd>
     <dt>Hire not booked</dt><dd>The job needs a hired vehicle and nobody has ticked Booked yet.</dd>
     <dt>Recycling</dt><dd>Every hour of a working day not allocated to a job. The Scheduler shows it per operative per day and for the week. It is planned work, not spare time.</dd>
@@ -208,7 +208,7 @@
   <h3>Legs to a subcontractor</h3>
   <p>When part of a job goes out to a subcontractor and comes back, that is not a separate job and it does not get its own card. It goes on the deal under Subcontract work, with what, who, the day out and the day back, and who carries it. The CRM writes it on the card and the Scheduler makes a leg for each dated trip: Deliver to Russkell Upholstery, for Harper Interiors, on the day out, and Collect from Russkell Upholstery on the day back, each planned with its own operatives, van, travel and time window like any other transport job. If a courier or the subcontractor carries it, the leg becomes labour at Forton instead: load their van out, or unload it back in. Production carries on in between.</p>
   <h3>The parts of a job</h3>
-  <p>A job is not one thing. It can have production in the workshop, work on the customer's site, transport, and work at Forton. The card from the CRM says which parts it has and who does each. A clearance a sub-contractor collects has no site work and no van of ours, but the truck comes back to Forton and our operatives unload it, so the Scheduler shows the sub-contractor under Transport for information and a Labour leg on the same day for the unload, with its own operatives and time. A courier delivery gets a labour leg to load the courier. Labour legs sit under Labour Operations and print on the job sheets like any other work.</p>
+  <p>A job is not one thing. It can have production in the workshop, work on the customer's site, transport, and work at Forton. The card from the CRM says which parts it has and who does each. A clearance a sub-contractor collects has no site work and no van of ours, but the truck comes back to Forton and our operatives unload it, so the Scheduler shows the sub-contractor under Transport for information and a Goods In and Out leg on the same day for the unload, with its own operatives and time. A courier delivery gets a labour leg to load the courier. These legs sit under Goods In and Out and print on the job sheets like any other work.</p>
   <h3>Time goes in with the first operative</h3>
   <p>Put the first operative on a job and the estimated time for that crew goes in by itself, on production and on transport. Change it if the job needs more or less. If there is no standard to lean on, because the items are not on the card, the Time row turns red until a time is typed, so a job cannot go out with a person and no time.</p>
   <h3>Recycling tally</h3>

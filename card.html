@@ -407,7 +407,7 @@
     var lbl=movementOf(card.labels,card.desc)||(card.labels||[]).map(function(l){return l.name;}).join(" ");
     var Lstd=L.rows.length?L:(d.load||L), std=(!contractorOnly&&(!workshop||site))?standardFor(isSkipCard()?"Skip Exchange":lbl,Lstd):null, over=std?aboveStandard(std,d.who,d.mins):null;
     var mvName=movementOf(card.labels,card.desc), jobName=mvName==="Collect and Return"?"Collect and Return":mvName==="Site Visit"?"Site Visit":mvName==="Collection"?"Collection":"Delivery";
-    var kind=site?"transport":"labour", name=site?jobName:(loading?"Loading":"Labour");
+    var kind=site?"transport":"labour", name=site?jobName:(loading?"Loading":"Goods In and Out");
     var ts=section(kind,name,due?niceShort(due):"");
     // AGREED IN THE CRM (Sam, 17 Sep 2026: "make the crew hours typed in the CRM carry over"): the card's
     // Standard time section carries hours typed on the deal when they differ from the standard. Shown here
@@ -437,7 +437,7 @@
         ts.appendChild(rowEl("time",site?"Time":"Time",timeTxt,function(ed){
           if(std){ var sb=el("div","stdbox"); sb.appendChild(el("b",null,"Estimate: "+std.crew+(std.crew===1?" operative":" operatives")+(std.mins!=null?", "+fmt(std.mins)+(std.crew>1?" each":""):""))); sb.appendChild(el("div","hint",/[.]$/.test(std.why)?std.why:std.why+"."));
             if(std.mins!=null){ var br=el("div","row"); br.style.marginTop="6px"; if(d.mins!==std.mins){ var ub=el("button","p","Use the estimate"); ub.onclick=function(){ d.mins=std.mins; save(); render(); }; br.appendChild(ub); } sb.appendChild(br); } ed.appendChild(sb); }
-          ed.appendChild(el("div","lbl",site?"Site time per operative":(loading?"Loading time per operative":"Labour time per operative"))); ed.appendChild(timeField(d,"")); eachBox(ed,d,site?"site time":"labour time");
+          ed.appendChild(el("div","lbl",site?"Site time per operative":(loading?"Loading time per operative":"Goods In and Out time per operative"))); ed.appendChild(timeField(d,"")); eachBox(ed,d,site?"site time":"labour time");
           if(site&&!onRound){ ed.appendChild(el("div","lbl","Travel time, return")); ed.appendChild(hm(function(){return d.drive;},function(v){d.drive=v;},"Travel")); ed.appendChild(el("div","hint","There and back, typed. When this job shares a van with another the same day, the travel moves to the round.")); if(d.drive!=null&&d.drive>360) ed.appendChild(el("div","warn","More than a day's travel with the job in between. Consider a courier or subcontractor.")); }
         },(d.mins==null&&d.who.length&&!contractorOnly)?"bad":(d.mins==null||(site&&d.drive==null))?"todo":""));
         // STARTS AT (Sam, 28 Sep 2026: "what happens if it is just a morning or a couple hours"). Optional, site jobs
@@ -489,8 +489,8 @@
             ed.appendChild(el("div","hint",d.fromAuto?"From the deal. Change it if they give another time.":ak==="waste"?"Put in the window the carrier gives.":"The second time is only for a window."));
           },arrivalMissing(ak,d.from,d.by,d.collectAt)?"todo":"")); }
         if(qcApplies&&!qcPlaced) ts.appendChild(qcRow());
-        var LEG_TYPES_CARD=[["to_sub","Deliver to subcontractor"],["from_sub","Collect from subcontractor"],["production","Production"],["site","Site visit"],["labour","Labour"]];
-        var realLegs=d.legs||[]; ts.appendChild(rowEl("addleg","Labour",realLegs.length?((realLegs.length)+" on this job"):"None",function(ed){
+        var LEG_TYPES_CARD=[["to_sub","Deliver to subcontractor"],["from_sub","Collect from subcontractor"],["production","Production"],["site","Site visit"],["labour","Goods In and Out"]];
+        var realLegs=d.legs||[]; ts.appendChild(rowEl("addleg","Goods In and Out",realLegs.length?((realLegs.length)+" on this job"):"None",function(ed){
           var r=el("div","row"); var tsel=el("select"); LEG_TYPES_CARD.forEach(function(t2){ var o=el("option",null,t2[1]); o.value=t2[0]; tsel.appendChild(o); }); tsel.setAttribute("aria-label","Leg type"); r.appendChild(tsel);
           var di=el("input"); di.type="date"; di.value=card.due?card.due.slice(0,10):""; di.setAttribute("aria-label","Leg date"); r.appendChild(di);
           var wi=el("input"); wi.type="text"; wi.placeholder="Where, or what"; wi.setAttribute("aria-label","Where"); r.appendChild(wi);
@@ -544,7 +544,7 @@
     app.appendChild(ts); }
 
     (d.legs||[]).filter(function(L){return L.type==="labour";}).forEach(function(W){
-      var ws=section("labour","Labour",W.date?niceShort(W.date):"");
+      var ws=section("labour","Goods In and Out",W.date?niceShort(W.date):"");
       // the firm, not the whole Parts line, and never repeated when the line already names them (17 Sep 2026)
       var whoCarries=PARTS&&!PARTS.ours?partsCarrier(PARTS):"";
       var wLine=W.where.charAt(0).toUpperCase()+W.where.slice(1);
@@ -553,14 +553,14 @@
       if(!W.who.length) ws.appendChild(banner("Unassigned. Choose who is on it at Forton."));
       if(overW) ws.appendChild(banner("Above the estimate: "+overW+"."));
       ws.appendChild(rowEl("wwho",W.who.length===1?"Operative":"Operatives",W.who.length?W.who.join(", "):"Unassigned",function(ed){ ed.appendChild(people(W,false,function(){ var s3=standardFor(isSkipCard()?"Skip Exchange":(/unload|receive/i.test(W.where)?"Labour unload":"Labour load"),loadNow()); return s3&&s3.mins!=null?s3.mins:null; },W.date?[W.date]:[])); ed.appendChild(availability(W.date?[W.date]:[],W)); },W.who.length?"":"bad"));
-      ws.appendChild(rowEl("wdate","Day",W.date?niceShort(W.date):"Not set",function(ed){ var wr=el("div","row"); var wd=el("input"); wd.type="date"; wd.value=W.date||""; wd.onchange=function(){ W.date=wd.value||null; save(); render(); }; wr.appendChild(wd); ed.appendChild(wr); ed.appendChild(el("div","hint","The day the truck is unloaded or the load is put out. It shows under Labour Operations in the Scheduler.")); },W.date?"":"todo"));
+      ws.appendChild(rowEl("wdate","Day",W.date?niceShort(W.date):"Not set",function(ed){ var wr=el("div","row"); var wd=el("input"); wd.type="date"; wd.value=W.date||""; wd.onchange=function(){ W.date=wd.value||null; save(); render(); }; wr.appendChild(wd); ed.appendChild(wr); ed.appendChild(el("div","hint","The day the truck is unloaded or the load is put out. It shows under Goods In and Out in the Scheduler.")); },W.date?"":"todo"));
       ws.appendChild(rowEl("wtime",W.who.length>1?"Time per operative":"Time",W.mins!=null?eachText(W):(wstd&&wstd.mins!=null?"Not set, estimated "+fmt(wstd.mins):"Not set"),function(ed){
         if(wstd&&wstd.mins!=null){ var sb=el("div","stdbox"); sb.appendChild(el("b",null,"Estimate: "+wstd.crew+(wstd.crew===1?" operative":" operatives")+", "+fmt(wstd.mins)+(wstd.crew>1?" each":""))); sb.appendChild(el("div","hint",wstd.why)); ed.appendChild(sb); }
-        ed.appendChild(el("div","lbl","Labour time per operative")); ed.appendChild(timeField(W,"")); eachBox(ed,W,"labour time"); },W.mins!=null?"":(W.who.length?"bad":"todo")));
+        ed.appendChild(el("div","lbl","Goods In and Out time per operative")); ed.appendChild(timeField(W,"")); eachBox(ed,W,"time"); },W.mins!=null?"":(W.who.length?"bad":"todo")));
       app.appendChild(ws);
     });
     var otherLegs=(d.legs||[]).filter(function(L){return L.type!=="labour";});
-    if(otherLegs.length){ var ls=section("labour","Labour",""); var lf=fld(""); otherLegs.forEach(function(Lg){ lf.appendChild(el("div",null,Lg.type.replace("_"," ")+(Lg.where?": "+Lg.where:"")+", "+(Lg.date?niceShort(Lg.date):"no date")+(Lg.who&&Lg.who.length?", "+Lg.who.join(", "):", unassigned")+(Lg.mins!=null?", "+fmt(Lg.mins):""))); }); lf.appendChild(el("div","hint","Legs are added and edited in the Scheduler.")); ls.appendChild(lf); app.appendChild(ls); }
+    if(otherLegs.length){ var ls=section("labour","Goods In and Out",""); var lf=fld(""); otherLegs.forEach(function(Lg){ lf.appendChild(el("div",null,Lg.type.replace("_"," ")+(Lg.where?": "+Lg.where:"")+", "+(Lg.date?niceShort(Lg.date):"no date")+(Lg.who&&Lg.who.length?", "+Lg.who.join(", "):", unassigned")+(Lg.mins!=null?", "+fmt(Lg.mins):""))); }); lf.appendChild(el("div","hint","Legs are added and edited in the Scheduler.")); ls.appendChild(lf); app.appendChild(ls); }
     fit();
   }
   function fit(){ requestAnimationFrame(function(){ var h=document.getElementById("app").getBoundingClientRect().height+16; t.sizeTo(Math.ceil(h)).catch(function(){}); }); }
