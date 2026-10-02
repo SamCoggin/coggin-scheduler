@@ -2285,11 +2285,10 @@ var SNAP=null, DETAIL={};
     var MON3=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
     // the job each picking section belongs to, from the first box it appears in on the day sheet
     var pickMeta={};
-    var pickOf=function(r){ var i=PICK&&r.card&&r.pickable?PICK[r.card]:null; if(!i||!i.picks) return null;
-      if(i.allPicked) return {kind:"none",main:"All finished",rest:""};
-      if(i.error||!(i.lines&&i.lines.length)) return {kind:"none",main:"No stock reserved",rest:""};
-      if(!pickMeta[r.card]) pickMeta[r.card]={name:r.name,part:r.part+(r.sub?" · "+r.sub:""),who:r.who.join(" + "),ref:i.ref||""};
-      var n=i.lines.length; return {kind:"sheet",card:r.card,main:"Page "+(i.page||"?"),rest:n+(n===1?" line":" lines")}; };
+    // EVERY JOB POINTS TO ITS OWN PAGE (2 Oct 2026, mock approved: "a per job, job sheet for the day"). A job with a card and
+    // a crew gets a page behind the day sheet; its box carries "JOB Page n". The numbers settle on the second build.
+    var pickOf=function(r){ if(!(PICK&&PICK.__data)||!r.card||!r.who.length) return null; var pg=PICK.__pages&&PICK.__pages[r.key];
+      return {kind:"sheet",card:r.key,main:"Page "+(pg||"?"),rest:""}; };
     // ONE BAR PER CREW, EACH JOB ONCE (Sam, 2 Oct 2026: "Can we not merge when working together as this looks a little
     // confusing?"). A job sits under the bar for exactly the people on it, "Bradley H + Bart H", so a shared job prints
     // once; what one of them does alone goes under their own bar. Bars run in the order their first job starts.
@@ -2304,9 +2303,9 @@ var SNAP=null, DETAIL={};
       var cells=mine.map(function(r){ var ms=g.map(function(w){ return r.mins(w); }), have=ms.filter(function(m){ return m!=null; });
         var tm=!have.length?"":g.length===1||have.every(function(m){ return m===have[0]; })?fmt(have[0])+(g.length>1?" each":""):g.map(function(w){ return w.split(" ")[0]+" "+(r.mins(w)!=null?fmt(r.mins(w)):"?"); }).join(", ");
         if(tm&&r.word) tm=/ each$/.test(tm)?tm.replace(/ each$/," "+r.word+" each"):tm+" "+r.word;
-        return [r.name,r.part+(r.sub?" · "+r.sub:""),"",tm?tm+r.extra:"",r.cid,pickOf(r)]; });
+        return [r.name,r.part+(r.sub?" · "+r.sub:""),"",tm?tm+r.extra:"",r.cid,pickOf(r),r]; });
       var backup=g.length===1&&FIELD_CREW.indexOf(g[0])<0;
-      return {title:g.join(" + "),right:[g.length>1?"Together":"",backup?"Backup":"",cells.length+(cells.length===1?" job":" jobs")].filter(Boolean).join(" · "),cells:cells}; });
+      return {crew:true,title:g.join(" + "),right:[g.length>1?"Together":"",backup?"Backup":"",cells.length+(cells.length===1?" job":" jobs")].filter(Boolean).join(" · "),cells:cells}; });
     var nobody=order(rows.filter(function(r){ return !r.who.length&&!r.contractor; })).map(function(r){ return [r.name,r.part+(r.sub?" · "+r.sub:""),"Needs someone",r.mins(null)!=null?fmt(r.mins(null)):"",r.cid,pickOf(r)]; });
     var subs=order(rows.filter(function(r){ return !r.who.length&&r.contractor; })).map(function(r){ return [r.name,r.part+(r.sub?" · "+r.sub:""),r.contractor,"",r.cid,pickOf(r)]; });
     if(nobody.length) bars.push({title:"Nobody yet",right:nobody.length+(nobody.length===1?" job":" jobs"),cells:nobody});
@@ -2339,7 +2338,7 @@ var SNAP=null, DETAIL={};
       doc.setFont("helvetica","normal"); doc.setFontSize(8.5); doc.setTextColor(90); var pr=new Date();
       doc.text("Day sheet · 8:00 to 16:30",L+W,y-4.5,{align:"right"}); var prT=String(pr.getHours()).padStart(2,"0")+":"+String(pr.getMinutes()).padStart(2,"0");
       doc.text("Printed "+niceShort(iso(pr))+" "+prT,L+W,y,{align:"right"});   /* no "replaces" or "left off" lines (Sam, 2 Oct 2026: "the day sheet is the day sheet") */
-      var pickNote=PICK&&PICK.__range?"Picking for "+PICK.__n+(PICK.__n===1?" job on ":" jobs on ")+PICK.__range:"";
+      var pickNote=PICK&&PICK.__range?"Job pages: "+PICK.__range:"";
       var hl=[pickNote].filter(Boolean);
       hl.forEach(function(t,i){ doc.text(t,L+W,y+4*(i+1),{align:"right"}); }); doc.setTextColor(0); y+=5+4*hl.length;
       // the crew strip
@@ -2370,13 +2369,13 @@ var SNAP=null, DETAIL={};
         if(r[3]&&timeBelow(r)){ ty+=(fs+1)*0.4; doc.text(r[3],tx,ty-1); }
         var sl=subLines(r); if(sl.length){ doc.setFont("helvetica","normal"); doc.setFontSize(fs-1.5); doc.setTextColor(85); doc.text(sl,tx,ty+(fs-1.5)*0.35); ty+=sl.length*(fs-1.5)*0.4+0.8; doc.setTextColor(0); }
         var pk=r[5]; if(pk){ if(pk.kind==="sheet"&&order.indexOf(pk.card)<0) order.push(pk.card);
-          var th=4.6, top=ty+1.4, fsz=fs-2; doc.setFont("helvetica","bold"); doc.setFontSize(6.8); var kw=doc.getTextWidth("PICK")+3.6;
+          var th=4.6, top=ty+1.4, fsz=fs-2; doc.setFont("helvetica","bold"); doc.setFontSize(6.8); var kw=doc.getTextWidth("JOB")+3.6;
           doc.setFontSize(fsz); var mw=doc.getTextWidth(pk.main); doc.setFont("helvetica","normal"); var rest=pk.rest?" · "+pk.rest:"", rw=doc.getTextWidth(rest);
           var room=tw0-kw-3; if(mw+rw>room){ while(rest.length>4&&doc.getTextWidth(rest+"...")>room-mw) rest=rest.slice(0,-1); rest=rest.replace(/\s+$/,"")+"..."; rw=doc.getTextWidth(rest); }
           var tw=kw+mw+rw+3.2; doc.setLineWidth(0.4); doc.setDrawColor(17);
           if(pk.kind==="none"){ doc.setLineDashPattern([0.7,0.6],0); doc.roundedRect(tx,top,tw,th,0.6,0.6); doc.line(tx+kw,top,tx+kw,top+th); doc.setLineDashPattern([],0); doc.setTextColor(17); }
           else { doc.setFillColor(17,17,17); doc.roundedRect(tx,top,tw,th,0.6,0.6,"F"); doc.setFillColor(255,255,255); doc.rect(tx+kw,top+0.25,tw-kw-0.25,th-0.5,"F"); doc.roundedRect(tx,top,tw,th,0.6,0.6,"S"); doc.setTextColor(255); }
-          doc.setFont("helvetica","bold"); doc.setFontSize(6.8); doc.text("PICK",tx+kw/2,top+3.25,{align:"center"}); doc.setTextColor(0);
+          doc.setFont("helvetica","bold"); doc.setFontSize(6.8); doc.text("JOB",tx+kw/2,top+3.25,{align:"center"}); doc.setTextColor(0);
           doc.setFontSize(fsz); doc.text(pk.main,tx+kw+1.6,top+3.3); if(rest){ doc.setFont("helvetica","normal"); doc.setTextColor(85); doc.text(rest,tx+kw+1.6+mw,top+3.3); doc.setTextColor(0); } }
       };
       var sect=function(title,rows,right){ if(!rows.length) return; if(paged){ var h0=Math.max(need(rows[0]),rows[1]?need(rows[1]):0); if(y+9.5+h0>280) newPage(); }   /* a heading never sits alone at the foot of a page */ bar(title,right||(rows.length+(rows.length===1?" job":" jobs")));
@@ -2396,7 +2395,7 @@ var SNAP=null, DETAIL={};
       // THE DAY SHEET'S OWN PICKING PAGES (Sam, 2 Oct 2026, mock approved): one black bar per job in day sheet order, a
       // tick box on every line and every custom build part, photo, quantity, name, location and SKU. Read from the CRM
       // when Download is pressed, built by the CRM's own pick-line rules.
-      if(PICK&&order.length){
+      if(PICK&&PICK.__data){
         var pickHead=function(cont){ doc.addPage(); y=14; doc.setFont("helvetica","bold"); doc.setFontSize(cont?12:19); doc.text("Picking and finishing · "+niceDay(k)+(cont?", continued":""),L,y+(cont?0:2));   // Sam, 2 Oct 2026: "Change the heading to Picking and finishing"
           // no "Read from the CRM when printed" line (Sam, 2 Oct 2026: "this is not required")
           y+=cont?6:9; };
@@ -2439,15 +2438,23 @@ var SNAP=null, DETAIL={};
               if(c.location){ doc.setFont("courier","bold"); doc.text(String(c.location),L+W-3,cy+3.3,{align:"right"}); doc.setFont("helvetica","normal"); } });
             y+=bh+2; }
           doc.setDrawColor(205); doc.setLineWidth(0.25); doc.line(L,y,L+W,y); doc.setDrawColor(0); };
-        pickHead(false);
-        order.forEach(function(id){ var i=PICK[id], m=pickMeta[id]; if(!i||!m||!(i.lines&&i.lines.length)) return;
-          if(y+9.5+lineH(i.lines[0])>282){ pfoot(); pickHead(true); }
-          starts[id]=doc.getNumberOfPages();
-          var right=[m.part,m.who,m.ref?"Ref "+m.ref:""].filter(Boolean).join(" · ");
-          doc.setFillColor(17,17,17); doc.roundedRect(L,y,W,6.5,0.8,0.8,"F"); doc.setTextColor(255); doc.setFont("helvetica","bold"); doc.setFontSize(8.5); doc.text(String(m.name).toUpperCase(),L+3,y+4.5);
-          var tw=doc.getTextWidth(String(m.name).toUpperCase()); doc.setFont("helvetica","normal"); doc.setFontSize(8); var rt=right; while(rt.length>6&&doc.getTextWidth(rt)>W-tw-12) rt=rt.slice(0,-2); if(rt!==right) rt=rt.replace(/\s+$/,"")+"..."; doc.text(rt,L+W-3,y+4.5,{align:"right"}); doc.setTextColor(0); y+=8;
-          i.lines.forEach(function(l){ if(y+lineH(l)>282){ pfoot(); pickHead(true); } drawLine(l); }); y+=4; });
-        pfoot(); }
+        // THE JOB PAGES, CREW BY CREW IN DAY SHEET ORDER: production (the picking lines, drawn as before), the van's yard page
+        // before its first stop, each stop, each labour job. Footers are stamped at the end.
+        var foots=[], kit=jobKit(doc,k,foots), DATA=PICK.__data, yardDone={};
+        bars.forEach(function(b){ if(!b.crew) return; kit.crew(b.title);
+          b.cells.forEach(function(c){ var r=c[6]; if(!r||!r.card) return; var j=JOBS.filter(function(q){ return q.id===r.card; })[0]; if(!j) return;
+            if(r.part==="Production"){ var i=PICK[r.card]||{}, lines=i.lines||[], fin=j.stage==="In progress"&&!(j.prep&&j.prep.stages);
+              kit.header("Job · Production · "+b.title,r.name,[c[3],j.prodDue?"due "+niceDay(j.prodDue):"",j.date?"for "+(j.site?"delivery ":"")+niceDay(j.date):"",i.ref?"Ref "+i.ref:""].filter(Boolean).join(" · "),"https://trello.com/c/"+(j.short||j.id),"Scan to open the Trello card");
+              starts[r.key]=doc.getNumberOfPages();
+              kit.heading(0,i.allPicked?"All finished":fin?"Items to finish":"Pick and finish"); y=kit.getY();
+              if(lines.length){ lines.forEach(function(l){ if(y+lineH(l)>278){ kit.setFoot("This job carries on over the page."); kit.header("Job · Production · "+b.title,r.name,"",null,"",true); y=kit.getY(); } drawLine(l); }); kit.setY(y); }
+              else { var inf=DATA.info[r.card]||(DATA.byCard[r.card]?{items:DATA.byCard[r.card].stop.items}:null); kit.items(inf&&inf.items?inf.items:[],function(){ kit.setFoot("This job carries on over the page."); kit.header("Job · Production · "+b.title,r.name,"",null,"",true); }); }
+              return; }
+            if(r.part==="Transport"){ var bc=DATA.byCard[r.card]; if(!bc) return; if(!yardDone[bc.run.key]){ yardDone[bc.run.key]=1; kit.yard(bc.run); }
+              var before=doc.getNumberOfPages(); kit.stop(bc.run,bc.stop); starts[r.key]=before+1; return; }
+            if(r.part==="Labour"){ var lb=DATA.info[r.card]; if(!lb) return; var before2=doc.getNumberOfPages(); kit.labour(j,lb,b.title,r.sub,c[3]); starts[r.key]=before2+1; } }); });
+        var totalP=doc.getNumberOfPages(); foots.forEach(function(f){ doc.setPage(f.page); doc.setDrawColor(200); doc.setLineWidth(0.25); doc.line(15,284,195,284); doc.setDrawColor(0); doc.setFont("helvetica","normal"); doc.setFontSize(8); doc.setTextColor(100); if(f.text) doc.text(f.text,15,288.5); doc.text("Page "+f.page+" of "+totalP,195,288.5,{align:"right"}); doc.setTextColor(0); }); doc.setPage(totalP);
+      }
       return {doc:doc,fits:fitsDs,dsPages:dsPages,order:order,starts:starts};
     };
     var r=null; for(var sc=1;sc>=0.85;sc-=0.05){ r=build(sc,false); if(r.fits&&r.dsPages===1) break; r=null; }
@@ -2514,96 +2521,113 @@ var SNAP=null, DETAIL={};
       r.van=""; r.stops.forEach(function(s){ if(!r.van) r.van=s.j.vehicle==="hire"?"Hire van":(s.j.vehicle||roundVanOf(s.j,rs)); });
       var rr=rs.filter(function(x){ return x.who===lead; })[0]; r.setOff=rr&&rr.setOff&&parseHM(rr.setOff)!=null?parseHM(rr.setOff):DAY_START+LOAD_MINS; });
     return runs.filter(function(r){ return r.stops.length; }); }
-  async function transportDownload(k){
-    var J=window.jspdf&&window.jspdf.jsPDF; if(!J) return; var runs=transportRuns(k); if(!runs.length) return;
-    // what comes off at each stop, with photos, from the CRM (Resale, Refurb and donations); the card's own lines otherwise
-    var ITEMS={}, ids=[]; runs.forEach(function(r){ r.stops.forEach(function(s){ ids.push({id:s.j.id,short:s.j.short||""}); }); });
-    if(CRM_KEY){ var res=await fetch(CRM_PICKING_URL,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({key:CRM_KEY,action:"photos",cards:ids})}).then(function(x){ return x.json(); }).catch(function(){ return null; });
+  // THE DATA FOR THE JOB PAGES (2 Oct 2026): the vans' runs with each stop's items and card details, and the items on
+  // every labour job, read from the CRM when Download is pressed. Photos are loaded into PICK_IMG for the PDF.
+  async function jobPagesData(k){
+    var runs=transportRuns(k), ITEMS={}, ids=[], seen={};
+    var add=function(j){ if(j&&j.id&&!j.isLeg&&!seen[j.id]){ seen[j.id]=1; ids.push({id:j.id,short:j.short||""}); } };
+    runs.forEach(function(r){ r.stops.forEach(function(s){ add(s.j); }); });
+    allJobs().filter(function(j){ return onDay(j,k)&&!j.isHold&&!j.site&&!j.isLeg&&!j.completed&&j.who.length; }).forEach(add);
+    prepJobs().filter(function(j){ return !j.isHold&&j.prep&&j.prep.date&&daysOf(j.prep).indexOf(k)>=0&&j.prep.who.length; }).forEach(add);
+    if(CRM_KEY&&ids.length){ var res=await fetch(CRM_PICKING_URL,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({key:CRM_KEY,action:"photos",cards:ids})}).then(function(x){ return x.json(); }).catch(function(){ return null; });
       if(res&&res.ok&&res.items) ITEMS=res.items; }
-    var itemsOfStop=function(j){ var crm=(ITEMS[j.id]||[]).filter(function(x){ return x.name; }); if(crm.length) return crm.map(function(x){ return {qty:x.qty||1,name:x.name,photo:x.photo||""}; });
+    var itemsOf=function(j){ var crm=(ITEMS[j.id]||[]).filter(function(x){ return x.name; }); if(crm.length) return crm.map(function(x){ return {qty:x.qty||1,name:x.name,photo:x.photo||""}; });
       return itemLines(j).map(function(l){ var mm=/^(\d+)\s*x\s+(.+)$/i.exec(l); return mm?{qty:parseInt(mm[1],10),name:mm[2],photo:""}:{qty:1,name:l,photo:""}; }); };
-    var urls={}; runs.forEach(function(r){ r.stops.forEach(function(s){ s.items=itemsOfStop(s.j); s.items.forEach(function(it){ if(it.photo&&!PICK_IMG[it.photo]) urls[it.photo]=1; }); s.d=cardDetails(s.j); }); });
-    await Promise.all(Object.keys(urls).slice(0,150).map(loadPickPhoto));
-    var doc=new J({unit:"mm",format:"a4"}), L=15, W=180, y=0, first=true, foots=[];
+    var urls={}, byCard={};
+    runs.forEach(function(r){ r.stops.forEach(function(s){ s.items=itemsOf(s.j); s.d=cardDetails(s.j); byCard[s.j.id]={run:r,stop:s}; s.items.forEach(function(it){ if(it.photo&&!PICK_IMG[it.photo]) urls[it.photo]=1; }); }); });
+    var info={}; ids.forEach(function(x){ if(byCard[x.id]) return; var j=JOBS.filter(function(q){ return q.id===x.id; })[0]; if(!j) return; info[j.id]={items:itemsOf(j),d:cardDetails(j)}; info[j.id].items.forEach(function(it){ if(it.photo&&!PICK_IMG[it.photo]) urls[it.photo]=1; }); });
+    await Promise.all(Object.keys(urls).slice(0,200).map(loadPickPhoto));
+    return {runs:runs,byCard:byCard,info:info};
+  }
+  // THE JOB PAGES KIT (2 Oct 2026, mock approved: "a per job, job sheet for the day"). Draws onto the day sheet's own PDF:
+  // the yard page for a van, a stop page, a labour page, and the header every job page shares. Each page records its
+  // footer text, stamped at the end with "Page n of N".
+  function jobKit(doc,k,foots){
+    var L=15, W=180, y=15, kit={};
     var qr=function(url,x,y0,size){ if(typeof qrcode!=="function"||!url) return false; var q=qrcode(0,"M"); q.addData(url); q.make(); var n=q.getModuleCount(), m=size/n; doc.setFillColor(0,0,0); for(var r0=0;r0<n;r0++) for(var c0=0;c0<n;c0++) if(q.isDark(r0,c0)) doc.rect(x+c0*m,y0+r0*m,m+0.02,m+0.02,"F"); return true; };
     var img=function(url,x,y0,w,h){ var im=url&&PICK_IMG[url]; if(!im) return false; try{ var r0=im.w/im.h, dw=w, dh=h; if(r0>w/h) dh=w/r0; else dw=h*r0; doc.addImage(im.d,"JPEG",x+(w-dw)/2,y0+(h-dh)/2,dw,dh,undefined,"FAST"); return true; }catch(e){ return false; } };
     var noPhoto=function(x,y0,w,h){ doc.setDrawColor(170); doc.setLineDashPattern([0.8,0.8],0); doc.rect(x,y0,w,h); doc.setLineDashPattern([],0); doc.setFont("helvetica","bold"); doc.setFontSize(6); doc.setTextColor(120); doc.text("no photo",x+w/2,y0+h/2+1,{align:"center"}); doc.setTextColor(0); doc.setDrawColor(0); };
-    var box=function(x,y0,s){ doc.setLineWidth(0.45); doc.setDrawColor(17); doc.roundedRect(x,y0,s,s,0.5,0.5); doc.setDrawColor(0); };
-    var newPage=function(){ if(!first) doc.addPage(); first=false; y=15; };
-    var foot=function(text){ foots.push({page:doc.getNumberOfPages(),text:text}); };
+    var box=function(x,y0,s0){ doc.setLineWidth(0.45); doc.setDrawColor(17); doc.roundedRect(x,y0,s0,s0,0.5,0.5); doc.setDrawColor(0); };
+    var crewFoot="";
+    var newPage=function(text){ doc.addPage(); y=15; foots.push({page:doc.getNumberOfPages(),text:text||crewFoot}); };
+    var setFoot=function(t){ if(foots.length) foots[foots.length-1].text=t; };
     var rule=function(t){ doc.setLineWidth(t||0.9); doc.setDrawColor(17); doc.line(L,y,L+W,y); doc.setDrawColor(0); };
     var heading=function(n,t){ if(n){ doc.setFillColor(17,17,17); doc.circle(L+2.6,y+2.1,2.6,"F"); doc.setTextColor(255); doc.setFont("helvetica","bold"); doc.setFontSize(8); doc.text(String(n),L+2.6,y+3.2,{align:"center"}); doc.setTextColor(0); }
       doc.setFont("helvetica","bold"); doc.setFontSize(9.5); doc.text(t.toUpperCase(),L+(n?7.5:0),y+3.4,{charSpace:0.3}); y+=7.5; };
     var label=function(t,x,y0){ doc.setFont("helvetica","bold"); doc.setFontSize(7); doc.setTextColor(110); doc.text(t.toUpperCase(),x,y0,{charSpace:0.25}); doc.setTextColor(0); };
-    var dayName=niceDay(k);
-    runs.forEach(function(run,ri){
-      var nStops=run.stops.length, crewTxt=run.crew.join(" + "), dels=run.stops.filter(function(s){ return !takesOn(s.j); });
-      var yardHead=function(cont){ newPage(); label("Transport · "+dayName,L,y+1); doc.setFont("helvetica","bold"); doc.setFontSize(cont?14:20); doc.text("Before you leave Forton"+(cont?", continued":""),L,y+(cont?7:9));
-        doc.setFontSize(10); doc.text([run.van||"No van set",crewTxt,nStops+(nStops===1?" stop":" stops")].join(" · "),L,y+(cont?12.5:15));
-        doc.setFont("helvetica","normal"); doc.setFontSize(8.5); doc.setTextColor(90); doc.text(["Load from "+hmStr(DAY_START),"Set off "+hmStr(run.setOff)],L+W,y+(cont?7:9),{align:"right"}); doc.setTextColor(0);
-        y+=cont?15.5:18.5; rule(); y+=5; };
-      yardHead(false);
-      heading(1,"Load the van");
+    kit.crew=function(c){ crewFoot=c; };
+    kit.getY=function(){ return y; }; kit.setY=function(v){ y=v; };
+    kit.L=L; kit.W=W; kit.heading=heading; kit.label=label; kit.setFoot=setFoot;
+    // the header every job page shares: kind and crew, the name large, a code top right, a rule under it
+    kit.header=function(kind,name,sub,code,codeLabel,cont){ newPage(); label(kind+(cont?", continued":""),L,y+1);
+      doc.setFont("helvetica","bold"); doc.setFontSize(cont?14:20); var tl=doc.splitTextToSize(name,W-48).slice(0,2); doc.text(tl,L,y+(cont?7:9)); var ty=y+(cont?7:9)+(tl.length-1)*7.5;
+      if(sub&&!cont){ doc.setFontSize(11); doc.text(doc.splitTextToSize(sub,W-48)[0],L,ty+6.5); ty+=6.5; }
+      var top=y; if(code&&!cont){ var qx=L+W-34; if(qr(code,qx,y,34)){ doc.setFont("helvetica","bold"); doc.setFontSize(8); doc.text(doc.splitTextToSize(codeLabel,40),qx+17,y+38,{align:"center"}); } }
+      y=cont?ty+4:Math.max(ty+5,top+44); rule(); y+=5; return y; };
+    var tiles=function(items){ var tw=(W-12)/4, th=31; items.forEach(function(it,i){ var tx=L+(i%4)*(tw+4), ty=y+Math.floor(i/4)*(th+4); doc.setDrawColor(180); doc.setLineWidth(0.3); doc.roundedRect(tx,ty,tw,th,1,1); doc.setDrawColor(0);
+        if(!img(it.photo,tx+2,ty+2,tw-4,17)) noPhoto(tx+(tw-20)/2,ty+2,20,17);
+        doc.setFont("helvetica","bold"); doc.setFontSize(10); doc.text((it.qty!==""?it.qty+" x":""),tx+tw/2,ty+23,{align:"center"}); doc.setFont("helvetica","normal"); doc.setFontSize(7.5); doc.text(doc.splitTextToSize(it.name,tw-4).slice(0,2),tx+tw/2,ty+26.5,{align:"center"}); });
+      y+=Math.ceil(items.length/4)*(th+4)+2; };
+    var list2=function(items,cont){ var colW=(W-6)/2, i0=0;
+      while(i0<items.length){ var room=Math.max(1,Math.floor((268-y)/10)), take=Math.min(items.length-i0,room*2), half=Math.ceil(take/2);
+        for(var q=0;q<take;q++){ var it=items[i0+q], col=q<half?0:1, row=col?q-half:q, ix=L+col*(colW+6), iy=y+row*10;
+          if(!img(it.photo,ix,iy+1,9,8)) noPhoto(ix,iy+1,9,8); doc.setFont("helvetica","bold"); doc.setFontSize(9.5); doc.text(String(it.qty),ix+11,iy+6.2); doc.setFont("helvetica","normal"); doc.setFontSize(8.5); doc.text(doc.splitTextToSize(it.name,colW-20)[0],ix+18,iy+6.2);
+          doc.setDrawColor(215); doc.setLineWidth(0.25); doc.line(ix,iy+10,ix+colW,iy+10); doc.setDrawColor(0); }
+        y+=half*10+3; i0+=take; if(i0<items.length) cont(); } };
+    kit.items=function(items,cont){ if(!items.length) items=[{qty:"",name:"No items on the card",photo:""}]; if(items.length<=8){ if(y+Math.ceil(items.length/4)*35>278) cont(); tiles(items); } else list2(items,cont); };
+    kit.photosBox=function(title,j,cont){ if(y+34>278) cont(); doc.setFillColor(17,17,17); doc.roundedRect(L,y,W,26,1.5,1.5,"F"); doc.setTextColor(255); doc.setFont("helvetica","bold"); doc.setFontSize(15); doc.text(title,L+5,y+9);
+      doc.setFont("helvetica","normal"); doc.setFontSize(9.5); doc.text(doc.splitTextToSize("Photograph the items in place and add them to the Trello card. We use them for marketing and as proof of delivery.",W-40),L+5,y+15); doc.setTextColor(0);
+      doc.setFillColor(255,255,255); doc.rect(L+W-24,y+2,22,22,"F"); qr("https://trello.com/c/"+(j.short||j.id),L+W-23,y+3,20); y+=27; doc.setFont("helvetica","normal"); doc.setFontSize(7.5); doc.setTextColor(90); doc.text("Scan to open the Trello card",L+W,y+2.5,{align:"right"}); doc.setTextColor(0); y+=6; };
+    kit.know=function(d,cont){ var rowsK=knowRows(d); if(!rowsK.length) return; if(y+20>278) cont(); heading(0,"Know before you go");
+      rowsK.forEach(function(rw){ doc.setFont("helvetica","normal"); doc.setFontSize(10); var vl=doc.splitTextToSize(rw[1],W-36); var h=Math.max(7.5,vl.length*4.4+3.2); if(y+h>278) cont();
+        label(rw[0],L,y+4.8); doc.setFont("helvetica","normal"); doc.setFontSize(10); doc.text(vl,L+34,y+4.8); y+=h; doc.setDrawColor(215); doc.setLineWidth(0.25); doc.line(L,y,L+W,y); doc.setDrawColor(0); }); };
+    // the yard page for a van: load in drop order with photos, the blanket rule, the kit check
+    kit.yard=function(run){ var nStops=run.stops.length, crewTxt=run.crew.join(" + "), dels=run.stops.filter(function(s){ return !takesOn(s.j); });
+      var yardHead=function(cont){ newPage(); label("Transport · "+crewTxt+(cont?", continued":""),L,y+1); doc.setFont("helvetica","bold"); doc.setFontSize(cont?14:20); doc.text("Before you leave Forton",L,y+(cont?7:9));
+        doc.setFontSize(10); doc.text([run.van||"No van set",nStops+(nStops===1?" stop":" stops"),"load from "+hmStr(DAY_START)+", set off "+hmStr(run.setOff)].join(" · "),L,y+(cont?12.5:15)); y+=cont?15.5:18.5; rule(); y+=5; };
+      yardHead(false); heading(1,"Load the van");
       doc.setLineWidth(0.6); doc.setDrawColor(17); var rt="Nothing goes against the side of the van, and nothing sits next to another item, without a blanket or cardboard between them. That stops rubbing and damage on the way.";
       doc.setFont("helvetica","normal"); doc.setFontSize(9); var rl=doc.splitTextToSize(rt,W-36); doc.roundedRect(L,y,W,4+rl.length*3.9+2,1,1); doc.setFont("helvetica","bold"); doc.text("Blanket every item.",L+3,y+5); doc.setFont("helvetica","normal"); doc.text(rl,L+33,y+5); y+=4+rl.length*3.9+5; doc.setDrawColor(0);
-      // last drop in first, at the front; first drop in last, by the tail
       var loadOrder=dels.slice().reverse();
       if(!loadOrder.length){ doc.setFont("helvetica","normal"); doc.setFontSize(9.5); doc.text("Nothing to load: every stop is a collection.",L,y+3); y+=8; }
       loadOrder.forEach(function(s,i){ var stopNo=run.stops.indexOf(s)+1, zone=loadOrder.length===1?"In the van":i===0?"At the front, in first":i===loadOrder.length-1?"By the tail, in last":"In the middle";
-        if(y+20>278){ foot("Loading carries on over the page."); yardHead(true); }
+        if(y+20>278){ setFoot("Loading carries on over the page."); yardHead(true); }
         label(zone,L,y+2.5); y+=4.5;
-        (s.items.length?s.items:[{qty:"",name:"No items on the card. Write them in.",photo:""}]).forEach(function(it){ if(y+13>278){ foot("Loading carries on over the page."); yardHead(true); }
+        (s.items.length?s.items:[{qty:"",name:"No items on the card. Write them in.",photo:""}]).forEach(function(it){ if(y+13>278){ setFoot("Loading carries on over the page."); yardHead(true); }
           box(L,y+4.2,4.5); if(!img(it.photo,L+8,y+1,15,11)) noPhoto(L+8,y+1,15,11);
           doc.setFont("helvetica","bold"); doc.setFontSize(11); doc.text(String(it.qty),L+27,y+7.8);
           doc.setFont("helvetica","normal"); doc.setFontSize(9.5); var nl=doc.splitTextToSize(it.name,W-80).slice(0,2); doc.text(nl,L+35,y+(nl.length>1?5.8:7.8));
           doc.setFontSize(8); doc.setTextColor(90); doc.text(doc.splitTextToSize("Stop "+stopNo+" · "+(s.j.title.split(" - ").slice(1).join(" - ")||s.j.title),40)[0],L+W,y+7.8,{align:"right"}); doc.setTextColor(0);
           y+=13; doc.setDrawColor(215); doc.setLineWidth(0.25); doc.line(L,y,L+W,y); doc.setDrawColor(0); }); y+=2; });
-      if(y+32>278){ foot("Loading carries on over the page."); yardHead(true); }
+      if(y+32>278){ setFoot("Loading carries on over the page."); yardHead(true); }
       y+=3; heading(2,"Check you have what you need");
       var cw=(W-8)/3; TRANSPORT_KIT.forEach(function(t,i){ var cx=L+(i%3)*(cw+4), cy=y+Math.floor(i/3)*7; box(cx,cy+1.2,4); doc.setFont("helvetica","normal"); doc.setFontSize(9); doc.text(t,cx+6.5,cy+4.6); doc.setDrawColor(215); doc.setLineWidth(0.25); doc.line(cx,cy+7,cx+cw,cy+7); doc.setDrawColor(0); });
-      y+=Math.ceil(TRANSPORT_KIT.length/3)*7+4;
-      foot("Then turn the page for stop 1.");
-      // one page per stop
-      run.stops.forEach(function(s,si){ var j=s.j, d=s.d, collect=takesOn(j), nm=j.title.split(" - ").slice(1).join(" - ")||j.title;
-        var word=/^Delivery$/.test(j.movement||"")?"install":collect?"collection":"on site", mins=minsFor(j,run.crew[0]);
-        var stopHead=function(cont){ newPage(); label("Stop "+(si+1)+" of "+nStops+(cont?", continued":""),L,y+1);
-          if(cont){ doc.setFont("helvetica","bold"); doc.setFontSize(14); doc.text(nm,L,y+7); y+=10; rule(); y+=5; return; }
-          doc.setFont("helvetica","bold"); doc.setFontSize(20); var tl=doc.splitTextToSize(nm,W-48).slice(0,2); doc.text(tl,L,y+9); var ty=y+9+(tl.length-1)*7.5;
-          doc.setFontSize(11); doc.text([s.arrive!=null?"Arrive about "+hmStr(s.arrive):"",mins!=null?fmt(mins)+" "+word:"",j.from?"not before "+j.from:"",j.by?"finish by "+j.by:""].filter(Boolean).join(" · ")||(collect?"Collection":"Delivery"),L,ty+6.5);
-          var cy=ty+12; label("Address",L,cy); label("Site contact",L+72,cy);
-          doc.setFont("helvetica","normal"); doc.setFontSize(10.5); var al=doc.splitTextToSize(d.address||"Not on the card",66).slice(0,4); doc.text(al,L,cy+5);
-          doc.setFont("helvetica","bold"); doc.setFontSize(11.5); var cl=[]; (d.contacts.length?d.contacts:["Not on the card"]).slice(0,2).forEach(function(c,ci){ c.split(" · ").forEach(function(p){ cl.push(p); }); }); cl=cl.slice(0,4); doc.text(cl,L+72,cy+5);
-          var qx=L+W-38; if(qr(d.signoff,qx,y,38)){ doc.setFont("helvetica","bold"); doc.setFontSize(8.5); doc.text(["Scan to sign off","before you leave"],qx+19,y+42,{align:"center"}); }
-          else { doc.setDrawColor(150); doc.setLineDashPattern([0.8,0.8],0); doc.rect(qx,y,38,38); doc.setLineDashPattern([],0); doc.setDrawColor(0); doc.setFont("helvetica","bold"); doc.setFontSize(8); doc.text(doc.splitTextToSize("No sign-off link on the card. Ring the office.",32),qx+19,y+17,{align:"center"}); }
-          y=Math.max(cy+5+Math.max(al.length,cl.length)*4.8,y+47)+2; rule(); y+=5; };
-        stopHead(false);
-        heading(0,collect?"Collect":"Unload");
-        var items=s.items.length?s.items:[{qty:"",name:"No items on the card",photo:""}];
-        if(items.length<=8){ var tw=(W-12)/4, th=31; items.forEach(function(it,i){ var tx=L+(i%4)*(tw+4), ty=y+Math.floor(i/4)*(th+4); doc.setDrawColor(180); doc.setLineWidth(0.3); doc.roundedRect(tx,ty,tw,th,1,1); doc.setDrawColor(0);
-            if(!img(it.photo,tx+2,ty+2,tw-4,17)) noPhoto(tx+(tw-20)/2,ty+2,20,17);
-            doc.setFont("helvetica","bold"); doc.setFontSize(10); doc.text((it.qty!==""?it.qty+" x":""),tx+tw/2,ty+23,{align:"center"}); doc.setFont("helvetica","normal"); doc.setFontSize(7.5); doc.text(doc.splitTextToSize(it.name,tw-4).slice(0,2),tx+tw/2,ty+26.5,{align:"center"}); });
-          y+=Math.ceil(items.length/4)*(th+4)+2; }
-        else { var colW=(W-6)/2, rows=Math.ceil(items.length/2), i0=0;
-          while(i0<items.length){ var room=Math.max(1,Math.floor((268-y)/10)), take=Math.min(items.length-i0,room*2), half=Math.ceil(take/2);
-            for(var q=0;q<take;q++){ var it=items[i0+q], col=q<half?0:1, row=col?q-half:q, ix=L+col*(colW+6), iy=y+row*10;
-              if(!img(it.photo,ix,iy+1,9,8)) noPhoto(ix,iy+1,9,8); doc.setFont("helvetica","bold"); doc.setFontSize(9.5); doc.text(String(it.qty),ix+11,iy+6.2); doc.setFont("helvetica","normal"); doc.setFontSize(8.5); doc.text(doc.splitTextToSize(it.name,colW-20)[0],ix+18,iy+6.2);
-              doc.setDrawColor(215); doc.setLineWidth(0.25); doc.line(ix,iy+10,ix+colW,iy+10); doc.setDrawColor(0); }
-            y+=half*10+3; i0+=take; if(i0<items.length){ foot("This stop carries on over the page."); stopHead(true); } } }
-        // THE PHOTOS PROMPT (Sam, 2 Oct 2026: "a big prompt to tell the operatives to take photos and add to the trello card
-        // before they leave which are used for marketing and proof of delivery")
-        if(y+30>278){ foot("This stop carries on over the page."); stopHead(true); }
-        doc.setFillColor(17,17,17); doc.roundedRect(L,y,W,26,1.5,1.5,"F"); doc.setTextColor(255); doc.setFont("helvetica","bold"); doc.setFontSize(15); doc.text("TAKE PHOTOS BEFORE YOU LEAVE",L+5,y+9);
-        doc.setFont("helvetica","normal"); doc.setFontSize(9.5); doc.text(doc.splitTextToSize("Photograph the items in place and add them to the Trello card. We use them for marketing and as proof of delivery.",W-40),L+5,y+15); doc.setTextColor(0);
-        doc.setFillColor(255,255,255); doc.rect(L+W-24,y+2,22,22,"F"); qr("https://trello.com/c/"+(j.short||j.id),L+W-23,y+3,20); y+=27; doc.setFont("helvetica","normal"); doc.setFontSize(7.5); doc.setTextColor(90); doc.text("Scan to open the Trello card",L+W,y+2.5,{align:"right"}); doc.setTextColor(0); y+=6;
-        var rowsK=knowRows(d); if(rowsK.length){ if(y+20>278){ foot("This stop carries on over the page."); stopHead(true); } heading(0,"Know before you go");
-          rowsK.forEach(function(rw){ doc.setFont("helvetica","normal"); doc.setFontSize(10); var vl=doc.splitTextToSize(rw[1],W-36); var h=Math.max(7.5,vl.length*4.4+3.2); if(y+h>278){ foot("This stop carries on over the page."); stopHead(true); }
-            label(rw[0],L,y+4.8); doc.setFont("helvetica","normal"); doc.setFontSize(10); doc.text(vl,L+34,y+4.8); y+=h; doc.setDrawColor(215); doc.setLineWidth(0.25); doc.line(L,y,L+W,y); doc.setDrawColor(0); }); }
-        foot("Problems? Ring the office before you leave site. No sign-off, no invoice."); });
-    });
-    var total=doc.getNumberOfPages(), byPage={}; foots.forEach(function(f){ byPage[f.page]=f.text; });
-    for(var p=1;p<=total;p++){ doc.setPage(p); doc.setDrawColor(200); doc.setLineWidth(0.25); doc.line(L,284,L+W,284); doc.setDrawColor(0); doc.setFont("helvetica","normal"); doc.setFontSize(8); doc.setTextColor(100); if(byPage[p]) doc.text(byPage[p],L,288.5); doc.text("Page "+p+" of "+total,L+W,288.5,{align:"right"}); doc.setTextColor(0); }
-    doc.save("transport-"+k+".pdf");
-  }
+      y+=Math.ceil(TRANSPORT_KIT.length/3)*7+4; setFoot("Then turn the page for stop 1."); };
+    // a stop page
+    kit.stop=function(run,s){ var j=s.j, d=s.d, collect=takesOn(j), nm=j.title.split(" - ").slice(1).join(" - ")||j.title, si=run.stops.indexOf(s), nStops=run.stops.length;
+      var word=/^Delivery$/.test(j.movement||"")?"install":collect?"collection":"on site", mins=minsFor(j,run.crew[0]);
+      var stopHead=function(cont){ newPage(); label("Stop "+(si+1)+" of "+nStops+" · "+run.crew.join(" + ")+(cont?", continued":""),L,y+1);
+        if(cont){ doc.setFont("helvetica","bold"); doc.setFontSize(14); doc.text(nm,L,y+7); y+=10; rule(); y+=5; return; }
+        doc.setFont("helvetica","bold"); doc.setFontSize(20); var tl=doc.splitTextToSize(nm,W-48).slice(0,2); doc.text(tl,L,y+9); var ty=y+9+(tl.length-1)*7.5;
+        doc.setFontSize(11); doc.text([s.arrive!=null?"Arrive about "+hmStr(s.arrive):"",mins!=null?fmt(mins)+" "+word:"",j.from?"not before "+j.from:"",j.by?"finish by "+j.by:""].filter(Boolean).join(" · ")||(collect?"Collection":"Delivery"),L,ty+6.5);
+        var cy=ty+12; label("Address",L,cy); label("Site contact",L+72,cy);
+        doc.setFont("helvetica","normal"); doc.setFontSize(10.5); var al=doc.splitTextToSize(d.address||"Not on the card",66).slice(0,4); doc.text(al,L,cy+5);
+        doc.setFont("helvetica","bold"); doc.setFontSize(11.5); var cl=[]; (d.contacts.length?d.contacts:["Not on the card"]).slice(0,2).forEach(function(c){ c.split(" · ").forEach(function(p0){ cl.push(p0); }); }); cl=cl.slice(0,4); doc.text(cl,L+72,cy+5);
+        var qx=L+W-38; if(qr(d.signoff,qx,y,38)){ doc.setFont("helvetica","bold"); doc.setFontSize(8.5); doc.text(["Scan to sign off","before you leave"],qx+19,y+42,{align:"center"}); }
+        else { doc.setDrawColor(150); doc.setLineDashPattern([0.8,0.8],0); doc.rect(qx,y,38,38); doc.setLineDashPattern([],0); doc.setDrawColor(0); doc.setFont("helvetica","bold"); doc.setFontSize(8); doc.text(doc.splitTextToSize("No sign-off link on the card. Ring the office.",32),qx+19,y+17,{align:"center"}); }
+        y=Math.max(cy+5+Math.max(al.length,cl.length)*4.8,y+47)+2; rule(); y+=5; };
+      var cont=function(){ setFoot("This stop carries on over the page."); stopHead(true); };
+      stopHead(false); heading(0,collect?"Collect":"Unload"); kit.items(s.items,cont);
+      kit.photosBox("TAKE PHOTOS BEFORE YOU LEAVE",j,cont); kit.know(d,cont);
+      setFoot("Problems? Ring the office before you leave site. No sign-off, no invoice."); };
+    // a labour page: what is happening, what moves, a code to sign off, the photos prompt
+    kit.labour=function(j,info,crewTxt,sub,timeTxt){ var d=info.d, nm=j.title.split(" - ").slice(1).join(" - ")||j.title;
+      var code=d.signoff||("https://trello.com/c/"+(j.short||j.id)), codeLabel=d.signoff?"Scan to sign off when it leaves":"Scan to open the Trello card";
+      kit.header("Job · Labour · "+crewTxt,nm,[timeTxt,sub].filter(Boolean).join(" · "),code,codeLabel);
+      var cont=function(){ setFoot("This job carries on over the page."); kit.header("Job · Labour · "+crewTxt,nm,"",null,"",true); };
+      heading(0,"Items"); kit.items(info.items,cont); kit.photosBox("TAKE PHOTOS BEFORE THEY LEAVE",j,cont); kit.know(d,cont);
+      setFoot("Ring the office with any problem."); };
+    return kit; }
   async function daySheetDownload(k){
     var btn=$("#sheets"), was=btn?btn.textContent:""; if(btn){ btn.disabled=true; btn.textContent="Building the day sheet..."; }
     try{
@@ -2617,19 +2641,22 @@ var SNAP=null, DETAIL={};
             // "Why do we need this when this is on the workday sheet?"). An In-progress job prints no picking pages unless it is
             // ticked Still picking in stages (Sketch Studios).
             var fin=!!(jj&&jj.prep&&jj.stage==="In progress"&&!jj.prep.stages);
-            PICK[id]={picks:!!e.picks&&!fin,lines:fin?[]:left,allPicked:all.length>0&&!left.length,error:e.error||"",ref:e.ref||""}; });
+            // With a page per job (2 Oct 2026) an In-progress job's page lists what is left as "Items to finish"
+            PICK[id]={picks:!!e.picks,finish:fin,lines:left,allPicked:all.length>0&&!left.length,error:e.error||"",ref:e.ref||""}; });
           var urls={}; Object.keys(PICK).forEach(function(id){ PICK[id].lines.forEach(function(l){ [l.product_photo,l.storage_photo].forEach(function(u){ if(u&&!PICK_IMG[u]) urls[u]=1; }); }); });
           await Promise.all(Object.keys(urls).slice(0,150).map(loadPickPhoto)); } }
-      // number the picking sections; a second pass settles it if the numbers changed the day sheet's length
+      if(!PICK) PICK={};
+      try{ PICK.__data=await jobPagesData(k); }catch(e){ console.error("job pages",e); }
+      // number the job pages; a second pass settles it if the numbers changed the day sheet's length
+      PICK.__pages={};
       var r=daySheetPdf(k,PICK);
-      for(var pass=0;pass<3&&PICK;pass++){ var changed=false, ids=Object.keys(r.starts||{});
-        ids.forEach(function(id){ var pg=String(r.starts[id]); if(PICK[id].page!==pg){ PICK[id].page=pg; changed=true; } });
+      for(var pass=0;pass<3;pass++){ var changed=false, ids=Object.keys(r.starts||{});
+        ids.forEach(function(id){ var pg=String(r.starts[id]); if(PICK.__pages[id]!==pg){ PICK.__pages[id]=pg; changed=true; } });
         var total=r.doc.getNumberOfPages(), first=r.dsPages+1, range=ids.length?(first===total?"page "+first:"pages "+first+" to "+total):"";
-        if(PICK.__range!==range||PICK.__n!==ids.length){ PICK.__range=range; PICK.__n=ids.length; changed=true; }
+        if(PICK.__range!==range){ PICK.__range=range; changed=true; }
         if(!changed) break; r=daySheetPdf(k,PICK); }
       try{ var pn=new Date(); window.localStorage.setItem("coggin.daysheet."+k,String(pn.getHours()).padStart(2,"0")+":"+String(pn.getMinutes()).padStart(2,"0")); }catch(e){}
       r.doc.save("day-sheet-"+k+".pdf");
-      try{ await transportDownload(k); }catch(e){ console.error("transport sheet",e); }   // the vans' sheet, on days with transport
     } finally { if(btn){ btn.disabled=false; btn.textContent=was||"Download day sheet"; } }
   }
   function crewSheetsPdf(k,onlyW){
