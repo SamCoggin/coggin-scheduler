@@ -8,7 +8,9 @@
 // (Sam: "remove office staff everywhere, it won't work as I wanted it to"). SAM C CAME BACK on 1 Oct 2026 (Sam: "I
 // also need to add me back in as an operative"): he can be put on any job and drives, but his day is never spare
 // crew time and never gets a recycling allowance. With nothing on he reads Office. FIELD_CREW is the five.
-var CREW=["Jack C","Jordan I","Bradley H","Rob D","Bart H","Sam C"];
+// ASH K CAME BACK on 6 Oct 2026 (Sam: "I need to add Ash back in as the same logic as me, we are backup but can be
+// selected"): pickable on any job, can drive, never spare crew time, never a recycling allowance, Office when free.
+var CREW=["Jack C","Jordan I","Bradley H","Rob D","Bart H","Sam C","Ash K"];
 function crewOf(n){ var f=String(n||"").trim().split(/\s+/)[0].toLowerCase(); if(!f) return n; for(var i=0;i<CREW.length;i++){ if(CREW[i].split(" ")[0].toLowerCase()===f) return CREW[i]; } return n; }
 function normWho(a){ return (a||[]).map(crewOf).filter(function(n,i,x){ return x.indexOf(n)===i; }); }
 function normPlan(d){ if(!d||typeof d!=="object") return d;
@@ -23,7 +25,7 @@ var FIELD_CREW=["Jack C","Jordan I","Bradley H","Rob D","Bart H"];
 var DRIVERS=["Rob D","Jack C","Bart H"];
 // SAM IS BACKUP, NOT ON SHOW (Sam, 1 Oct 2026: "Do not [show] my available time and [the] fact I can [be] a driver. I am
 // backup to cover when needed only"). He is never labelled a driver, but a job he drives does not warn "no driver".
-var CAN_DRIVE=DRIVERS.concat(["Sam C"]); // the crew entries, so a plan's who (normalised) matches
+var CAN_DRIVE=DRIVERS.concat(["Sam C","Ash K"]); // the crew entries, so a plan's who (normalised) matches
 var CONTRACTORS=["MAK Installations","Courier","Other contractor"];
 // ── the van and what goes on it ──
 // the vans: two Renault Master 3.5 tonne Lutons (DVLA: FX75 BKG 2025, FX73 CWF 2024, revenue weight 3,500 kg).

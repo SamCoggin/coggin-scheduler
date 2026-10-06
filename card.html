@@ -263,7 +263,10 @@
   // Someone on leave on any of the part's days is greyed out and cannot be
   // picked (Sam, 17 Sep 2026). Already picked stays clickable, so it can be removed.
   function people(part,transport,fill,days){
-    var w=el("div","people"), offOn={}, awayOn={}; (days||[]).forEach(function(k){ var L=loadOn(k,part); CREW.forEach(function(n){ if(L[n]&&L[n].off) offOn[n]=true; if(L[n]&&L[n].away&&L[n].away.some(function(x){return !x.until;})) awayOn[n]=true; }); });
+    var w=el("div","people"), offOn={}, awayOn={}; (days||[]).forEach(function(k){ var L=loadOn(k,part); CREW.forEach(function(n){ if(L[n]&&L[n].off) offOn[n]=true; }); });
+    // NEVER ASSUMED OUT ALL DAY (Sam, 6 Oct 2026: "Why wont it let me select Bart when he has free time?"). Another site job
+    // with no arrival time marked him out on site all day here, while the bars below showed his free time: the same rule
+    // the Scheduler dropped on 2 Oct ("why is it also saying bart is out all day?"). His free time below is the answer.
     CREW.forEach(function(n){ var picked=part.who.indexOf(n)>=0, off=offOn[n]&&!picked, away=awayOn[n]&&!picked&&!off; var b=el("button","p"+(picked?" on":"")+(off?" off":"")+(away?" away":""),n); if(away) b.title=n+" is out on site all day"; if(off){ b.disabled=true; b.title=n+" is on leave"; b.appendChild(el("i","lv","on leave")); } if(transport&&DRIVERS.indexOf(n)>=0) b.appendChild(el("i","drv","driver")); b.onclick=function(){ var i=part.who.indexOf(n); if(i<0) part.who.push(n); else part.who.splice(i,1); if(part.who.length&&part.mins==null&&fill){ var m=fill(); if(m!=null) part.mins=m; } save(); render(); }; w.appendChild(b); });
     return w;
   }
