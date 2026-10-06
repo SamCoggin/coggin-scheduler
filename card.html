@@ -191,7 +191,7 @@
     return box;
   }
   function load(){
-    return Promise.all([t.card("id","name","labels","idList","due","desc"), t.lists("all"), t.get("card","shared","sched",null).then(normPlan), t.get("board","shared","sched",{})]).then(function(r){
+    return Promise.all([t.card("id","name","labels","idList","due","start","desc"), t.lists("all"), t.get("card","shared","sched",null).then(normPlan), t.get("board","shared","sched",{})]).then(function(r){
       boardData=r[3]||{}; (boardData.contractors||[]).forEach(function(c){ if(CONTRACTORS.indexOf(c)<0) CONTRACTORS.splice(CONTRACTORS.length-1,0,c); });
       card=r[0]; var list=r[1].filter(function(l){return l.id===card.idList;})[0]; workshop=!!(list&&isWorkshopList(list.name,card.desc)); card.listName=list?list.name:"";
       viewing=isViewingLabels(card.labels); site=!viewing&&isSiteLabels(card.labels,card.desc); loading=!viewing&&!site&&isCollectLabels(card.labels,card.desc);
@@ -237,6 +237,9 @@
       // is never overwritten.
       var am=/Agreed crew time on the day\s*([\d.]+)\s*hours each/i.exec(String(card.desc||"").replace(/\*\*/g,""));
       if(site&&!d.contractor&&am&&d.mins==null){ d.mins=Math.round(parseFloat(am[1])*60); dropped=true; }
+      // The arrival time agreed on the deal fills an empty start time, so the crew are free again after the job (6 Oct 2026).
+      var atm=/Arrival time:\s*(\d{1,2})[:.](\d{2})/i.exec(String(card.desc||"").replace(/\*\*/g,""));
+      if(site&&!d.contractor&&atm&&!d.at){ d.at=(atm[1].length===1?"0":"")+atm[1]+":"+atm[2]; dropped=true; }
       if(dropped) save(); if(workshop&&!d.prep) d.prep={who:[],mins:null,start:null,date:null};
       render();
       // checklists only come through the board-wide cards call, the same way the Scheduler reads them
@@ -429,7 +432,9 @@
     var Lstd=L.rows.length?L:(d.load||L), std=(!contractorOnly&&(!workshop||site))?standardFor(isSkipCard()?"Skip Exchange":lbl,Lstd):null, over=std?aboveStandard(std,d.who,d.mins):null;
     var mvName=movementOf(card.labels,card.desc), jobName=mvName==="Collect and Return"?"Collect and Return":mvName==="Site Visit"?"Site Visit":mvName==="Collection"?"Collection":"Delivery";
     var kind=site?"transport":"labour", name=site?jobName:(loading?"Loading":"Goods In and Out");
-    var ts=section(kind,name,due?niceShort(due):"");
+    // A JOB OVER SEVERAL DAYS SAYS SO (6 Oct 2026, CE0212 7 to 9 Oct): the card's start to its due, not the due alone.
+    var startK=card.start?String(card.start).slice(0,10):"";
+    var ts=section(kind,name,due?((startK&&startK<due.slice(0,10))?niceShort(startK)+" to "+niceShort(due):niceShort(due)):"");
     // AGREED IN THE CRM (Sam, 17 Sep 2026: "make the crew hours typed in the CRM carry over"): the card's
     // Standard time section carries hours typed on the deal when they differ from the standard. Shown here
     // so whoever plans it sees what sales and operations agreed before they choose.
