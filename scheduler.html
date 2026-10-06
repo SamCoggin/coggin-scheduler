@@ -2427,17 +2427,17 @@ var SNAP=null, DETAIL={};
           if(!url){ doc.setLineDashPattern([0.8,0.8],0); doc.setFillColor(246,246,246); doc.rect(x,y0,PW,PH,"FD"); doc.setLineDashPattern([],0); doc.setFont("helvetica","bold"); doc.setFontSize(6.5); doc.setTextColor(90); doc.text("no photo",x+PW/2,y0+PH/2+1,{align:"center"}); doc.setTextColor(0); doc.setDrawColor(0); return; }
           doc.rect(x,y0,PW,PH); var im=PICK_IMG[url]; if(im){ try{ var r0=im.w/im.h, dw=PW-1, dh=PH-1; if(r0>dw/dh) dh=dw/r0; else dw=dh*r0; doc.addImage(im.d,"JPEG",x+(PW-dw)/2,y0+(PH-dh)/2,dw,dh,undefined,"FAST"); }catch(e){} }
           doc.setFillColor(255,255,255); doc.setFont("helvetica","bold"); doc.setFontSize(5.5); var lw=doc.getTextWidth(label)+1.6; doc.rect(x+0.3,y0+0.3,lw,2.4,"F"); doc.setTextColor(90); doc.text(label,x+1.1,y0+2.1); doc.setTextColor(0); doc.setDrawColor(0); };
-        var lineH=function(l){ doc.setFont("helvetica","bold"); doc.setFontSize(10.5); var h=7.5+doc.splitTextToSize(l.name||"",TW).length*4.3; var det=[l.attr_colour,l.attr_features,l.attr_dims].filter(Boolean).join(" · ");
-          if(det){ doc.setFont("helvetica","normal"); doc.setFontSize(8.5); h+=Math.min(2,doc.splitTextToSize(det,TW).length)*3.6; } if(l.attr_pick) h+=4; if(l._already||l._write) h+=4.5; var rh=Math.max(PH+2,h)+3;
-          if(l.cut_down&&l.cut_down.to) rh+=9; if(l.spec_notes) rh+=8; var cs=Array.isArray(l.build_components)?l.build_components:[]; if(cs.length) rh+=7+cs.length*6; return rh; };
+        var lineH=function(l){ doc.setFont("helvetica","bold"); doc.setFontSize(10.5); var h=7.5+doc.splitTextToSize(l.name||"",TW).length*4.3; var det=pickDetails(l);
+          if(det){ doc.setFont("helvetica","normal"); doc.setFontSize(8.5); h+=doc.splitTextToSize(det,TW).length*3.6; } if(l.attr_pick) h+=4; if(l._already||l._write) h+=4.5; var rh=Math.max(PH+2,h)+3;
+          if(l.cut_down&&l.cut_down.to) rh+=9; rh+=pickBoxesH(doc,l,W); var cs=Array.isArray(l.build_components)?l.build_components:[]; if(cs.length) rh+=7+cs.length*6; return rh; };
         var drawLine=function(l){ var y0=y+2.5;
           doc.setLineWidth(0.5); doc.setDrawColor(17); doc.roundedRect(L+0.5,y0,5.5,5.5,0.7,0.7); doc.setDrawColor(0);
           photo(l.product_photo||"",L+9,y0,l.photo_is_build?"build":"product"); photo(l.storage_photo||"",L+9+PW+2,y0,"storage");
           var ty=y0+4.6; doc.setFont("helvetica","bold"); doc.setFontSize(14); var q=l.headerCustomer||String(l.qty||0); doc.text(q,TX,ty);
           if(l.headerBreakdown){ var qw=doc.getTextWidth(q); doc.setFont("helvetica","normal"); doc.setFontSize(9); doc.setTextColor(90); doc.text("from "+l.headerBreakdown,TX+qw+2,ty); doc.setTextColor(0); }
           ty+=5.2; doc.setFont("helvetica","bold"); doc.setFontSize(10.5); var nl=doc.splitTextToSize(l.name||"",TW); doc.text(nl,TX,ty); ty+=nl.length*4.3-0.6;
-          var det=[l.attr_colour,l.attr_features,l.attr_dims].filter(Boolean).join(" · ");
-          if(det){ doc.setFont("helvetica","normal"); doc.setFontSize(8.5); doc.setTextColor(85); var dl=doc.splitTextToSize(det,TW).slice(0,2); doc.text(dl,TX,ty+0.6); ty+=dl.length*3.6; doc.setTextColor(0); }
+          var det=pickDetails(l);
+          if(det){ doc.setFont("helvetica","normal"); doc.setFontSize(8.5); doc.setTextColor(85); var dl=doc.splitTextToSize(det,TW); doc.text(dl,TX,ty+0.6); ty+=dl.length*3.6; doc.setTextColor(0); }
           if(l.attr_pick){ doc.setFont("helvetica","bold"); doc.setFontSize(8.5); doc.text(doc.splitTextToSize("Pick: "+l.attr_pick,TW)[0],TX,ty+1); ty+=4; }
           // a job picked in stages: what is already done, and a space to write today's count
           if(l._already||l._write){ doc.setFont("helvetica","normal"); doc.setFontSize(8.5); doc.setTextColor(70); doc.text((l._already?l._already+" of "+l._of+" already finished.  ":"")+"Finished today: ________",TX,ty+1.4); doc.setTextColor(0); ty+=4.5; }
@@ -2450,7 +2450,7 @@ var SNAP=null, DETAIL={};
           if(l.cut_down&&l.cut_down.to){ var cn=l.cut_down.count, nn=String(l.cut_down.noun||"TOP"), fr=l.cut_down.from?" FROM "+l.cut_down.from:"";
             var ct=cn?"CUT "+cn+"x "+nn+(cn===1?"":"S")+" DOWN"+fr+" TO "+l.cut_down.to+"MM":"CUT THIS "+nn+" DOWN"+fr+" TO "+l.cut_down.to+"MM";
             doc.setFillColor(244,244,244); doc.setDrawColor(17); doc.setLineWidth(0.7); doc.rect(L,y,W,7,"FD"); doc.setFont("helvetica","bold"); doc.setFontSize(9); doc.text(ct,L+3,y+4.7); y+=9; }
-          if(l.spec_notes){ doc.setFillColor(244,244,244); doc.setDrawColor(150); doc.setLineWidth(0.25); doc.rect(L,y,W,6,"FD"); doc.setFont("helvetica","bold"); doc.setFontSize(8.5); doc.text(doc.splitTextToSize("Spec: "+l.spec_notes,W-6)[0],L+3,y+4.1); y+=8; }
+          y=pickBoxesDraw(doc,l,L,W,y);
           var cs=Array.isArray(l.build_components)?l.build_components:[];
           if(cs.length){ var bh=7+cs.length*6; doc.setFillColor(244,244,244); doc.setDrawColor(17); doc.setLineWidth(0.35); doc.rect(L,y,W,bh,"FD");
             doc.setFont("helvetica","bold"); doc.setFontSize(8.5); doc.text("Custom build: these parts make the item above, nothing extra",L+3,y+4.6);
@@ -2497,6 +2497,21 @@ var SNAP=null, DETAIL={};
   // white, and each PICK tag is numbered from where that job's section starts. If the CRM cannot be reached the day sheet
   // still downloads, without picking pages.
   var PICK_IMG={};
+  // THE SAME DETAIL AS THE CRM PICKING SHEET (Sam, 6 Oct 2026: "make sure all the info that is on the original picking sheet ...
+  // is also the same information that pulls across"). The lines arrive from the CRM's own buildPickingLines; these print
+  // every part of them the CRM sheet prints, in full, never cut off: make and model, colours, features, identifiers
+  // (lumbar, base, arms, headrest), counts, size, the cut-down source, assembly, other details and how the job is made,
+  // plus the work boxes for modesty panels from scrap tops and for port holes and scallops.
+  function pickDetails(l){ return [l.attr_makeModel,l.attr_colour,l.attr_features,l.attr_identify,l.attr_counts,l.attr_dims,l.attr_resize,l.attr_assembly,l.attr_other,l.context].filter(Boolean).join(" · "); }
+  function pickWork(l){ var out=[]; var n=Number(l.scrap_panels)||0; if(n>0) out.push("CUT "+n+"x MODESTY PANEL"+(n===1?"":"S")+" FROM SCRAP TOPS (pull from the scrap store)");
+    var m=[]; if(l.attr_port_holes) m.push("PORT HOLES"); if(l.attr_scallop) m.push("SCALLOP"); if(m.length) out.push("TOPS NEED "+m.join(" + ")); return out; }
+  // height of the work boxes and the spec box at a given width, and drawing them, shared by the two picking layouts
+  function pickBoxesH(doc,l,W){ var h=0; doc.setFont("helvetica","bold"); doc.setFontSize(9); pickWork(l).forEach(function(t){ h+=2+doc.splitTextToSize(t,W-6).length*4.2+2+2; });
+    if(l.spec_notes){ doc.setFontSize(8.5); h+=2+doc.splitTextToSize("Spec: "+l.spec_notes,W-6).length*3.8+2+2; } return h; }
+  function pickBoxesDraw(doc,l,L,W,y){ doc.setFont("helvetica","bold"); doc.setFontSize(9);
+    pickWork(l).forEach(function(t){ var tl=doc.splitTextToSize(t,W-6), bh=2+tl.length*4.2+2; doc.setFillColor(244,244,244); doc.setDrawColor(17); doc.setLineWidth(0.7); doc.rect(L,y,W,bh,"FD"); doc.text(tl,L+3,y+4.7); y+=bh+2; });
+    if(l.spec_notes){ doc.setFontSize(8.5); var sl=doc.splitTextToSize("Spec: "+l.spec_notes,W-6), bh=2+sl.length*3.8+2; doc.setFillColor(244,244,244); doc.setDrawColor(150); doc.setLineWidth(0.25); doc.rect(L,y,W,bh,"FD"); doc.text(sl,L+3,y+4.1); y+=bh+2; }
+    doc.setDrawColor(0); return y; }
   function loadPickPhoto(url){ return fetch(url).then(function(x){ if(!x.ok) throw new Error(x.status); return x.blob(); }).then(function(b){ return new Promise(function(res,rej){
       var u=URL.createObjectURL(b), im=new Image(); im.onload=function(){ try{ var mx=600, sc=Math.min(1,mx/Math.max(im.width,im.height)), c=document.createElement("canvas"); c.width=Math.max(1,Math.round(im.width*sc)); c.height=Math.max(1,Math.round(im.height*sc));
         var g=c.getContext("2d"); g.fillStyle="#fff"; g.fillRect(0,0,c.width,c.height); g.drawImage(im,0,0,c.width,c.height); PICK_IMG[url]={d:c.toDataURL("image/jpeg",0.82),w:c.width,h:c.height}; URL.revokeObjectURL(u); res(); }catch(e){ rej(e); } };
@@ -2745,24 +2760,27 @@ var SNAP=null, DETAIL={};
       var RW=44, TX=L+56, TW=W-56-RW-2;
       var ph=function(url,x,y0,lbl){ doc.setDrawColor(180); doc.setLineWidth(0.3); if(!url||!img(url,x+0.5,y0+0.5,19,17)){ doc.setLineDashPattern([0.8,0.8],0); doc.rect(x,y0,20,18); doc.setLineDashPattern([],0); doc.setFont("helvetica","bold"); doc.setFontSize(6); doc.setTextColor(130); doc.text(lbl,x+10,y0+10,{align:"center"}); doc.setTextColor(0); doc.setDrawColor(0); return; }
         doc.rect(x,y0,20,18); doc.setFillColor(255,255,255); doc.setFont("helvetica","bold"); doc.setFontSize(5.5); var lw=doc.getTextWidth(lbl)+1.4; doc.rect(x+0.3,y0+0.3,lw,2.4,"F"); doc.setTextColor(100); doc.text(lbl,x+1,y0+2.1); doc.setTextColor(0); doc.setDrawColor(0); };
-      var rowH=function(l){ var h=27; if(l.cut_down&&l.cut_down.to) h+=9; if(l.spec_notes) h+=8; var cs=Array.isArray(l.build_components)?l.build_components:[]; if(cs.length) h+=7+cs.length*6; return h; };
+      var rowH=function(l){ var parts0=String(l.name||"").split(/\s*\|\s*/), det0=[parts0.slice(1).join(" · "),pickDetails(l)].filter(Boolean).join(" · ");
+        doc.setFont("helvetica","bold"); doc.setFontSize(11); var nN=doc.splitTextToSize(parts0[0],TW).length; doc.setFont("helvetica","normal"); doc.setFontSize(8.5); var dN=det0?doc.splitTextToSize(det0,TW).length:0;
+        var h=Math.max(27,14.5+nN*4.4+dN*3.6+(l._already?3.6:0)+3); if(l.cut_down&&l.cut_down.to) h+=9; h+=pickBoxesH(doc,l,W); var cs=Array.isArray(l.build_components)?l.build_components:[]; if(cs.length) h+=7+cs.length*6; return h; };
       if(!o.lines.length){ kit.items(o.items||[],cont); }
       o.lines.forEach(function(l,li){ if(y+rowH(l)>262) cont(); var y0=y;
         if(li>0||true){ doc.setDrawColor(215); doc.setLineWidth(0.25); doc.line(L,y,L+W,y); doc.setDrawColor(0); }
         box(L+0.5,y0+11,5.5); ph(l.product_photo||"",L+9,y0+4.5,l.photo_is_build?"build":"product"); ph(l.storage_photo||"",L+31,y0+4.5,"storage");
-        var parts=String(l.name||"").split(/\s*\|\s*/), main=parts[0], det=[parts.slice(1).join(" · "),l.attr_colour,l.attr_features,l.attr_dims].filter(Boolean).join(" · ");
-        doc.setFont("helvetica","bold"); doc.setFontSize(16); doc.text(l.headerCustomer||String(l.qty||0),TX,y0+9);
-        doc.setFontSize(11); var nl=doc.splitTextToSize(main,TW).slice(0,1); doc.text(nl,TX,y0+14.5);
-        doc.setFont("helvetica","normal"); doc.setFontSize(8.5); doc.setTextColor(100); var dl=det?doc.splitTextToSize(det,TW).slice(0,2):[]; if(dl.length) doc.text(dl,TX,y0+18.5);
-        if(l._already) doc.text(l._already+" of "+l._of+" already finished",TX,y0+18.5+dl.length*3.6); doc.setTextColor(0);
+        var parts=String(l.name||"").split(/\s*\|\s*/), main=parts[0], det=[parts.slice(1).join(" · "),pickDetails(l)].filter(Boolean).join(" · ");
+        doc.setFont("helvetica","bold"); doc.setFontSize(16); var hq=l.headerCustomer||String(l.qty||0); doc.text(hq,TX,y0+9);
+        if(l.headerBreakdown){ var hw=doc.getTextWidth(hq); doc.setFont("helvetica","normal"); doc.setFontSize(9); doc.setTextColor(90); doc.text("from "+l.headerBreakdown,TX+hw+2,y0+9); doc.setTextColor(0); doc.setFont("helvetica","bold"); }
+        doc.setFontSize(11); var nl=doc.splitTextToSize(main,TW); doc.text(nl,TX,y0+14.5); var dy=y0+14.5+(nl.length-1)*4.4+4;
+        doc.setFont("helvetica","normal"); doc.setFontSize(8.5); doc.setTextColor(100); var dl=det?doc.splitTextToSize(det,TW):[]; if(dl.length) doc.text(dl,TX,dy);
+        if(l._already) doc.text(l._already+" of "+l._of+" already finished",TX,dy+dl.length*3.6); doc.setTextColor(0);
         // the right: location tag, SKU, finished today box
         var loc=String(l.stock_location||""); if(loc){ doc.setFont("courier","bold"); doc.setFontSize(10); var lw2=Math.min(RW,doc.getTextWidth(loc)+4); doc.setFillColor(17,17,17); doc.roundedRect(L+W-lw2,y0+3,lw2,6,0.8,0.8,"F"); doc.setTextColor(255); doc.text(doc.splitTextToSize(loc,RW-4)[0],L+W-2,y0+7.2,{align:"right"}); doc.setTextColor(0); }
         if(l.sku){ doc.setFont("courier","bold"); doc.setFontSize(8); doc.setTextColor(100); doc.text(String(l.sku),L+W-1,y0+13,{align:"right"}); doc.setTextColor(0); }
         doc.setFont("helvetica","bold"); doc.setFontSize(7); doc.setTextColor(70); doc.text(["HOW MANY","FINISHED TODAY"],L+W-14,y0+18.5,{align:"right"}); doc.setTextColor(0); doc.setLineWidth(0.5); doc.setDrawColor(17); doc.roundedRect(L+W-12,y0+16,12,7,0.8,0.8); doc.setDrawColor(0);
-        y=y0+27;
+        y=y0+Math.max(27,dy-y0+dl.length*3.6+(l._already?3.6:0)+3);
         if(l.cut_down&&l.cut_down.to){ var cn=l.cut_down.count, nn=String(l.cut_down.noun||"TOP"), fr=l.cut_down.from?" FROM "+l.cut_down.from:""; var ct=cn?"CUT "+cn+"x "+nn+(cn===1?"":"S")+" DOWN"+fr+" TO "+l.cut_down.to+"MM":"CUT THIS "+nn+" DOWN"+fr+" TO "+l.cut_down.to+"MM";
           doc.setFillColor(244,244,244); doc.setDrawColor(17); doc.setLineWidth(0.7); doc.rect(L,y,W,7,"FD"); doc.setFont("helvetica","bold"); doc.setFontSize(9); doc.text(ct,L+3,y+4.7); y+=9; }
-        if(l.spec_notes){ doc.setFillColor(244,244,244); doc.setDrawColor(150); doc.setLineWidth(0.25); doc.rect(L,y,W,6,"FD"); doc.setFont("helvetica","bold"); doc.setFontSize(8.5); doc.text(doc.splitTextToSize("Spec: "+l.spec_notes,W-6)[0],L+3,y+4.1); y+=8; }
+        y=pickBoxesDraw(doc,l,L,W,y);
         var cs=Array.isArray(l.build_components)?l.build_components:[];
         if(cs.length){ var bh=7+cs.length*6; doc.setFillColor(244,244,244); doc.setDrawColor(17); doc.setLineWidth(0.35); doc.rect(L,y,W,bh,"FD"); doc.setFont("helvetica","bold"); doc.setFontSize(8.5); doc.text("Custom build: these parts make the item above, nothing extra",L+3,y+4.6);
           cs.forEach(function(c,ci){ var cy=y+7+ci*6; doc.setLineWidth(0.4); doc.setDrawColor(17); doc.setFillColor(255,255,255); doc.roundedRect(L+3,cy,4,4,0.5,0.5,"FD"); doc.setFont("helvetica","bold"); doc.setFontSize(9); doc.text((c.qty||1)+"x",L+9.5,cy+3.3); doc.setFont("helvetica","normal");
