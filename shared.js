@@ -33,6 +33,10 @@ var CONTRACTORS=["MAK Installations","Courier","Other contractor"];
 // before a tail lift and the crew. planning figures: 18.7 m3 and 1,000 kg.
 var VAN_M3=18.7, VAN_KG=1000;
 var VEHICLES=[{reg:"FX75 BKG",name:"Renault Master Luton FX75 BKG (2025)"},{reg:"FX73 CWF",name:"Renault Master Luton FX73 CWF (2024)"}];
+// TWO VANS ON ONE JOB (Sam, 6 Oct 2026, CE0212: a three day clearance in both Lutons). A job keeps vehicles, a list, and
+// vehicle, the first of them, so everything that read one van still reads one. vansOf is the list either way.
+function vansOf(x){ if(!x) return []; if(x.vehicles&&x.vehicles.length) return x.vehicles.slice(); return x.vehicle?[x.vehicle]:[]; }
+function setVans(x,list){ x.vehicles=(list||[]).filter(Boolean); x.vehicle=x.vehicles[0]||null; }
 // loaded volume (item plus the space around it on the van) and weight per product type.
 // figures: removals trade lists and a council reuse dataset; rows marked est are estimates until the crew correct them.
 // small parts (arm pads, castors, gas lifts, spares) ride in the cab: 0.01 m3 and 1 kg each, one minute to hand over

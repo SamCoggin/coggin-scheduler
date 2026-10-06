@@ -219,6 +219,24 @@
       // TRAVEL FROM THE POSTCODE (Sam, 17 Sep 2026): a site job with no travel yet gets the return drive from the
       // description's postcode, the same figure the Scheduler page uses. Typed travel is never overwritten.
       if(site&&!d.contractor&&d.drive==null){ var dv=driveFor(card.name,card.desc); if(dv!=null){ d.drive=dv; dropped=true; } }
+      // FROM THE CRM, ONCE, ON AN UNPLANNED CARD (Sam, 6 Oct 2026: "update the scheduler with all the details ... both on the
+      // trello card and the editor"). Who is going, our vans and the crew time agreed on the deal fill the plan when nobody
+      // is on it yet; after that the plan here is in charge and nothing is overwritten.
+      if(site&&!d.contractor&&!(d.who&&d.who.length)&&!d.crmFilled){
+        var dsc=String(card.desc||"").replace(/\*\*/g,"");
+        var named=[]; var sm=/Supervisor:\s*([^\n]+)/i.exec(dsc); if(sm) named.push(sm[1].split(/\s+[-—]\s+/)[0]);
+        var om=/Operatives:\s*([^\n]+)/i.exec(dsc); if(om) named=named.concat(om[1].split(/,/));
+        var pick=function(full){ var p=String(full||"").trim().split(/\s+/); if(!p[0]) return null; var f=p[0].toLowerCase(), si=(p[1]||"").charAt(0).toLowerCase();
+          for(var i=0;i<CREW.length;i++){ var c=CREW[i].split(" "), cf=c[0].toLowerCase(), ci=(c[1]||"").charAt(0).toLowerCase(); if((f===cf||(f.indexOf(cf)===0&&si&&si===ci))) return CREW[i]; } return null; };
+        var who=named.map(pick).filter(function(x,i,a){ return x&&a.indexOf(x)===i; });
+        if(who.length){ d.who=who; dropped=true; }
+        var vm=/Vehicle reg:\s*([^\n]+)/i.exec(dsc); if(vm&&typeof VEHICLES!=="undefined"){ var regs=VEHICLES.map(function(v){return v.reg;}).filter(function(r){ return vm[1].replace(/\s+/g,"").toUpperCase().indexOf(r.replace(/\s+/g,""))>=0; }); if(regs.length&&!vansOf(d).length){ setVans(d,regs); dropped=true; } }
+        if(dropped) d.crmFilled=true;
+      }
+      // The crew time agreed on the deal fills an empty site time on any of our site cards, planned or not; a typed time
+      // is never overwritten.
+      var am=/Agreed crew time on the day\s*([\d.]+)\s*hours each/i.exec(String(card.desc||"").replace(/\*\*/g,""));
+      if(site&&!d.contractor&&am&&d.mins==null){ d.mins=Math.round(parseFloat(am[1])*60); dropped=true; }
       if(dropped) save(); if(workshop&&!d.prep) d.prep={who:[],mins:null,start:null,date:null};
       render();
       // checklists only come through the board-wide cards call, the same way the Scheduler reads them
@@ -456,15 +474,19 @@
         // EVERYTHING THE BOARD'S JOB DIALOG HAS, ON THE CARD (Sam, 29 Sep 2026: "I need to be able to
         // add and edit all this detail on the trello card itself"). Vehicle, time window, QC and legs.
         if(site&&!contractorOnly){
-          var vTxt=!d.vehicle?"No vehicle":(d.vehicle==="hire"?"Hire"+(d.hireRef?", "+d.hireRef:""):d.vehicle);
+          // A HIRE VAN BOOKED IN THE CRM shows here (6 Oct 2026): the card's "Hired for this job" Transport line with its reg.
+          var hireL=(String(card.desc||"").replace(/\*\*/g,"").match(/^- Transport: [^\n]+/gm)||[]).map(function(l){ return l.replace(/^- Transport: /,""); });
+          var hireTxt=hireL.length?" + hire: "+hireL.join("; "):"";
+          var vTxt=(!d.vehicle?(hireL.length?"":"No vehicle"):(d.vehicle==="hire"?"Hire"+(d.hireRef?", "+d.hireRef:""):vansOf(d).join(" and ")))+(hireTxt&&d.vehicle!=="hire"?(d.vehicle?hireTxt:hireTxt.replace(/^ \+ /,"")):"");
           ts.appendChild(rowEl("veh","Vehicle",vTxt,function(ed){
             // a segmented picker: the reg on top, what it is underneath, the chosen one filled (Sam, 29 Sep 2026: "UI upgrade needed here")
             var sg=el("div","seg vseg"); (typeof VEHICLES!=="undefined"?VEHICLES:[]).concat([{reg:"hire",name:"Hire a vehicle"}]).forEach(function(v){
-              var b=el("button",d.vehicle===v.reg?"on":""); b.appendChild(el("b",null,v.reg==="hire"?"Hire":v.reg)); b.appendChild(el("small",null,v.reg==="hire"?"supplier below":String(v.name||"").replace(/\s*\(.*$/,"").replace(/^Renault Master /,"")+(/(20\d\d)/.test(v.name||"")?", "+/(20\d\d)/.exec(v.name)[1]:"")));
-              b.setAttribute("aria-pressed",d.vehicle===v.reg?"true":"false"); b.onclick=function(){ d.vehicle=d.vehicle===v.reg?null:v.reg; save(); render(); }; sg.appendChild(b); }); ed.appendChild(sg);
+              var on=vansOf(d).indexOf(v.reg)>=0; var b=el("button",on?"on":""); b.appendChild(el("b",null,v.reg==="hire"?"Hire":v.reg)); b.appendChild(el("small",null,v.reg==="hire"?"supplier below":String(v.name||"").replace(/\s*\(.*$/,"").replace(/^Renault Master /,"")+(/(20\d\d)/.test(v.name||"")?", "+/(20\d\d)/.exec(v.name)[1]:"")));
+              b.setAttribute("aria-pressed",on?"true":"false"); b.onclick=function(){ var cur=vansOf(d); if(v.reg==="hire") setVans(d,cur.indexOf("hire")>=0?[]:["hire"]); else { cur=cur.filter(function(x){return x!=="hire";}); var i=cur.indexOf(v.reg); if(i>=0) cur.splice(i,1); else cur.push(v.reg); setVans(d,cur); } save(); render(); }; sg.appendChild(b); }); ed.appendChild(sg);   // both our vans can go; Hire stands alone (6 Oct 2026)
             if(d.vehicle==="hire"){ var hr=el("div","row"); var hi=el("input"); hi.type="text"; hi.placeholder="Supplier, vehicle and reference"; hi.setAttribute("aria-label","Hire details"); hi.value=d.hireRef||""; hi.onchange=function(){ d.hireRef=hi.value; save(); render(); }; hr.appendChild(hi); ed.appendChild(hr); }
-            ed.appendChild(el("div","hint",d.vehicle?"Tap it again to clear.":"Which vehicle goes out."));
-          },d.vehicle?"":"todo"));
+            ed.appendChild(el("div","hint",d.vehicle?"Tap one again to take it off. Both vans can go on a job.":"Which vehicles go out. Both vans can go on a job."));
+            if(hireL.length) ed.appendChild(el("div","hint","Booked in the CRM: "+hireL.join("; ")+"."));
+          },(d.vehicle||hireL.length)?"":"todo"));
           var wTxt=(d.from||d.by)?((d.from?"arrive after "+d.from:"")+(d.from&&d.by?", ":"")+(d.by?"finish by "+d.by:"")):"Any time in the working day";
           ts.appendChild(rowEl("win","Time window",wTxt,function(ed){
             var r=el("div","row"); var fi=el("input"); fi.type="time"; fi.step="300"; fi.value=d.from||""; fi.setAttribute("aria-label","Arrive after"); fi.onchange=function(){ d.from=fi.value||null; save(); render(); };
