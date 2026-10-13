@@ -2471,7 +2471,7 @@ var SNAP=null, DETAIL={};
                 facts:[["Time",c[3]],["Due",j.prodDue?niceDay(j.prodDue):""],[j.site?"Delivery":"Ready by",j.date?niceDay(j.date):""],["Ref",i.ref||""]],lines:lines,items:inf&&inf.items?inf.items:[]});
               starts[r.key]=beforeP+1;
               return; }
-            if(r.part==="Transport"){ var bc=DATA.byCard[r.card]; if(!bc) return; if(!yardDone[bc.run.key]){ yardDone[bc.run.key]=1; kit.yard(bc.run); }
+            if(r.part==="Transport"){ var bc=DATA.byCard[r.card]; if(!bc) return; if(!yardDone[bc.run.key]){ yardDone[bc.run.key]=1; if(kit.hasLoad(bc.run)) kit.yard(bc.run); }
               var before=doc.getNumberOfPages(); kit.stop(bc.run,bc.stop); starts[r.key]=before+1; return; }
             if(r.part==="Goods In and Out"){ var lb=DATA.info[r.card]; if(!lb) return; var before2=doc.getNumberOfPages(); kit.labour(j,lb,b.title,r.sub,c[3]); starts[r.key]=before2+1; } }); });
         // JOB PAGES ONLY (Sam, 2 Oct 2026: "just their job pages"): the day sheet in front is dropped, so the pages are numbered
@@ -2688,9 +2688,15 @@ var SNAP=null, DETAIL={};
           box(cLoad-2.75,y+5.25,5.5); y+=rowH; });
         closeSeg(); y+=4; });
       if(y+32>278){ setFoot("Loading carries on over the page."); yardHead(true); }
-      y+=3; heading(2,"Check you have what you need");
+      y+=3; kitCheck(2); setFoot("Then turn the page for stop 1."); };
+    // the kit ticks, drawn on the loading sheet or, when there is nothing to load, on the first stop page
+    var kitCheck=function(n){ heading(n,"Check you have what you need");
       var cw=(W-8)/3; TRANSPORT_KIT.forEach(function(t,i){ var cx=L+(i%3)*(cw+4), cy=y+Math.floor(i/3)*7; box(cx,cy+1.2,4); doc.setFont("helvetica","normal"); doc.setFontSize(9); doc.text(t,cx+6.5,cy+4.6); doc.setDrawColor(215); doc.setLineWidth(0.25); doc.line(cx,cy+7,cx+cw,cy+7); doc.setDrawColor(0); });
-      y+=Math.ceil(TRANSPORT_KIT.length/3)*7+4; setFoot("Then turn the page for stop 1."); };
+      y+=Math.ceil(TRANSPORT_KIT.length/3)*7+4; };
+    // NO LOADING SHEET WITHOUT A LOAD (Sam, 13 Oct 2026: "Remove the loading sheet when a run has no deliveries"). A run
+    // that only collects has nothing to put in the van at Forton, so its loading sheet was a page saying so plus the kit
+    // ticks. The kit ticks move to the first stop page instead and the page goes.
+    kit.hasLoad=function(run){ return run.stops.some(function(s0){ return !takesOn(s0.j); }); };
     // A STOP PAGE IN ARRIVAL ORDER (Sam, 2 Oct 2026, mock approved): who and where, call ahead, know before you go, unload,
     // then one black Before you leave panel with the photos and the move to Job Completed.
     kit.stop=function(run,s){ var j=s.j, d=s.d, collect=takesOn(j), nm=j.title.split(" - ").slice(1).join(" - ")||j.title, si=run.stops.indexOf(s), nStops=run.stops.length;
@@ -2722,8 +2728,9 @@ var SNAP=null, DETAIL={};
         y+=15; };
       var cont=function(){ setFoot("This stop carries on over the page."); stopHead(true); };
       stopHead(false);
-      var hasKnow=knowRows(d).length>0; kit.know(d,cont,1); if(hasKnow) y+=3;
-      if(y+20>278) cont(); heading(hasKnow?2:1,collect?"Collect":"Unload"); kit.items(s.items,cont);
+      var kitFirst=si===0&&!kit.hasLoad(run); if(kitFirst){ kitCheck(1); y+=3; }
+      var n0=kitFirst?1:0, hasKnow=knowRows(d).length>0; kit.know(d,cont,n0+1); if(hasKnow) y+=3;
+      if(y+20>278) cont(); heading(n0+(hasKnow?2:1),collect?"Collect":"Unload"); kit.items(s.items,cont);
       // before you leave: one black panel, two steps and the Trello code
       if(y+44>278) cont(); y+=2; var ph=40; doc.setFillColor(17,17,17); doc.roundedRect(L,y,W,ph,2,2,"F");
       doc.setTextColor(255); doc.setFont("helvetica","bold"); doc.setFontSize(13); doc.text("BEFORE YOU LEAVE",L+5,y+8);
