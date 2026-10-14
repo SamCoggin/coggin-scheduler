@@ -1,0 +1,33 @@
+<!doctype html><html><head><meta charset="utf-8"><title>Operative day mock</title>
+<style>
+:root{--navy:#1D3058;--ink:#172b4d;--muted:#5e6c84;--line:#e3e6ec;--bg:#f5f6f8}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);font:13px/1.45 Inter,system-ui,Arial,sans-serif;color:var(--ink);padding:24px}
+h3{font-size:12px;color:var(--muted);font-weight:600;margin:0 0 10px}
+.modal{width:620px;background:#fff;border-radius:12px;box-shadow:0 6px 30px rgba(0,0,0,.18);overflow:hidden}
+.head{padding:14px 18px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:10px}.head b{font-size:16px}.head .sub{color:var(--muted);font-size:12px}.sp{flex:1}
+.pill{font-size:11px;font-weight:700;border-radius:999px;padding:3px 9px;background:#fde8e8;color:#b42318}
+.bar{height:8px;border-radius:4px;background:#eef0f3;margin:0 18px 10px;overflow:hidden;display:flex}.bar i{display:block;height:100%}
+.tier{padding:8px 18px 2px;font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;font-weight:700}.p{color:#3b5bdb}.s{color:#2f8f4e}.l{color:#44546f}
+.row{display:flex;align-items:center;gap:12px;padding:8px 18px;border-top:1px solid #f0f2f5}
+.row .nm{flex:1}.row .nm small{display:block;color:var(--muted);font-size:11.5px}
+.in{width:64px;height:30px;border:1px solid var(--line);border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:12.5px}
+.lnk{font-size:12px;color:var(--navy);text-decoration:underline;white-space:nowrap}.lnk.r{color:#b42318}
+.foot{padding:12px 18px;border-top:1px solid var(--line);display:flex;gap:10px;align-items:center}.btn{border:1px solid var(--line);border-radius:7px;padding:6px 12px;font-weight:600;font-size:12.5px}.btn.p{background:var(--navy);color:#fff;border-color:var(--navy)}
+.cap{width:620px;color:var(--muted);font-size:12.5px;margin-top:10px}
+.add{padding:8px 18px;border-top:1px solid #f0f2f5;font-size:12.5px;color:var(--muted)}.add select{border:1px solid var(--line);border-radius:6px;padding:4px 8px;font-size:12.5px;margin-left:6px}
+</style></head><body>
+<h3>CLICK THE OPERATIVE ON THE DAY VIEW</h3>
+<div class="modal">
+ <div class="head"><div><b>Bart H</b> <span class="sub">Driver &middot; Tue 14 Oct</span></div><span class="sp"></span><span class="pill">Over by 44h 20m</span></div>
+ <div class="bar"><i style="width:4%;background:#3b5bdb"></i><i style="width:28%;background:#2f8f4e"></i><i style="width:68%;background:#b42318"></i></div>
+ <div class="tier p">Production</div>
+ <div class="row"><div class="nm">Design Fix<small>day 1 of 2</small></div><div class="in">4:00</div><a class="lnk">Open job</a><a class="lnk r">Take off</a></div>
+ <div class="tier s">Transport</div>
+ <div class="row"><div class="nm">Lancaster City Council<small>arrive 9:00 &middot; on the round, 1h 35m driving</small></div><div class="in">45:00</div><a class="lnk">Open job</a><a class="lnk r">Take off</a></div>
+ <div class="row"><div class="nm">Lancaster City Council<small>arrive 55:20</small></div><div class="in">1:30</div><a class="lnk">Open job</a><a class="lnk r">Take off</a></div>
+ <div class="add">Add Bart to another job on this day <select><option>Pick a job&hellip;</option><option>Skipton - Harrison Drury (Transport)</option><option>Preston - Example Firm (Production)</option></select></div>
+ <div class="foot"><span class="btn">Mark as off</span><span class="sp"></span><span class="btn p">Done</span></div>
+</div>
+<p class="cap">The operative's name on the Day view opens this. Every line is one of their parts for the day with its time box, typed as 2:10 or 40, saved as you leave the box like the job editor. Take off removes them from that part. Add puts them on another job on the day. Open job goes to the full editor.</p>
+<p class="cap">The 45:00 and 55:20 in your screenshot are a separate fault: a time typed as 45 was read as 45 hours somewhere. I will find that while building this.</p>
+</body></html>

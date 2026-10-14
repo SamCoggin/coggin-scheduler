@@ -81,3 +81,6 @@ setTimeout(()=>{ const walk=(n,o=[])=>{o.push(n);(n.children||[]).forEach(c=>wal
 // every working day still to come, never the start day alone.
 console.log('production reads every day:', /prodDays=o\.shop\?rangeDaysFrom\(part\.start,part\.date\)/.test(html) && /var load=o\.shop\?rangeLoad\(prodDays\):loadOn\(dayK\)/.test(html) && /function rangeLoad\(days\)/.test(html) && /ahead\.length\?ahead:all/.test(html));
 setTimeout(()=>{ const js=global.window.__jobs?global.window.__jobs():[]; const f=js.filter(j=>j.facility); console.log('facility job read:', f.length===1&&f[0].title==='Repaint the loading bay lines'&&f[0].site===false&&f[0].stageLabel==='Facility'); },400);
+// THE OPERATIVE'S DAY (14 Oct 2026): clicking Bart on 15 Sep opens his jobs with a time box, Take off and Open job on each
+setTimeout(()=>{ try{ global.window.__openOp('2026-09-15|Bart H'); const v=body.children.filter(n=>n.className==='veil').pop(); const T=v?(function walk(n,o=[]){o.push(n);(n.children||[]).forEach(x=>walk(x,o));return o;})(v).map(x=>x.textContent).filter(Boolean).join(' '):'';
+  console.log('operative day:', /Bart H/.test(T)&&/Harrison Drury/.test(T)&&/Take off/.test(T)&&/Open job/.test(T)&&/planned of 7h 45m/.test(T)); }catch(e){ console.log('OP THROW',e.stack.split('\n').slice(0,3).join('\n')); } },900);
