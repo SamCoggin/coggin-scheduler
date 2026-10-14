@@ -2838,7 +2838,7 @@ var SNAP=null, DETAIL={};
           box(L,y+1.6,5); doc.text(tl,L+9,y+5.2); y+=h; doc.setDrawColor(215); doc.setLineWidth(0.25); doc.line(L,y,L+W,y); doc.setDrawColor(0); });
         y+=4; }
       // the notes: lines down to the finishing panel, so there is always room to write
-      if(y+40>270) cont(); heading(++nStep,"What you did, and anything that did not go to plan");
+      if(y+40>270) cont(); heading(++nStep,"What you did");
       var ph=40, stopAt=278-ph-10; while(y+7<=stopAt){ doc.setDrawColor(200); doc.setLineWidth(0.3); doc.line(L,y+6,L+W,y+6); doc.setDrawColor(0); y+=7; }
       y+=4; doc.setFillColor(17,17,17); doc.roundedRect(L,y,W,ph,2,2,"F");
       doc.setTextColor(255); doc.setFont("helvetica","bold"); doc.setFontSize(13); doc.text("WHEN YOU FINISH",L+5,y+8);
