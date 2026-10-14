@@ -3011,6 +3011,7 @@ var SNAP=null, DETAIL={};
   }
   window.__crewSheetsPdf=crewSheetsPdf; // reachable by check.mjs
   window.__jobs=function(){ return JOBS; }; // reachable by check.mjs
+  window.__daySheetBuild=daySheetBuild; // reachable by check.mjs and the offline render
   function routesPdf(){
     var mon=addDays(monday(TODAY),week*7), days=[]; for(var i=0;i<5;i++) days.push(iso(addDays(mon,i)));
     var doc=pdfDoc("Routes, "+niceDay(days[0])+" to "+niceDay(days[4])+" "+mon.getFullYear(),"Printed "+new Date().toLocaleString("en-GB",{day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"})+". One colour per day, stops numbered in driving order from Forton. Miles are road estimates."); if(!doc) return;
