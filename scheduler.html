@@ -2822,7 +2822,7 @@ var SNAP=null, DETAIL={};
       var where="", tasks=[];
       String(dd.desc||"").split(/\r?\n/).forEach(function(ln){ var t=ln.replace(/^\s*(?:[-*\u2022]|\d+[.)])\s*/,"").replace(/^\[[ x]\]\s*/i,"").replace(/\*\*/g,"").trim(); if(!t) return; var wm=/^where\s*:\s*(.+)$/i.exec(t); if(wm){ where=wm[1].trim(); return; } tasks.push(t); });
       if(dd.checks&&dd.checks.length) tasks=dd.checks.map(function(c){ return c.n; });
-      if(!tasks.length) tasks=["Nothing written on the card. Write the job in here."];
+      if(!tasks.length) tasks=["","","","","",""];   // a title alone is a job (Sam, 14 Oct 2026: "i just need the card title"): six empty tick rows to write on
       var head=function(cont){ newPage(); label(cont?"Facility · "+crewTxt+", continued":"Facility",L,y+1);
         doc.setFont("helvetica","bold"); doc.setFontSize(cont?14:20); var tl=doc.splitTextToSize(nm,W).slice(0,2); doc.text(tl,L,y+(cont?7:9)); y+=(cont?7:9)+(tl.length-1)*7.5+4;
         if(cont){ rule(); y+=5; return; }

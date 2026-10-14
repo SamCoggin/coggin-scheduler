@@ -431,7 +431,9 @@
     var lbl=movementOf(card.labels,card.desc)||(card.labels||[]).map(function(l){return l.name;}).join(" ");
     var Lstd=L.rows.length?L:(d.load||L), std=(!contractorOnly&&(!workshop||site))?standardFor(isSkipCard()?"Skip Exchange":lbl,Lstd):null, over=std?aboveStandard(std,d.who,d.mins):null;
     var mvName=movementOf(card.labels,card.desc), jobName=mvName==="Collect and Return"?"Collect and Return":mvName==="Site Visit"?"Site Visit":mvName==="Collection"?"Collection":"Delivery";
-    var kind=site?"transport":"labour", name=site?jobName:(loading?"Loading":"Goods In and Out");
+    // A FACILITY JOB (Sam, 14 Oct 2026: "why does it say goods in and out"): its own name, no legs row.
+    var facility=/^Facility Jobs$/i.test(String(card.listName||"").trim());
+    var kind=site?"transport":"labour", name=site?jobName:facility?"Facility":(loading?"Loading":"Goods In and Out");
     // A JOB OVER SEVERAL DAYS SAYS SO (6 Oct 2026, CE0212 7 to 9 Oct): the card's start to its due, not the due alone.
     var startK=card.start?String(card.start).slice(0,10):"";
     var ts=section(kind,name,due?((startK&&startK<due.slice(0,10))?niceShort(startK)+" to "+niceShort(due):niceShort(due)):"");
@@ -463,7 +465,7 @@
         ts.appendChild(rowEl("time",site?"Time":"Time",timeTxt,function(ed){
           if(std){ var sb=el("div","stdbox"); sb.appendChild(el("b",null,"Estimate: "+std.crew+(std.crew===1?" operative":" operatives")+(std.mins!=null?", "+fmt(std.mins)+(std.crew>1?" each":""):""))); sb.appendChild(el("div","hint",/[.]$/.test(std.why)?std.why:std.why+"."));
             if(std.mins!=null){ var br=el("div","row"); br.style.marginTop="6px"; if(d.mins!==std.mins){ var ub=el("button","p","Use the estimate"); ub.onclick=function(){ d.mins=std.mins; save(); render(); }; br.appendChild(ub); } sb.appendChild(br); } ed.appendChild(sb); }
-          ed.appendChild(el("div","lbl",site?"Site time per operative":(loading?"Loading time per operative":"Goods In and Out time per operative"))); ed.appendChild(timeField(d,"")); eachBox(ed,d,site?"site time":"labour time");
+          ed.appendChild(el("div","lbl",site?"Site time per operative":facility?"Time per operative":(loading?"Loading time per operative":"Goods In and Out time per operative"))); ed.appendChild(timeField(d,"")); eachBox(ed,d,site?"site time":"labour time");
           if(site&&!onRound){ ed.appendChild(el("div","lbl","Travel time, return")); ed.appendChild(hm(function(){return d.drive;},function(v){d.drive=v;},"Travel")); ed.appendChild(el("div","hint","There and back, typed. When this job shares a vehicle with another the same day, the travel moves to the round.")); if(d.drive!=null&&d.drive>360) ed.appendChild(el("div","warn","More than a day's travel with the job in between. Consider a courier or subcontractor.")); }
         },(d.mins==null&&d.who.length&&!contractorOnly)?"bad":(d.mins==null||(site&&d.drive==null))?"todo":""));
         // STARTS AT (Sam, 28 Sep 2026: "what happens if it is just a morning or a couple hours"). Optional, site jobs
@@ -520,7 +522,7 @@
           },arrivalMissing(ak,d.from,d.by,d.collectAt)?"todo":"")); }
         if(qcApplies&&!qcPlaced) ts.appendChild(qcRow());
         var LEG_TYPES_CARD=[["to_sub","Deliver to subcontractor"],["from_sub","Collect from subcontractor"],["production","Production"],["site","Site visit"],["labour","Goods In and Out"]];
-        var realLegs=d.legs||[]; ts.appendChild(rowEl("addleg","Goods In and Out",realLegs.length?((realLegs.length)+" on this job"):"None",function(ed){
+        var realLegs=d.legs||[]; if(!facility) ts.appendChild(rowEl("addleg","Goods In and Out",realLegs.length?((realLegs.length)+" on this job"):"None",function(ed){
           var r=el("div","row"); var tsel=el("select"); LEG_TYPES_CARD.forEach(function(t2){ var o=el("option",null,t2[1]); o.value=t2[0]; tsel.appendChild(o); }); tsel.setAttribute("aria-label","Leg type"); r.appendChild(tsel);
           var di=el("input"); di.type="date"; di.value=card.due?card.due.slice(0,10):""; di.setAttribute("aria-label","Leg date"); r.appendChild(di);
           var wi=el("input"); wi.type="text"; wi.placeholder="Where, or what"; wi.setAttribute("aria-label","Where"); r.appendChild(wi);
