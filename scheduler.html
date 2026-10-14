@@ -2839,7 +2839,11 @@ var SNAP=null, DETAIL={};
         y+=4; }
       // the notes: lines down to the finishing panel, so there is always room to write
       if(y+40>270) cont(); heading(++nStep,"What you did");
-      var ph=40, stopAt=278-ph-10; while(y+7<=stopAt){ doc.setDrawColor(200); doc.setLineWidth(0.3); doc.line(L,y+6,L+W,y+6); doc.setDrawColor(0); y+=7; }
+      // TEN NUMBERED LINES (Sam, 14 Oct 2026: "a list of 10 things they might have done"), spaced to fill the page above
+      // the finishing panel
+      var ph=40, stopAt=278-ph-10, rowH=Math.max(8,Math.floor((stopAt-y)/10));
+      for(var ni=1;ni<=10;ni++){ doc.setFont("helvetica","bold"); doc.setFontSize(9); doc.setTextColor(110); doc.text(String(ni)+".",L,y+rowH-2.5); doc.setTextColor(0);
+        doc.setDrawColor(200); doc.setLineWidth(0.3); doc.line(L+8,y+rowH-1.5,L+W,y+rowH-1.5); doc.setDrawColor(0); y+=rowH; }
       y+=4; doc.setFillColor(17,17,17); doc.roundedRect(L,y,W,ph,2,2,"F");
       doc.setTextColor(255); doc.setFont("helvetica","bold"); doc.setFontSize(13); doc.text("WHEN YOU FINISH",L+5,y+8);
       var sw=(W-10-30-8)/2, sy=y+11, shh=20;
