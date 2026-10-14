@@ -1415,6 +1415,8 @@ var SNAP=null, DETAIL={};
     cols.appendChild(left); cols.appendChild(right); m.appendChild(cols);
     var sv=el("div","save sticky");
     // the loading sheet button went on 29 Sep 2026 (Sam: "not used and is redundant"); loadingPdf stays for the check
+    // the job sheet came back on 14 Oct 2026 (Sam: "print the job sheet from the schedule editor"): this job's pages only
+    if(!o.leg){ var jsb=el("button",null,"Job sheet"); jsb.title="Print this job's pages for the day: the loading sheet if it has a load, then its stop or work page"; jsb.onclick=function(){ jobSheetDownload(j,o,jsb).catch(function(e){ alert("The job sheet could not be built: "+(e&&e.message||e)); }); }; sv.appendChild(jsb); }
     var sb=el("button",null,"Done"); sb.onclick=function(){open=null;render();}; sv.appendChild(sb); m.appendChild(sv);
     veil.appendChild(m); return veil;
   }
@@ -2463,8 +2465,11 @@ var SNAP=null, DETAIL={};
         // THE JOB PAGES, CREW BY CREW IN DAY SHEET ORDER: production (the picking lines, drawn as before), the van's yard page
         // before its first stop, each stop, each labour job. Footers are stamped at the end.
         var foots=[], kit=jobKit(doc,k,foots), DATA=PICK.__data, yardDone={};
+        // ONE JOB'S PAGES (Sam, 14 Oct 2026: "print the job sheet from the schedule editor"): __only names the row keys
+        // to draw, so the editor prints this job's pages alone, numbered from 1, with its van's loading sheet in front.
+        var only=PICK.__only||null;
         bars.forEach(function(b){ if(!b.crew) return; kit.crew(b.title);
-          b.cells.forEach(function(c){ var r=c[6]; if(!r||!r.card) return; var j=JOBS.filter(function(q){ return q.id===r.card; })[0]; if(!j) return;
+          b.cells.forEach(function(c){ var r=c[6]; if(!r||!r.card) return; if(only&&only.indexOf(r.key)<0) return; var j=JOBS.filter(function(q){ return q.id===r.card; })[0]; if(!j) return;
             if(r.part==="Production"){ var i=PICK[r.card]||{}, lines=i.lines||[], fin=j.stage==="In progress"&&!(j.prep&&j.prep.stages);
               var inf=DATA.info[r.card]||(DATA.byCard[r.card]?{items:DATA.byCard[r.card].stop.items}:null);
               var beforeP=doc.getNumberOfPages(); kit.production({crew:b.title,name:r.name,code:"https://trello.com/c/"+(j.short||j.id),started:j.stage==="In progress",title:i.allPicked?"All finished":fin?"Items to finish":"Pick and finish",
@@ -2842,6 +2847,25 @@ var SNAP=null, DETAIL={};
   async function daySheetDownload(k){
     var btn=$("#sheets"), was=btn?btn.textContent:""; if(btn){ btn.disabled=true; btn.textContent="Building the job sheets..."; }
     try{
+      var r=await daySheetBuild(k,null);
+      if(!r.jobOnly){ alert("Nobody has a job with a card on "+niceDay(k)+", so there are no job sheets to print."); return; }
+      r.doc.save("job-sheets-"+k+".pdf");
+    } finally { if(btn){ btn.disabled=false; btn.textContent=was||"Download job sheets"; } }
+  }
+  // THE JOB SHEET FROM THE EDITOR (Sam, 14 Oct 2026). The same build as the day's job sheets, kept to this job's rows.
+  async function jobSheetDownload(j,o,btn){
+    var k=o&&o.shop?(j.prep&&j.prep.date)||j.date:j.date; if(!k){ alert("This job has no date yet, so there is no day to print it on."); return; }
+    var keys=o&&o.shop?["p"+j.id]:["j"+j.id];
+    var was=btn?btn.textContent:""; if(btn){ btn.disabled=true; btn.textContent="Building..."; }
+    try{
+      var r=await daySheetBuild(k,keys);
+      if(!r.jobOnly){ alert("This job has no page to print: it needs a card and somebody on it for "+niceDay(k)+"."); return; }
+      var nm=(j.short||j.id||"job").toLowerCase().replace(/[^a-z0-9]+/g,"-");
+      r.doc.save("job-sheet-"+nm+"-"+k+".pdf");
+    } finally { if(btn){ btn.disabled=false; btn.textContent=was||"Job sheet"; } }
+  }
+  async function daySheetBuild(k,only){
+    {
       var PICK=null, cards=daySheetPdf(k,null,"cards")||[];
       if(cards.length&&CRM_KEY){
         var res=await fetch(CRM_PICKING_URL,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({key:CRM_KEY,action:"lines",cards:cards})}).then(function(x){ return x.json(); }).catch(function(){ return null; });
@@ -2857,6 +2881,7 @@ var SNAP=null, DETAIL={};
           var urls={}; Object.keys(PICK).forEach(function(id){ PICK[id].lines.forEach(function(l){ [l.product_photo,l.storage_photo].forEach(function(u){ if(u&&!PICK_IMG[u]) urls[u]=1; }); }); });
           await Promise.all(Object.keys(urls).slice(0,150).map(loadPickPhoto)); } }
       if(!PICK) PICK={};
+      if(only) PICK.__only=only;
       try{ PICK.__data=await jobPagesData(k); }catch(e){ console.error("job pages",e); }
       // number the job pages; a second pass settles it if the numbers changed the day sheet's length
       PICK.__pages={};
@@ -2866,10 +2891,9 @@ var SNAP=null, DETAIL={};
         var total=r.doc.getNumberOfPages(), first=r.dsPages+1, range=ids.length?(first===total?"page "+first:"pages "+first+" to "+total):"";
         if(PICK.__range!==range){ PICK.__range=range; changed=true; }
         if(!changed) break; r=daySheetPdf(k,PICK); }
-      try{ var pn=new Date(); window.localStorage.setItem("coggin.daysheet."+k,String(pn.getHours()).padStart(2,"0")+":"+String(pn.getMinutes()).padStart(2,"0")); }catch(e){}
-      if(!r.jobOnly){ alert("Nobody has a job with a card on "+niceDay(k)+", so there are no job sheets to print."); return; }
-      r.doc.save("job-sheets-"+k+".pdf");
-    } finally { if(btn){ btn.disabled=false; btn.textContent=was||"Download job sheets"; } }
+      if(!only){ try{ var pn=new Date(); window.localStorage.setItem("coggin.daysheet."+k,String(pn.getHours()).padStart(2,"0")+":"+String(pn.getMinutes()).padStart(2,"0")); }catch(e){} }
+      return r;
+    }
   }
   function crewSheetsPdf(k,onlyW){
     var dj=allJobs().filter(function(j){return onDay(j,k)&&!j.isHold;});
