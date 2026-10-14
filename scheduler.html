@@ -1443,7 +1443,8 @@ var SNAP=null, DETAIL={};
     var jobs=allJobs().filter(function(j){ return onDay(j,k)&&!j.isHold; }), preps=capPreps(k);
     var mine=jobs.filter(function(j){ return j.who.indexOf(w)>=0; }), myPreps=preps.filter(function(j){ return j.prep.who.indexOf(w)>=0; });
     var load=loadOn(k), planned=(load[w]&&load[w].mins)||0, over=Math.max(0,planned-DAY_MINS);
-    var sumEl=el("div","plan-sum"); sumEl.appendChild(el("span",over?"bad":"",fmt(planned)+" planned of "+fmt(DAY_MINS)+(over?", over by "+fmt(over):""))); m.appendChild(sumEl);
+    var bodyEl=el("div"); bodyEl.style.padding="14px 24px 18px"; m.appendChild(bodyEl);   // padding (Sam, 14 Oct 2026: "padding needs sorting")
+    var sumEl=el("div","plan-sum"); sumEl.style.margin="0 0 10px"; sumEl.appendChild(el("span",over?"bad":"",fmt(planned)+" planned of "+fmt(DAY_MINS)+(over?", over by "+fmt(over):""))); bodyEl.appendChild(sumEl);
     // one part on the list: set the time for this person only when it differs from the others, else for the part
     var setFor=function(part,v){ var others=(part.who||[]).filter(function(o){ return o!==w; });
       if(!others.length||others.every(function(o){ return minsFor(part,o)===v; })){ part.mins=v; if(part.each) delete part.each[w]; if(part.each&&!Object.keys(part.each).length) delete part.each; }
@@ -1458,23 +1459,24 @@ var SNAP=null, DETAIL={};
       var sub=j.site?[(tm&&tm.arrive!=null?"arrive "+hmStr(tm.arrive):""),(j.onRound?"on the round":j.drive?fmt(j.drive)+" travel":"")].filter(Boolean).join(" · "):"";
       push(tier,j,j,sub,j.id); });
     var any=false;
-    tiers.forEach(function(t){ var rows=rowsBy[t[0]]; if(!rows||!rows.length) return; any=true; m.appendChild(el("div","ogh "+t[1],t[0]));
-      rows.forEach(function(r){ var ln=el("div","oln"); var mid=el("span"); mid.appendChild(el("b",null,r.j.title.split(" - ").slice(1).join(" - ")||r.j.title)); if(r.sub) mid.appendChild(el("span","sub2"," "+r.sub)); ln.appendChild(mid);
-        var right=el("span","t"); right.style.display="inline-flex"; right.style.gap="8px"; right.style.alignItems="center";
+    tiers.forEach(function(t){ var rows=rowsBy[t[0]]; if(!rows||!rows.length) return; any=true; var gh=el("div","ogh "+t[1],t[0]); gh.style.margin="14px 0 4px"; bodyEl.appendChild(gh);
+      rows.forEach(function(r){ var ln=el("div","oln"); ln.style.display="flex"; ln.style.alignItems="center"; ln.style.gap="14px"; ln.style.padding="8px 0"; ln.style.borderTop="1px solid #eef0f3";
+        var mid=el("span"); mid.style.flex="1"; mid.style.minWidth="0"; mid.appendChild(el("b",null,r.j.title.split(" - ").slice(1).join(" - ")||r.j.title)); if(r.sub){ var sb=el("span","sub2"," "+r.sub); sb.style.display="block"; sb.style.fontWeight="normal"; mid.appendChild(sb); } ln.appendChild(mid);
+        var right=el("span","t"); right.style.display="inline-flex"; right.style.gap="12px"; right.style.alignItems="center"; right.style.flex="none";
         right.appendChild(hmBox(function(){ return minsFor(r.part,w); },function(v){ setFor(r.part,v); },"Time for "+w));
         var ob=el("button","olink","Open job"); ob.onclick=function(){ open=r.openKey; openOp=null; render(); }; right.appendChild(ob);
         var tb=el("button","olink","Take off"); tb.title="Take "+w+" off this job"; tb.onclick=function(){ takeOff(r.part); }; right.appendChild(tb);
-        ln.appendChild(right); m.appendChild(ln); }); });
-    if(!any) m.appendChild(el("div","hint","Nothing on "+w.split(" ")[0]+" for this day yet."));
+        ln.appendChild(right); bodyEl.appendChild(ln); }); });
+    if(!any) bodyEl.appendChild(el("div","hint","Nothing on "+w.split(" ")[0]+" for this day yet."));
     // add to another job on the day
     var others=jobs.filter(function(j){ return j.who.indexOf(w)<0&&!(j.contractor&&!j.who.length&&!j.site); }), otherPreps=preps.filter(function(j){ return j.prep.who.indexOf(w)<0; });
-    if(others.length||otherPreps.length){ var ad=el("div","row"); ad.style.padding="10px 0 0"; ad.appendChild(el("span","hint","Add "+w.split(" ")[0]+" to another job on this day"));
+    if(others.length||otherPreps.length){ var ad=el("div","row"); ad.style.padding="16px 0 0"; ad.style.display="flex"; ad.style.gap="10px"; ad.style.alignItems="center"; ad.appendChild(el("span","hint","Add "+w.split(" ")[0]+" to another job on this day"));
       var sel=el("select"); var o0=el("option",null,"Pick a job"); o0.value=""; sel.appendChild(o0);
       otherPreps.forEach(function(j){ var o=el("option",null,(j.title.split(" - ").slice(1).join(" - ")||j.title)+" (Production)"); o.value="p:"+j.id; sel.appendChild(o); });
       others.forEach(function(j){ var o=el("option",null,(j.title.split(" - ").slice(1).join(" - ")||j.title)+" ("+(j.site?"Transport":j.facility?"Facility":"Goods In and Out")+")"); o.value="j:"+j.id; sel.appendChild(o); });
       sel.onchange=function(){ var v=sel.value; if(!v) return; var id=v.slice(2); if(v[0]==="p"){ var pj=otherPreps.filter(function(j){ return j.id===id; })[0]; if(pj){ pj.prep.who.push(w); } }
         else { var jj=others.filter(function(j){ return j.id===id; })[0]; if(jj){ jj.who.push(w); if(jj.leg) jj.leg.who=jj.who; } } persist(); render(); };
-      ad.appendChild(sel); m.appendChild(ad); }
+      ad.appendChild(sel); bodyEl.appendChild(ad); }
     var sv=el("div","save sticky");
     if(FIELD_CREW.indexOf(w)>=0){ var isOff=(OFF[k]||[]).map(crewOf).indexOf(w)>=0; var offB=el("button",null,isOff?"Back in":"Mark as off"); offB.onclick=function(){ if(isOff){ toggleOff(k,w); return; } var why=prompt(w+" is off on "+niceDay(k)+". Why? (sick, course, vehicle breakdown)","sick"); if(why===null) return; toggleOff(k,w,why.trim()); }; sv.appendChild(offB); }
     var done=el("button",null,"Done"); done.onclick=function(){ openOp=null; render(); }; sv.appendChild(done); m.appendChild(sv);
