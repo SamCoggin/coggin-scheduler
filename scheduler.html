@@ -1421,7 +1421,7 @@ var SNAP=null, DETAIL={};
     var sv=el("div","save sticky");
     // the loading sheet button went on 29 Sep 2026 (Sam: "not used and is redundant"); loadingPdf stays for the check
     // the job sheet came back on 14 Oct 2026 (Sam: "print the job sheet from the schedule editor"): this job's pages only
-    if(!o.leg){ var jsb=el("button",null,"Job sheet"); jsb.title="Print this job's pages for the day: the loading sheet if it has a load, then its stop or work page"; jsb.onclick=function(){ jobSheetDownload(j,o,jsb).catch(function(e){ alert("The job sheet could not be built: "+(e&&e.message||e)); }); }; sv.appendChild(jsb); }
+    if(!o.leg){ var jsb=el("button",null,"Job sheet"); jsb.title="Print this job's own page for the day. The van's loading sheet is on the Day view's job sheets."; jsb.onclick=function(){ jobSheetDownload(j,o,jsb).catch(function(e){ alert("The job sheet could not be built: "+(e&&e.message||e)); }); }; sv.appendChild(jsb); }
     var sb=el("button",null,"Done"); sb.onclick=function(){open=null;render();}; sv.appendChild(sb); m.appendChild(sv);
     veil.appendChild(m); return veil;
   }
@@ -2482,7 +2482,7 @@ var SNAP=null, DETAIL={};
                 facts:[["Time",c[3]],["Due",j.prodDue?niceDay(j.prodDue):""],[j.site?"Delivery":"Ready by",j.date?niceDay(j.date):""],["Ref",i.ref||""]],lines:lines,items:inf&&inf.items?inf.items:[]});
               starts[r.key]=beforeP+1;
               return; }
-            if(r.part==="Transport"){ var bc=DATA.byCard[r.card]; if(!bc) return; if(!yardDone[bc.run.key]){ yardDone[bc.run.key]=1; if(kit.hasLoad(bc.run)) kit.yard(bc.run); }
+            if(r.part==="Transport"){ var bc=DATA.byCard[r.card]; if(!bc) return; if(!yardDone[bc.run.key]){ yardDone[bc.run.key]=1; if(!only&&kit.hasLoad(bc.run)) kit.yard(bc.run); }   // no loading sheet on a single job from the editor (Sam, 14 Oct 2026, DWF: "I just want the job sheet")
               var before=doc.getNumberOfPages(); kit.stop(bc.run,bc.stop); starts[r.key]=before+1; return; }
             if(r.part==="Goods In and Out"){ var lb=DATA.info[r.card]; if(!lb) return; var before2=doc.getNumberOfPages(); kit.labour(j,lb,b.title,r.sub,c[3]); starts[r.key]=before2+1; }
             if(r.part==="Facility"){ var before3=doc.getNumberOfPages(); kit.facility(j,b.title,c[3],k); starts[r.key]=before3+1; } }); });
