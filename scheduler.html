@@ -2822,7 +2822,8 @@ var SNAP=null, DETAIL={};
       var where="", tasks=[];
       String(dd.desc||"").split(/\r?\n/).forEach(function(ln){ var t=ln.replace(/^\s*(?:[-*\u2022]|\d+[.)])\s*/,"").replace(/^\[[ x]\]\s*/i,"").replace(/\*\*/g,"").trim(); if(!t) return; var wm=/^where\s*:\s*(.+)$/i.exec(t); if(wm){ where=wm[1].trim(); return; } tasks.push(t); });
       if(dd.checks&&dd.checks.length) tasks=dd.checks.map(function(c){ return c.n; });
-      if(!tasks.length) tasks=["","","","","",""];   // a title alone is a job (Sam, 14 Oct 2026: "i just need the card title"): six empty tick rows to write on
+      // A TITLE ALONE IS A JOB (Sam, 14 Oct 2026: "I just need this to be for their notes of what they have done"): with
+      // nothing written on the card the page is the title and one block of lines for the operatives' notes.
       var head=function(cont){ newPage(); label(cont?"Facility · "+crewTxt+", continued":"Facility",L,y+1);
         doc.setFont("helvetica","bold"); doc.setFontSize(cont?14:20); var tl=doc.splitTextToSize(nm,W).slice(0,2); doc.text(tl,L,y+(cont?7:9)); y+=(cont?7:9)+(tl.length-1)*7.5+4;
         if(cont){ rule(); y+=5; return; }
@@ -2831,12 +2832,15 @@ var SNAP=null, DETAIL={};
         facts.forEach(function(f,i){ var fx=L+i*(fw+3); doc.setLineWidth(0.5); doc.setDrawColor(17); doc.roundedRect(fx,y,fw,11,1.2,1.2); doc.setDrawColor(0); label(f[0],fx+3,y+4); doc.setFont("helvetica","bold"); doc.setFontSize(10); doc.text(doc.splitTextToSize(f[1],fw-6)[0],fx+3,y+9); });
         y+=15; rule(); y+=5; };
       var cont=function(){ setFoot("This job carries on over the page."); head(true); };
-      head(false); heading(1,"What to do");
-      tasks.forEach(function(t){ doc.setFont("helvetica","normal"); doc.setFontSize(10); var tl=doc.splitTextToSize(t,W-12); var h=Math.max(8,tl.length*4.4+3.6); if(y+h>270) cont();
-        box(L,y+1.6,5); doc.text(tl,L+9,y+5.2); y+=h; doc.setDrawColor(215); doc.setLineWidth(0.25); doc.line(L,y,L+W,y); doc.setDrawColor(0); });
-      y+=4; if(y+40>270) cont(); heading(2,"Anything that did not go to plan");
-      for(var li=0;li<4;li++){ doc.setDrawColor(200); doc.setLineWidth(0.3); doc.line(L,y+6,L+W,y+6); doc.setDrawColor(0); y+=7; }
-      y+=4; if(y+44>278) cont(); var ph=40; doc.setFillColor(17,17,17); doc.roundedRect(L,y,W,ph,2,2,"F");
+      head(false); var nStep=0;
+      if(tasks.length){ heading(++nStep,"What to do");
+        tasks.forEach(function(t){ doc.setFont("helvetica","normal"); doc.setFontSize(10); var tl=doc.splitTextToSize(t,W-12); var h=Math.max(8,tl.length*4.4+3.6); if(y+h>270) cont();
+          box(L,y+1.6,5); doc.text(tl,L+9,y+5.2); y+=h; doc.setDrawColor(215); doc.setLineWidth(0.25); doc.line(L,y,L+W,y); doc.setDrawColor(0); });
+        y+=4; }
+      // the notes: lines down to the finishing panel, so there is always room to write
+      if(y+40>270) cont(); heading(++nStep,"What you did, and anything that did not go to plan");
+      var ph=40, stopAt=278-ph-10; while(y+7<=stopAt){ doc.setDrawColor(200); doc.setLineWidth(0.3); doc.line(L,y+6,L+W,y+6); doc.setDrawColor(0); y+=7; }
+      y+=4; doc.setFillColor(17,17,17); doc.roundedRect(L,y,W,ph,2,2,"F");
       doc.setTextColor(255); doc.setFont("helvetica","bold"); doc.setFontSize(13); doc.text("WHEN YOU FINISH",L+5,y+8);
       var sw=(W-10-30-8)/2, sy=y+11, shh=20;
       [["STEP 1","Photograph the finished job and add it to the Trello card"],["STEP 2","Move the card to Jobs Completed"]].forEach(function(st,i){ var sx=L+5+i*(sw+4); doc.setFillColor(255,255,255); doc.roundedRect(sx,sy,sw,shh,1.2,1.2,"F");
