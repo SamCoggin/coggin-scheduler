@@ -2538,9 +2538,9 @@ var SNAP=null, DETAIL={};
               starts[r.key]=beforeP+1;
               return; }
             if(r.part==="Transport"){ var bc=DATA.byCard[r.card]; if(!bc) return; if(!yardDone[bc.run.key]){ yardDone[bc.run.key]=1; if(!only&&kit.hasLoad(bc.run)) kit.yard(bc.run); }   // no loading sheet on a single job from the editor (Sam, 14 Oct 2026, DWF: "I just want the job sheet")
-              var before=doc.getNumberOfPages(); kit.stop(bc.run,bc.stop); starts[r.key]=before+1; return; }
-            if(r.part==="Goods In and Out"){ var lb=DATA.info[r.card]; if(!lb) return; var before2=doc.getNumberOfPages(); kit.labour(j,lb,b.title,r.sub,c[3]); starts[r.key]=before2+1; }
-            if(r.part==="Facility"){ var before3=doc.getNumberOfPages(); kit.facility(j,b.title,c[3],k); starts[r.key]=before3+1; } }); });
+              var before=doc.getNumberOfPages(); kit.fits(function(){ kit.stop(bc.run,bc.stop); }); starts[r.key]=before+1; return; }
+            if(r.part==="Goods In and Out"){ var lb=DATA.info[r.card]; if(!lb) return; var before2=doc.getNumberOfPages(); kit.fits(function(){ kit.labour(j,lb,b.title,r.sub,c[3]); }); starts[r.key]=before2+1; }
+            if(r.part==="Facility"){ var before3=doc.getNumberOfPages(); kit.fits(function(){ kit.facility(j,b.title,c[3],k); }); starts[r.key]=before3+1; } }); });
         // JOB PAGES ONLY (Sam, 2 Oct 2026: "just their job pages"): the day sheet in front is dropped, so the pages are numbered
         // from the first job page. Every page carries the hand-back strip (Sam: "make sure the operatives give me the sheets
         // back either when they have completed a job or at the end of the day").
@@ -2704,19 +2704,28 @@ var SNAP=null, DETAIL={};
         doc.setFont("helvetica","bold"); doc.setFontSize(9); var ml=doc.splitTextToSize((it.qty!==""?it.qty+" x  ":"")+main,tw-4).slice(0,2); doc.text(ml,tx+2,ty+23);
         if(det){ doc.setFont("helvetica","normal"); doc.setFontSize(7); doc.setTextColor(100); doc.text(doc.splitTextToSize(det,tw-4).slice(0,2),tx+2,ty+23+ml.length*3.6); doc.setTextColor(0); } });
       y+=Math.ceil(items.length/4)*(th+4)+2; };
-    var list2=function(items,cont){ var colW=(W-6)/2, i0=0;
-      while(i0<items.length){ var room=Math.max(1,Math.floor((268-y)/10)), take=Math.min(items.length-i0,room*2), half=Math.ceil(take/2);
-        for(var q=0;q<take;q++){ var it=items[i0+q], col=q<half?0:1, row=col?q-half:q, ix=L+col*(colW+6), iy=y+row*10;
-          if(!img(it.photo,ix,iy+1,9,8)) noPhoto(ix,iy+1,9,8); doc.setFont("helvetica","bold"); doc.setFontSize(9.5); doc.text(String(it.qty),ix+11,iy+6.2); doc.setFont("helvetica","normal"); doc.setFontSize(8.5); doc.text(doc.splitTextToSize(it.name,colW-20)[0],ix+18,iy+6.2);
-          doc.setDrawColor(215); doc.setLineWidth(0.25); doc.line(ix,iy+10,ix+colW,iy+10); doc.setDrawColor(0); }
-        y+=half*10+3; i0+=take; if(i0<items.length) cont(); } };
-    kit.items=function(items,cont){ if(!items.length) items=[{qty:"",name:"No items on the card",photo:""}]; if(items.length<=8){ if(y+Math.ceil(items.length/4)*42>278) cont(); tiles(items); } else list2(items,cont); };
+    // A PAGE NEVER BLEEDS (Sam, 15 Oct 2026, DWF: "Job sheets can never page bleed"). kit.tight is 0, 1 or 2: the list
+    // rows shrink, the photos go at 2, and kit.fits below redraws a page tighter until it stays on one sheet.
+    kit.tight=0;
+    var list2=function(items,cont){ var colW=(W-6)/2, i0=0, rh=kit.tight>=2?6.5:kit.tight===1?8:10, ph0=kit.tight>=2?0:kit.tight===1?7:8, fsz=kit.tight>=2?8:kit.tight===1?8.5:9.5;
+      while(i0<items.length){ var room=Math.max(1,Math.floor((268-y)/rh)), take=Math.min(items.length-i0,room*2), half=Math.ceil(take/2);
+        for(var q=0;q<take;q++){ var it=items[i0+q], col=q<half?0:1, row=col?q-half:q, ix=L+col*(colW+6), iy=y+row*rh, tx0=ph0?ix+18:ix+9;
+          if(ph0){ if(!img(it.photo,ix,iy+1,9,ph0)) noPhoto(ix,iy+1,9,ph0); }
+          doc.setFont("helvetica","bold"); doc.setFontSize(fsz); doc.text(String(it.qty),ph0?ix+11:ix,iy+rh*0.62); doc.setFont("helvetica","normal"); doc.setFontSize(fsz-1); doc.text(doc.splitTextToSize(it.name,colW-(ph0?20:12))[0],tx0,iy+rh*0.62);
+          doc.setDrawColor(215); doc.setLineWidth(0.25); doc.line(ix,iy+rh,ix+colW,iy+rh); doc.setDrawColor(0); }
+        y+=half*rh+3; i0+=take; if(i0<items.length) cont(); } };
+    kit.items=function(items,cont){ if(!items.length) items=[{qty:"",name:"No items on the card",photo:""}]; if(items.length<=8&&kit.tight===0){ if(y+Math.ceil(items.length/4)*42>278) cont(); tiles(items); } else list2(items,cont); };
+    // draw a page; if it ran onto a second sheet, throw the sheets away and draw it tighter, up to twice
+    kit.fits=function(draw){ var p0=doc.getNumberOfPages(), f0=foots.length;
+      for(var lvl=0;lvl<=2;lvl++){ kit.tight=lvl; draw(); if(doc.getNumberOfPages()<=p0+1||lvl===2) break;
+        while(doc.getNumberOfPages()>p0) doc.deletePage(doc.getNumberOfPages()); foots.length=f0; }
+      kit.tight=0; };
     kit.photosBox=function(title,j,cont){ if(y+34>278) cont(); doc.setFillColor(17,17,17); doc.roundedRect(L,y,W,26,1.5,1.5,"F"); doc.setTextColor(255); doc.setFont("helvetica","bold"); doc.setFontSize(15); doc.text(title,L+5,y+9);
       doc.setFont("helvetica","normal"); doc.setFontSize(9.5); doc.text(doc.splitTextToSize("Photograph the items in place and add them to the Trello card. We use them for marketing and as proof of delivery.",W-40),L+5,y+15); doc.setTextColor(0);
       doc.setFillColor(255,255,255); doc.rect(L+W-24,y+2,22,22,"F"); qr("https://trello.com/c/"+(j.short||j.id),L+W-23,y+3,20); y+=27; doc.setFont("helvetica","normal"); doc.setFontSize(7.5); doc.setTextColor(90); doc.text("Scan to open the Trello card",L+W,y+2.5,{align:"right"}); doc.setTextColor(0); y+=6; };
     kit.know=function(d,cont,num){ var rowsK=knowRows(d); if(!rowsK.length) return; if(y+20>278) cont(); heading(num||0,"Know before you go");
-      rowsK.forEach(function(rw){ doc.setFont("helvetica","normal"); doc.setFontSize(10); var vl=doc.splitTextToSize(rw[1],W-36); var h=Math.max(7.5,vl.length*4.4+3.2); if(y+h>278) cont();
-        label(rw[0],L,y+4.8); doc.setFont("helvetica","normal"); doc.setFontSize(10); doc.text(vl,L+34,y+4.8); y+=h; doc.setDrawColor(215); doc.setLineWidth(0.25); doc.line(L,y,L+W,y); doc.setDrawColor(0); }); };
+      rowsK.forEach(function(rw){ var fs0=kit.tight?9:10, lh=kit.tight?3.9:4.4; doc.setFont("helvetica","normal"); doc.setFontSize(fs0); var vl=doc.splitTextToSize(rw[1],W-36); var h=Math.max(kit.tight?6.5:7.5,vl.length*lh+3.2); if(y+h>278) cont();
+        label(rw[0],L,y+4.8); doc.setFont("helvetica","normal"); doc.setFontSize(fs0); doc.text(vl,L+34,y+4.8); y+=h; doc.setDrawColor(215); doc.setLineWidth(0.25); doc.line(L,y,L+W,y); doc.setDrawColor(0); }); };
     // the yard page for a van: load in drop order with photos, the blanket rule, the kit check
     kit.yard=function(run){ var nStops=run.stops.length, crewTxt=run.crew.join(" + "), dels=run.stops.filter(function(s){ return !takesOn(s.j); });
       var yardHead=function(cont){ newPage(); label("Transport"+(cont?" · "+crewTxt+", continued":""),L,y+1); doc.setFont("helvetica","bold"); doc.setFontSize(cont?14:20); doc.text("Loading sheet",L,y+(cont?7:9));   // Sam, 2 Oct 2026: "this should be called loading sheet"
