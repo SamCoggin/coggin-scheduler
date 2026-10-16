@@ -2533,7 +2533,7 @@ var SNAP=null, DETAIL={};
           b.cells.forEach(function(c){ var r=c[6]; if(!r||!r.card) return; if(only&&only.indexOf(r.key)<0) return; var j=JOBS.filter(function(q){ return q.id===r.card; })[0]; if(!j) return;
             if(r.part==="Production"){ var i=PICK[r.card]||{}, lines=i.lines||[], fin=j.stage==="In progress"&&!(j.prep&&j.prep.stages);
               var inf=DATA.info[r.card]||(DATA.byCard[r.card]?{items:DATA.byCard[r.card].stop.items}:null);
-              var beforeP=doc.getNumberOfPages(); kit.production({crew:b.title,name:r.name,code:"https://trello.com/c/"+(j.short||j.id),started:j.stage==="In progress",title:i.allPicked?"All finished":fin?"Items to finish":"Pick and finish",
+              var beforeP=doc.getNumberOfPages(); kit.production({crew:b.title,name:r.name,code:"https://trello.com/c/"+(j.short||j.id),started:j.stage==="In progress",title:i.allPicked?"All finished":(lines.length&&lines.every(function(l){ return l.section==="refurb"; }))?"Items to refurbish":fin?"Items to finish":"Pick and finish",
                 facts:[["Time",c[3]],["Due",j.prodDue?niceDay(j.prodDue):""],[j.site?"Delivery":"Ready by",j.date?niceDay(j.date):""],["Ref",i.ref||""]],lines:lines,items:inf&&inf.items?inf.items:[]});
               starts[r.key]=beforeP+1;
               return; }
@@ -2729,7 +2729,7 @@ var SNAP=null, DETAIL={};
     // the yard page for a van: load in drop order with photos, the blanket rule, the kit check
     kit.yard=function(run){ var nStops=run.stops.length, crewTxt=run.crew.join(" + "), dels=run.stops.filter(function(s){ return !takesOn(s.j); });
       var yardHead=function(cont){ newPage(); label("Transport"+(cont?" · "+crewTxt+", continued":""),L,y+1); doc.setFont("helvetica","bold"); doc.setFontSize(cont?14:20); doc.text("Loading sheet",L,y+(cont?7:9));   // Sam, 2 Oct 2026: "this should be called loading sheet"
-        doc.setFontSize(10); doc.text([run.van||"No vehicle set",nStops+(nStops===1?" stop":" stops")].join(" · "),   /* no load or set-off times (Sam, 2 Oct 2026) */L,y+(cont?12.5:15)); if(!cont){ pillsAt(run.crew,L,y+18.5); y+=28; } else y+=15.5; rule(); y+=5; };
+        doc.setFontSize(10); doc.text([run.van||"No vehicle set",dels.length+(dels.length===1?" drop":" drops")].join(" · "),   /* no load or set-off times (Sam, 2 Oct 2026) */L,y+(cont?12.5:15)); if(!cont){ pillsAt(run.crew,L,y+18.5); y+=28; } else y+=15.5; rule(); y+=5; };
       yardHead(false); heading(1,"Load the vehicle");
       // THE LOADING LIST, UPGRADED (Sam, 2 Oct 2026, mock approved): the van drawn front to back with each stop's space, the
       // blanket rule as a black label, then one box per load with even rows and two ticks, Loaded and Blanketed.
@@ -2764,7 +2764,7 @@ var SNAP=null, DETAIL={};
           box(cLoad-2.75,y+5.25,5.5); y+=rowH; });
         closeSeg(); y+=4; });
       if(y+32>278){ setFoot("Loading carries on over the page."); yardHead(true); }
-      y+=3; kitCheck(2); setFoot("Then turn the page for stop 1."); };
+      y+=3; kitCheck(2); setFoot("Then turn the page for the first stop."); };
     // the kit ticks, drawn on the loading sheet or, when there is nothing to load, on the first stop page
     var kitCheck=function(n){ heading(n,"Check you have what you need");
       var cw=(W-8)/3; TRANSPORT_KIT.forEach(function(t,i){ var cx=L+(i%3)*(cw+4), cy=y+Math.floor(i/3)*7; box(cx,cy+1.2,4); doc.setFont("helvetica","normal"); doc.setFontSize(9); doc.text(t,cx+6.5,cy+4.6); doc.setDrawColor(215); doc.setLineWidth(0.25); doc.line(cx,cy+7,cx+cw,cy+7); doc.setDrawColor(0); });
@@ -2849,7 +2849,7 @@ var SNAP=null, DETAIL={};
       if(!o.lines.length){ kit.items(o.items||[],cont); }
       o.lines.forEach(function(l,li){ if(y+rowH(l)>262) cont(); var y0=y;
         if(li>0||true){ doc.setDrawColor(215); doc.setLineWidth(0.25); doc.line(L,y,L+W,y); doc.setDrawColor(0); }
-        box(L+0.5,y0+11,5.5); ph(l.product_photo||"",L+9,y0+4.5,l.photo_is_build?"build":"product"); ph(l.storage_photo||"",L+31,y0+4.5,"storage");
+        box(L+0.5,y0+11,5.5); if(l.section==="refurb"){ ph(l.product_photo||"",L+9,y0+4.5,"item"); } else { ph(l.product_photo||"",L+9,y0+4.5,l.photo_is_build?"build":"product"); ph(l.storage_photo||"",L+31,y0+4.5,"storage"); }
         var parts=String(l.name||"").split(/\s*\|\s*/), main=parts[0], det=[parts.slice(1).join(" · "),pickDetails(l)].filter(Boolean).join(" · ");
         doc.setFont("helvetica","bold"); doc.setFontSize(16); var hq=l.headerCustomer||String(l.qty||0); doc.text(hq,TX,y0+9);
         if(l.headerBreakdown){ var hw=doc.getTextWidth(hq); doc.setFont("helvetica","normal"); doc.setFontSize(9); doc.setTextColor(90); doc.text("from "+l.headerBreakdown,TX+hw+2,y0+9); doc.setTextColor(0); doc.setFont("helvetica","bold"); }
