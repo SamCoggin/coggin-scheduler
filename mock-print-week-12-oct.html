@@ -1,0 +1,182 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Week sheet mock</title>
+<style>
+  :root{--navy:#1D3058;--gold:#9F8C6A;--ink:#111;--mute:#555;--line:#c9ced6;--red:#b42318;--paper:#fff;
+    --c-resale:#2e9e6c;--c-clearance:#d2772c;--c-donation:#a04fb8;--c-recycling:#3b7dd8;--c-refurb:#c99a1e;--c-prod:#6b7280}
+  *{box-sizing:border-box}
+  body{margin:0;background:#e9ecf1;color:var(--ink);font:11px/1.25 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif}
+  .sheet{background:var(--paper);width:297mm;min-height:210mm;margin:16px auto;padding:8mm 8mm 6mm;box-shadow:0 2px 14px rgba(0,0,0,.18)}
+  .hd{display:flex;justify-content:space-between;align-items:flex-end;border-bottom:2px solid var(--navy);padding-bottom:1.5mm;margin-bottom:2.5mm}
+  .hd h1{margin:0;font-size:16pt;color:var(--navy);letter-spacing:-.01em}
+  .hd h1 small{display:inline;font-size:10pt;color:var(--mute);font-weight:600;margin-left:3mm}
+  .hd .meta{text-align:right;color:var(--mute);font-size:8pt}
+  .hd .meta b{display:inline;color:var(--ink);font-size:9pt;margin-right:2mm}
+  .grid{display:grid;grid-template-columns:repeat(5,1fr);gap:0;border:1.5px solid var(--navy)}
+  .day{border-right:1.5px solid var(--navy);display:flex;flex-direction:column;min-height:170mm}
+  .day:last-child{border-right:0}
+  .day h2{margin:0;background:var(--navy);color:#fff;padding:1.5mm 2mm;font-size:11pt;display:flex;justify-content:space-between;align-items:baseline}
+  .day h2 span{font-size:7.5pt;font-weight:600;opacity:.9}
+  .off{background:#f3f4f6;border-bottom:1px solid var(--line);padding:1mm 2mm;font-size:8pt;color:var(--mute)}
+  .off b{color:var(--ink)}
+  .cards{padding:1.5mm;display:flex;flex-direction:column;gap:1.5mm}
+  .job{border:1px solid var(--line);border-left:5px solid var(--c-resale);border-radius:1.5mm;padding:1.3mm 1.8mm;break-inside:avoid}
+  .job.clearance{border-left-color:var(--c-clearance)} .job.donation{border-left-color:var(--c-donation)}
+  .job.recycling{border-left-color:var(--c-recycling)} .job.refurb{border-left-color:var(--c-refurb)}
+  .job.prod{border-left-color:var(--c-prod);background:#fafafa}
+  .job .kind{font-size:6.5pt;text-transform:uppercase;letter-spacing:.06em;font-weight:800;color:var(--mute)}
+  .job .title{font-size:10pt;font-weight:800;margin:.5mm 0 0}
+  .job .ref{font-size:7.5pt;color:var(--mute);margin:0 0 1mm}
+  .plan{display:grid;grid-template-columns:auto 1fr;gap:.3mm 2mm;font-size:8.5pt;border-top:1px solid #e5e7eb;padding-top:1mm}
+  .plan dt{color:var(--mute);font-size:6.5pt;text-transform:uppercase;letter-spacing:.04em;padding-top:.4mm}
+  .plan dd{margin:0;font-weight:700}
+  .plan dd.big{font-size:10.5pt}
+  .round{margin-top:1mm;font-size:7.5pt;color:var(--navy);font-weight:700;border-top:1px dashed var(--line);padding-top:1mm}
+  .need{color:var(--red);font-weight:800}
+  .job.unplanned{border-color:var(--red);border-left-color:var(--red);background:#fff5f4}
+  .job.unplanned .plan dd{color:var(--red)}
+  .flag{margin-top:1mm;font-size:7.5pt;color:var(--red);font-weight:800}
+  .job.ask{border-style:dashed;border-left-style:solid;border-left-color:var(--mute)}
+  .empty{color:var(--mute);font-size:8.5pt;padding:3mm;text-align:center}
+  .foot{display:flex;justify-content:space-between;align-items:center;margin-top:2.5mm;padding-top:1.5mm;border-top:1px solid var(--line);font-size:7.5pt;color:var(--mute)}
+  .key{display:flex;gap:3.5mm}
+  .key i{display:inline-block;width:2.5mm;height:2.5mm;border-radius:1mm;vertical-align:-.6mm;margin-right:1.2mm}
+  @media print{ @page{size:A4 landscape;margin:0} body{background:#fff} .sheet{box-shadow:none;margin:0;width:auto;min-height:auto} }
+</style>
+</head>
+<body>
+<div class="sheet">
+  <div class="hd">
+    <h1>Operations week sheet<small>Monday 12 to Friday 16 October 2026</small></h1>
+    <div class="meta"><b>Coggin SOS</b>Printed 10 Oct, 14:02 from the Scheduler</div>
+  </div>
+
+  <div class="grid">
+
+    <section class="day">
+      <h2>Mon 12 <span>5 jobs, 2 held</span></h2>
+      <div class="cards">
+        <article class="job donation">
+          <div class="kind">Donation · Customer collects</div>
+          <p class="title">Forton, The Streetlife Trust</p>
+          <p class="ref">10B2BC · Goods out</p>
+          <dl class="plan">
+            <dt>Who</dt><dd>Jack C</dd>
+            <dt>Time</dt><dd class="big">15 min</dd>
+            <dt>Vehicle</dt><dd>None, customer collects</dd>
+          </dl>
+        </article>
+        <article class="job prod">
+          <div class="kind">Production · Workshop</div>
+          <p class="title">Forton, The Streetlife Trust</p>
+          <p class="ref">10B2BC · Due Fri 9 Oct</p>
+          <dl class="plan"><dt>Who</dt><dd>Jack C</dd><dt>Time</dt><dd class="big">2h</dd></dl>
+          <div class="flag">Finishes after its Fri 9 Oct due date.</div>
+        </article>
+        <article class="job prod">
+          <div class="kind">Production · Workshop</div>
+          <p class="title">Preston, Myerscough College</p>
+          <p class="ref">848CD1 · For delivery Wed 14</p>
+          <dl class="plan"><dt>Who</dt><dd>Jack C, Jordan I</dd><dt>Time</dt><dd class="big">6h each</dd></dl>
+        </article>
+        <article class="job prod">
+          <div class="kind">Production · Workshop</div>
+          <p class="title">Lancaster, Lancaster City Council</p>
+          <p class="ref">0C18AC · For delivery Thu 15</p>
+          <dl class="plan"><dt>Who</dt><dd>Jack C</dd><dt>Time</dt><dd class="big">2h</dd></dl>
+        </article>
+        <article class="job prod">
+          <div class="kind">Production · Workshop</div>
+          <p class="title">Lincoln, Formed Group UK</p>
+          <p class="ref">E6A260 · For courier Tue 20</p>
+          <dl class="plan"><dt>Who</dt><dd>Jack C, Jordan I</dd><dt>Time</dt><dd class="big">3h each</dd></dl>
+        </article>
+        <article class="job ask">
+          <div class="kind">Held for sales, not booked</div>
+          <p class="title">PSL Print Management Ltd</p>
+          <p class="ref">A37B5B · No Trello card yet</p>
+        </article>
+        <article class="job ask">
+          <div class="kind">Won, no card yet</div>
+          <p class="title">Nando's Chickenland Ltd</p>
+          <p class="ref">7DED5C · Needs a Trello card</p>
+        </article>
+      </div>
+    </section>
+
+    <section class="day">
+      <h2>Tue 13 <span>Nothing booked</span></h2>
+      <div class="cards"><div class="empty">Nothing booked</div></div>
+    </section>
+
+    <section class="day">
+      <h2>Wed 14 <span>1 job</span></h2>
+      <div class="cards">
+        <article class="job">
+          <div class="kind">Resale · Delivery and installation</div>
+          <p class="title">Preston, Myerscough College</p>
+          <p class="ref">848CD1 · PR3</p>
+          <dl class="plan">
+            <dt>Who</dt><dd>Bart H</dd>
+            <dt>On site</dt><dd class="big">30 min</dd>
+            <dt>Travel</dt><dd>30h return</dd>
+            <dt>Vehicle</dt><dd class="need">Not set</dd>
+          </dl>
+          <div class="flag">Travel reads 30h. Check the plan in the Scheduler.</div>
+        </article>
+      </div>
+    </section>
+
+    <section class="day">
+      <h2>Thu 15 <span>2 jobs, 1 round</span></h2>
+      <div class="cards">
+        <article class="job">
+          <div class="kind">Resale · Delivery and installation</div>
+          <p class="title">Lancaster, Lancaster City Council</p>
+          <p class="ref">0C18AC · LA1 · Stop 1 of 2</p>
+          <dl class="plan">
+            <dt>Who</dt><dd>Bart H</dd>
+            <dt>On site</dt><dd class="big">45h</dd>
+            <dt>Vehicle</dt><dd class="need">Not set</dd>
+          </dl>
+          <div class="flag">On site reads 45h. Check the plan in the Scheduler.</div>
+          <div class="round">Round, Bart H: Forton, Lancaster, Lancaster, Forton. <span class="need">No travel set on the round.</span></div>
+        </article>
+        <article class="job">
+          <div class="kind">Resale · Delivery and installation</div>
+          <p class="title">Lancaster, Lancaster City Council</p>
+          <p class="ref">12C6E5 · LA1 · Stop 2 of 2</p>
+          <dl class="plan">
+            <dt>Who</dt><dd>Bart H, Bradley H</dd>
+            <dt>On site</dt><dd class="big">1h 30m</dd>
+            <dt>Vehicle</dt><dd class="need">Not set</dd>
+          </dl>
+        </article>
+      </div>
+    </section>
+
+    <section class="day">
+      <h2>Fri 16 <span>Nothing booked</span></h2>
+      <div class="cards"><div class="empty">Nothing booked</div></div>
+    </section>
+
+  </div>
+
+  <div class="foot">
+    <div class="key">
+      <span><i style="background:var(--c-resale)"></i>Resale</span>
+      <span><i style="background:var(--c-clearance)"></i>Clearance</span>
+      <span><i style="background:var(--c-donation)"></i>Donation</span>
+      <span><i style="background:var(--c-recycling)"></i>Recycling</span>
+      <span><i style="background:var(--c-refurb)"></i>Refurbishment</span>
+      <span><i style="background:var(--c-prod)"></i>Production</span>
+      <span><i style="background:var(--red)"></i>Not planned</span>
+    </div>
+    <div>Times are allocated time per operative. Travel is the round's driving time where a driver has more than one stop.</div>
+  </div>
+</div>
+</body>
+</html>

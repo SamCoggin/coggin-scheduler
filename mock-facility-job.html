@@ -1,0 +1,68 @@
+<!doctype html><html><head><meta charset="utf-8"><title>Facility job mock</title>
+<style>
+:root{--ink:#111;--muted:#6e6e6e;--line:#d7d7d7;--bg:#e9eaed}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);font:13px/1.45 Inter,system-ui,Arial,sans-serif;color:var(--ink);padding:24px}
+h3{font-size:12px;color:var(--muted);font-weight:600;margin:0 0 10px;letter-spacing:.04em}
+.row{display:flex;gap:28px;align-items:flex-start;flex-wrap:wrap}
+.page{width:420px;height:594px;background:#fff;padding:22px 24px;box-shadow:0 2px 12px rgba(0,0,0,.12);position:relative;font-size:10px}
+.lab{font-size:7.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);font-weight:700}
+.t{font-size:20px;font-weight:700;margin:2px 0 6px;line-height:1.1}
+.pill{display:inline-block;background:#111;color:#fff;font-weight:700;padding:3px 7px;border-radius:3px;margin-right:4px;font-size:9px}
+.rule{border-top:1.5px solid #111;margin:10px 0}
+.facts{display:flex;gap:6px}.fact{flex:1;border:1px solid #111;border-radius:3px;padding:4px 6px;height:30px}.fact b{display:block;font-size:10px;margin-top:2px}
+.h{font-weight:700;font-size:9.5px;letter-spacing:.06em;text-transform:uppercase;margin:12px 0 6px;display:flex;align-items:center;gap:6px}.n{width:14px;height:14px;border-radius:50%;background:#111;color:#fff;font-size:8px;display:inline-flex;align-items:center;justify-content:center}
+.task{display:flex;gap:8px;padding:6px 0;border-bottom:1px solid #e3e3e3}.box{width:11px;height:11px;border:1.2px solid #111;border-radius:2px;flex:none;margin-top:1px}
+.black{background:#111;color:#fff;border-radius:4px;padding:10px 12px;margin-top:14px}.black b{font-size:12px;display:block;margin-bottom:6px}
+.steps{display:flex;gap:6px}.step{flex:1;background:#fff;color:#111;border-radius:3px;padding:6px 8px;font-size:8.5px}.step small{display:block;color:#777;font-weight:700;font-size:7px;letter-spacing:.1em}
+.foot{position:absolute;left:24px;right:24px;bottom:16px;background:#111;color:#fff;font-size:7.5px;font-weight:700;text-align:center;padding:4px;border-radius:3px}
+.lines{margin-top:10px}.lines div{border-bottom:1px solid #d9d9d9;height:16px}
+.ed{width:420px;background:#fff;border-radius:10px;box-shadow:0 2px 12px rgba(0,0,0,.12);padding:16px 18px}
+.ed .ti{font-size:15px;font-weight:700}.ed .sub{color:var(--muted);font-size:12px;margin-bottom:12px}
+.blk{border:1px solid var(--line);border-radius:8px;padding:10px 12px;margin-bottom:10px}.blk .bh{font-weight:700;font-size:11px;margin-bottom:6px}
+.chip{display:inline-block;border:1px solid var(--line);border-radius:999px;padding:3px 9px;margin:2px 4px 2px 0;font-size:12px}.chip.on{background:#111;color:#fff;border-color:#111}
+.in{display:inline-block;border:1px solid var(--line);border-radius:6px;padding:4px 8px;font-size:12px;width:70px}
+.btn{display:inline-block;border:1px solid var(--line);border-radius:6px;padding:6px 12px;font-size:12px;font-weight:600;margin-right:6px}
+.cap{width:420px;color:var(--muted);font-size:12px;margin-top:8px}
+.flow{width:880px;background:#fff;border-radius:10px;padding:14px 18px;box-shadow:0 2px 12px rgba(0,0,0,.12);margin-bottom:26px;display:flex;gap:10px;align-items:center}
+.node{border:1.5px solid #111;border-radius:8px;padding:8px 12px;font-size:12px;flex:1}.node b{display:block;font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-bottom:2px}.arr{font-size:18px;color:var(--muted)}
+</style></head><body>
+<h3>HOW A FACILITY JOB MOVES</h3>
+<div class="flow">
+ <div class="node"><b>Operations board</b>Facility Jobs list. Sam writes the card: title is the job, description is what to do.</div><div class="arr">&rarr;</div>
+ <div class="node"><b>Planning board</b>Facility Jobs list (name to confirm). The Scheduler reads it as a Facility part: no vehicle, no site, no customer.</div><div class="arr">&rarr;</div>
+ <div class="node"><b>Scheduler</b>Pick the day, the operatives and the time. That is the whole editor. Counts against their hours like any labour.</div><div class="arr">&rarr;</div>
+ <div class="node"><b>Job sheet</b>One page: the tasks from the card to tick, then move the card to Done.</div>
+</div>
+<div class="row">
+ <div>
+  <h3>THE EDITOR FOR A FACILITY JOB</h3>
+  <div class="ed">
+   <div class="ti">Repaint the loading bay lines</div><div class="sub">Facility &middot; Wed 15 Oct</div>
+   <div class="blk"><div class="bh">Operatives</div><span class="chip on">Rob D</span><span class="chip on">Ethan P</span><span class="chip">Bart H</span><span class="chip">Bradley H</span><span class="chip">Jack C</span></div>
+   <div class="blk"><div class="bh">Time</div><span class="in">3:00</span> <span style="color:#6e6e6e;font-size:12px">each</span></div>
+   <div><span class="btn">Job sheet</span><span class="btn" style="background:#111;color:#fff;border-color:#111">Done</span></div>
+  </div>
+  <p class="cap">Two blocks and nothing else. No vehicle, travel, arrival, estimate or site blocks, because a facility job has none of them.</p>
+ </div>
+ <div>
+  <h3>THE JOB SHEET PAGE</h3>
+  <div class="page">
+   <div class="lab">Facility</div>
+   <div class="t">Repaint the loading bay lines</div>
+   <span class="pill">Rob D</span><span class="pill">Ethan P</span>
+   <div class="rule"></div>
+   <div class="facts"><div class="fact"><span class="lab">Time</span><b>3:00 each</b></div><div class="fact"><span class="lab">Day</span><b>Wed 15 Oct</b></div><div class="fact"><span class="lab">Where</span><b>Loading bay, Forton</b></div></div>
+   <div class="h"><span class="n">1</span>What to do</div>
+   <div class="task"><span class="box"></span><span>Sweep and degrease the bay floor before anything else</span></div>
+   <div class="task"><span class="box"></span><span>Mask the old lines, two coats of yellow floor paint</span></div>
+   <div class="task"><span class="box"></span><span>Cone the bay off, no vehicles on it until tomorrow</span></div>
+   <div class="task"><span class="box"></span><span>Tools put back, area left clean and tidy</span></div>
+   <div class="h"><span class="n">2</span>Anything that did not go to plan</div>
+   <div class="lines"><div></div><div></div><div></div></div>
+   <div class="black"><b>WHEN YOU FINISH</b><div class="steps"><div class="step"><small>STEP 1</small>Photograph the finished job and add it to the Trello card</div><div class="step"><small>STEP 2</small>Move the card to Jobs Completed</div><div class="step"><small>STEP 3</small>Hand this sheet back</div></div></div>
+   <div class="foot">HAND THIS SHEET BACK to the operations manager when the job is done, or at the end of the day.</div>
+  </div>
+  <p class="cap">The tasks are the lines of the card's description, one tick box each. The Day view shows it under a Facility bar for those operatives, and the Capacity strip counts the hours.</p>
+ </div>
+</div>
+</body></html>

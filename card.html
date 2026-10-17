@@ -484,13 +484,14 @@
           // A HIRE VAN BOOKED IN THE CRM shows here (6 Oct 2026): the card's "Hired for this job" Transport line with its reg.
           var hireL=(String(card.desc||"").replace(/\*\*/g,"").match(/^- Transport: [^\n]+/gm)||[]).map(function(l){ return l.replace(/^- Transport: /,""); });
           var hireTxt=hireL.length?" + hire: "+hireL.join("; "):"";
-          var vTxt=(!d.vehicle?(hireL.length?"":"No vehicle"):(d.vehicle==="hire"?"Hire"+(d.hireRef?", "+d.hireRef:""):vansOf(d).join(" and ")))+(hireTxt&&d.vehicle!=="hire"?(d.vehicle?hireTxt:hireTxt.replace(/^ \+ /,"")):"");
+          var vTxt=(!d.vehicle?(hireL.length?"":"No vehicle"):(d.vehicle==="hire"?"Hire"+(d.hireFrom?", "+d.hireFrom:"")+(d.hireRef?", "+d.hireRef:""):vansOf(d).join(" and ")))+(hireTxt&&d.vehicle!=="hire"?(d.vehicle?hireTxt:hireTxt.replace(/^ \+ /,"")):"");
           ts.appendChild(rowEl("veh","Vehicle",vTxt,function(ed){
             // a segmented picker: the reg on top, what it is underneath, the chosen one filled (Sam, 29 Sep 2026: "UI upgrade needed here")
             var sg=el("div","seg vseg"); (typeof VEHICLES!=="undefined"?VEHICLES:[]).concat([{reg:"hire",name:"Hire a vehicle"}]).forEach(function(v){
               var on=vansOf(d).indexOf(v.reg)>=0; var b=el("button",on?"on":""); b.appendChild(el("b",null,v.reg==="hire"?"Hire":v.reg)); b.appendChild(el("small",null,v.reg==="hire"?"supplier below":String(v.name||"").replace(/\s*\(.*$/,"").replace(/^Renault Master /,"")+(/(20\d\d)/.test(v.name||"")?", "+/(20\d\d)/.exec(v.name)[1]:"")));
               b.setAttribute("aria-pressed",on?"true":"false"); b.onclick=function(){ var cur=vansOf(d); if(v.reg==="hire") setVans(d,cur.indexOf("hire")>=0?[]:["hire"]); else { cur=cur.filter(function(x){return x!=="hire";}); var i=cur.indexOf(v.reg); if(i>=0) cur.splice(i,1); else cur.push(v.reg); setVans(d,cur); } save(); render(); }; sg.appendChild(b); }); ed.appendChild(sg);   // both our vans can go; Hire stands alone (6 Oct 2026)
-            if(d.vehicle==="hire"){ var hr=el("div","row"); var hi=el("input"); hi.type="text"; hi.placeholder="Supplier, vehicle and reference"; hi.setAttribute("aria-label","Hire details"); hi.value=d.hireRef||""; hi.onchange=function(){ d.hireRef=hi.value; save(); render(); }; hr.appendChild(hi); ed.appendChild(hr); }
+            if(d.vehicle==="hire"){ var hs=el("div","seg"); HIRE_SUPPLIERS.forEach(function(nm){ var sb=el("button",d.hireFrom===nm?"on":"",nm); sb.onclick=function(){ d.hireFrom=(d.hireFrom===nm?"":nm); save(); render(); }; hs.appendChild(sb); }); ed.appendChild(hs);
+              var hr=el("div","row"); var hi=el("input"); hi.type="text"; hi.placeholder="Vehicle and reference"; hi.setAttribute("aria-label","Hire vehicle and reference"); hi.value=d.hireRef||""; hi.onchange=function(){ d.hireRef=hi.value; save(); render(); }; hr.appendChild(hi); ed.appendChild(hr); }
             ed.appendChild(el("div","hint",d.vehicle?"Tap one again to take it off. Both vans can go on a job.":"Which vehicles go out. Both vans can go on a job."));
             if(hireL.length) ed.appendChild(el("div","hint","Booked in the CRM: "+hireL.join("; ")+"."));
           },(d.vehicle||hireL.length)?"":"todo"));

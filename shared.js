@@ -33,6 +33,9 @@ var CONTRACTORS=["MAK Installations","Courier","Other contractor"];
 // before a tail lift and the crew. planning figures: 18.7 m3 and 1,000 kg.
 var VAN_M3=18.7, VAN_KG=1000;
 var VEHICLES=[{reg:"FX75 BKG",name:"Renault Master Luton FX75 BKG (2025)"},{reg:"FX73 CWF",name:"Renault Master Luton FX73 CWF (2024)"}];
+// Where we hire a van when both of ours are out or one is off the road (Sam, 17 Oct 2026). Picked on the job, so the
+// supplier never has to be typed; the vehicle and the reference still are.
+var HIRE_SUPPLIERS=["Pye Hire","Marshalls Self Drive"];
 // TWO VANS ON ONE JOB (Sam, 6 Oct 2026, CE0212: a three day clearance in both Lutons). A job keeps vehicles, a list, and
 // vehicle, the first of them, so everything that read one van still reads one. vansOf is the list either way.
 function vansOf(x){ if(!x) return []; if(x.vehicles&&x.vehicles.length) return x.vehicles.slice(); return x.vehicle?[x.vehicle]:[]; }
