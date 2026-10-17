@@ -2657,17 +2657,17 @@ var SNAP=null, DETAIL={};
   // THE DATA FOR THE JOB PAGES (2 Oct 2026): the vans' runs with each stop's items and card details, and the items on
   // every labour job, read from the CRM when Download is pressed. Photos are loaded into PICK_IMG for the PDF.
   async function jobPagesData(k){
-    var runs=transportRuns(k), ITEMS={}, ids=[], seen={};
+    var runs=transportRuns(k), ITEMS={}, ENQUIRY={}, ids=[], seen={};
     var add=function(j){ if(j&&j.id&&!j.isLeg&&!seen[j.id]){ seen[j.id]=1; ids.push({id:j.id,short:j.short||""}); } };
     runs.forEach(function(r){ r.stops.forEach(function(s){ add(s.j); }); });
     allJobs().filter(function(j){ return onDay(j,k)&&!j.isHold&&!j.site&&!j.isLeg&&!j.completed&&j.who.length; }).forEach(add);
     prepJobs().filter(function(j){ return !j.isHold&&j.prep&&j.prep.date&&daysOf(j.prep).indexOf(k)>=0&&j.prep.who.length; }).forEach(add);
     if(CRM_KEY&&ids.length){ var res=await fetch(CRM_PICKING_URL,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({key:CRM_KEY,action:"photos",cards:ids})}).then(function(x){ return x.json(); }).catch(function(){ return null; });
-      if(res&&res.ok&&res.items) ITEMS=res.items; }
+      if(res&&res.ok&&res.items) ITEMS=res.items; if(res&&res.ok&&res.enquiry) ENQUIRY=res.enquiry; }
     var itemsOf=function(j){ var crm=(ITEMS[j.id]||[]).filter(function(x){ return x.name; }); if(crm.length) return crm.map(function(x){ return {qty:x.qty||1,name:x.name,photo:x.photo||""}; });
       return itemLines(j).map(function(l){ var mm=/^(\d+)\s*x\s+(.+)$/i.exec(l); return mm?{qty:parseInt(mm[1],10),name:mm[2],photo:""}:{qty:1,name:l,photo:""}; }); };
     var urls={}, byCard={};
-    runs.forEach(function(r){ r.stops.forEach(function(s){ s.items=itemsOf(s.j); s.d=cardDetails(s.j); byCard[s.j.id]={run:r,stop:s}; s.items.forEach(function(it){ if(it.photo&&!PICK_IMG[it.photo]) urls[it.photo]=1; }); }); });
+    runs.forEach(function(r){ r.stops.forEach(function(s){ s.items=itemsOf(s.j); s.d=cardDetails(s.j); s.enquiry=ENQUIRY[s.j.id]||[]; byCard[s.j.id]={run:r,stop:s}; s.items.forEach(function(it){ if(it.photo&&!PICK_IMG[it.photo]) urls[it.photo]=1; }); s.enquiry.forEach(function(u){ if(!PICK_IMG[u]) urls[u]=1; }); }); });
     var info={}; ids.forEach(function(x){ if(byCard[x.id]) return; var j=JOBS.filter(function(q){ return q.id===x.id; })[0]; if(!j) return; info[j.id]={items:itemsOf(j),d:cardDetails(j)}; info[j.id].items.forEach(function(it){ if(it.photo&&!PICK_IMG[it.photo]) urls[it.photo]=1; }); });
     await Promise.all(Object.keys(urls).slice(0,200).map(loadPickPhoto));
     return {runs:runs,byCard:byCard,info:info};
@@ -2820,6 +2820,11 @@ var SNAP=null, DETAIL={};
       stopHead(false);
       var kitFirst=si===0&&!kit.hasLoad(run); if(kitFirst){ kitCheck(1); y+=3; }
       var n0=kitFirst?1:0, hasKnow=knowRows(d).length>0; kit.know(d,cont,n0+1); if(hasKnow) y+=3;
+      // WHAT THE CUSTOMER SENT (Sam, 17 Oct 2026: "what about the job sheet?"): the enquiry photos, up to four across, so
+      // the crew see the pile before they see the list. Only when there are some, and only on a collection.
+      if(collect&&(s.enquiry||[]).length){ var eph=s.enquiry.slice(0,4), ew2=(W-6*(eph.length-1))/eph.length, eh2=Math.min(42,ew2*0.75); if(y+eh2+14>278) cont();
+        heading(n0+(hasKnow?2:1),"What the customer sent"); eph.forEach(function(u,i){ var ex=L+i*(ew2+6); doc.setDrawColor(180); doc.setLineWidth(0.3); doc.rect(ex,y,ew2,eh2); if(!img(u,ex+0.5,y+0.5,ew2-1,eh2-1)) noPhoto(ex+ew2/2-10,y+eh2/2-8,20,16); });
+        y+=eh2+4; if(s.enquiry.length>4){ doc.setFont("helvetica","normal"); doc.setFontSize(8); doc.setTextColor(100); doc.text((s.enquiry.length-4)+" more on the Trello card",L,y); doc.setTextColor(0); y+=4; } y+=2; n0+=1; }
       if(y+20>278) cont(); heading(n0+(hasKnow?2:1),collect?"Collect":"Unload"); kit.items(s.items,cont);
       // before you leave: one black panel, two steps and the Trello code
       if(y+44>278) cont(); y+=2; var ph=40; doc.setFillColor(17,17,17); doc.roundedRect(L,y,W,ph,2,2,"F");
