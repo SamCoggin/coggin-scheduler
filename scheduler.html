@@ -55,7 +55,7 @@
   .sug .must{margin-top:6px;padding:6px 8px;border-radius:6px;background:var(--card);font-weight:600}
   .sug .must.bad{color:var(--red)}
   .sug .steps{margin-top:6px;color:var(--muted);font-size:13px}
-  .fleet{display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:8px 14px;background:var(--card);border-bottom:1px solid var(--line);font-size:13px}
+  .fleet{display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:10px 12px;background:var(--card);border-top:1px solid var(--line);margin-top:8px;font-size:13px}
   .fleet b{font-size:13px;text-transform:uppercase;letter-spacing:.03em}
   .fleet button{border:1px solid var(--line);border-radius:6px;padding:4px 10px;font-weight:700;background:var(--list)}
   .fleet button.on{color:var(--green);background:var(--green-bg);border-color:var(--green-bg)} .fleet button.off{color:var(--red);background:var(--red-bg);border-color:var(--red-bg)}
@@ -1814,7 +1814,14 @@ var SNAP=null, DETAIL={};
       var topEl=row.firstChild; if(topEl){ topEl.style.cursor="pointer"; topEl.title="Open "+w.split(" ")[0]+"'s day: every job, its time, take off or add"; topEl.onclick=function(){ openOp=k+"|"+w; open=null; openRound=null; render(); }; }
       pc.appendChild(row);
     });
-    pl.appendChild(pc); b.appendChild(pl);
+    pl.appendChild(pc);
+    // VEHICLES, ON THE DAY VIEW (Sam, 17 Oct 2026: "How do I make it so the van is off the road?"). The only switch lived
+    // on the Routes view, retired 29 Sep, so a broken-down van had nowhere to be recorded. Same VANS_OFF list, same
+    // save, so the struck-through vehicle on jobs, the one-vehicle warning and the CRM capacity strip all follow.
+    var fleet=el("div","fleet"); fleet.appendChild(el("b",null,"Vehicles"));
+    VEHICLES.forEach(function(v){ var off=VANS_OFF.indexOf(v.reg)>=0; var bt=el("button",off?"off":"on",v.reg+": "+(off?"off the road":"on the road")); bt.title=off?"Put "+v.reg+" back on the road":"Take "+v.reg+" off the road: breakdown, service, MOT. It stays off until you press this again."; bt.onclick=function(){ if(off) VANS_OFF=VANS_OFF.filter(function(r){return r!==v.reg;}); else VANS_OFF.push(v.reg); persist(); render(); }; fleet.appendChild(bt); });
+    fleet.appendChild(el("span","hint",vansOnRoad()+" of "+VEHICLES.length+" on the road. A job on a van that is off is flagged. Stays off until pressed again."));
+    pl.appendChild(fleet); b.appendChild(pl);
     var mo=ACT_OPEN?actualsModal():TIMINGS_OPEN?timingsModal():openRound?roundModal():openOp?opModal():modal(); if(mo){ document.body.appendChild(mo); if(window.__keepScroll) mo.scrollTop=window.__keepScroll; }
     $("#prev").onclick=function(){ var x=new Date(dayCur+"T12:00"); do{x.setDate(x.getDate()-1);}while(x.getDay()===0||x.getDay()===6); dayCur=iso(x); render(); };
     $("#next").onclick=function(){ var x=new Date(dayCur+"T12:00"); do{x.setDate(x.getDate()+1);}while(x.getDay()===0||x.getDay()===6); dayCur=iso(x); render(); };
