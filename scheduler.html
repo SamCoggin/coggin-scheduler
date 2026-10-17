@@ -525,7 +525,7 @@ var SNAP=null, DETAIL={};
         if(!CRM_KEY) return snap;
         // the checklists come through the CRM (Trello's client never gives them to a board page), in the same breath as the holds
         var checksP=fetch(CRM_CHECKLISTS_URL,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({key:CRM_KEY})}).then(function(x){return x.json();}).then(function(r){ if(!(r&&r.ok&&r.cards)) return; cs.forEach(function(c){ var ck=r.cards[c.id]; if(ck&&ck.length){ c.checks=ck; DETAIL[c.id]={desc:c.desc,checks:ck}; } }); }).catch(function(){});
-        return Promise.all([checksP, fetch(CRM_HOLDS_URL,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({key:CRM_KEY})}).then(function(x){return x.json();})]).then(function(rr){ var h=rr[1]; snap.holds=(h&&h.ok&&h.holds)||[]; snap.requests=(h&&h.ok&&h.requests)||[]; return snap; }).catch(function(){ snap.holds=[]; snap.requests=[]; return snap; });
+        return Promise.all([checksP, fetch(CRM_HOLDS_URL,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({key:CRM_KEY})}).then(function(x){return x.json();})]).then(function(rr){ var h=rr[1]; snap.holds=(h&&h.ok&&h.holds)||[]; snap.downtime=(h&&h.ok&&h.downtime)||[]; snap.requests=(h&&h.ok&&h.requests)||[]; return snap; }).catch(function(){ snap.holds=[]; snap.requests=[]; return snap; });
       });
     });
   }
@@ -680,6 +680,7 @@ var SNAP=null, DETAIL={};
     // HELD DATES FROM THE CRM (Sam, 13 Sep 2026): a request sales are waiting on. Ghost cards: they sit on
     // their day, count the standard crew and time and the van load, and vanish when the hold lapses.
     REQUESTS=[];   // DATE REQUESTS ARE THE CRM'S (Sam, 1 Oct 2026: "remove date requests as these are managed in the app")
+    DOWNTIME=SNAP.downtime||[];
     HOLDS=(SNAP.holds||[]).map(function(h){ var mv=h.movement||"Delivery", load=loadOf(h.items||[]), std=standardFor(mv,load);
       // a hold somebody else carries (sub-contractor, haulier) counts no crew of ours; the labour unload comes with the card
       var j={id:"hold:"+h.id,title:h.title||h.ref,label:mv,movement:mv,work:h.service==="Office Clearance"?"Clearance":h.service==="Refurbishing"?"Refurb":h.service||"",labels:[],who:[],contractor:h.carrier||"",mins:h.carrier?null:(std&&std.mins!=null?std.mins:120),out:h.date,date:h.date,start:null,site:isSiteMove(mv),collect:isCollectMove(mv),
@@ -706,7 +707,7 @@ var SNAP=null, DETAIL={};
     jobs.forEach(function(j){ if(j.contractor&&!j.who.length) return; var fw=j.who.filter(function(w){return FIELD_CREW.indexOf(w)>=0;}); if(j.who.length&&!fw.length){ if(j.site) trips+=1; return; } var crew=j.isHold?(j.holdCrew!=null?j.holdCrew:2):Math.max(1,fw.length); var own=(!j.isHold&&fw.length)?fw.reduce(function(t,w){return t+(minsFor(j,w)||0);},0):(j.mins||0)*crew; need+=own+(j.site?(j.drive||0)*crew:0); if(j.site) trips+=1; });
     preps.forEach(function(j){ var pw=j.prep.who.filter(function(w){return FIELD_CREW.indexOf(w)>=0;}); if(j.prep.who.length&&!pw.length) return; need+=(!j.isHold&&pw.length)?pw.reduce(function(t,w){return t+prepShare(j,w);},0):prepShare(j)*(j.isHold?(j.prep.crew||1):1); });
     var rounds=roundsOn(k,jobs); trips=Math.max(0,trips-rounds.reduce(function(t,r){return t+r.stops.length-1;},0));
-    var vans=vansOnRoad();
+    var vans=vansOnRoad(k);
     return {need:need,avail:avail,overTime:need>avail,trips:trips,vans:vans,overVans:trips>vans,holds:jobs.filter(function(j){return j.isHold;}).length};
   }
   function loadOn(k){
@@ -949,8 +950,11 @@ var SNAP=null, DETAIL={};
     for(var d=new Date(from+"T12:00"); iso(d)<=to; d.setDate(d.getDate()+1)){ if(d.getDay()===0||d.getDay()===6) continue; var k=iso(d), L=loadOn(k);
       TEAM.forEach(function(w){ var t=TALLIES[tallyKey(k,w)]; if(!t||!(t.minutes||t.units!=null||(t.shredding||[]).length)) return; out[w].days++; if(t.units!=null&&t.minutes){ out[w].counted++; out[w].mins+=t.minutes; out[w].target+=recTarget(t.minutes); out[w].units+=t.units; } (t&&t.shredding||[]).forEach(function(x){ out[w].cages+=x.cages||0; out[w].kg+=x.kg||0; out[w].byMat[x.material]=(out[w].byMat[x.material]||0)+(x.kg||0); }); }); }
     return out; }
-  var VANS_OFF=[];      // registrations currently off the road
-  function vansOnRoad(){ return VEHICLES.filter(function(v){return VANS_OFF.indexOf(v.reg)<0;}).length; }
+  var VANS_OFF=[];      // registrations off the road by the switch below, no dates
+  var DOWNTIME=[];      // from the CRM's Vehicles page: {reg,from,to,reason,note}, to blank = until further notice (17 Oct 2026)
+  function vanDown(reg,k){ k=k||iso(TODAY); for(var i=0;i<DOWNTIME.length;i++){ var d=DOWNTIME[i]; if(d.reg===reg&&d.from&&k>=d.from&&(!d.to||k<=d.to)) return d; } return null; }
+  function vanOff(reg,k){ return VANS_OFF.indexOf(reg)>=0||!!vanDown(reg,k); }
+  function vansOnRoad(k){ return VEHICLES.filter(function(v){return !vanOff(v.reg,k);}).length; }
   function roundsOn(k,jobs){
     var out=[];
     TEAM.forEach(function(w){
@@ -1028,9 +1032,9 @@ var SNAP=null, DETAIL={};
   function vehicleWarnings(k){
     var out=[], jobs=allJobs().filter(function(j){return onDay(j,k)&&ourJob(j);});
     var byVan={}; jobs.forEach(function(j){ if(!j.vehicle||j.vehicle==="hire") return; var ds=j.who.filter(function(w){return CAN_DRIVE.indexOf(w)>=0;}); vansOf(j).forEach(function(v,i){ var d=ds[i]||ds[0]||j.who[0]||"unassigned"; (byVan[v]=byVan[v]||{}); byVan[v][d]=1; }); });
-    Object.keys(byVan).forEach(function(v){ var ds=Object.keys(byVan[v]); if(ds.length>1) out.push({text:v+" is on "+ds.join(" and ")+"'s jobs. One vehicle, "+ds.length+" drivers. Move one to the other vehicle or a hire.",who:v}); if(VANS_OFF.indexOf(v)>=0) out.push({text:v+" is off the road and still on a job. Swap the vehicle.",who:v}); });
+    Object.keys(byVan).forEach(function(v){ var ds=Object.keys(byVan[v]); if(ds.length>1) out.push({text:v+" is on "+ds.join(" and ")+"'s jobs. One vehicle, "+ds.length+" drivers. Move one to the other vehicle or a hire.",who:v}); if(vanOff(v,k)) out.push({text:v+" is off the road"+(vanDown(v,k)?" ("+vanDown(v,k).reason+")":"")+" and still on a job. Swap the vehicle.",who:v}); });
     var drivers={}; jobs.forEach(function(j){ if(j.vehicle==="hire") return; j.who.forEach(function(w){ if(CAN_DRIVE.indexOf(w)>=0) drivers[w]=1; }); });
-    var need=Object.keys(drivers).length; if(need>vansOnRoad()) out.push({text:need+" drivers out on our vehicles with "+vansOnRoad()+(vansOnRoad()===1?" vehicle":" vehicles")+" on the road. Put one on a hire or move a job.",who:"Vehicles"});
+    var need=Object.keys(drivers).length; if(need>vansOnRoad(k)) out.push({text:need+" drivers out on our vehicles with "+vansOnRoad(k)+(vansOnRoad(k)===1?" vehicle":" vehicles")+" on the road. Put one on a hire or move a job.",who:"Vehicles"});
     jobs.forEach(function(j){ if(hireDue(j)) out.push({j:j,text:short(j)+": hire not booked, "+(function(){var d=workDaysBetween(iso(TODAY),j.date)-1; return d<=0?"it is today":d===1?"it is tomorrow":d+" working days away";})()+". Book it and tick it on the job."}); });
     var dayM3=jobs.reduce(function(t,j){return t+(cubeOn(j)||0);},0), dayKg=jobs.reduce(function(t,j){return t+kgOn(j);},0), adv=dayM3?vehicleAdvice(dayM3,dayKg,vansOnRoad()):null;
     if(adv&&!adv.fitsOurs&&!jobs.some(function(j){return j.vehicle==="hire";})) out.push({who:"Vehicles",text:"The day needs "+adv.text.charAt(0).toLowerCase()+adv.text.slice(1)+" No hire is on any job yet."});
@@ -1263,10 +1267,10 @@ var SNAP=null, DETAIL={};
       right.appendChild(cb); }
     var rv=(!o.shop&&j.site)?roundVanOf(j,roundsOn(j.date,allJobs().filter(function(x){return onDay(x,j.date);}))):"";
     if(!o.shop && j.site && !contractorOnly){ var vb=block("Vehicle","vehicle"); vb.className+=" veh"; var vseg=el("div","seg");
-      VEHICLES.concat([{reg:"hire",name:"Hire"}]).forEach(function(v){ var off=VANS_OFF.indexOf(v.reg)>=0; var b=el("button",(vansOf(j).indexOf(v.reg)>=0?"on":"")+(off?" off":""),v.reg==="hire"?"Hire":v.reg+(off?" (off road)":"")); b.onclick=function(){ var cur=vansOf(j); if(v.reg==="hire") setVans(j,cur.indexOf("hire")>=0?[]:["hire"]); else { cur=cur.filter(function(x){return x!=="hire";}); var i=cur.indexOf(v.reg); if(i>=0) cur.splice(i,1); else cur.push(v.reg); setVans(j,cur); } persist(); render(); }; vseg.appendChild(b); });   // our vans can both go; Hire stands alone (6 Oct 2026)
+      VEHICLES.concat([{reg:"hire",name:"Hire"}]).forEach(function(v){ var off=v.reg!=="hire"&&vanOff(v.reg,j.date); var b=el("button",(vansOf(j).indexOf(v.reg)>=0?"on":"")+(off?" off":""),v.reg==="hire"?"Hire":v.reg+(off?" (off road)":"")); b.onclick=function(){ var cur=vansOf(j); if(v.reg==="hire") setVans(j,cur.indexOf("hire")>=0?[]:["hire"]); else { cur=cur.filter(function(x){return x!=="hire";}); var i=cur.indexOf(v.reg); if(i>=0) cur.splice(i,1); else cur.push(v.reg); setVans(j,cur); } persist(); render(); }; vseg.appendChild(b); });   // our vans can both go; Hire stands alone (6 Oct 2026)
       vb.appendChild(vseg);
       var same=allJobs().filter(function(x){return x!==j&&ourJob(x)&&onDay(x,j.date)&&x.vehicle&&x.vehicle!=="hire";}); var used={}; same.forEach(function(x){ vansOf(x).forEach(function(v){ used[v]=(used[v]||[]).concat([x.who.join(", ")||"unassigned"]); }); });
-      var adv=cubeOn(j)!=null?vehicleAdvice(cubeOn(j),kgOn(j),vansOnRoad()):null;
+      var adv=cubeOn(j)!=null?vehicleAdvice(cubeOn(j),kgOn(j),vansOnRoad(j.date)):null;
       vb.appendChild(el("div","hint",(rv&&!j.vehicle)?"On the round in "+rv+". Pick a vehicle here only if this stop goes in a different one. ":attending(j)?"Optional. Only if "+part.who.join(", ")+(part.who.length>1?" go":" goes")+" in our vehicle. The load is on "+j.contractor+(/s$/i.test(j.contractor)?"'":"'s")+" vehicle. ":(adv?(daysN(j)>1?"Each day of this job needs ":"This job needs ")+adv.text.charAt(0).toLowerCase()+adv.text.slice(1)+" ":"")+(Object.keys(used).length?"Also out that day: "+Object.keys(used).map(function(v){return v+" with "+used[v].join(" and ");}).join("; ")+".":"Nothing else booked on our vehicles that day.")));
       if(j.vehicle==="hire"){ var hs=el("div","seg"); HIRE_SUPPLIERS.forEach(function(nm){ var sb=el("button",j.hireFrom===nm?"on":"",nm); sb.onclick=function(){ j.hireFrom=(j.hireFrom===nm?"":nm); persist(); render(); }; hs.appendChild(sb); }); vb.appendChild(hs);
         var hr=el("div","row"); var hi=el("input"); hi.type="text"; hi.placeholder="Vehicle and reference"; hi.value=j.hireRef||""; hi.setAttribute("aria-label","Hire vehicle and reference"); hi.onchange=function(){ j.hireRef=hi.value.trim(); persist(); render(); }; hr.appendChild(hi);
@@ -1820,8 +1824,10 @@ var SNAP=null, DETAIL={};
     // on the Routes view, retired 29 Sep, so a broken-down van had nowhere to be recorded. Same VANS_OFF list, same
     // save, so the struck-through vehicle on jobs, the one-vehicle warning and the CRM capacity strip all follow.
     var fleet=el("div","fleet"); fleet.appendChild(el("b",null,"Vehicles"));
-    VEHICLES.forEach(function(v){ var off=VANS_OFF.indexOf(v.reg)>=0; var bt=el("button",off?"off":"on",v.reg+": "+(off?"off the road":"on the road")); bt.title=off?"Put "+v.reg+" back on the road":"Take "+v.reg+" off the road: breakdown, service, MOT. It stays off until you press this again."; bt.onclick=function(){ if(off) VANS_OFF=VANS_OFF.filter(function(r){return r!==v.reg;}); else VANS_OFF.push(v.reg); persist(); render(); }; fleet.appendChild(bt); });
-    fleet.appendChild(el("span","hint",vansOnRoad()+" of "+VEHICLES.length+" on the road. A job on a van that is off is flagged. Stays off until pressed again."));
+    VEHICLES.forEach(function(v){ var dn=vanDown(v.reg,k), off=VANS_OFF.indexOf(v.reg)>=0;
+      if(dn){ var bd=el("button","off",v.reg+": off the road, "+dn.reason+(dn.to?", back "+niceDay(iso(addDays(new Date(dn.to+"T12:00"),1))):"")); bd.title="Set on the Vehicles page in the CRM"+(dn.note?": "+dn.note:"")+". Put it back there."; bd.disabled=true; fleet.appendChild(bd); return; }
+      var bt=el("button",off?"off":"on",v.reg+": "+(off?"off the road":"on the road")); bt.title=off?"Put "+v.reg+" back on the road":"Take "+v.reg+" off the road for now. For a breakdown or a service with dates, use the Vehicles page in the CRM."; bt.onclick=function(){ if(off) VANS_OFF=VANS_OFF.filter(function(r){return r!==v.reg;}); else VANS_OFF.push(v.reg); persist(); render(); }; fleet.appendChild(bt); });
+    fleet.appendChild(el("span","hint",vansOnRoad(k)+" of "+VEHICLES.length+" on the road today. A job on a van that is off is flagged. Dated downtime comes from the CRM's Vehicles page."));
     pl.appendChild(fleet); b.appendChild(pl);
     var mo=ACT_OPEN?actualsModal():TIMINGS_OPEN?timingsModal():openRound?roundModal():openOp?opModal():modal(); if(mo){ document.body.appendChild(mo); if(window.__keepScroll) mo.scrollTop=window.__keepScroll; }
     $("#prev").onclick=function(){ var x=new Date(dayCur+"T12:00"); do{x.setDate(x.getDate()-1);}while(x.getDay()===0||x.getDay()===6); dayCur=iso(x); render(); };
