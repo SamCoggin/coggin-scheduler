@@ -1302,8 +1302,19 @@ var SNAP=null, DETAIL={};
       var rf=el("div","rbfoot"); var dv=el("span","rdrv"); if(rdNow.drive!=null){ dv.appendChild(document.createTextNode("Driving ")); dv.appendChild(el("b",null,fmt(rdNow.drive))); dv.appendChild(document.createTextNode(" in all")); } else dv.textContent="No travel set yet"; rf.appendChild(dv);
       var ob=el("button","rbtn","Edit the round"); ob.onclick=function(){ openRound=rdNow.key; open=null; render(); }; rf.appendChild(ob); rdb.appendChild(rf); right.appendChild(rdb); }
     if(!o.shop && j.site && !contractorOnly && !rdNow){ var drb=block("Travel Time, return","drive"); var r2=el("div","row"); r2.appendChild(hmBoxes(function(){return j.drive;},setDrive,"Drive")); drb.appendChild(r2);
-      drb.appendChild(el("div","hint",j.drive!=null?(j.driveAuto?"Road time from OpenStreetMap routing"+(j.roadMiles?", "+j.roadMiles+" miles each way":"")+", plus 20 percent for traffic. Change it if you know better.":"Estimated from the postcode area, plus 20 percent for traffic. Change it if you know better."):(function(){ var dd=DETAIL[j.id], m=PC_FULL.exec(String(j.isLeg?(j.leg.where||""):(dd&&dd.desc)||"").replace(/\*\*/g,""));   // the estimate is off (28 Sep 2026), so a blank box is normal: say where it is going, never "no postcode" when there is one (Sam, 2 Oct 2026, Bluebird PR1 4PD)
+      drb.appendChild(el("div","hint",j.drive!=null?(j.driveAuto?"Road time from Google"+(j.roadMiles?", "+j.roadMiles+" miles each way":"")+", plus 20 percent for traffic. Change it if you know better.":"Estimated from the postcode area, plus 20 percent for traffic. Change it if you know better."):(function(){ var dd=DETAIL[j.id], m=PC_FULL.exec(String(j.isLeg?(j.leg.where||""):(dd&&dd.desc)||"").replace(/\*\*/g,""));   // the estimate is off (28 Sep 2026), so a blank box is normal: say where it is going, never "no postcode" when there is one (Sam, 2 Oct 2026, Bluebird PR1 4PD)
       return m?"Going to "+(m[1]+" "+m[2]).toUpperCase()+". Type the return travel time.":"No postcode on the card. Type the return travel time."; })()));
+      // WORK IT OUT (Sam, 17 Oct 2026: "do we not have api to work this out?"). The same Google Routes call the round
+      // editor uses, Forton to the site and back, plus the traffic allowance, rounded to five minutes. A button, never
+      // automatic: the 28 Sep rule took the estimates off, and the typed figure still wins if someone changes it.
+      var pcW=pcOf(j); if(pcW&&CRM_KEY){ var wb=el("button","btn","Work it out from the postcode"); wb.title="Road time from Forton to "+pcW+" and back, from Google, plus "+Math.round((TRAFFIC-1)*100)+" percent for traffic.";
+        wb.onclick=function(){ wb.disabled=true; wb.textContent="Asking the map…";
+          fetch(CRM_ROUTE_URL,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({key:CRM_KEY,points:[HOME_PC,pcW,HOME_PC]})}).then(function(x){ return x.json(); }).then(function(res){
+            if(!res||!res.ok||!res.legs||!res.legs.length) throw new Error((res&&res.error)||"no answer");
+            var mins=res.legs.reduce(function(t,L){ return t+(Number(L.mins)||0); },0), miles=res.legs.reduce(function(t,L){ return t+(Number(L.miles)||0); },0);
+            var v=Math.max(5,Math.round(mins*TRAFFIC/5)*5); setDrive(v); part.driveAuto=true; part.roadMiles=Math.round(miles/2); if(part.leg){ part.leg.driveAuto=true; part.leg.roadMiles=part.roadMiles; } persist(); render(); })
+          .catch(function(e){ wb.disabled=false; wb.textContent="Could not reach the map, type it"; wb.title=String(e&&e.message||e); }); };
+        var wr=el("div","row"); wr.appendChild(wb); drb.appendChild(wr); }
       if(j.drive!=null && j.drive>6*60) drb.appendChild(el("div","hint far","More than a day's travel with the job in between. Consider a courier or subcontractor."));
       right.appendChild(drb);
       // STARTS AT (Sam, 28 Sep 2026): optional on a site job. Blank no longer means out all day (2 Oct 2026): its time counts.
