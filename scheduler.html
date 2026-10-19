@@ -630,7 +630,7 @@ var SNAP=null, DETAIL={};
   function inWorkshop(j){ return /^Workshop: (Not Started|In-progress)$/.test(j.stageLabel||""); }
   // WHAT EACH CARD LOOKED LIKE WHEN LAST READ, so a poll can tell which jobs someone else has changed.
   var PLAN_SIG={}, META_SIG={}, ME="";
-  function planSig(saved){ if(!saved) return ""; var c={}; Object.keys(saved).forEach(function(k){ if(k!=="by"&&k!=="at") c[k]=saved[k]; }); return JSON.stringify(c); }
+  function planSig(saved){ if(!saved) return ""; var c={}; Object.keys(saved).forEach(function(k){ if(k!=="savedBy"&&k!=="savedAt") c[k]=saved[k]; }); return JSON.stringify(c); }
   function metaSig(c){ return JSON.stringify([c.name,c.due,c.start,c.role,c.who,c.labels,c.ready_by]); }
   function recordSigs(SNAP){ PLAN_SIG={}; META_SIG={}; SNAP.cards.forEach(function(c){ PLAN_SIG[c.id]=planSig(c.saved); META_SIG[c.id]=metaSig(c); }); }
   function buildFromSnap(SNAP){
@@ -813,7 +813,9 @@ var SNAP=null, DETAIL={};
         legs:LEGS.filter(function(L){return L.parent===j.id;}).map(function(L){ tidyEach(L); return {type:L.type,date:L.date,who:L.who,mins:L.mins,each:L.each||undefined,drive:L.drive,where:L.where,from:L.from||null,by:L.by||null,pc:L.pc||null,src:L.src||null};})};
       var js=JSON.stringify(d); if(lastSaved[j.id]===js) return; lastSaved[j.id]=js; PLAN_SIG[j.id]=js;
       // WHO SAVED IT AND WHEN (18 Oct 2026): so another open Scheduler can say whose change it is pulling in.
-      d.by=ME||undefined; d.at=new Date().toISOString();
+      // NOT by/at (Sam, 19 Oct 2026, B60788: "Starts at 2026-10-19T13:25:25.260Z to"): those are the job's own finish-by and
+      // starts-at times, and the stamp overwrote them on every save. The stamp has its own keys.
+      d.savedBy=ME||undefined; d.savedAt=new Date().toISOString();
       t.set(j.id,"shared","sched",d); syncCardMembers(j.id,d,CRM_KEY,inWorkshop(j));
     });
     var extra=CONTRACTORS.filter(function(c){return ["MAK Installations","Courier","Other contractor"].indexOf(c)<0;});
@@ -3406,7 +3408,7 @@ var SNAP=null, DETAIL={};
   function diffSnap(snap){
     var changed=[], by="", at="", seen={};
     snap.cards.forEach(function(c){ seen[c.id]=1; var ps=planSig(c.saved), ms=metaSig(c);
-      if(PLAN_SIG[c.id]===undefined||PLAN_SIG[c.id]!==ps||META_SIG[c.id]!==ms){ changed.push(c.id); if(c.saved&&c.saved.at&&c.saved.at>at){ at=c.saved.at; by=c.saved.by||""; } } });
+      if(PLAN_SIG[c.id]===undefined||PLAN_SIG[c.id]!==ps||META_SIG[c.id]!==ms){ changed.push(c.id); if(c.saved&&c.saved.savedAt&&c.saved.savedAt>at){ at=c.saved.savedAt; by=c.saved.savedBy||""; } } });
     Object.keys(PLAN_SIG).forEach(function(id){ if(!seen[id]) changed.push(id); });
     return {changed:changed,by:by,at:at};
   }

@@ -14,6 +14,9 @@ var CREW=["Jack C","Jordan I","Bradley H","Rob D","Bart H","Sam C","Ash K"];
 function crewOf(n){ var f=String(n||"").trim().split(/\s+/)[0].toLowerCase(); if(!f) return n; for(var i=0;i<CREW.length;i++){ if(CREW[i].split(" ")[0].toLowerCase()===f) return CREW[i]; } return n; }
 function normWho(a){ return (a||[]).map(crewOf).filter(function(n,i,x){ return x.indexOf(n)===i; }); }
 function normPlan(d){ if(!d||typeof d!=="object") return d;
+  // REPAIR (19 Oct 2026): between 18 and 19 Oct the save stamp wrote a name into by and an ISO timestamp into at. A time is
+  // HH:MM; anything else in those two keys is the stamp and is dropped so the card reads "Not set" instead of nonsense.
+  var hhmm=/^\d{1,2}:\d{2}$/; if(d.at!=null&&!hhmm.test(String(d.at))) delete d.at; if(d.by!=null&&!hhmm.test(String(d.by))) delete d.by;
   // A WORKED-OUT DRIVE STAYS (Sam, 17 Oct 2026: "still not saved it?"). The 28 Sep rule dropped any driveAuto figure on
   // read, in both views, which also dropped Work it out from the postcode the moment the card was reopened. The
   // automatic estimate is still off; a figure somebody asked the map for is theirs.
