@@ -25,6 +25,8 @@
   .hdr .views button{padding:5px 12px;border-radius:6px;background:transparent}
   .hdr .views button.on{background:var(--card);box-shadow:var(--shadow)}
   .hdr button#auto.on{background:var(--blue);color:#fff}
+  .modal .foreign{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:6px 0 8px;padding:8px 12px;border:1px solid #f5cd47;border-left:4px solid #b38600;background:#fff7d6;border-radius:6px;font-size:13px}
+  .modal .foreign button{border:1px solid var(--line);background:var(--card);border-radius:6px;padding:5px 10px;font-weight:600} .modal .foreign button.p{background:var(--blue);color:#fff;border-color:var(--blue)}
   .hdr #upd{margin-left:6px}
   .hdr #need.on{background:#c9372c;color:#fff}
   .board.routes{grid-template-columns:minmax(380px,1.3fr) minmax(340px,1fr);overflow:hidden}
@@ -499,7 +501,9 @@ var SNAP=null, DETAIL={};
     // FACILITY JOBS (Sam, 14 Oct 2026): work around the facility, written as a card on the Operations board and moved to the
     // planning board's Facility Jobs list. Operatives and a time are all it needs: no vehicle, no site, no customer.
     "Facility Jobs":"facility"};
-  function loadBoard(){
+  var LAST_CRM={holds:[],downtime:[],requests:[]};   // the CRM's last answer, reused on the fast ticks that only re-read the cards
+  function loadBoard(opts){
+    opts=opts||{};
     var cardsP=t.cards("id","name","desc","due","start","idList","labels","members","customFieldItems","checklists","badges","shortLink").catch(function(){ return t.cards("all"); });
     return Promise.all([t.lists("all"),cardsP,t.board("name","members"),t.get("board","shared","sched",{})]).then(function(r){
       var lists=r[0], cards=r[1], board=r[2], boardData=r[3];
@@ -521,13 +525,15 @@ var SNAP=null, DETAIL={};
         out.push({id:c.id,short:c.shortLink||"",qc:qcDone(c.badges),name:c.name.trim(),role:role,due:due,start:start,ready_by:ready,labels:(c.labels||[]).map(function(x){return x.name;}),who:(c.members||[]).map(function(m){return (m.fullName||m.username||"").split(" ")[0];}).filter(Boolean),desc:c.desc||"",checks:checks});
       });
       return Promise.all(out.map(function(c){ return t.get(c.id,"shared","sched",null).then(function(d){ c.saved=normPlan(d); return c; }); })).then(function(cs){
-        cs.forEach(function(c){ DETAIL[c.id]={desc:c.desc,checks:c.checks||[]}; });
+        // a fast tick keeps the checklists the CRM gave last time: Trello's client does not send them
+        cs.forEach(function(c){ var was=DETAIL[c.id]; DETAIL[c.id]={desc:c.desc,checks:(c.checks&&c.checks.length)?c.checks:(opts.skipCrm&&was&&was.checks&&was.checks.length?was.checks:(c.checks||[]))}; });
         var snap={board:board.name,crew:CREW,cards:cs,boardData:boardData};
         // date holds from the CRM: ghost cards, counted but never booked here
         if(!CRM_KEY) return snap;
+        if(opts.skipCrm){ snap.holds=LAST_CRM.holds; snap.downtime=LAST_CRM.downtime; snap.requests=LAST_CRM.requests; return snap; }
         // the checklists come through the CRM (Trello's client never gives them to a board page), in the same breath as the holds
         var checksP=fetch(CRM_CHECKLISTS_URL,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({key:CRM_KEY})}).then(function(x){return x.json();}).then(function(r){ if(!(r&&r.ok&&r.cards)) return; cs.forEach(function(c){ var ck=r.cards[c.id]; if(ck&&ck.length){ c.checks=ck; DETAIL[c.id]={desc:c.desc,checks:ck}; } }); }).catch(function(){});
-        return Promise.all([checksP, fetch(CRM_HOLDS_URL,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({key:CRM_KEY})}).then(function(x){return x.json();})]).then(function(rr){ var h=rr[1]; snap.holds=(h&&h.ok&&h.holds)||[]; snap.downtime=(h&&h.ok&&h.downtime)||[]; snap.requests=(h&&h.ok&&h.requests)||[]; return snap; }).catch(function(){ snap.holds=[]; snap.requests=[]; return snap; });
+        return Promise.all([checksP, fetch(CRM_HOLDS_URL,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({key:CRM_KEY})}).then(function(x){return x.json();})]).then(function(rr){ var h=rr[1]; snap.holds=(h&&h.ok&&h.holds)||[]; snap.downtime=(h&&h.ok&&h.downtime)||[]; snap.requests=(h&&h.ok&&h.requests)||[]; LAST_CRM={holds:snap.holds,downtime:snap.downtime,requests:snap.requests}; return snap; }).catch(function(){ snap.holds=[]; snap.requests=[]; return snap; });
       });
     });
   }
@@ -609,7 +615,13 @@ var SNAP=null, DETAIL={};
   function leaveLines(lv){ var out=[], bh=lv.filter(function(l){return l.bh;}); if(bh.length){ var d=bh[0].date; out.push("Bank holiday: "+BANK_HOLIDAYS[d]); } lv.filter(function(l){return !l.bh;}).forEach(function(l){ out.push(l.text); }); return out; }
   function toggleOff(k,w,why){ var list=OFF[k]||[]; var i=list.indexOf(w); if(i>=0){ list.splice(i,1); delete OFF_WHY[k+"|"+w]; } else { list.push(w); if(why) OFF_WHY[k+"|"+w]=why; } OFF[k]=list; if(!list.length) delete OFF[k]; syncOff(); persist(); render(); }
   function inWorkshop(j){ return /^Workshop: (Not Started|In-progress)$/.test(j.stageLabel||""); }
+  // WHAT EACH CARD LOOKED LIKE WHEN LAST READ, so a poll can tell which jobs someone else has changed.
+  var PLAN_SIG={}, META_SIG={}, ME="";
+  function planSig(saved){ if(!saved) return ""; var c={}; Object.keys(saved).forEach(function(k){ if(k!=="by"&&k!=="at") c[k]=saved[k]; }); return JSON.stringify(c); }
+  function metaSig(c){ return JSON.stringify([c.name,c.due,c.start,c.role,c.who,c.labels,c.ready_by]); }
+  function recordSigs(SNAP){ PLAN_SIG={}; META_SIG={}; SNAP.cards.forEach(function(c){ PLAN_SIG[c.id]=planSig(c.saved); META_SIG[c.id]=metaSig(c); }); }
   function buildFromSnap(SNAP){
+    recordSigs(SNAP);
     JOBS=SNAP.cards.filter(function(c){return c.due && c.role!=="leave";}).map(function(c){
     var mv=movementOf(c.labels,c.desc), wk=workOf(c.labels), lb=mv||c.labels[0]||"", title=nice(c.name), subName=c.who.filter(function(w){return TEAM.indexOf(crewOf(w))<0;})[0]||"";
     var j={id:c.id,short:c.short||"",title:title,label:lb,movement:mv,work:wk,labels:c.labels,who:c.who.filter(function(w){return TEAM.indexOf(w)>=0;}),contractor:subName?(subName==="MAK"?"MAK Installations":subName):"",mins:null,out:c.due,notQc:c.role==="ready"&&c.qc===false&&/^(Resale|Refurb)/i.test(wk||"")};   // QC is Resale and Refurb only (29 Sep 2026)
@@ -786,7 +798,10 @@ var SNAP=null, DETAIL={};
     JOBS.forEach(function(j){
       tidyEach(j); var d={date:j.moved?j.moved.from:j.date,who:j.who,mins:j.mins,each:j.each||undefined,drive:j.drive,driveAuto:!!j.driveAuto,at:j.at||undefined,cube:j.cubeSet,ignore:j.ignore&&j.ignore.length?j.ignore:undefined,items:j.manual&&j.manual.length?j.manual:undefined,load:j.load&&j.load.any?{m3:j.load.m3,kg:j.load.kg,complete:j.load.complete,rows:j.load.rows.map(function(r){return {n:r.n,type:r.type,m3:r.m3,kg:r.kg,built:r.built,est:r.est};}),unmatched:j.load.unmatched}:undefined,contractor:j.contractor||"",from:j.from||null,by:j.by||null,collectAt:j.collectAt||undefined,vehicle:j.vehicle||null,vehicles:vansOf(j).length>1?vansOf(j):undefined,soloOk:j.soloOk||"",qc:j.qc||null,done:j.done||null,hireRef:j.hireRef||"",hireFrom:j.hireFrom||"",hireBooked:!!j.hireBooked,prodDue:j.prodDueSet?j.prodDue:null,prep:j.prep?{who:j.prep.who,mins:j.prep.mins,perDay:j.prep.perDay!=null?j.prep.perDay:undefined,each:j.prep.each&&Object.keys(j.prep.each).length?j.prep.each:undefined,start:j.prep.start,date:j.prep.date,done:j.prep.done||null,picked:j.prep.picked&&Object.keys(j.prep.picked).length?j.prep.picked:undefined,stages:j.prep.stages?true:undefined}:(j.donePrep||null),
         legs:LEGS.filter(function(L){return L.parent===j.id;}).map(function(L){ tidyEach(L); return {type:L.type,date:L.date,who:L.who,mins:L.mins,each:L.each||undefined,drive:L.drive,where:L.where,from:L.from||null,by:L.by||null,pc:L.pc||null,src:L.src||null};})};
-      var js=JSON.stringify(d); if(lastSaved[j.id]===js) return; lastSaved[j.id]=js; t.set(j.id,"shared","sched",d); syncCardMembers(j.id,d,CRM_KEY,inWorkshop(j));
+      var js=JSON.stringify(d); if(lastSaved[j.id]===js) return; lastSaved[j.id]=js; PLAN_SIG[j.id]=js;
+      // WHO SAVED IT AND WHEN (18 Oct 2026): so another open Scheduler can say whose change it is pulling in.
+      d.by=ME||undefined; d.at=new Date().toISOString();
+      t.set(j.id,"shared","sched",d); syncCardMembers(j.id,d,CRM_KEY,inWorkshop(j));
     });
     var extra=CONTRACTORS.filter(function(c){return ["MAK Installations","Courier","Other contractor"].indexOf(c)<0;});
     var bd=JSON.stringify({roundDrive:ROUND_DRIVE,roundLegs:ROUND_LEGS,setOffPlaces:PLACES,contractors:extra,vansOff:VANS_OFF,crmKey:CRM_KEY,off:OFF,offWhy:OFF_WHY,dismissed:Object.keys(DISMISSED)}); if(lastSaved.__board!==bd){ lastSaved.__board=bd; t.set("board","shared","sched",{roundDrive:ROUND_DRIVE,roundLegs:ROUND_LEGS,setOffPlaces:PLACES,contractors:extra,vansOff:VANS_OFF,crmKey:CRM_KEY,off:OFF,offWhy:OFF_WHY,dismissed:Object.keys(DISMISSED)}); }
@@ -1109,6 +1124,13 @@ var SNAP=null, DETAIL={};
     if(j.label){ var lb=el("span","lab",j.label); lb.style.background=COL[j.label]||"#626f86"; labs.appendChild(lb); }
     labs.appendChild(el("span","lab stage",j.stageLabel)); ht.appendChild(labs);
     ht.appendChild(el("h3",null,j.title));
+    if(FOREIGN&&FOREIGN.card===(j.isLeg&&j.parentJob?j.parentJob.id:j.id)){
+      var fb=el("div","foreign"); var fw=FOREIGN.by||"Someone else", fat=FOREIGN.at?hhmm(new Date(FOREIGN.at)):"";
+      fb.appendChild(el("span",null,fw+" saved this job"+(fat?" at "+fat:"")+". Reload it to see their change, or carry on and your next save replaces it."));
+      var rb=el("button","p","Reload"); rb.onclick=function(){ var sn=PENDING_SNAP; PENDING_SNAP=null; FOREIGN=null; if(sn) applySnap(sn); };
+      var cb=el("button",null,"Carry on"); cb.onclick=function(){ SEEN_FOREIGN[FOREIGN.card]=FOREIGN.sig; FOREIGN=null; PENDING_SNAP=null; render(); };
+      fb.appendChild(rb); fb.appendChild(cb); ht.appendChild(fb);
+    }
     ht.appendChild(el("div","sub",o.shop?(j.prodDue?"Due "+niceDay(j.prodDue)+", for "+(j.collect?"collection ":"delivery ")+niceDay(j.date):"Production for "+niceDay(j.date)+(j.collect?", customer collecting":"")):(j.start?niceDay(j.start)+" to "+niceDay(j.date)+", "+daysOf(j).length+" days":niceDay(j.date))));
     head.appendChild(ht);
     // Straight to the card (Sam, 16 Sep 2026: "a button to click into the Trello card from here").
@@ -3113,6 +3135,7 @@ var SNAP=null, DETAIL={};
   window.__crewSheetsPdf=crewSheetsPdf; // reachable by check.mjs
   window.__jobs=function(){ return JOBS; }; // reachable by check.mjs
   window.__openOp=function(v){ openOp=v; open=null; openRound=null; render(); }; // reachable by check.mjs
+  window.__refresh=function(auto,fast){ return refreshBoard(auto,fast); }; window.__peek=function(){ return {pending:!!PENDING_SNAP,foreign:FOREIGN,open:open,me:ME}; }; window.__setOpen=function(k){ open=k; openOp=null; openRound=null; render(); }; // reachable by the offline checks
   window.__daySheetBuild=daySheetBuild; // reachable by check.mjs and the offline render
   function routesPdf(){
     var mon=addDays(monday(TODAY),week*7), days=[]; for(var i=0;i<5;i++) days.push(iso(addDays(mon,i)));
@@ -3206,6 +3229,7 @@ var SNAP=null, DETAIL={};
     });
   }
   function render(){
+    if(PENDING_SNAP&&!editorOpen()){ setTimeout(flushPending,0); }
     if(!window.__arrFilled&&JOBS.length){ window.__arrFilled=true; JOBS.forEach(function(j){ if((j.arrive==="delivers"||j.arrive==="both")&&!j.from){ var dd=DETAIL[j.id], t0=arrivalFromDesc(dd?dd.desc:""); if(t0){ j.from=t0; j.fromAuto=true; } } }); }
     persist();
     $("#pdf").onclick=function(){ try{ schedulePdf(); }catch(e){ alert("The PDF could not be built: "+(e&&e.message||e)); } };
@@ -3355,29 +3379,59 @@ var SNAP=null, DETAIL={};
   // else or a van taken off in the CRM stayed invisible until the tab was reopened. Refresh reads it all again now;
   // Auto does it every minute while the tab is visible and nothing is open for editing, so a job being planned is
   // never yanked out from under the person planning it. The choice is remembered on this browser.
-  var AUTO=false; try{ AUTO=localStorage.getItem("sched_auto")==="1"; }catch(e){}
-  var REFRESHING=false, REFRESH_EVERY=60000;
+  var AUTO=true; try{ AUTO=localStorage.getItem("sched_auto")!=="0"; }catch(e){}
+  var REFRESHING=false, POLL_EVERY=10000, CRM_EVERY_TICKS=6, TICK=0;
+  var PENDING_SNAP=null, FOREIGN=null, SEEN_FOREIGN={};   // a change to the job on screen, waiting for the person to choose
   function stampUpd(txt){ var u=$("#upd"); if(u) u.textContent=txt; }
-  function refreshBoard(auto){
+  function hhmm(d){ d=d||new Date(); return pad(d.getHours())+":"+pad(d.getMinutes()); }
+  function editorOpen(){ return !!(open||openRound||openOp||ACT_OPEN||TIMINGS_OPEN); }
+  // the job keys an open editor is standing on: the job itself and its legs share the card
+  function openCardId(){ var o=open?findOpen():null; return o&&o.job?(o.job.isLeg&&o.job.parentJob?o.job.parentJob.id:o.job.id):null; }
+  // which cards differ from what is on screen, and who changed the last one
+  function diffSnap(snap){
+    var changed=[], by="", at="", seen={};
+    snap.cards.forEach(function(c){ seen[c.id]=1; var ps=planSig(c.saved), ms=metaSig(c);
+      if(PLAN_SIG[c.id]===undefined||PLAN_SIG[c.id]!==ps||META_SIG[c.id]!==ms){ changed.push(c.id); if(c.saved&&c.saved.at&&c.saved.at>at){ at=c.saved.at; by=c.saved.by||""; } } });
+    Object.keys(PLAN_SIG).forEach(function(id){ if(!seen[id]) changed.push(id); });
+    return {changed:changed,by:by,at:at};
+  }
+  function applySnap(snap){ buildFromSnap(snap); lastSaved={}; render(); stampUpd("Updated "+hhmm()); }
+  function takeSnap(snap,auto){
+    var d=diffSnap(snap);
+    if(!d.changed.length){ if(auto) stampUpd("Live, checked "+hhmm()); return; }
+    var mine=openCardId();
+    if(auto&&mine&&d.changed.indexOf(mine)>=0){
+      // THE JOB ON SCREEN WAS SAVED BY SOMEONE ELSE. Never pulled out from under the person: they choose.
+      var sig=planSig((snap.cards.filter(function(c){return c.id===mine;})[0]||{}).saved);
+      if(SEEN_FOREIGN[mine]===sig){ return; }   // they said carry on to this version already
+      PENDING_SNAP=snap; FOREIGN={card:mine,by:d.by,at:d.at,sig:sig}; render(); return;
+    }
+    if(auto&&(openRound||openOp||ACT_OPEN||TIMINGS_OPEN)){ PENDING_SNAP=snap; stampUpd("Changes waiting, close this to see them"); return; }
+    PENDING_SNAP=null; FOREIGN=null; applySnap(snap);
+  }
+  function refreshBoard(auto,fast){
     if(!t||REFRESHING) return Promise.resolve();
     if(auto&&document.visibilityState!=="visible") return Promise.resolve();
-    if(auto&&(open||openRound||openOp||ACT_OPEN||TIMINGS_OPEN)){ stampUpd("Will refresh once the job is closed"); return Promise.resolve(); }
-    REFRESHING=true; var b=$("#refresh"); if(b){ b.disabled=true; b.textContent="Refreshing..."; }
-    return loadBoard().then(function(snap){ buildFromSnap(snap); lastSaved={}; render(); var d=new Date(); stampUpd("Updated "+pad(d.getHours())+":"+pad(d.getMinutes())); })
-      .catch(function(){ stampUpd("Could not refresh, press Refresh to try again"); })
+    REFRESHING=true; var b=$("#refresh"); if(b&&!auto){ b.disabled=true; b.textContent="Refreshing..."; }
+    return loadBoard({skipCrm:!!fast}).then(function(snap){ takeSnap(snap,auto); })
+      .catch(function(){ if(!auto) stampUpd("Could not refresh, press Refresh to try again"); })
       .then(function(){ REFRESHING=false; if(b){ b.disabled=false; b.textContent="Refresh"; } });
   }
-  function paintAuto(){ var a=$("#auto"); if(!a) return; a.textContent=AUTO?"Auto refresh: on":"Auto refresh: off"; a.className=AUTO?"on":"";
-    a.title=AUTO?"Reads the board again every minute while this tab is visible and no job is open. Press to turn it off.":"Press to read the board again every minute, so edits made on the cards or in the CRM come through on their own."; }
+  function paintAuto(){ var a=$("#auto"); if(!a) return; a.textContent=AUTO?"Live: on":"Live: off"; a.className=AUTO?"on":"";
+    a.title=AUTO?"Reads the cards every 10 seconds while this tab is visible, so another person's edits show within moments. Press to turn it off.":"Press to read the cards every 10 seconds, so edits made in another open Scheduler come through on their own."; }
   function wireRefresh(){
     var r=$("#refresh"), a=$("#auto"); if(!r||!a) return;
     r.hidden=false; a.hidden=false; paintAuto();
-    r.onclick=function(){ refreshBoard(false); };
-    a.onclick=function(){ AUTO=!AUTO; try{ localStorage.setItem("sched_auto",AUTO?"1":"0"); }catch(e){} paintAuto(); if(AUTO) refreshBoard(true); };
+    r.onclick=function(){ refreshBoard(false,false); };
+    a.onclick=function(){ AUTO=!AUTO; try{ localStorage.setItem("sched_auto",AUTO?"1":"0"); }catch(e){} paintAuto(); if(AUTO) refreshBoard(true,true); else stampUpd(""); };
     // the timer only runs in a real browser tab (the offline checker has no visibility events and must be allowed to exit)
-    try{ document.addEventListener("visibilitychange",function(){ if(AUTO&&document.visibilityState==="visible") refreshBoard(true); }); setInterval(function(){ if(AUTO) refreshBoard(true); },REFRESH_EVERY); }catch(e){}
-    var d=new Date(); stampUpd("Updated "+pad(d.getHours())+":"+pad(d.getMinutes()));
+    try{ document.addEventListener("visibilitychange",function(){ if(AUTO&&document.visibilityState==="visible") refreshBoard(true,true); });
+      setInterval(function(){ if(!AUTO) return; TICK++; refreshBoard(true,TICK%CRM_EVERY_TICKS!==0); },POLL_EVERY); }catch(e){}
+    if(t&&t.member) t.member("fullName").then(function(m){ ME=(m&&m.fullName)||""; }).catch(function(){});
+    stampUpd("Updated "+hhmm());
   }
+  // when an editor closes, anything that arrived meanwhile goes on screen
+  function flushPending(){ if(PENDING_SNAP&&!editorOpen()){ var sn=PENDING_SNAP; PENDING_SNAP=null; FOREIGN=null; applySnap(sn); } }
   if(t){
     $("#src").textContent="Reading the board...";
     loadBoard().then(function(snap){ buildFromSnap(snap); lastSaved={}; wireRefresh(); try{ var rq=new URLSearchParams(location.search).get("round"); if(rq&&/^\d{4}-\d{2}-\d{2}\|/.test(rq)){ dayCur=rq.split("|")[0]; view="day"; openRound=rq; } }catch(e){} render(); if(Object.keys(STALE_LEGS).length){ persist(); STALE_LEGS={}; } refreshDrive(); setTimeout(refreshRounds,1500); fetchTallies().then(function(){ if(view==="day"||view==="manager") render(); }); fetchActuals().then(function(){ render(); }); }).catch(function(e){ $("#src").textContent="Could not read the board: "+(e&&e.message||e); });
