@@ -1636,7 +1636,7 @@ var SNAP=null, DETAIL={};
     veil.appendChild(m); return veil;
   }
   var shortDay=function(k){ var d=new Date(k+"T12:00"); return DAYS[d.getDay()]+" "+d.getDate(); };
-  var niceDay=function(k){ var d=new Date(k+"T12:00"); return DAYS[d.getDay()]+" "+d.getDate()+" "+MON[d.getMonth()]; };
+  var niceDay=function(k){ var d=new Date(k+"T12:00"); return DAYS[d.getDay()]+" "+ordDay(d.getDate())+" "+MON[d.getMonth()]; };
 
   // a small "?" that explains an area in a sentence, on hover or tap
   var TIPS={

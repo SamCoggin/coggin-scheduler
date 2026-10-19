@@ -315,7 +315,9 @@ function workingDaysBefore(iso,n){ var d=new Date(iso+"T12:00"); var left=n; whi
 function productionDue(readyBy,due){ if(readyBy) return readyBy; if(!due) return null; return workingDaysBefore(due,PRODUCTION_BUFFER_DAYS); }
 
 var MON_SHORT=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"], DAY_SHORT=["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
-function niceShort(iso){ var d=new Date(iso+"T12:00"); return DAY_SHORT[d.getDay()]+" "+d.getDate()+" "+MON_SHORT[d.getMonth()]; }
+// 2nd, 3rd, 11th (Sam, 19 Oct 2026: dates on cards and job sheets read "2nd November", as the emails and PDFs do)
+function ordDay(n){ var v=n%100; if(v>=11&&v<=13) return n+"th"; return n+(["th","st","nd","rd"][n%10]||"th"); }
+function niceShort(iso){ var d=new Date(iso+"T12:00"); return DAY_SHORT[d.getDay()]+" "+ordDay(d.getDate())+" "+MON_SHORT[d.getMonth()]; }
 function todayIso(){ var d=new Date(); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
 
 // ── standards: how many operatives a job type needs and how long it should take ──
