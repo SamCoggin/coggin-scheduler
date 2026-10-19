@@ -600,7 +600,9 @@ function prodStatusOf(P,due,today,inShop){
       // WHO IS LATE, when the crew have their own days (19 Oct 2026): "Jordan and Jack finish Fri 30th Oct" rather than
       // the whole crew, because Bradley came off on the Wednesday.
       var lateWho=prepHasSpans(P)?who.filter(function(w){ var ds=prepDaysFor(P,w); return ds.length&&ds[ds.length-1]>due; }):[];
-      if(lateWho.length&&lateWho.length<who.length) return out("late","Due "+niceShort(due)+". "+nameList(lateWho)+(lateWho.length===1?" finishes ":" finish ")+niceShort(P.date)+", "+late+(late===1?" working day":" working days")+" late.",true);
+      if(lateWho.length&&lateWho.length<who.length){ var byDay={}; lateWho.forEach(function(w){ var ds=prepDaysFor(P,w), k=ds[ds.length-1]; (byDay[k]=byDay[k]||[]).push(w); });
+        var bits=Object.keys(byDay).sort().reverse().map(function(k,i){ return nameList(byDay[k])+(i===0?(byDay[k].length===1?" finishes ":" finish "):" ")+niceShort(k); });
+        return out("late","Due "+niceShort(due)+". "+bits.join(", ")+", "+late+(late===1?" working day":" working days")+" late.",true); }
       return out("late","Due "+niceShort(due)+". Booked to finish "+niceShort(P.date)+", "+late+(late===1?" working day":" working days")+" late.",true); }
     return out("ok","Due "+niceShort(due)+". On track, booked to finish "+niceShort(P.date)+".",true); }
   var missing=!P.date?(need===1?"no production day":"no production days"):!who.length?"no operatives":"no time";
@@ -647,7 +649,14 @@ function prepPerDayFor(P,w){ var e=P&&P.each&&P.each[w]; var n=prepDayCount(P)||
 // a person's total: their per-day time over their own days once anyone has their own span, otherwise as before
 function prepMinsFor(P,w){ if(!P) return null; if(!prepHasSpans(P)) return minsFor(P,w); var pd=prepPerDayFor(P,w); return pd==null?null:pd*prepDayCountFor(P,w); }
 function prepSpanText(P,w){ var ds=prepDaysFor(P,w); if(!ds.length) return ""; return (ds.length===1?niceShort(ds[0]):niceShort(ds[0])+" to "+niceShort(ds[ds.length-1]))+", "+ds.length+(ds.length===1?" day":" days"); }
-function stretchPrepWindow(P){ if(!P||!P.days) return; Object.keys(P.days).forEach(function(w){ var r=P.days[w]; if(!r) return; if(r.from&&r.to&&r.from>r.to) r.to=r.from; if(r.from&&(!P.start||r.from<P.start)) P.start=r.from; if(r.to&&(!P.date||r.to>P.date)) P.date=r.to; if(!r.from&&!r.to) delete P.days[w]; }); if(P.start&&P.date&&P.start>P.date) P.start=P.date; if(P.date&&!P.start) P.start=P.date; syncPrepTotal(P); }
+function stretchPrepWindow(P){ if(!P||!P.days) return; var oldStart=P.start, oldDate=P.date;
+  Object.keys(P.days).forEach(function(w){ var r=P.days[w]; if(!r) return; if(r.from&&r.to&&r.from>r.to) r.to=r.from; if(r.from&&(!P.start||r.from<P.start)) P.start=r.from; if(r.to&&(!P.date||r.to>P.date)) P.date=r.to; if(!r.from&&!r.to) delete P.days[w]; });
+  if(P.start&&P.date&&P.start>P.date) P.start=P.date; if(P.date&&!P.start) P.start=P.date;
+  // THE OTHERS KEEP THEIR DAYS when one person stretches the window (19 Oct 2026): Jordan starting a day earlier must not
+  // quietly put everybody else on that day too, so anyone whose blank edge sat on the old boundary is pinned to it.
+  if(oldStart&&P.start<oldStart) (P.who||[]).forEach(function(w){ var r=P.days[w]; if(!r||!r.from){ P.days[w]=P.days[w]||{}; P.days[w].from=oldStart; } });
+  if(oldDate&&P.date>oldDate) (P.who||[]).forEach(function(w){ var r=P.days[w]; if(!r||!r.to){ P.days[w]=P.days[w]||{}; P.days[w].to=oldDate; } });
+  syncPrepTotal(P); }
 function firstName(w){ return String(w||"").split(" ")[0]; }
 function nameList(a){ a=(a||[]).map(firstName); return a.length<=1?a.join(""):a.slice(0,-1).join(", ")+" and "+a[a.length-1]; }
 function syncPrepTotal(P){ if(P&&P.perDay!=null&&P.date){ var n=prepDayCount(P); if(n>1) P.mins=P.perDay*n; else { P.mins=P.perDay; P.perDay=null; } } }
