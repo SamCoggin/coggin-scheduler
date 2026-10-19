@@ -24,6 +24,8 @@
   .hdr .views{display:inline-flex;gap:4px;margin-right:8px;background:var(--list);border-radius:8px;padding:3px}
   .hdr .views button{padding:5px 12px;border-radius:6px;background:transparent}
   .hdr .views button.on{background:var(--card);box-shadow:var(--shadow)}
+  .hdr button#auto.on{background:var(--blue);color:#fff}
+  .hdr #upd{margin-left:6px}
   .hdr #need.on{background:#c9372c;color:#fff}
   .board.routes{grid-template-columns:minmax(380px,1.3fr) minmax(340px,1fr);overflow:hidden}
   .mapwrap{background:var(--list);border:2px solid #3d4451;border-radius:12px;overflow:hidden;display:flex;flex-direction:column;min-height:0}
@@ -467,7 +469,7 @@
   <h1>Scheduler</h1>
   <span class="src" id="src">Reading the board...</span>
   <span class="views"><button id="vday" class="on">Day</button><button id="vweek">Week</button><button id="vmonth">Month</button></span>
-  <button id="need" hidden title="Show only the jobs still missing operatives, time, travel or a vehicle">Outstanding</button><button id="prev">Back</button><span class="t" id="title"></span><button id="next">Next</button><button id="pdf" title="Download as a PDF file" hidden>Download schedule</button><button id="sheets" title="One page per operative for the day in view, to hand out in the morning and hand back at night" hidden>Job sheets</button><button id="guide" title="How to use the Scheduler" hidden>Guide</button><button id="actuals" title="Type in what came back on the day sheet: who did each job and the actual time" hidden>Enter day sheet</button><button id="timings" title="Planned against actual over the last four weeks" hidden>Timings</button>
+  <button id="need" hidden title="Show only the jobs still missing operatives, time, travel or a vehicle">Outstanding</button><button id="prev">Back</button><span class="t" id="title"></span><button id="next">Next</button><button id="pdf" title="Download as a PDF file" hidden>Download schedule</button><button id="sheets" title="One page per operative for the day in view, to hand out in the morning and hand back at night" hidden>Job sheets</button><button id="guide" title="How to use the Scheduler" hidden>Guide</button><button id="actuals" title="Type in what came back on the day sheet: who did each job and the actual time" hidden>Enter day sheet</button><button id="timings" title="Planned against actual over the last four weeks" hidden>Timings</button><button id="refresh" title="Read the board again now, to pull in edits made on the cards or in the CRM" hidden>Refresh</button><button id="auto" hidden>Auto refresh: off</button><span class="src" id="upd"></span>
 </div>
 <div class="strip" id="strip" hidden></div>
 <div class="board" id="board"></div>
@@ -3348,9 +3350,37 @@ var SNAP=null, DETAIL={};
     var mo=ACT_OPEN?actualsModal():TIMINGS_OPEN?timingsModal():openRound?roundModal():openOp?opModal():modal(); if(mo){ document.body.appendChild(mo); if(window.__keepScroll) mo.scrollTop=window.__keepScroll; }
     $("#prev").onclick=function(){week--;render();}; $("#next").onclick=function(){week++;render();};
   }
+  // PULL IN EDITS MADE ELSEWHERE (Sam, 18 Oct 2026: "I need to add a background refresh and toggle for this view to
+  // pull through edits"). The page read the board once on open, so a card moved on Trello, a plan saved by someone
+  // else or a van taken off in the CRM stayed invisible until the tab was reopened. Refresh reads it all again now;
+  // Auto does it every minute while the tab is visible and nothing is open for editing, so a job being planned is
+  // never yanked out from under the person planning it. The choice is remembered on this browser.
+  var AUTO=false; try{ AUTO=localStorage.getItem("sched_auto")==="1"; }catch(e){}
+  var REFRESHING=false, REFRESH_EVERY=60000;
+  function stampUpd(txt){ var u=$("#upd"); if(u) u.textContent=txt; }
+  function refreshBoard(auto){
+    if(!t||REFRESHING) return Promise.resolve();
+    if(auto&&document.visibilityState!=="visible") return Promise.resolve();
+    if(auto&&(open||openRound||openOp||ACT_OPEN||TIMINGS_OPEN)){ stampUpd("Will refresh once the job is closed"); return Promise.resolve(); }
+    REFRESHING=true; var b=$("#refresh"); if(b){ b.disabled=true; b.textContent="Refreshing..."; }
+    return loadBoard().then(function(snap){ buildFromSnap(snap); lastSaved={}; render(); var d=new Date(); stampUpd("Updated "+pad(d.getHours())+":"+pad(d.getMinutes())); })
+      .catch(function(){ stampUpd("Could not refresh, press Refresh to try again"); })
+      .then(function(){ REFRESHING=false; if(b){ b.disabled=false; b.textContent="Refresh"; } });
+  }
+  function paintAuto(){ var a=$("#auto"); if(!a) return; a.textContent=AUTO?"Auto refresh: on":"Auto refresh: off"; a.className=AUTO?"on":"";
+    a.title=AUTO?"Reads the board again every minute while this tab is visible and no job is open. Press to turn it off.":"Press to read the board again every minute, so edits made on the cards or in the CRM come through on their own."; }
+  function wireRefresh(){
+    var r=$("#refresh"), a=$("#auto"); if(!r||!a) return;
+    r.hidden=false; a.hidden=false; paintAuto();
+    r.onclick=function(){ refreshBoard(false); };
+    a.onclick=function(){ AUTO=!AUTO; try{ localStorage.setItem("sched_auto",AUTO?"1":"0"); }catch(e){} paintAuto(); if(AUTO) refreshBoard(true); };
+    // the timer only runs in a real browser tab (the offline checker has no visibility events and must be allowed to exit)
+    try{ document.addEventListener("visibilitychange",function(){ if(AUTO&&document.visibilityState==="visible") refreshBoard(true); }); setInterval(function(){ if(AUTO) refreshBoard(true); },REFRESH_EVERY); }catch(e){}
+    var d=new Date(); stampUpd("Updated "+pad(d.getHours())+":"+pad(d.getMinutes()));
+  }
   if(t){
     $("#src").textContent="Reading the board...";
-    loadBoard().then(function(snap){ buildFromSnap(snap); lastSaved={}; try{ var rq=new URLSearchParams(location.search).get("round"); if(rq&&/^\d{4}-\d{2}-\d{2}\|/.test(rq)){ dayCur=rq.split("|")[0]; view="day"; openRound=rq; } }catch(e){} render(); if(Object.keys(STALE_LEGS).length){ persist(); STALE_LEGS={}; } refreshDrive(); setTimeout(refreshRounds,1500); fetchTallies().then(function(){ if(view==="day"||view==="manager") render(); }); fetchActuals().then(function(){ render(); }); }).catch(function(e){ $("#src").textContent="Could not read the board: "+(e&&e.message||e); });
+    loadBoard().then(function(snap){ buildFromSnap(snap); lastSaved={}; wireRefresh(); try{ var rq=new URLSearchParams(location.search).get("round"); if(rq&&/^\d{4}-\d{2}-\d{2}\|/.test(rq)){ dayCur=rq.split("|")[0]; view="day"; openRound=rq; } }catch(e){} render(); if(Object.keys(STALE_LEGS).length){ persist(); STALE_LEGS={}; } refreshDrive(); setTimeout(refreshRounds,1500); fetchTallies().then(function(){ if(view==="day"||view==="manager") render(); }); fetchActuals().then(function(){ render(); }); }).catch(function(e){ $("#src").textContent="Could not read the board: "+(e&&e.message||e); });
   } else { $("#src").textContent="Open this from the Scheduler button on the Trello board."; }
 })();
 </script>
