@@ -722,7 +722,9 @@ var SNAP=null, DETAIL={};
   // of those days, so everyone showed over capacity). The time per operative is for the whole job, so each day
   // carries its share.
   // a person's share of a production day: the per-day figure, their own when they have one (19 Oct 2026, per-operative days)
-  function prepShare(j,w){ var P=j&&j.prep; if(!P) return 0; var v=w?prepPerDayFor(P,w):prepPerDay(P); return Math.round(v||0); }   // whole minutes (1 Oct 2026: 72h over 11 days showed "1h 12.2727m free")
+  function prepShare(j,w){ var P=j&&j.prep; if(!P) return 0; var v=w?prepPerDayFor(P,w):prepPerDay(P); return Math.round(v||0); }
+  // "Jordan 19 Oct to 30 Oct, Bradley 20 Oct to 21 Oct": each person's own production days, blank when nobody has their own
+  function prepSpansLine(P){ if(!prepHasSpans(P)) return ""; return (P.who||[]).map(function(w){ var ds=prepDaysFor(P,w); if(!ds.length) return firstName(w)+" no days"; return firstName(w)+" "+(ds.length===1?shortDay(ds[0]):shortDay(ds[0])+" to "+shortDay(ds[ds.length-1])); }).join(", "); }   // whole minutes (1 Oct 2026: 72h over 11 days showed "1h 12.2727m free")
   function daysOf(j){ if(!j.start||j.start>=j.date) return [j.date]; var out=[]; for(var d=new Date(j.start+"T12:00");iso(d)<=j.date;d.setDate(d.getDate()+1)){ if(d.getDay()!==0&&d.getDay()!==6) out.push(iso(d)); } return out; }
   // what each person already has on a day, in minutes, for the "who could jump on" hints
   // what a day needs against what it has, with holds counted at their standard crew and time
@@ -2287,7 +2289,7 @@ var SNAP=null, DETAIL={};
       var rows=[], missing=0, styles={};
       var push=function(j,isPrep){ var part=isPrep?j.prep:j, contractorOnly=!isPrep&&j.contractor&&!part.who.length, r=[], flags={};
         r.push({t:(j.work?j.work+", ":"")+j.title,s:isPrep?"Production, required for "+niceDay(j.date):(j.movement||j.label||"")+(j.isHold?", held until "+niceShort(j.holdUntil||j.date):(j.stageLabel?", "+j.stageLabel:""))+(isPrep?"":windowText(j))+(!isPrep&&ourJob(j)&&vehicleText(j)?", "+vehicleText(j):"")});
-        if(j.isHold) r.push("Not yet named"); else if(contractorOnly) r.push({t:j.contractor,s:"Subcontractor"}); else if(part.who.length) r.push(part.who.join(", ")); else { r.push(BLANK); flags[1]=1; missing++; }
+        if(j.isHold) r.push("Not yet named"); else if(contractorOnly) r.push({t:j.contractor,s:"Subcontractor"}); else if(part.who.length) r.push(isPrep&&prepHasSpans(part)?{t:prepWhoOn(part,k).join(", ")||"Nobody today",s:prepSpansLine(part)}:part.who.join(", ")); else { r.push(BLANK); flags[1]=1; missing++; }
         if(j.isHold) r.push(fmt(part.mins)+" at standard"); else if(contractorOnly) r.push("-"); else if(part.mins) r.push(fmt(part.mins)); else { r.push("____ h ____ m"); flags[2]=1; missing++; }
         if(isPrep||!j.site) r.push("-"); else if(contractorOnly||j.isHold) r.push(j.isHold&&j.drive!=null?fmt(j.drive):"-"); else if(j.drive!=null) r.push(fmt(j.drive)+" return"); else { r.push(BLANK); flags[3]=1; missing++; }
         var cube=(!isPrep&&j.site&&!contractorOnly)?cubeOn(j):null;
@@ -2420,7 +2422,7 @@ var SNAP=null, DETAIL={};
     var finished=function(j){ return !!(j.completed||(j.isLeg&&j.parentJob&&j.parentJob.completed)); };
     var leftOff=allJobs().filter(function(j){ return onDay(j,k)&&!j.isHold&&finished(j); }).length;
     prepJobs().filter(function(j){ return !j.isHold&&!finished(j)&&!(j.prep&&j.prep.done&&j.prep.done.status==="done")&&j.prep&&j.prep.date&&daysOf(j.prep).indexOf(k)>=0; }).forEach(function(j){ var nd=daysOf(j.prep).length;
-      A4({key:"p"+j.id,card:j.id,short:j.short||"",pickable:"first"   /* EVERY PRODUCTION DAY (Sam, 2 Oct 2026: big orders like Sketch Studios are picked in phases as workshop space allows, so "picked on day 1" was wrong) */,part:"Production",name:name(j),sub:"",   /* no "Day 10 of 13" (Sam, 2 Oct 2026: "We also do not need the day count") */who:j.prep.who.slice(),contractor:"",mins:function(w){ return Math.round(prepShare(j,w)); },extra:"",at:null,cid:j.short||j.id}); });
+      A4({key:"p"+j.id,card:j.id,short:j.short||"",pickable:"first"   /* EVERY PRODUCTION DAY (Sam, 2 Oct 2026: big orders like Sketch Studios are picked in phases as workshop space allows, so "picked on day 1" was wrong) */,part:"Production",name:name(j),sub:prepSpansLine(j.prep),   /* no "Day 10 of 13" (Sam, 2 Oct 2026: "We also do not need the day count"); each person's own days when they differ (Jack, 19 Oct 2026) */who:prepWhoOn(j.prep,k),contractor:"",mins:function(w){ return Math.round(prepShare(j,w)); },extra:"",at:null,cid:j.short||j.id}); });
     allJobs().filter(function(j){ return onDay(j,k)&&!j.isHold&&!finished(j); }).forEach(function(j){ var pj=j.isLeg&&j.parentJob?j.parentJob:j, cid=pj.short||pj.id;
       var base={key:"j"+j.id,card:j.isLeg?"":j.id,short:j.isLeg?"":(j.short||""),pickable:!j.isLeg&&!j.prep&&!/^(Workshop: Ready|Completed)$/.test(j.stageLabel||"")?"first":"",name:name(j),who:j.who.slice(),contractor:j.who.length?"":(j.contractor||""),mins:function(w){ return minsFor(j,w); },extra:"",at:null,cid:cid};
       if(j.isLeg&&j.leg&&j.leg.type==="production"){ base.part="Production"; base.sub=""; A4(base); return; }
