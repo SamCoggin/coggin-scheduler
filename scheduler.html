@@ -1,5 +1,6 @@
 <title>Coggin Scheduler</title>
 <style>
+    .oplist .opspan{display:flex;align-items:center;gap:6px;padding:2px 12px 8px 12px;font-size:12px;background:#eef2fb}.oplist .opspan input[type=date]{width:auto;flex:0 0 auto;height:26px;padding:1px 6px;font-size:12px;border:1px solid #cbd5e1;border-radius:6px;background:#fff}.oplist .opspan .hint{margin:0;white-space:nowrap}
   :root{ --board:#cfd6e0; --list:#eef0f3; --card:#fff; --text:#172b4d; --muted:#5e6c84; --line:#b8c0cc; --blue:#0c66e4; --blue-bg:#e9f2ff; --red:#c9372c; --red-bg:#ffeceb; --green:#1f845a; --green-bg:#e3fcef; --amber:#974f0c; --amber-bg:#fff7d6; --shadow:0 1px 1px rgba(9,30,66,.25),0 0 1px rgba(9,30,66,.31); }
   @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){ --board:#1d2125; --list:#101204; --card:#22272b; --text:#b6c2cf; --muted:#8c9bab; --line:#4a5661; --blue:#579dff; --blue-bg:#1c2b41; --red:#f87168; --red-bg:#42221f; --green:#4bce97; --green-bg:#1c3329; --amber:#f5cd47; --amber-bg:#3d2e00; --shadow:0 1px 1px rgba(0,0,0,.5); }}
   :root[data-theme="dark"]{ --board:#1d2125; --list:#101204; --card:#22272b; --text:#b6c2cf; --muted:#8c9bab; --line:#4a5661; --blue:#579dff; --blue-bg:#1c2b41; --red:#f87168; --red-bg:#42221f; --green:#4bce97; --green-bg:#1c3329; --amber:#f5cd47; --amber-bg:#3d2e00; --shadow:0 1px 1px rgba(0,0,0,.5); }
@@ -635,6 +636,10 @@ var SNAP=null, DETAIL={};
   function recordSigs(SNAP){ PLAN_SIG={}; META_SIG={}; SNAP.cards.forEach(function(c){ PLAN_SIG[c.id]=planSig(c.saved); META_SIG[c.id]=metaSig(c); }); }
   function buildFromSnap(SNAP){
     recordSigs(SNAP);
+    // START CLEAN (Sam, 19 Oct 2026: sixteen copies of "load the courier"). The live refresh rebuilds JOBS from the snapshot but
+    // LEGS kept growing: every rebuild pushed each card's legs again and the next save wrote the copies back. Legs are
+    // rebuilt from the saved plan every time, so the list starts empty, and duplicates already saved collapse on load.
+    LEGS=[]; STALE_LEGS={};
     JOBS=SNAP.cards.filter(function(c){return c.due && c.role!=="leave";}).map(function(c){
     var mv=movementOf(c.labels,c.desc), wk=workOf(c.labels), lb=mv||c.labels[0]||"", title=nice(c.name), subName=c.who.filter(function(w){return TEAM.indexOf(crewOf(w))<0;})[0]||"";
     var j={id:c.id,short:c.short||"",title:title,label:lb,movement:mv,work:wk,labels:c.labels,who:c.who.filter(function(w){return TEAM.indexOf(w)>=0;}),contractor:subName?(subName==="MAK"?"MAK Installations":subName):"",mins:null,out:c.due,notQc:c.role==="ready"&&c.qc===false&&/^(Resale|Refurb)/i.test(wk||"")};   // QC is Resale and Refurb only (29 Sep 2026)
@@ -675,7 +680,7 @@ var SNAP=null, DETAIL={};
       // who worked on it and when, so it is kept, saved back unchanged, and its hours stay on those days as finished work.
       if(d.prep&&!j.prep&&d.prep.date) j.donePrep=d.prep;
       if(d.prodDue&&j.prep){ j.prodDue=d.prodDue; j.prodDueSet=true; }
-      (d.legs||[]).forEach(function(L){ LEGS.push({parent:j.id,type:(L.type==="yard"||L.type==="warehouse")?"labour":L.type,date:L.date,who:L.who||[],mins:L.mins,each:L.each||undefined,drive:L.drive,where:L.where||"",from:L.from||null,by:L.by||null,pc:L.pc||null,src:L.src||null}); });
+      var seenLeg={}; (d.legs||[]).filter(function(L){ var sig=JSON.stringify([L.type,L.date,L.where||"",L.who||[],L.mins,L.drive,L.from||null,L.by||null,L.src||null]); if(seenLeg[sig]) return false; seenLeg[sig]=true; return true; }).forEach(function(L){ LEGS.push({parent:j.id,type:(L.type==="yard"||L.type==="warehouse")?"labour":L.type,date:L.date,who:L.who||[],mins:L.mins,each:L.each||undefined,drive:L.drive,where:L.where||"",from:L.from||null,by:L.by||null,pc:L.pc||null,src:L.src||null}); });
     });
     // legs the CRM wrote on the card: seed them once, then the plan on the card owns them
     JOBS.forEach(function(j){ if(LEGS.some(function(L){return L.parent===j.id;})) return; var dd=DETAIL[j.id]; if(!dd) return;
@@ -1257,7 +1262,7 @@ var SNAP=null, DETAIL={};
         render(); }; pl.appendChild(row);
       // THEIR OWN DAYS (Jack, 19 Oct 2026): on a production over several days each assigned person can be narrowed to
       // their own from and to. Blank means the whole window; the window stretches to fit what is typed.
-      if(o.shop&&on&&prepDayCount(part)>1){ var sp=part.days&&part.days[w]||{}; var dr=el("div","row opspan"); dr.appendChild(el("span","hint","on"));
+      if(o.shop&&on&&prepDayCount(part)>1){ var sp=part.days&&part.days[w]||{}; var dr=el("div","opspan"); dr.appendChild(el("span","hint","Days"));
         var f1=el("input"); f1.type="date"; f1.value=sp.from||part.start||""; f1.setAttribute("aria-label",w+" from"); var f2=el("input"); f2.type="date"; f2.value=sp.to||part.date||""; f2.setAttribute("aria-label",w+" to");
         var setSpan=function(){ part.days=part.days||{}; var fr=f1.value||null, to=f2.value||null; if((!fr||fr===part.start)&&(!to||to===part.date)) delete part.days[w]; else part.days[w]={from:fr,to:to}; stretchPrepWindow(part); persist(); render(); };
         f1.onchange=setSpan; f2.onchange=setSpan; dr.appendChild(f1); dr.appendChild(el("span","hint","to")); dr.appendChild(f2); dr.appendChild(el("span","hint",prepSpanFor(part,w)?prepDaysFor(part,w).length+" of "+prepDayCount(part)+" days":"whole window")); pl.appendChild(dr); } });
