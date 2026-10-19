@@ -669,7 +669,7 @@ var SNAP=null, DETAIL={};
       if(d.who) j.who=d.who.slice(); if(d.cube!=null) j.cubeSet=d.cube; if(d.ignore&&d.ignore.length){ j.ignore=d.ignore.slice(); j.items=j.allItems.filter(function(l){return j.ignore.indexOf(l)<0;}); } if(d.items&&d.items.length){ j.manual=d.items.slice(); } j.load=loadOf(j.items.concat(j.manual).concat(j.loanItems||[])); if(d.mins!=null) j.mins=d.mins; if(d.each) j.each=d.each; if(d.at) j.at=d.at; if(d.drive!=null) j.drive=d.drive; if(d.driveAuto) j.driveAuto=true; /* A worked-out figure STAYS (Sam, 17 Oct 2026: "not saving"): the 28 Sep switch-off wiped any saved driveAuto on load, which also wiped Work it out from the postcode. The automatic estimate is still off; a figure someone asked for is kept. */ if(d.contractor) j.contractor=d.contractor; if(d.from) j.from=d.from; if(d.by) j.by=d.by; if(d.collectAt) j.collectAt=d.collectAt; if(d.vehicles&&d.vehicles.length) setVans(j,d.vehicles); else if(d.vehicle) setVans(j,[d.vehicle]); if(d.soloOk) j.soloOk=d.soloOk; if(d.qc&&d.qc.by) j.qc=d.qc; if(d.done&&d.done.status) j.done=(d.done.status==="no"&&d.date&&d.date!==j.date)?null:d.done;   // a did-not-go record clears once the card has a new date
       // DATE MOVED (Sam, 13 Sep 2026): the plan remembers the date it was made for. If sales move the card, the plan flags itself until someone presses Replanned.
       if(d.date&&d.date!==j.date&&((d.who&&d.who.length)||d.mins!=null||d.vehicle)) j.moved={from:d.date}; if(d.hireRef) j.hireRef=d.hireRef; if(d.hireFrom) j.hireFrom=d.hireFrom; if(d.hireBooked) j.hireBooked=true;
-      if(d.prep&&j.prep){ j.prep.who=d.prep.who||[]; j.prep.mins=d.prep.mins; j.prep.perDay=d.prep.perDay!=null?d.prep.perDay:null; if(d.prep.each) j.prep.each=d.prep.each; j.prep.start=d.prep.start||null; j.prep.date=d.prep.date||null; if(d.prep.done&&d.prep.done.status) j.prep.done=d.prep.done; if(d.prep.picked) j.prep.picked=d.prep.picked; if(d.prep.stages) j.prep.stages=true; }
+      if(d.prep&&j.prep){ j.prep.who=d.prep.who||[]; j.prep.mins=d.prep.mins; j.prep.perDay=d.prep.perDay!=null?d.prep.perDay:null; if(d.prep.each) j.prep.each=d.prep.each; j.prep.start=d.prep.start||null; j.prep.date=d.prep.date||null; if(d.prep.done&&d.prep.done.status) j.prep.done=d.prep.done; if(d.prep.picked) j.prep.picked=d.prep.picked; if(d.prep.stages) j.prep.stages=true; if(d.prep.days) j.prep.days=d.prep.days; }
       // FINISHED PRODUCTION KEEPS ITS PLAN (Sam, 2 Oct 2026: "I don't think is taking into concideration they have also
       // completed to other jobs"): a card moved on to Ready or beyond has no production part any more, but the plan says
       // who worked on it and when, so it is kept, saved back unchanged, and its hours stay on those days as finished work.
@@ -721,7 +721,8 @@ var SNAP=null, DETAIL={};
   // PRODUCTION SPREAD OVER ITS DAYS (Sam, 18 Sep 2026: a 50h job set from Tue 22 to Tue 29 read as 50h on every one
   // of those days, so everyone showed over capacity). The time per operative is for the whole job, so each day
   // carries its share.
-  function prepShare(j,w){ var n=(j&&j.prep)?(daysOf(j.prep).length||1):1; var m=w?minsFor(j.prep,w):((j&&j.prep&&j.prep.mins)||0); return Math.round((m||0)/n); }   // whole minutes (1 Oct 2026: 72h over 11 days showed "1h 12.2727m free")
+  // a person's share of a production day: the per-day figure, their own when they have one (19 Oct 2026, per-operative days)
+  function prepShare(j,w){ var P=j&&j.prep; if(!P) return 0; var v=w?prepPerDayFor(P,w):prepPerDay(P); return Math.round(v||0); }   // whole minutes (1 Oct 2026: 72h over 11 days showed "1h 12.2727m free")
   function daysOf(j){ if(!j.start||j.start>=j.date) return [j.date]; var out=[]; for(var d=new Date(j.start+"T12:00");iso(d)<=j.date;d.setDate(d.getDate()+1)){ if(d.getDay()!==0&&d.getDay()!==6) out.push(iso(d)); } return out; }
   // what each person already has on a day, in minutes, for the "who could jump on" hints
   // what a day needs against what it has, with holds counted at their standard crew and time
@@ -732,7 +733,7 @@ var SNAP=null, DETAIL={};
     var avail=FIELD_CREW.filter(function(w){return off.indexOf(w)<0;}).length*DAY_MINS;
     var need=0, trips=0;
     jobs.forEach(function(j){ if(j.contractor&&!j.who.length) return; var fw=j.who.filter(function(w){return FIELD_CREW.indexOf(w)>=0;}); if(j.who.length&&!fw.length){ if(j.site) trips+=1; return; } var crew=j.isHold?(j.holdCrew!=null?j.holdCrew:2):Math.max(1,fw.length); var own=(!j.isHold&&fw.length)?fw.reduce(function(t,w){return t+(minsFor(j,w)||0);},0):(j.mins||0)*crew; need+=own+(j.site?(j.drive||0)*crew:0); if(j.site) trips+=1; });
-    preps.forEach(function(j){ var pw=j.prep.who.filter(function(w){return FIELD_CREW.indexOf(w)>=0;}); if(j.prep.who.length&&!pw.length) return; need+=(!j.isHold&&pw.length)?pw.reduce(function(t,w){return t+prepShare(j,w);},0):prepShare(j)*(j.isHold?(j.prep.crew||1):1); });
+    preps.forEach(function(j){ var pw=prepWhoOn(j.prep,k).filter(function(w){return FIELD_CREW.indexOf(w)>=0;}); if(j.prep.who.length&&!pw.length) return; need+=(!j.isHold&&pw.length)?pw.reduce(function(t,w){return t+prepShare(j,w);},0):prepShare(j)*(j.isHold?(j.prep.crew||1):1); });
     var rounds=roundsOn(k,jobs); trips=Math.max(0,trips-rounds.reduce(function(t,r){return t+r.stops.length-1;},0));
     var vans=vansOnRoad(k);
     return {need:need,avail:avail,overTime:need>avail,trips:trips,vans:vans,overVans:trips>vans,holds:jobs.filter(function(j){return j.isHold;}).length};
@@ -742,7 +743,7 @@ var SNAP=null, DETAIL={};
     var off=LEAVE.filter(function(l){return l.date===k;}).map(function(l){return crewOf(l.text.split(" ")[0]);});
     TEAM.forEach(function(w){
       if(off.indexOf(w)>=0){ var lvw=LEAVE.filter(function(l){return l.date===k&&crewOf(l.text.split(" ")[0])===w;})[0]; out[w]={t:lvw&&lvw.bh?"bank holiday":lvw&&lvw.off?"off today":"annual leave",c:"off",mins:0,rec:0,avail:0,s:"Off",d:lvw&&lvw.bh?"bank holiday":lvw&&lvw.off?"off today":"annual leave",r:3}; return; }
-      var mine=jobs.filter(function(j){return j.who.indexOf(w)>=0;}), myPreps=preps.filter(function(j){return j.prep.who.indexOf(w)>=0;}), myRound=rounds.filter(function(r){return r.who===w;})[0];
+      var mine=jobs.filter(function(j){return j.who.indexOf(w)>=0;}), myPreps=preps.filter(function(j){return prepOn(j.prep,w,k);}), myRound=rounds.filter(function(r){return r.who===w;})[0];
       var mins=mine.reduce(function(s,j){return s+(minsFor(j,w)||0)+(j.site&&!j.onRound?(j.drive||0):0);},0)+(myRound&&myRound.drive?myRound.drive:0)+myPreps.reduce(function(s,j){return s+prepShare(j,w);},0);
       var n=mine.length+myPreps.length;
       // WHAT IS ALREADY DONE TODAY (Sam, 2 Oct 2026: "I want it automated when the job card moves to complete"): a card in a
@@ -809,7 +810,7 @@ var SNAP=null, DETAIL={};
   function persist(){
     if(!t) return;
     JOBS.forEach(function(j){
-      tidyEach(j); var d={date:j.moved?j.moved.from:j.date,who:j.who,mins:j.mins,each:j.each||undefined,drive:j.drive,driveAuto:!!j.driveAuto,at:j.at||undefined,cube:j.cubeSet,ignore:j.ignore&&j.ignore.length?j.ignore:undefined,items:j.manual&&j.manual.length?j.manual:undefined,load:j.load&&j.load.any?{m3:j.load.m3,kg:j.load.kg,complete:j.load.complete,rows:j.load.rows.map(function(r){return {n:r.n,type:r.type,m3:r.m3,kg:r.kg,built:r.built,est:r.est};}),unmatched:j.load.unmatched}:undefined,contractor:j.contractor||"",from:j.from||null,by:j.by||null,collectAt:j.collectAt||undefined,vehicle:j.vehicle||null,vehicles:vansOf(j).length>1?vansOf(j):undefined,soloOk:j.soloOk||"",qc:j.qc||null,done:j.done||null,hireRef:j.hireRef||"",hireFrom:j.hireFrom||"",hireBooked:!!j.hireBooked,prodDue:j.prodDueSet?j.prodDue:null,prep:j.prep?{who:j.prep.who,mins:j.prep.mins,perDay:j.prep.perDay!=null?j.prep.perDay:undefined,each:j.prep.each&&Object.keys(j.prep.each).length?j.prep.each:undefined,start:j.prep.start,date:j.prep.date,done:j.prep.done||null,picked:j.prep.picked&&Object.keys(j.prep.picked).length?j.prep.picked:undefined,stages:j.prep.stages?true:undefined}:(j.donePrep||null),
+      tidyEach(j); var d={date:j.moved?j.moved.from:j.date,who:j.who,mins:j.mins,each:j.each||undefined,drive:j.drive,driveAuto:!!j.driveAuto,at:j.at||undefined,cube:j.cubeSet,ignore:j.ignore&&j.ignore.length?j.ignore:undefined,items:j.manual&&j.manual.length?j.manual:undefined,load:j.load&&j.load.any?{m3:j.load.m3,kg:j.load.kg,complete:j.load.complete,rows:j.load.rows.map(function(r){return {n:r.n,type:r.type,m3:r.m3,kg:r.kg,built:r.built,est:r.est};}),unmatched:j.load.unmatched}:undefined,contractor:j.contractor||"",from:j.from||null,by:j.by||null,collectAt:j.collectAt||undefined,vehicle:j.vehicle||null,vehicles:vansOf(j).length>1?vansOf(j):undefined,soloOk:j.soloOk||"",qc:j.qc||null,done:j.done||null,hireRef:j.hireRef||"",hireFrom:j.hireFrom||"",hireBooked:!!j.hireBooked,prodDue:j.prodDueSet?j.prodDue:null,prep:j.prep?{who:j.prep.who,mins:j.prep.mins,perDay:j.prep.perDay!=null?j.prep.perDay:undefined,each:j.prep.each&&Object.keys(j.prep.each).length?j.prep.each:undefined,start:j.prep.start,date:j.prep.date,done:j.prep.done||null,picked:j.prep.picked&&Object.keys(j.prep.picked).length?j.prep.picked:undefined,stages:j.prep.stages?true:undefined,days:j.prep.days&&Object.keys(j.prep.days).length?j.prep.days:undefined}:(j.donePrep||null),
         legs:LEGS.filter(function(L){return L.parent===j.id;}).map(function(L){ tidyEach(L); return {type:L.type,date:L.date,who:L.who,mins:L.mins,each:L.each||undefined,drive:L.drive,where:L.where,from:L.from||null,by:L.by||null,pc:L.pc||null,src:L.src||null};})};
       var js=JSON.stringify(d); if(lastSaved[j.id]===js) return; lastSaved[j.id]=js; PLAN_SIG[j.id]=js;
       // WHO SAVED IT AND WHEN (18 Oct 2026): so another open Scheduler can say whose change it is pulling in.
@@ -896,7 +897,7 @@ var SNAP=null, DETAIL={};
   function dayParts(k){
     var out=[];
     prepJobs().filter(function(j){ return !j.isHold&&j.prep&&j.prep.date&&daysOf(j.prep).indexOf(k)>=0; }).forEach(function(j){
-      var w0=j.prep.who[0]; out.push({key:k+"|"+j.id+"|prep",card:j.id,part:"production",title:jobName(j),sub:"Production",work:j.work||"",movement:j.movement||"",who:j.prep.who.slice(),mins:j.prep.mins!=null?Math.round(prepShare(j,w0)):null}); });
+      var dayWho=prepWhoOn(j.prep,k); if(j.prep.who.length&&!dayWho.length) return; var w0=dayWho[0]; out.push({key:k+"|"+j.id+"|prep",card:j.id,part:"production",title:jobName(j),sub:"Production",work:j.work||"",movement:j.movement||"",who:dayWho,mins:j.prep.mins!=null?Math.round(prepShare(j,w0)):null}); });
     allJobs().filter(function(j){ return onDay(j,k)&&!j.isHold&&!(j.contractor&&!j.who.length); }).forEach(function(j){
       if(j.isLeg&&j.leg){ var pj=j.parentJob||j, part=j.leg.type==="production"?"production":(j.leg.type==="labour"?"labour":"transport");
         out.push({key:k+"|"+pj.id+"|"+j.leg.type+"|"+(j.leg.where||""),card:pj.id,part:part,title:jobName(pj),sub:(part==="production"?"Production":"Goods In and Out")+(j.leg.where?", "+j.leg.where:""),work:pj.work||"",movement:j.leg.type,who:(j.who||[]).slice(),mins:j.mins!=null?j.mins:null}); return; }
@@ -1033,7 +1034,7 @@ var SNAP=null, DETAIL={};
   function dayTimeline(k,w){
     var dj=allJobs().filter(function(j){return onDay(j,k)&&!j.isHold;}), jobs=dj.filter(function(j){return j.who.indexOf(w)>=0;});
     var site=jobs.filter(function(j){return j.site;}), other=jobs.filter(function(j){return !j.site;});
-    var preps=prepJobs().filter(function(j){return j.prep&&j.prep.date&&daysOf(j.prep).indexOf(k)>=0&&j.prep.who.indexOf(w)>=0;});
+    var preps=prepJobs().filter(function(j){return j.prep&&j.prep.date&&prepOn(j.prep,w,k);});
     var t=DAY_START, drive=0, stops=[], taken={}, brk=[];
     if(site.length){
       var rs=roundsOn(k,dj).filter(function(r){return r.who===w;})[0], ordered=windowOrder(site);
@@ -1046,7 +1047,7 @@ var SNAP=null, DETAIL={};
         stops.push({j:j,arrive:arrive,start:st,end:t,wait:wait,by:by,late:by!=null&&t>by,noDrive:leg==null}); t=breakAt(t,taken,brk); });
       if(realLegs){ var lgb=realLegs[li]||0; t+=lgb+breakDuring(t,lgb,taken,brk); drive+=lgb; } else if(leg!=null){ t+=leg+breakDuring(t,leg,taken,brk); drive+=leg; }
     }
-    var back=t; other.forEach(function(j){ t=breakAt(t,taken,brk); t+=(j.mins||0); }); preps.forEach(function(j){ t=breakAt(t,taken,brk); t+=(j.prep.who.length?j.prep.who.reduce(function(x,w){return x+prepShare(j,w);},0):prepShare(j)); }); t=breakAt(t,taken,brk);
+    var back=t; other.forEach(function(j){ t=breakAt(t,taken,brk); t+=(j.mins||0); }); preps.forEach(function(j){ t=breakAt(t,taken,brk); t+=(j.prep.who.length?prepWhoOn(j.prep,k).reduce(function(x,w){return x+prepShare(j,w);},0):prepShare(j)); }); t=breakAt(t,taken,brk);
     var isDriver=CAN_DRIVE.indexOf(w)>=0&&site.length>0;
     return {stops:stops,drive:Math.round(drive),back:back,breaks:brk,end:t,isDriver:isDriver,driveOver:isDriver&&drive>DRIVE_MAX,longDay:isDriver&&(t-DAY_START)>DRIVER_DAY_MAX};
   }
@@ -1251,7 +1252,13 @@ var SNAP=null, DETAIL={};
       row.onclick=function(){ var i=part.who.indexOf(w); if(i<0) part.who.push(w); else part.who.splice(i,1);
         // a time cannot be missed (Sam, 14 Sep 2026): the first operative on brings the estimated time with them
         if(part.who.length&&part.mins==null){ var sf=o.shop?prodStandardFor(j.load,part.who.length,j.prodDue?Math.max(1,workDaysBetween((part.start&&part.start>iso(TODAY)?part.start:iso(TODAY)),j.prodDue)):1):((!contractorOnly&&!attending(j)&&!j.isLeg)?standardFor(j.movement||j.label,j.load):null); if(sf&&sf.mins!=null) part.mins=sf.mins; }
-        render(); }; pl.appendChild(row); });
+        render(); }; pl.appendChild(row);
+      // THEIR OWN DAYS (Jack, 19 Oct 2026): on a production over several days each assigned person can be narrowed to
+      // their own from and to. Blank means the whole window; the window stretches to fit what is typed.
+      if(o.shop&&on&&prepDayCount(part)>1){ var sp=part.days&&part.days[w]||{}; var dr=el("div","row opspan"); dr.appendChild(el("span","hint","on"));
+        var f1=el("input"); f1.type="date"; f1.value=sp.from||part.start||""; f1.setAttribute("aria-label",w+" from"); var f2=el("input"); f2.type="date"; f2.value=sp.to||part.date||""; f2.setAttribute("aria-label",w+" to");
+        var setSpan=function(){ part.days=part.days||{}; var fr=f1.value||null, to=f2.value||null; if((!fr||fr===part.start)&&(!to||to===part.date)) delete part.days[w]; else part.days[w]={from:fr,to:to}; stretchPrepWindow(part); persist(); render(); };
+        f1.onchange=setSpan; f2.onchange=setSpan; dr.appendChild(f1); dr.appendChild(el("span","hint","to")); dr.appendChild(f2); dr.appendChild(el("span","hint",prepSpanFor(part,w)?prepDaysFor(part,w).length+" of "+prepDayCount(part)+" days":"whole window")); pl.appendChild(dr); } });
     var setMins=function(v){ part.mins=v; if(part.leg) part.leg.mins=v; }, setDrive=function(v){ part.drive=v; part.driveAuto=false; if(part.leg) part.leg.drive=v; };
     wb.appendChild(pl);
     if(!freeN) wb.appendChild(el("div","hint","No operative is free "+(prodDays.length>1?"on every day from "+shortDay(prodDays[0])+" to "+shortDay(prodDays[prodDays.length-1]):"all day on "+shortDay(prodDays[0]||dayK))+"."));
@@ -1295,7 +1302,8 @@ var SNAP=null, DETAIL={};
       pdr.appendChild(el("span","hint",j.prodDueSet?"Set by you.":PRODUCTION_BUFFER_DAYS+" working days before delivery. Change it if this job needs more or less.")); pb.appendChild(pdr);
       if(j.prep.date&&j.prep.date>j.prodDue) pb.appendChild(el("div","hint far","Production is scheduled to finish "+niceDay(j.prep.date)+", after it is due."));
       var pr=el("div","prep"); pr.appendChild(el("div",null,(j.prep.date?niceDay(j.prep.start)+(j.prep.start!==j.prep.date?" to "+niceDay(j.prep.date):""):"Not scheduled")));
-      pr.appendChild(el("div","hint",(j.prep.who.length?j.prep.who.join(", "):"no operatives assigned")+(j.prep.mins!=null?", "+fmt(j.prep.mins)+" each":", no time allocated")));
+      if(prepHasSpans(j.prep)) j.prep.who.forEach(function(w){ pr.appendChild(el("div","hint",w+": "+prepSpanText(j.prep,w))); });
+      else pr.appendChild(el("div","hint",(j.prep.who.length?j.prep.who.join(", "):"no operatives assigned")+(j.prep.mins!=null?", "+fmt(j.prep.mins)+" each":", no time allocated")));
       var eb=el("button","close",j.prep.date?"Edit":"Schedule"); eb.onclick=function(){ open=j.id+":prep"; render(); }; pr.appendChild(eb); pb.appendChild(pr); right.appendChild(pb); }
     if(!o.shop && !o.leg && j.site){ var cb=block("Transported By","contractor"); var sel=el("select"); [["","Our operatives"]].concat(CONTRACTORS.map(function(c){return [c,c];})).forEach(function(op){ var o2=el("option",null,op[1]); o2.value=op[0]; if((j.contractor||"")===op[0]) o2.selected=true; sel.appendChild(o2); });
       sel.onchange=function(){ j.contractor=sel.value; render(); }; cb.appendChild(sel);
@@ -3078,7 +3086,7 @@ var SNAP=null, DETAIL={};
     people.forEach(function(w){
       if(!firstPage) doc.addPage(); firstPage=false;
       var tl=dayTimeline(k,w), jobs=dj.filter(function(j){return j.who.indexOf(w)>=0;}), labour=jobs.filter(function(j){return !j.site;});
-      var preps=prepJobs().filter(function(j){return j.prep&&j.prep.date&&daysOf(j.prep).indexOf(k)>=0&&j.prep.who.indexOf(w)>=0;});
+      var preps=prepJobs().filter(function(j){return j.prep&&j.prep.date&&prepOn(j.prep,w,k);});
       var mates={}; jobs.forEach(function(j){ j.who.forEach(function(x){ if(x!==w) mates[x]=1; }); }); var mateList=Object.keys(mates);
       var vans=[]; jobs.forEach(function(j){ var vt=vehicleText(j); if(vt&&vt!=="No vehicle"&&vans.indexOf(vt)<0) vans.push(vt); });
       doc.setFont("helvetica","bold"); doc.setFontSize(20); doc.setTextColor(17,17,17); doc.text(w+", "+niceDay(k),12,17);
@@ -3306,7 +3314,7 @@ var SNAP=null, DETAIL={};
       var heldMins=jobs.filter(function(j){return j.isHold;}).reduce(function(t,j){return t+(j.mins||0)*(j.holdCrew||2)+(j.site?(j.drive||0)*(j.holdCrew||2):0);},0);
       var heldChip=heldMins?el("span","chip todo","Held "+fmt(heldMins)):null;
       TEAM.forEach(function(w){
-        var mine=jobs.filter(function(j){return j.who.indexOf(w)>=0;}), myPreps=preps.filter(function(j){return j.prep.who.indexOf(w)>=0;});
+        var mine=jobs.filter(function(j){return j.who.indexOf(w)>=0;}), myPreps=preps.filter(function(j){return prepOn(j.prep,w,k);});
         var myRound=rounds.filter(function(r){return r.who===w;})[0];
         var mins=mine.reduce(function(s,j){return s+(minsFor(j,w)||0)+(j.site&&!j.onRound?(j.drive||0):0);},0)+(myRound&&myRound.drive?myRound.drive:0);
         mins+=myPreps.reduce(function(s,j){return s+prepShare(j,w);},0);

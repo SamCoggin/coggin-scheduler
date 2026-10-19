@@ -444,7 +444,7 @@ function eachPersonBox(mk,part,o){ o=o||{}; var div=o.div||1, who=(part&&part.wh
   box.appendChild(mk("div","each-f","Type a time only for someone on it for less or more. \u21ba puts them back on the main time."));
   return box; }
 // what the crew are actually giving a production job, in crew minutes
-function plannedProdMins(part){ return ((part&&part.who)||[]).reduce(function(t,w){ var m=minsFor(part,w); return t+(m||0); },0); }
+function plannedProdMins(part){ return ((part&&part.who)||[]).reduce(function(t,w){ var m=prepMinsFor(part,w); return t+(m||0); },0); }
 function aboveProdStandard(std,who,mins,start,end){
   if(!std||!who||!who.length||mins==null) return null; var out=[];
   var allocated=mins*who.length, allowed=std.work*(who.length>1?1.1:1);
@@ -596,7 +596,12 @@ function prodStatusOf(P,due,today,inShop){
   var need=P.mins!=null?Math.max(1,Math.ceil(P.mins/DAY_MINS)):null, start=need==null?null:(need>1?workingDaysBefore(due,need-1):due);
   var out=function(cls,text,planned){ return {cls:cls,text:text,full:text,start:start,need:need,planned:!!planned}; };
   if(P.date&&who.length&&P.mins!=null){
-    if(P.date>due){ var late=workDaysBetween(due,P.date)-1; return out("late","Due "+niceShort(due)+". Booked to finish "+niceShort(P.date)+", "+late+(late===1?" working day":" working days")+" late.",true); }
+    if(P.date>due){ var late=workDaysBetween(due,P.date)-1;
+      // WHO IS LATE, when the crew have their own days (19 Oct 2026): "Jordan and Jack finish Fri 30th Oct" rather than
+      // the whole crew, because Bradley came off on the Wednesday.
+      var lateWho=prepHasSpans(P)?who.filter(function(w){ var ds=prepDaysFor(P,w); return ds.length&&ds[ds.length-1]>due; }):[];
+      if(lateWho.length&&lateWho.length<who.length) return out("late","Due "+niceShort(due)+". "+nameList(lateWho)+(lateWho.length===1?" finishes ":" finish ")+niceShort(P.date)+", "+late+(late===1?" working day":" working days")+" late.",true);
+      return out("late","Due "+niceShort(due)+". Booked to finish "+niceShort(P.date)+", "+late+(late===1?" working day":" working days")+" late.",true); }
     return out("ok","Due "+niceShort(due)+". On track, booked to finish "+niceShort(P.date)+".",true); }
   var missing=!P.date?(need===1?"no production day":"no production days"):!who.length?"no operatives":"no time";
   if(!start){
@@ -625,6 +630,26 @@ function minsLeftOn(k){ var n=new Date(), t=n.getFullYear()+"-"+String(n.getMont
 function prepDayCount(P){ if(!P||!P.date) return 0; var a=P.start&&P.start<P.date?P.start:P.date, n=0; for(var x=new Date(a+"T12:00"); x.toISOString().slice(0,10)<=P.date; x.setDate(x.getDate()+1)){ if(x.getDay()!==0&&x.getDay()!==6) n++; } return n; }
 function prepPerDay(P){ var n=prepDayCount(P); if(n<=1) return P.mins; return P.perDay!=null?P.perDay:(P.mins!=null?Math.round(P.mins/n):null); }
 function setPrepPerDay(P,v){ var n=prepDayCount(P); if(n<=1){ P.mins=v; P.perDay=null; return; } P.perDay=v; P.mins=v==null?null:v*n; }
+// PER-OPERATIVE DAYS ON A PRODUCTION (Jack on B60788, 19 Oct 2026: "will need Brad for 2 full days, Bart for 8 days and
+// Jack/Jordan for 10 days on this job... Jordan will also be starting production on an earlier date"). P.days holds,
+// per name, an optional from and to inside the production window; no entry means the whole window. The window itself
+// stretches to the earliest start and the latest finish. Hours a day stay one figure for the block; a person's total is
+// that figure times their own days. Everything that counts the crew on a day asks prepWhoOn, never P.who.
+function prepDayList(P){ if(!P||!P.date) return []; var a=P.start&&P.start<P.date?P.start:P.date, out=[]; for(var x=new Date(a+"T12:00"); x.toISOString().slice(0,10)<=P.date; x.setDate(x.getDate()+1)){ if(x.getDay()!==0&&x.getDay()!==6) out.push(x.toISOString().slice(0,10)); } return out; }
+function prepSpanFor(P,w){ var r=P&&P.days&&P.days[w]; return r&&(r.from||r.to)?r:null; }
+function prepDaysFor(P,w){ var all=prepDayList(P), r=prepSpanFor(P,w); if(!r) return all; return all.filter(function(k){ return (!r.from||k>=r.from)&&(!r.to||k<=r.to); }); }
+function prepOn(P,w,k){ return !!(P&&P.who&&P.who.indexOf(w)>=0)&&prepDaysFor(P,w).indexOf(k)>=0; }
+function prepWhoOn(P,k){ return ((P&&P.who)||[]).filter(function(w){ return prepOn(P,w,k); }); }
+function prepDayCountFor(P,w){ var n=prepDaysFor(P,w).length; return n||prepDayCount(P); }
+function prepHasSpans(P){ return !!(P&&P.who&&P.who.some(function(w){ return prepSpanFor(P,w); })); }
+// a person's time on one day: their own time if set (each holds a total over the window, as before), else the block's
+function prepPerDayFor(P,w){ var e=P&&P.each&&P.each[w]; var n=prepDayCount(P)||1; if(e===0||e) return n>1?Math.round(e/n):e; return prepPerDay(P); }
+// a person's total: their per-day time over their own days once anyone has their own span, otherwise as before
+function prepMinsFor(P,w){ if(!P) return null; if(!prepHasSpans(P)) return minsFor(P,w); var pd=prepPerDayFor(P,w); return pd==null?null:pd*prepDayCountFor(P,w); }
+function prepSpanText(P,w){ var ds=prepDaysFor(P,w); if(!ds.length) return ""; return (ds.length===1?niceShort(ds[0]):niceShort(ds[0])+" to "+niceShort(ds[ds.length-1]))+", "+ds.length+(ds.length===1?" day":" days"); }
+function stretchPrepWindow(P){ if(!P||!P.days) return; Object.keys(P.days).forEach(function(w){ var r=P.days[w]; if(!r) return; if(r.from&&r.to&&r.from>r.to) r.to=r.from; if(r.from&&(!P.start||r.from<P.start)) P.start=r.from; if(r.to&&(!P.date||r.to>P.date)) P.date=r.to; if(!r.from&&!r.to) delete P.days[w]; }); if(P.start&&P.date&&P.start>P.date) P.start=P.date; if(P.date&&!P.start) P.start=P.date; syncPrepTotal(P); }
+function firstName(w){ return String(w||"").split(" ")[0]; }
+function nameList(a){ a=(a||[]).map(firstName); return a.length<=1?a.join(""):a.slice(0,-1).join(", ")+" and "+a[a.length-1]; }
 function syncPrepTotal(P){ if(P&&P.perDay!=null&&P.date){ var n=prepDayCount(P); if(n>1) P.mins=P.perDay*n; else { P.mins=P.perDay; P.perDay=null; } } }
 
 // WHO IS COMING TO FORTON, AND WHEN (Sam, 2 Oct 2026: "I need to be able to add collection and drop-off times for
