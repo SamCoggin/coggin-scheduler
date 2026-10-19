@@ -10,24 +10,31 @@
   button{cursor:pointer}
   button:focus-visible,input:focus-visible{outline:2px solid var(--blue);outline-offset:1px}
 
-  .hdr{zoom:.88;flex-shrink:0;display:flex;align-items:center;gap:10px;padding:10px 16px;background:var(--card);border-bottom:1px solid var(--line)}
+  .hdr{zoom:.88;flex-shrink:0;display:flex;align-items:center;gap:12px;row-gap:8px;flex-wrap:wrap;padding:10px 18px;background:var(--card);border-bottom:1px solid var(--line)}
   .hdr h1{font-size:22px;font-weight:800;margin:0}
   .hdr .src{color:var(--muted);font-size:13px;margin-right:auto;margin-left:6px}
   .hdr .src.filt{color:#fff;background:var(--red);border-radius:6px;padding:4px 10px;font-weight:800}
-  .hdr button{border:0;background:var(--list);border-radius:6px;padding:7px 14px;font-weight:600}
-  .hdr button:hover{background:var(--line)}
-  .hdr .t{font-weight:800;min-width:210px;text-align:center;font-size:17px}
+  .hdr button{border:1px solid var(--line);background:var(--card);border-radius:8px;padding:7px 14px;font-weight:600;color:var(--text)}
+  .hdr button:hover{background:var(--list)}
+  .hdr button.p{background:var(--blue);border-color:var(--blue);color:#fff} .hdr button.p:hover{background:#0055cc}
+  .hdr .nav{display:inline-flex;align-items:center;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+  .hdr .nav button{border:0;border-radius:0;padding:6px 11px;font-size:18px;line-height:1;color:var(--muted)} .hdr .nav button:hover{background:var(--list);color:var(--text)}
+  .hdr .t{font-weight:800;min-width:210px;text-align:center;font-size:15px;padding:0 10px}
+  .hdr .acts{display:flex;align-items:center;gap:8px;margin-left:auto;flex-wrap:wrap}
+  .hdr .live[hidden]{display:none}
+  .hdr .live{display:inline-flex;align-items:center;gap:7px;border:1px solid var(--line);border-radius:999px;padding:5px 11px 5px 9px;font-size:12.5px;color:var(--muted)}
+  .hdr .live b{font-weight:600;color:var(--text)} .hdr .live .u:not(:empty):before{content:"\00b7  "}
+  .hdr .live .dot{width:8px;height:8px;border-radius:4px;background:#1f845a;box-shadow:0 0 0 3px rgba(31,132,90,.18)} .hdr .live.hold .dot{background:#b38600;box-shadow:0 0 0 3px rgba(179,134,0,.18)}
+  .hdr .ic{width:15px;height:15px;vertical-align:-3px;margin-right:6px}
 .tip{width:18px;height:18px;border-radius:50%;border:1px solid var(--line);background:var(--card);color:var(--muted);font-size:11px;font-weight:700;line-height:1;padding:0;margin-left:6px;vertical-align:middle}
   .tip:hover{border-color:var(--blue);color:var(--blue)}
   .tipw{position:relative;display:inline-block}
   .tipp{position:absolute;left:0;top:24px;z-index:5;background:var(--text);color:#fff;font-size:13px;font-weight:500;text-transform:none;letter-spacing:0;line-height:1.4;padding:8px 10px;border-radius:8px;width:240px;box-shadow:0 4px 12px rgba(9,30,66,.3)}
-  .hdr .views{display:inline-flex;gap:4px;margin-right:8px;background:var(--list);border-radius:8px;padding:3px}
-  .hdr .views button{padding:5px 12px;border-radius:6px;background:transparent}
+  .hdr .views{display:inline-flex;gap:4px;background:var(--list);border-radius:8px;padding:3px}
+  .hdr .views button{padding:5px 12px;border-radius:6px;background:transparent;border:0}
   .hdr .views button.on{background:var(--card);box-shadow:var(--shadow)}
-  .hdr button#auto.on{background:var(--blue);color:#fff}
   .modal .foreign{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:6px 0 8px;padding:8px 12px;border:1px solid #f5cd47;border-left:4px solid #b38600;background:#fff7d6;border-radius:6px;font-size:13px}
   .modal .foreign button{border:1px solid var(--line);background:var(--card);border-radius:6px;padding:5px 10px;font-weight:600} .modal .foreign button.p{background:var(--blue);color:#fff;border-color:var(--blue)}
-  .hdr #upd{margin-left:6px}
   .hdr #need.on{background:#c9372c;color:#fff}
   .board.routes{grid-template-columns:minmax(380px,1.3fr) minmax(340px,1fr);overflow:hidden}
   .mapwrap{background:var(--list);border:2px solid #3d4451;border-radius:12px;overflow:hidden;display:flex;flex-direction:column;min-height:0}
@@ -471,7 +478,13 @@
   <h1>Scheduler</h1>
   <span class="src" id="src">Reading the board...</span>
   <span class="views"><button id="vday" class="on">Day</button><button id="vweek">Week</button><button id="vmonth">Month</button></span>
-  <button id="need" hidden title="Show only the jobs still missing operatives, time, travel or a vehicle">Outstanding</button><button id="prev">Back</button><span class="t" id="title"></span><button id="next">Next</button><button id="pdf" title="Download as a PDF file" hidden>Download schedule</button><button id="sheets" title="One page per operative for the day in view, to hand out in the morning and hand back at night" hidden>Job sheets</button><button id="guide" title="How to use the Scheduler" hidden>Guide</button><button id="actuals" title="Type in what came back on the day sheet: who did each job and the actual time" hidden>Enter day sheet</button><button id="timings" title="Planned against actual over the last four weeks" hidden>Timings</button><button id="refresh" title="Read the board again now, to pull in edits made on the cards or in the CRM" hidden>Refresh</button><button id="auto" hidden>Auto refresh: off</button><span class="src" id="upd"></span>
+  <span class="nav"><button id="prev" title="Back" aria-label="Back">&#8249;</button><span class="t" id="title"></span><button id="next" title="Next" aria-label="Next">&#8250;</button></span>
+  <span class="acts">
+    <button id="need" hidden title="Show only the jobs still missing operatives, time, travel or a vehicle">Outstanding</button><button id="guide" title="How to use the Scheduler" hidden>Guide</button><button id="actuals" title="Type in what came back on the day sheet: who did each job and the actual time" hidden>Enter day sheet</button><button id="timings" title="Planned against actual over the last four weeks" hidden>Timings</button>
+    <span class="live" id="live" hidden title="Reads the cards every 10 seconds while this tab is visible, so another person's edits show within moments"><span class="dot"></span><b>Live</b><span class="u" id="upd"></span></span>
+    <button id="refresh" title="Read the board again now, to pull in edits made on the cards or in the CRM" hidden><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a9 9 0 1 1-2.6-6.4"/><path d="M21 3v6h-6"/></svg><span id="refreshTxt">Refresh</span></button>
+    <button id="pdf" class="p" title="Download as a PDF file" hidden>Download schedule</button><button id="sheets" class="p" title="One page per operative for the day in view, to hand out in the morning and hand back at night" hidden>Job sheets</button>
+  </span>
 </div>
 <div class="strip" id="strip" hidden></div>
 <div class="board" id="board"></div>
@@ -3379,10 +3392,12 @@ var SNAP=null, DETAIL={};
   // else or a van taken off in the CRM stayed invisible until the tab was reopened. Refresh reads it all again now;
   // Auto does it every minute while the tab is visible and nothing is open for editing, so a job being planned is
   // never yanked out from under the person planning it. The choice is remembered on this browser.
-  var AUTO=true; try{ AUTO=localStorage.getItem("sched_auto")!=="0"; }catch(e){}
+  // ALWAYS LIVE (Sam, 19 Oct 2026: "why do I need a live toggle? should always be live"). No switch: the pill only reports.
+  var AUTO=true;
   var REFRESHING=false, POLL_EVERY=10000, CRM_EVERY_TICKS=6, TICK=0;
   var PENDING_SNAP=null, FOREIGN=null, SEEN_FOREIGN={};   // a change to the job on screen, waiting for the person to choose
-  function stampUpd(txt){ var u=$("#upd"); if(u) u.textContent=txt; }
+  function stampUpd(txt,hold){ var u=$("#upd"); if(u) u.textContent=txt; var lv=$("#live"); if(lv) lv.className="live"+(hold?" hold":""); }
+  function setRefreshTxt(txt){ var r=$("#refreshTxt"); if(r) r.textContent=txt; }
   function hhmm(d){ d=d||new Date(); return pad(d.getHours())+":"+pad(d.getMinutes()); }
   function editorOpen(){ return !!(open||openRound||openOp||ACT_OPEN||TIMINGS_OPEN); }
   // the job keys an open editor is standing on: the job itself and its legs share the card
@@ -3395,46 +3410,43 @@ var SNAP=null, DETAIL={};
     Object.keys(PLAN_SIG).forEach(function(id){ if(!seen[id]) changed.push(id); });
     return {changed:changed,by:by,at:at};
   }
-  function applySnap(snap){ buildFromSnap(snap); lastSaved={}; render(); stampUpd("Updated "+hhmm()); }
+  function applySnap(snap){ buildFromSnap(snap); lastSaved={}; render(); stampUpd("updated "+hhmm()); }
   function takeSnap(snap,auto){
     var d=diffSnap(snap);
-    if(!d.changed.length){ if(auto) stampUpd("Live, checked "+hhmm()); return; }
+    if(!d.changed.length){ if(auto&&!PENDING_SNAP) stampUpd("checked "+hhmm()); return; }
     var mine=openCardId();
     if(auto&&mine&&d.changed.indexOf(mine)>=0){
       // THE JOB ON SCREEN WAS SAVED BY SOMEONE ELSE. Never pulled out from under the person: they choose.
       var sig=planSig((snap.cards.filter(function(c){return c.id===mine;})[0]||{}).saved);
       if(SEEN_FOREIGN[mine]===sig){ return; }   // they said carry on to this version already
-      PENDING_SNAP=snap; FOREIGN={card:mine,by:d.by,at:d.at,sig:sig}; render(); return;
+      PENDING_SNAP=snap; FOREIGN={card:mine,by:d.by,at:d.at,sig:sig}; stampUpd("changes waiting",true); render(); return;
     }
-    if(auto&&(openRound||openOp||ACT_OPEN||TIMINGS_OPEN)){ PENDING_SNAP=snap; stampUpd("Changes waiting, close this to see them"); return; }
+    if(auto&&(openRound||openOp||ACT_OPEN||TIMINGS_OPEN)){ PENDING_SNAP=snap; stampUpd("changes waiting",true); return; }
     PENDING_SNAP=null; FOREIGN=null; applySnap(snap);
   }
   function refreshBoard(auto,fast){
     if(!t||REFRESHING) return Promise.resolve();
     if(auto&&document.visibilityState!=="visible") return Promise.resolve();
-    REFRESHING=true; var b=$("#refresh"); if(b&&!auto){ b.disabled=true; b.textContent="Refreshing..."; }
+    REFRESHING=true; var b=$("#refresh"); if(b&&!auto){ b.disabled=true; setRefreshTxt("Refreshing..."); }
     return loadBoard({skipCrm:!!fast}).then(function(snap){ takeSnap(snap,auto); })
-      .catch(function(){ if(!auto) stampUpd("Could not refresh, press Refresh to try again"); })
-      .then(function(){ REFRESHING=false; if(b){ b.disabled=false; b.textContent="Refresh"; } });
+      .catch(function(){ if(!auto) stampUpd("could not refresh, try again",true); })
+      .then(function(){ REFRESHING=false; if(b){ b.disabled=false; setRefreshTxt("Refresh"); } });
   }
-  function paintAuto(){ var a=$("#auto"); if(!a) return; a.textContent=AUTO?"Live: on":"Live: off"; a.className=AUTO?"on":"";
-    a.title=AUTO?"Reads the cards every 10 seconds while this tab is visible, so another person's edits show within moments. Press to turn it off.":"Press to read the cards every 10 seconds, so edits made in another open Scheduler come through on their own."; }
   function wireRefresh(){
-    var r=$("#refresh"), a=$("#auto"); if(!r||!a) return;
-    r.hidden=false; a.hidden=false; paintAuto();
+    var r=$("#refresh"), lv=$("#live"); if(!r) return;
+    r.hidden=false; if(lv) lv.hidden=false;
     r.onclick=function(){ refreshBoard(false,false); };
-    a.onclick=function(){ AUTO=!AUTO; try{ localStorage.setItem("sched_auto",AUTO?"1":"0"); }catch(e){} paintAuto(); if(AUTO) refreshBoard(true,true); else stampUpd(""); };
     // the timer only runs in a real browser tab (the offline checker has no visibility events and must be allowed to exit)
     try{ document.addEventListener("visibilitychange",function(){ if(AUTO&&document.visibilityState==="visible") refreshBoard(true,true); });
       setInterval(function(){ if(!AUTO) return; TICK++; refreshBoard(true,TICK%CRM_EVERY_TICKS!==0); },POLL_EVERY); }catch(e){}
     if(t&&t.member) t.member("fullName").then(function(m){ ME=(m&&m.fullName)||""; }).catch(function(){});
-    stampUpd("Updated "+hhmm());
+    stampUpd("updated "+hhmm());
   }
   // when an editor closes, anything that arrived meanwhile goes on screen
   function flushPending(){ if(PENDING_SNAP&&!editorOpen()){ var sn=PENDING_SNAP; PENDING_SNAP=null; FOREIGN=null; applySnap(sn); } }
   if(t){
     $("#src").textContent="Reading the board...";
-    loadBoard().then(function(snap){ buildFromSnap(snap); lastSaved={}; wireRefresh(); try{ var rq=new URLSearchParams(location.search).get("round"); if(rq&&/^\d{4}-\d{2}-\d{2}\|/.test(rq)){ dayCur=rq.split("|")[0]; view="day"; openRound=rq; } }catch(e){} render(); if(Object.keys(STALE_LEGS).length){ persist(); STALE_LEGS={}; } refreshDrive(); setTimeout(refreshRounds,1500); fetchTallies().then(function(){ if(view==="day"||view==="manager") render(); }); fetchActuals().then(function(){ render(); }); }).catch(function(e){ $("#src").textContent="Could not read the board: "+(e&&e.message||e); });
+    loadBoard().then(function(snap){ buildFromSnap(snap); lastSaved={}; wireRefresh(); try{ var P0=new URLSearchParams(location.search), rq=P0.get("round"), oq=P0.get("open"); if(rq&&/^\d{4}-\d{2}-\d{2}\|/.test(rq)){ dayCur=rq.split("|")[0]; view="day"; openRound=rq; } else if(oq){ var oj=JOBS.filter(function(j){return j.id===oq;})[0]; if(oj){ if(oj.date) dayCur=oj.date; view="day"; open=oq; } } }catch(e){} /* ?open=<card id>: the card back opens its own job here (Sam, 19 Oct 2026) */ render(); if(Object.keys(STALE_LEGS).length){ persist(); STALE_LEGS={}; } refreshDrive(); setTimeout(refreshRounds,1500); fetchTallies().then(function(){ if(view==="day"||view==="manager") render(); }); fetchActuals().then(function(){ render(); }); }).catch(function(e){ $("#src").textContent="Could not read the board: "+(e&&e.message||e); });
   } else { $("#src").textContent="Open this from the Scheduler button on the Trello board."; }
 })();
 </script>

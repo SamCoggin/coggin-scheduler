@@ -7,6 +7,7 @@
   body{margin:0;padding:4px 2px 8px;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",sans-serif;font-size:15px;color:var(--text);background:transparent;line-height:1.35}
   button,input,select{font-family:inherit;font-size:inherit;color:inherit}
   button{cursor:pointer}
+  .open-sched{display:flex;justify-content:flex-end;margin:0 0 10px}
   .sec{border:2px solid var(--line);border-radius:10px;margin-bottom:14px;background:var(--card);overflow:hidden}
   .sec-h{padding:10px 14px;display:flex;align-items:baseline;justify-content:space-between;gap:10px;color:#fff}
   .sec-h .name{font-size:16px;font-weight:800;text-transform:uppercase;letter-spacing:.04em}
@@ -335,6 +336,11 @@
   function loadNow(){ var ign=d.ignore||[]; var all=itemsOf(card.desc,checksOf()), auto=all.filter(function(l){return ign.indexOf(l)<0;}), manual=d.items||[]; var L; var src="card"; if(!all.length&&d.load&&d.load.rows&&!manual.length){ L=d.load; src="scheduler"; } else { L=loadOf(auto.concat(manual)); if(!L.complete&&!manual.length){ var ta=timedAsLines(); if(ta.length){ var L2=loadOf(ta); if(L2.complete){ L=L2; src="crm"; } } } } L.src=src; L.fromCrm=(src==="crm"); L.manualN=src==="card"?manual.length:0; L.ignored=all.filter(function(l){return ign.indexOf(l)>=0;}); L.autoLines=auto; return L; }
   function render(){
     var app=document.getElementById("app"); app.innerHTML="";
+    // OPEN THIS JOB IN THE SCHEDULER (Sam, 19 Oct 2026: "I want to be able to open the scheduler editor from this view").
+    // The full editor, on this job's day, with this job open. Same modal the round link uses.
+    if(card&&card.id){ var ob0=el("div","open-sched"); var ob1=el("button","p","Open in the Scheduler"); ob1.title="The full Scheduler, on this job's day, with this job open";
+      ob1.onclick=function(){ try{ t.modal({ url:"./scheduler.html?open="+encodeURIComponent(card.id)+"&v="+Math.floor(Date.now()/60000), fullscreen:true, title:"Scheduler" }); }catch(e){ alert("Could not open the Scheduler: "+(e&&e.message||e)); } };
+      ob0.appendChild(ob1); app.appendChild(ob0); }
     var due=(card.due||"").slice(0,10);
     var contractorOnly=(!!d.contractor||CARRIER_PENDING) && !d.who.length;
 
