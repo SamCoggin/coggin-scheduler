@@ -2854,15 +2854,17 @@ var SNAP=null, DETAIL={};
     kit.hasLoad=function(run){ return run.stops.some(function(s0){ return !takesOn(s0.j); }); };
     // A STOP PAGE IN ARRIVAL ORDER (Sam, 2 Oct 2026, mock approved): who and where, call ahead, know before you go, unload,
     // then one black Before you leave panel with the photos and the move to Job Completed.
-    kit.stop=function(run,s){ var j=s.j, d=s.d, collect=takesOn(j), nm=j.title.split(" - ").slice(1).join(" - ")||j.title, si=run.stops.indexOf(s), nStops=run.stops.length;
-      var word=/^Delivery$/.test(j.movement||"")?"install":collect?"collection":"on site", mins=minsFor(j,run.crew[0]), don=isDonation(j);
+    // THE RETURN DAY OF A COLLECT AND RETURN IS A DELIVERY (Sam, 20 Oct 2026, York College: "why is it saying collection
+    // when this is a return"). The card spans the collection day to the return day; on the return day the van unloads.
+    kit.stop=function(run,s){ var j=s.j, d=s.d, isReturn=/Collect and Return/.test(j.movement||"")&&!!j.start&&k===j.date&&k!==j.start, collect=takesOn(j)&&!isReturn, nm=j.title.split(" - ").slice(1).join(" - ")||j.title, si=run.stops.indexOf(s), nStops=run.stops.length;
+      var word=isReturn?"return":/^Delivery$/.test(j.movement||"")?"install":collect?"collection":"on site", mins=minsFor(j,run.crew[0]), don=isDonation(j);
       var dropOnly=/drop off only/i.test((d.access||[]).join(" ")+" "+(d.kv.access||""));
       var stopHead=function(cont){ newPage(); label("Stop "+(si+1)+" of "+nStops+(cont?" · "+run.crew.join(" + ")+", continued":""),L,y+1);
         if(cont){ doc.setFont("helvetica","bold"); doc.setFontSize(14); doc.text(nm,L,y+7); y+=10; rule(); y+=5; return; }
         // NO TOP CODE ON A DONATION (Sam, 2 Oct 2026: "top right qr code not required for donations"): the Trello code is in Before you leave
         var qs0=don?0:30, qx=L+W-qs0, top=y;
         doc.setFont("helvetica","bold"); doc.setFontSize(20); var tl=doc.splitTextToSize(nm,W-(don?0:qs0+8)).slice(0,2); doc.text(tl,L,y+9); var ty=y+9+(tl.length-1)*7.5;
-        doc.setFontSize(11); doc.text([mins!=null?fmt(mins)+(dropOnly?"":" "+word):"",dropOnly?"drop off only":"",j.from?"not before "+j.from:"",j.by?"finish by "+j.by:""].filter(Boolean).join(" · ")||(collect?"Collection":"Delivery"),L,ty+6.5);
+        doc.setFontSize(11); doc.text([mins!=null?fmt(mins)+(dropOnly?"":" "+word):"",dropOnly?"drop off only":"",j.from?"not before "+j.from:"",j.by?"finish by "+j.by:""].filter(Boolean).join(" · ")||(isReturn?"Return":collect?"Collection":"Delivery"),L,ty+6.5);
         pillsAt(run.crew,L,ty+10); ty+=11;
         var code=d.signoff, codeLbl="Scan to sign off before you leave";
         if(don){ }
@@ -2887,7 +2889,7 @@ var SNAP=null, DETAIL={};
       var n0=kitFirst?1:0, hasKnow=knowRows(d).length>0; kit.know(d,cont,n0+1); if(hasKnow) y+=3;
       // No customer photos on the sheet (Sam, 17 Oct 2026, minutes after asking for them: "to not have images for clearance on
       // the jobs sheets and recycling"). They are on the Trello card; the sheet lists the items.
-      if(y+20>278) cont(); heading(n0+(hasKnow?2:1),collect?"Collect":"Unload"); kit.items(s.items,cont);
+      if(y+20>278) cont(); heading(n0+(hasKnow?2:1),isReturn?"Return to them":collect?"Collect":"Unload"); kit.items(s.items,cont);
       // before you leave: one black panel, two steps and the Trello code
       if(y+44>278) cont(); y+=2; var ph=40; doc.setFillColor(17,17,17); doc.roundedRect(L,y,W,ph,2,2,"F");
       doc.setTextColor(255); doc.setFont("helvetica","bold"); doc.setFontSize(13); doc.text("BEFORE YOU LEAVE",L+5,y+8);
