@@ -2571,7 +2571,7 @@ var SNAP=null, DETAIL={};
           doc.setFillColor(255,255,255); doc.setFont("helvetica","bold"); doc.setFontSize(5.5); var lw=doc.getTextWidth(label)+1.6; doc.rect(x+0.3,y0+0.3,lw,2.4,"F"); doc.setTextColor(90); doc.text(label,x+1.1,y0+2.1); doc.setTextColor(0); doc.setDrawColor(0); };
         var lineH=function(l){ doc.setFont("helvetica","bold"); doc.setFontSize(10.5); var h=7.5+doc.splitTextToSize(l.name||"",TW).length*4.3; var det=pickDetails(l);
           if(det){ doc.setFont("helvetica","normal"); doc.setFontSize(8.5); h+=doc.splitTextToSize(det,TW).length*3.6; } if(l.attr_pick) h+=4; if(l._already||l._write) h+=4.5; var rh=Math.max(PH+2,h)+3;
-          if(l.cut_down&&l.cut_down.to) rh+=9; rh+=pickBoxesH(doc,l,W); var cs=Array.isArray(l.build_components)?l.build_components:[]; if(cs.length) rh+=7+cs.length*6; return rh; };
+          if(l.cut_down&&l.cut_down.to) rh+=9; rh+=pickBoxesH(doc,l,W); var cs=Array.isArray(l.build_components)?l.build_components:[]; if(cs.length) rh+=7+cs.length*13; return rh; };
         var drawLine=function(l){ var y0=y+2.5;
           doc.setLineWidth(0.5); doc.setDrawColor(17); doc.roundedRect(L+0.5,y0,5.5,5.5,0.7,0.7); doc.setDrawColor(0);
           photo(l.product_photo||"",L+9,y0,l.photo_is_build?"build":"product"); photo(l.storage_photo||"",L+9+PW+2,y0,"storage");
@@ -2593,14 +2593,7 @@ var SNAP=null, DETAIL={};
             var ct=cn?"CUT "+cn+"x "+nn+(cn===1?"":"S")+" DOWN"+fr+" TO "+l.cut_down.to+"MM":"CUT THIS "+nn+" DOWN"+fr+" TO "+l.cut_down.to+"MM";
             doc.setFillColor(244,244,244); doc.setDrawColor(17); doc.setLineWidth(0.7); doc.rect(L,y,W,7,"FD"); doc.setFont("helvetica","bold"); doc.setFontSize(9); doc.text(ct,L+3,y+4.7); y+=9; }
           y=pickBoxesDraw(doc,l,L,W,y);
-          var cs=Array.isArray(l.build_components)?l.build_components:[];
-          if(cs.length){ var bh=7+cs.length*6; doc.setFillColor(244,244,244); doc.setDrawColor(17); doc.setLineWidth(0.35); doc.rect(L,y,W,bh,"FD");
-            doc.setFont("helvetica","bold"); doc.setFontSize(8.5); doc.text("Custom build: these parts make the item above, nothing extra",L+3,y+4.6);
-            cs.forEach(function(c,ci){ var cy=y+7+ci*6; doc.setLineWidth(0.4); doc.setDrawColor(17); doc.setFillColor(255,255,255); doc.roundedRect(L+3,cy,4,4,0.5,0.5,"FD");
-              doc.setFont("helvetica","bold"); doc.setFontSize(9); doc.text((c.qty||1)+"x",L+9.5,cy+3.3); doc.setFont("helvetica","normal");
-              doc.text(doc.splitTextToSize([c.name,c.sku].filter(Boolean).join(" · ")+(c.role==="top"||c.replaces_role==="top"?" · top only, not the frame or legs":""),W-60)[0],L+19,cy+3.3);
-              if(c.location){ doc.setFont("courier","bold"); doc.text(String(c.location),L+W-3,cy+3.3,{align:"right"}); doc.setFont("helvetica","normal"); } });
-            y+=bh+2; }
+          y=customBuildBox(doc,Array.isArray(l.build_components)?l.build_components:[],L,W,y,true);
           doc.setDrawColor(205); doc.setLineWidth(0.25); doc.line(L,y,L+W,y); doc.setDrawColor(0); };
         // THE JOB PAGES, CREW BY CREW IN DAY SHEET ORDER: production (the picking lines, drawn as before), the van's yard page
         // before its first stop, each stop, each labour job. Footers are stamped at the end.
@@ -2740,6 +2733,23 @@ var SNAP=null, DETAIL={};
   // THE JOB PAGES KIT (2 Oct 2026, mock approved: "a per job, job sheet for the day"). Draws onto the day sheet's own PDF:
   // the yard page for a van, a stop page, a labour page, and the header every job page shares. Each page records its
   // footer text, stamped at the end with "Page n of N".
+  // THE CUSTOM BUILD BOX WITH A PICTURE PER PART (Sam, 20 Oct 2026: "i want the images showing for the components"). A beam,
+  // an end leg and a mid leg are near-identical as words and obvious as pictures; the CRM already sends each part's photo.
+  // Rows are taller to carry a thumbnail; a part with no photo gets the dashed box so the row still lines up.
+  function customBuildBox(doc,cs,L,W,y,topNote){ if(!cs||!cs.length) return y; var RH=13, bh=7+cs.length*RH;
+    doc.setFillColor(244,244,244); doc.setDrawColor(17); doc.setLineWidth(0.35); doc.rect(L,y,W,bh,"FD");
+    doc.setFont("helvetica","bold"); doc.setFontSize(8.5); doc.text("Custom build: these parts make the item above, nothing extra",L+3,y+4.6);
+    cs.forEach(function(c,ci){ var cy=y+7+ci*RH, mid=cy+RH/2;
+      doc.setLineWidth(0.4); doc.setDrawColor(17); doc.setFillColor(255,255,255); doc.roundedRect(L+3,mid-2,4,4,0.5,0.5,"FD");
+      doc.setFont("helvetica","bold"); doc.setFontSize(9); doc.text((c.qty||1)+"x",L+9.5,mid+1.3);
+      var px=L+19, ps=RH-2, im=c.photo&&PICK_IMG[c.photo];
+      if(im){ try{ var r0=im.w/im.h, dw=ps, dh=ps; if(r0>1) dh=ps/r0; else dw=ps*r0; doc.setDrawColor(200); doc.setLineWidth(0.25); doc.rect(px,cy+1,ps,ps); doc.addImage(im.d,"JPEG",px+(ps-dw)/2,cy+1+(ps-dh)/2,dw,dh,undefined,"FAST"); }catch(e){ im=null; } }
+      if(!im){ doc.setDrawColor(170); doc.setLineDashPattern([0.8,0.8],0); doc.rect(px,cy+1,ps,ps); doc.setLineDashPattern([],0); doc.setFont("helvetica","normal"); doc.setFontSize(5.5); doc.setTextColor(150); doc.text("no photo",px+ps/2,mid+1,{align:"center"}); doc.setTextColor(0); }
+      doc.setFont("helvetica","normal"); doc.setFontSize(9); doc.setDrawColor(17);
+      var txt=doc.splitTextToSize([c.name,c.sku].filter(Boolean).join(" \u00b7 ")+(topNote&&(c.role==="top"||c.replaces_role==="top")?" \u00b7 top only, not the frame or legs":""),W-78).slice(0,2);
+      doc.text(txt,px+ps+3,mid+(txt.length>1?-0.6:1.3));
+      if(c.location){ doc.setFont("courier","bold"); doc.text(String(c.location),L+W-3,mid+1.3,{align:"right"}); doc.setFont("helvetica","normal"); } });
+    return y+bh+2; }
   function jobKit(doc,k,foots){
     var L=15, W=180, y=15, kit={};
     var qr=function(url,x,y0,size){ if(typeof qrcode!=="function"||!url) return false; var q=qrcode(0,"M"); q.addData(url); q.make(); var n=q.getModuleCount(), m=size/n; doc.setFillColor(0,0,0); for(var r0=0;r0<n;r0++) for(var c0=0;c0<n;c0++) if(q.isDark(r0,c0)) doc.rect(x+c0*m,y0+r0*m,m+0.02,m+0.02,"F"); return true; };
@@ -2928,7 +2938,7 @@ var SNAP=null, DETAIL={};
         doc.rect(x,y0,20,18); doc.setFillColor(255,255,255); doc.setFont("helvetica","bold"); doc.setFontSize(5.5); var lw=doc.getTextWidth(lbl)+1.4; doc.rect(x+0.3,y0+0.3,lw,2.4,"F"); doc.setTextColor(100); doc.text(lbl,x+1,y0+2.1); doc.setTextColor(0); doc.setDrawColor(0); };
       var rowH=function(l){ var parts0=String(l.name||"").split(/\s*\|\s*/), det0=[parts0.slice(1).join(" · "),pickDetails(l)].filter(Boolean).join(" · ");
         doc.setFont("helvetica","bold"); doc.setFontSize(11); var nN=doc.splitTextToSize(parts0[0],TW).length; doc.setFont("helvetica","normal"); doc.setFontSize(8.5); var dN=det0?doc.splitTextToSize(det0,TW).length:0;
-        var h=Math.max(27,14.5+nN*4.4+dN*3.6+(l._already?3.6:0)+3); if(l.cut_down&&l.cut_down.to) h+=9; h+=pickBoxesH(doc,l,W); var cs=Array.isArray(l.build_components)?l.build_components:[]; if(cs.length) h+=7+cs.length*6; return h; };
+        var h=Math.max(27,14.5+nN*4.4+dN*3.6+(l._already?3.6:0)+3); if(l.cut_down&&l.cut_down.to) h+=9; h+=pickBoxesH(doc,l,W); var cs=Array.isArray(l.build_components)?l.build_components:[]; if(cs.length) h+=7+cs.length*13; return h; };
       if(!o.lines.length){ kit.items(o.items||[],cont); }
       o.lines.forEach(function(l,li){ if(y+rowH(l)>262) cont(); var y0=y;
         if(li>0||true){ doc.setDrawColor(215); doc.setLineWidth(0.25); doc.line(L,y,L+W,y); doc.setDrawColor(0); }
@@ -2947,11 +2957,7 @@ var SNAP=null, DETAIL={};
         if(l.cut_down&&l.cut_down.to){ var cn=l.cut_down.count, nn=String(l.cut_down.noun||"TOP"), fr=l.cut_down.from?" FROM "+l.cut_down.from:""; var ct=cn?"CUT "+cn+"x "+nn+(cn===1?"":"S")+" DOWN"+fr+" TO "+l.cut_down.to+"MM":"CUT THIS "+nn+" DOWN"+fr+" TO "+l.cut_down.to+"MM";
           doc.setFillColor(244,244,244); doc.setDrawColor(17); doc.setLineWidth(0.7); doc.rect(L,y,W,7,"FD"); doc.setFont("helvetica","bold"); doc.setFontSize(9); doc.text(ct,L+3,y+4.7); y+=9; }
         y=pickBoxesDraw(doc,l,L,W,y);
-        var cs=Array.isArray(l.build_components)?l.build_components:[];
-        if(cs.length){ var bh=7+cs.length*6; doc.setFillColor(244,244,244); doc.setDrawColor(17); doc.setLineWidth(0.35); doc.rect(L,y,W,bh,"FD"); doc.setFont("helvetica","bold"); doc.setFontSize(8.5); doc.text("Custom build: these parts make the item above, nothing extra",L+3,y+4.6);
-          cs.forEach(function(c,ci){ var cy=y+7+ci*6; doc.setLineWidth(0.4); doc.setDrawColor(17); doc.setFillColor(255,255,255); doc.roundedRect(L+3,cy,4,4,0.5,0.5,"FD"); doc.setFont("helvetica","bold"); doc.setFontSize(9); doc.text((c.qty||1)+"x",L+9.5,cy+3.3); doc.setFont("helvetica","normal");
-            doc.text(doc.splitTextToSize([c.name,c.sku].filter(Boolean).join(" · "),W-60)[0],L+19,cy+3.3); if(c.location){ doc.setFont("courier","bold"); doc.text(String(c.location),L+W-3,cy+3.3,{align:"right"}); doc.setFont("helvetica","normal"); } });
-          y+=bh+2; } });
+        y=customBuildBox(doc,Array.isArray(l.build_components)?l.build_components:[],L,W,y,false); });
       if(o.lines.length){ doc.setDrawColor(215); doc.setLineWidth(0.25); doc.line(L,y,L+W,y); doc.setDrawColor(0); }
       // when you finish
       if(y+38>278) cont(); y+=5; var ph2=34; doc.setFillColor(17,17,17); doc.roundedRect(L,y,W,ph2,2,2,"F"); doc.setTextColor(255); doc.setFont("helvetica","bold"); doc.setFontSize(12); doc.text("WHEN YOU FINISH",L+5,y+7.5);
@@ -3069,7 +3075,7 @@ var SNAP=null, DETAIL={};
             var fin=!!(jj&&jj.prep&&jj.stage==="In progress"&&!jj.prep.stages);
             // With a page per job (2 Oct 2026) an In-progress job's page lists what is left as "Items to finish"
             PICK[id]={picks:!!e.picks,finish:fin,lines:left,allPicked:all.length>0&&!left.length,error:e.error||"",ref:e.ref||""}; });
-          var urls={}; Object.keys(PICK).forEach(function(id){ PICK[id].lines.forEach(function(l){ [l.product_photo,l.storage_photo].forEach(function(u){ if(u&&!PICK_IMG[u]) urls[u]=1; }); }); });
+          var urls={}; Object.keys(PICK).forEach(function(id){ PICK[id].lines.forEach(function(l){ [l.product_photo,l.storage_photo].concat((l.build_components||[]).map(function(c){ return c.photo; })).forEach(function(u){ if(u&&!PICK_IMG[u]) urls[u]=1; }); }); });
           await Promise.all(Object.keys(urls).slice(0,150).map(loadPickPhoto)); } }
       if(!PICK) PICK={};
       if(only) PICK.__only=only;
