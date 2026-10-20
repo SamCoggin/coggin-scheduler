@@ -59,8 +59,22 @@
         else if(d&&d.qc&&list&&READY_LIST.test(list.name)) out.push({ title:"QC", text:d.qc.na?"Not applicable, "+d.qc.by:"Passed, "+d.qc.by, color:"green" });
         if(workshop&&card.due){ var pd=(d&&d.prodDue)||productionDueFor(card.labels,card.due.slice(0,10)); out.push({ title:"Production due", text:niceShort(pd), color:pd<todayIso()?"red":"blue" }); }
         var plan2=d||{};
-        if(workshop){ var pb2=prodBadgeText(plan2,true); out.push({ title:"Production", text:pb2.text.replace(/^Production:? ?/,""), color:pb2.color }); }
-        if(!isViewingLabels(card.labels)){ var b=badgeText(plan2,isSite(card)?movementOf(card.labels,card.desc):false,round); out.push({ title:"Scheduling", text:b.text, color:b.color }); }
+        // SHORT BADGES, SEVERAL OF THEM (Sam, 20 Oct 2026: "this UI is shit"). Trello draws each detail badge as one coloured
+        // block, so a whole sentence in one badge wraps into a slab. Days, crew and time are their own badges; a plan
+        // still missing something keeps the one yellow badge that says what.
+        var sd=function(k){ var x=new Date(k+"T12:00"); return ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"][x.getDay()]+" "+x.getDate(); };
+        if(workshop){ var P=plan2.prep, pb2=prodBadgeText(plan2,true);
+          if(pb2.color!=="blue"||!P) out.push({ title:"Production", text:pb2.text.replace(/^Production:? ?/,""), color:pb2.color });
+          else { out.push({ title:"Production days", text:(P.start&&P.start!==P.date?niceShort(P.start)+" to "+niceShort(P.date):niceShort(P.date)), color:"blue" });
+            var spans=prepHasSpans(P);
+            out.push({ title:spans?"Crew, their own days":"Crew", text:spans?(P.who||[]).map(function(w){ var ds=prepDaysFor(P,w); return w.split(" ")[0]+(ds.length?" "+(ds.length===1?sd(ds[0]):sd(ds[0])+" to "+sd(ds[ds.length-1])):""); }).join(" \u00b7 "):(P.who||[]).join(", "), color:"blue" });
+            var pd=prepPerDay(P), nd=prepDayCount(P); out.push({ title:"Time", text:nd>1?fmt(pd)+" a day each":fmt(P.mins)+((P.who||[]).length>1?" each":""), color:"blue" }); } }
+        if(!isViewingLabels(card.labels)){ var mv=isSite(card)?movementOf(card.labels,card.desc):false, b=badgeText(plan2,mv,round);
+          if(b.color!=="green") out.push({ title:"Scheduling", text:b.text, color:b.color });
+          else { var who2=plan2.who||[], what=mv?String(mv):"Labour";
+            out.push({ title:what+" crew", text:who2.join(", "), color:"green" });
+            var tt=mv?(round?"on the round, "+fmt(round.total)+" travel":(plan2.drive?fmt(plan2.drive)+" travel":"")):"";
+            out.push({ title:what+" time", text:fmt(plan2.mins)+(who2.length>1?" each":"")+(tt?" \u00b7 "+tt:""), color:"green" }); } }
         return out;
       });
     },
