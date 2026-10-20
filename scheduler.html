@@ -2866,7 +2866,9 @@ var SNAP=null, DETAIL={};
     // then one black Before you leave panel with the photos and the move to Job Completed.
     // THE RETURN DAY OF A COLLECT AND RETURN IS A DELIVERY (Sam, 20 Oct 2026, York College: "why is it saying collection
     // when this is a return"). The card spans the collection day to the return day; on the return day the van unloads.
-    kit.stop=function(run,s){ var j=s.j, d=s.d, isReturn=/Collect and Return/.test(j.movement||"")&&!!j.start&&k===j.date&&k!==j.start, collect=takesOn(j)&&!isReturn, nm=j.title.split(" - ").slice(1).join(" - ")||j.title, si=run.stops.indexOf(s), nStops=run.stops.length;
+    // A card with one date tells it another way: once it sits in Ready for Delivery / Collection the work is done and
+    // the only journey left is back to them.
+    kit.stop=function(run,s){ var j=s.j, d=s.d, isReturn=/Collect and Return/.test(j.movement||"")&&((!!j.start&&k===j.date&&k!==j.start)||j.stageLabel==="Workshop: Ready"), collect=takesOn(j)&&!isReturn, nm=j.title.split(" - ").slice(1).join(" - ")||j.title, si=run.stops.indexOf(s), nStops=run.stops.length;
       var word=isReturn?"return":/^Delivery$/.test(j.movement||"")?"install":collect?"collection":"on site", mins=minsFor(j,run.crew[0]), don=isDonation(j);
       var dropOnly=/drop off only/i.test((d.access||[]).join(" ")+" "+(d.kv.access||""));
       var stopHead=function(cont){ newPage(); label("Stop "+(si+1)+" of "+nStops+(cont?" · "+run.crew.join(" + ")+", continued":""),L,y+1);
