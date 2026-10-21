@@ -121,7 +121,7 @@
     return Promise.all([cardsP, t.lists("all")]).then(function(r){
       var listName={}; r[1].forEach(function(l){ listName[l.id]=l.name; });
       var dated=r[0].filter(function(x){ return x.due && x.id!==card.id; }); var nameOf={}; r[0].forEach(function(x){ nameOf[x.id]=(x.name||"").split(" - ").slice(0,2).join(" - "); });
-      LEAVE=dated.filter(function(x){ return /Holidays|Leave/i.test(listName[x.idList]||""); }).map(function(x){ return {date:x.due.slice(0,10),who:crewOf(x.name.split(/\s*\(/)[0].trim())}; });
+      LEAVE=[]; dated.filter(function(x){ return /Holidays|Leave/i.test(listName[x.idList]||""); }).forEach(function(x){ var who=crewOf(x.name.split(/\s*\(/)[0].trim()); leaveDays((x.start||"").slice(0,10),x.due.slice(0,10)).forEach(function(k){ LEAVE.push({date:k,who:who}); }); });
       // ONLY JOBS THAT CAN STILL TOUCH A DAY AHEAD (1 Oct 2026): every completed card on the board was read one by one,
       // and the panel drew "7h 45m available" for everyone while that was still going or after it failed.
       var cut=new Date(); cut.setDate(cut.getDate()-60); var cutK=cut.toISOString().slice(0,10);

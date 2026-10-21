@@ -666,7 +666,7 @@ var SNAP=null, DETAIL={};
     var dd=DETAIL[c.id]; j.allItems=itemsOf(dd?dd.desc:c.desc,dd?dd.checks:c.checks); j.loanItems=loanItemsOf(dd?dd.desc:c.desc); j.ignore=[]; j.items=j.allItems.slice(); j.manual=[]; j.load=loadOf(j.items.concat(j.loanItems)); j.cubeSet=null;
     return j; });
   // a card with a start date is on the board every working day from start to due
-    LEAVE=SNAP.cards.filter(function(c){return c.role==="leave"&&c.due;}).map(function(c){ return {date:c.due,text:c.name.replace(/\s*\(.*$/,"").replace(/BANK HOLIDAY\s*-\s*/i,"")+(/BANK HOLIDAY/i.test(c.name)?" (bank holiday)":" on leave")}; });
+    LEAVE=[]; SNAP.cards.filter(function(c){return c.role==="leave"&&c.due;}).forEach(function(c){ var text=c.name.replace(/\s*\(.*$/,"").replace(/BANK HOLIDAY\s*-\s*/i,"")+(/BANK HOLIDAY/i.test(c.name)?" (bank holiday)":" on leave"); leaveDays(c.start,c.due).forEach(function(k){ LEAVE.push({date:k,text:text}); }); });
     // what was saved on the cards last time
     // who is coming to Forton, and the CRM's "Arriving:" time when nothing is set yet (2 Oct 2026)
     JOBS.forEach(function(j){ var dd=DETAIL[j.id]; j.arrive=arrivalKind(j.labels,j.title,dd?dd.desc:""); });
