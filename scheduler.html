@@ -128,7 +128,7 @@
   .crew i{font-style:normal;font-weight:600;font-size:11px;opacity:.8;margin-left:4px}
   .leaflet-container{font-family:inherit}
   .board.day{grid-template-columns:repeat(4,minmax(260px,1fr))}
-  .board.month{grid-template-columns:repeat(5,1fr);grid-auto-rows:1fr;gap:8px;overflow:hidden}
+  .board.month{grid-template-columns:repeat(5,1fr) repeat(2,.6fr);grid-auto-rows:1fr;gap:8px;overflow:hidden}
   .mh{font-weight:800;font-size:14px;text-transform:uppercase;letter-spacing:.04em;color:var(--text);padding:4px 6px}
   .mcell{background:var(--list);border:2px solid #3d4451;border-radius:10px;padding:8px 10px;text-align:left;display:flex;flex-direction:column;gap:6px;min-height:0;overflow:hidden}
   .mcell.today{border-color:var(--blue)}
@@ -159,7 +159,7 @@
   .strip button b{font-size:22px;font-weight:800}
   .strip button.on{outline:3px solid var(--blue)}
   .strip button b.bad{color:var(--red)} .strip button b.warn{color:#b35c00}
-  .board.week{grid-template-columns:repeat(5,minmax(210px,1fr)) minmax(190px,.9fr)}
+  .board.week{grid-template-columns:repeat(5,minmax(210px,1fr)) repeat(2,minmax(130px,.55fr)) minmax(190px,.9fr)}.list.wkend{background:#eceef2;border-color:#9aa3b2}.list.wkend h2{color:#64748b}.mcell.wkend{background:#f1f3f6}
   .stop small.facts{display:block;color:var(--muted);font-size:12px;margin-top:2px}
   .rail .cards{gap:8px}
   .rail .iss{text-align:left;width:100%;border:0;border-left:5px solid var(--red);border-radius:6px;background:var(--card);padding:8px 10px;font-size:13px;line-height:1.35;color:var(--text);box-shadow:0 1px 3px rgba(9,30,66,.15)}
@@ -623,6 +623,11 @@ var SNAP=null, DETAIL={};
   var OFF={}, OFF_WHY={};
   var BANK_HOLIDAYS={"2026-01-01":"New Year's Day","2026-04-03":"Good Friday","2026-04-06":"Easter Monday","2026-05-04":"Early May bank holiday","2026-05-25":"Spring bank holiday","2026-08-31":"Summer bank holiday","2026-12-25":"Christmas Day","2026-12-28":"Boxing Day (substitute)","2027-01-01":"New Year's Day","2027-03-26":"Good Friday","2027-03-29":"Easter Monday","2027-05-03":"Early May bank holiday","2027-05-31":"Spring bank holiday","2027-08-30":"Summer bank holiday","2027-12-27":"Christmas Day (substitute)","2027-12-28":"Boxing Day (substitute)"};
   function isBankHoliday(k){ return !!BANK_HOLIDAYS[k]; }
+  // SATURDAY AND SUNDAY ON THE BOARD (Sam, 21 Oct 2026: "I am expecting to see deal BF8E77 held on the 28th Nov"). The week
+  // and month draw all seven days, the Day arrows land on them, and nobody is rostered on one unless they are on a job.
+  // Sheets and routes still run Monday to Friday, plus any weekend day that has something on it.
+  function isWeekend(k){ var g=new Date(k+"T12:00").getDay(); return g===0||g===6; }
+  function weekDays(mon,all){ var out=[]; for(var i=0;i<7;i++){ var k=iso(addDays(mon,i)); if(all||i<5||allJobs().some(function(j){return onDay(j,k);})) out.push(k); } return out; }
   function syncOff(){ LEAVE=LEAVE.filter(function(l){return !l.off&&!l.bh;});
     Object.keys(OFF).forEach(function(k){ (OFF[k]||[]).forEach(function(w){ if(TEAM.indexOf(crewOf(w))<0) return; if(LEAVE.some(function(l){return l.date===k&&crewOf(l.text.split(" ")[0])===w;})) return; LEAVE.push({date:k,text:w+" off today"+(OFF_WHY[k+"|"+w]?" ("+OFF_WHY[k+"|"+w]+")":""),off:true}); }); });
     Object.keys(BANK_HOLIDAYS).forEach(function(k){ TEAM.forEach(function(w){ if(LEAVE.some(function(l){return l.date===k&&crewOf(l.text.split(" ")[0])===w;})) return; LEAVE.push({date:k,text:w+" bank holiday",bh:true}); }); }); }
@@ -750,6 +755,7 @@ var SNAP=null, DETAIL={};
     var jobs=allJobs().filter(function(j){return onDay(j,k);}), preps=capPreps(k), rounds=roundsOn(k,jobs), out={};
     var off=LEAVE.filter(function(l){return l.date===k;}).map(function(l){return crewOf(l.text.split(" ")[0]);});
     TEAM.forEach(function(w){
+      if(off.indexOf(w)<0&&isWeekend(k)&&!jobs.some(function(j){return j.who.indexOf(w)>=0;})&&!rounds.some(function(r){return r.who===w;})){ out[w]={t:"weekend",c:"off",mins:0,rec:0,avail:0,s:"Off",d:"weekend",wk:true}; return; }
       if(off.indexOf(w)>=0){ var lvw=LEAVE.filter(function(l){return l.date===k&&crewOf(l.text.split(" ")[0])===w;})[0]; out[w]={t:lvw&&lvw.bh?"bank holiday":lvw&&lvw.off?"off today":"annual leave",c:"off",mins:0,rec:0,avail:0,s:"Off",d:lvw&&lvw.bh?"bank holiday":lvw&&lvw.off?"off today":"annual leave",r:3}; return; }
       var mine=jobs.filter(function(j){return j.who.indexOf(w)>=0;}), myPreps=preps.filter(function(j){return prepOn(j.prep,w,k);}), myRound=rounds.filter(function(r){return r.who===w;})[0];
       var mins=mine.reduce(function(s,j){return s+(minsFor(j,w)||0)+(j.site&&!j.onRound?(j.drive||0):0);},0)+(myRound&&myRound.drive?myRound.drive:0)+myPreps.reduce(function(s,j){return s+prepShare(j,w,k);},0);
@@ -1804,8 +1810,8 @@ var SNAP=null, DETAIL={};
   // what still needs planning on the days in view: the day, the week, or the month
   function viewDays(){ var out=[];
     if(view==="day") return [dayCur];
-    if(view==="month"){ for(var w=monday(monthCur); w.getMonth()===monthCur.getMonth()||addDays(w,4).getMonth()===monthCur.getMonth(); w=addDays(w,7)){ for(var i=0;i<5;i++){ var d=addDays(w,i); if(d.getMonth()===monthCur.getMonth()) out.push(iso(d)); } } return out; }
-    var mon=addDays(monday(TODAY),week*7); for(var i2=0;i2<5;i2++) out.push(iso(addDays(mon,i2))); return out; }
+    if(view==="month"){ for(var w=monday(monthCur); w.getMonth()===monthCur.getMonth()||addDays(w,6).getMonth()===monthCur.getMonth(); w=addDays(w,7)){ for(var i=0;i<7;i++){ var d=addDays(w,i); if(d.getMonth()===monthCur.getMonth()) out.push(iso(d)); } } return out; }
+    return weekDays(addDays(monday(TODAY),week*7),true); }
   function toPlanCount(days){ days=days||viewDays(); var n=0;
     days.forEach(function(k){ var jobs=allJobs().filter(function(j){return onDay(j,k);}), rs=roundsOn(k,jobs); jobs.forEach(function(x){ x.onRound=rs.some(function(r){return r.stops.indexOf(x)>=0;}); x.roundVan=roundVanOf(x,rs); });
       var pf=planFilter(jobs,prepJobs().filter(function(j){return j.prep&&j.prep.date&&daysOf(j.prep).indexOf(k)>=0;}),true); n+=pf.jobs.filter(function(j){return !j.isHold;}).length+pf.preps.length; });
@@ -1905,20 +1911,20 @@ var SNAP=null, DETAIL={};
     fleet.appendChild(el("span","hint",vansOnRoad(k)+" of "+VEHICLES.length+" on the road today. A job on a van that is off is flagged. Dated downtime comes from the CRM's Vehicles page."));
     pl.appendChild(fleet); b.appendChild(pl);
     var mo=ACT_OPEN?actualsModal():TIMINGS_OPEN?timingsModal():openRound?roundModal():openOp?opModal():modal(); if(mo){ document.body.appendChild(mo); if(window.__keepScroll) mo.scrollTop=window.__keepScroll; }
-    $("#prev").onclick=function(){ var x=new Date(dayCur+"T12:00"); do{x.setDate(x.getDate()-1);}while(x.getDay()===0||x.getDay()===6); dayCur=iso(x); render(); };
-    $("#next").onclick=function(){ var x=new Date(dayCur+"T12:00"); do{x.setDate(x.getDate()+1);}while(x.getDay()===0||x.getDay()===6); dayCur=iso(x); render(); };
+    $("#prev").onclick=function(){ var x=new Date(dayCur+"T12:00"); x.setDate(x.getDate()-1); dayCur=iso(x); render(); };
+    $("#next").onclick=function(){ var x=new Date(dayCur+"T12:00"); x.setDate(x.getDate()+1); dayCur=iso(x); render(); };
   }
   var monthCur=new Date(TODAY.getFullYear(),TODAY.getMonth(),1);
   function renderMonth(){
     var m0=monthCur; $("#title").textContent=MONTHS[m0.getMonth()]+" "+m0.getFullYear();
     var b=$("#board"); b.innerHTML=""; b.className="board month";
-    ["Monday","Tuesday","Wednesday","Thursday","Friday"].forEach(function(n){ b.appendChild(el("div","mh",n)); });
-    var weeks=0; for(var w0=monday(m0); w0.getMonth()===m0.getMonth()||addDays(w0,4).getMonth()===m0.getMonth(); w0=addDays(w0,7)) weeks++;
+    ["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"].forEach(function(n){ b.appendChild(el("div","mh",n)); });
+    var weeks=0; for(var w0=monday(m0); w0.getMonth()===m0.getMonth()||addDays(w0,6).getMonth()===m0.getMonth(); w0=addDays(w0,7)) weeks++;
     b.style.gridTemplateRows="auto repeat("+weeks+",1fr)";
-    for(var w=monday(m0); w.getMonth()===m0.getMonth()||addDays(w,4).getMonth()===m0.getMonth(); w=addDays(w,7)){
-      for(var i=0;i<5;i++){
+    for(var w=monday(m0); w.getMonth()===m0.getMonth()||addDays(w,6).getMonth()===m0.getMonth(); w=addDays(w,7)){
+      for(var i=0;i<7;i++){
         var d=addDays(w,i), k=iso(d), inMonth=d.getMonth()===m0.getMonth(), isToday=k===iso(TODAY);
-        var c=el("button","mcell"+(isToday?" today":"")+(inMonth?"":" dim"));
+        var c=el("button","mcell"+(isToday?" today":"")+(inMonth?"":" dim")+(isWeekend(k)?" wkend":""));
         var dh=el("div","d",String(d.getDate())); if(isToday) dh.appendChild(el("span",null,minsLeftOn(k)===0?"Day over":"Today")); c.appendChild(dh);
         var jobs=allJobs().filter(function(j){return onDay(j,k);}), preps=prepJobs().filter(function(j){return j.prep&&j.prep.date&&daysOf(j.prep).indexOf(k)>=0;});
         var nP=preps.length, nT=jobs.filter(function(j){return j.site;}).length, nY=jobs.filter(function(j){return !j.site;}).length;
@@ -2021,7 +2027,7 @@ var SNAP=null, DETAIL={};
     $("#title").textContent="Week of "+mon.getDate()+" "+MON[mon.getMonth()]+" "+mon.getFullYear();
     $("#src").textContent="Transport jobs on the map. Plan the best rounds and spot jobs nearby.";
     var b=$("#board"); b.innerHTML=""; b.className="board routes"; b.style.gridTemplateRows="";
-    var days=[]; for(var i=0;i<5;i++) days.push(iso(addDays(mon,i)));
+    var days=weekDays(mon);
     var all=allJobs().filter(function(j){return j.site && !(j.contractor&&!j.who.length);});
     var weekJobs=all.filter(function(j){return days.some(function(k){return onDay(j,k);});});
     var horizon=iso(addDays(mon,42));
@@ -2170,7 +2176,7 @@ var SNAP=null, DETAIL={};
   // ── Print / PDF: the week (or the day in Day view) as one clean sheet ──
   function buildPrintSheet(){
     var box=$("#printsheet"); box.innerHTML="";
-    var days=[]; if(view==="day"){ days=[dayCur]; } else { var mon=addDays(monday(TODAY),week*7); for(var i=0;i<5;i++) days.push(iso(addDays(mon,i))); }
+    var days=[]; if(view==="day"){ days=[dayCur]; } else { days=weekDays(addDays(monday(TODAY),week*7)); }
     var first=new Date(days[0]+"T12:00"), last=new Date(days[days.length-1]+"T12:00");
     box.appendChild(el("h1",null,"Operations schedule, "+(days.length===1?niceDay(days[0])+" "+first.getFullYear():niceDay(days[0])+" to "+niceDay(days[days.length-1])+" "+last.getFullYear())));
     box.appendChild(el("p","sub","Coggin SOS. Printed "+new Date().toLocaleString("en-GB",{day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"})+". Working day 7h 45m. Red blanks are for you to fill in and bring back. Purple rows are dates held for sales, not booked."));
@@ -2209,7 +2215,7 @@ var SNAP=null, DETAIL={};
   }
   function buildRoutesSheet(){
     var box=$("#printsheet"); box.innerHTML="";
-    var mon=addDays(monday(TODAY),week*7), days=[]; for(var i=0;i<5;i++) days.push(iso(addDays(mon,i)));
+    var mon=addDays(monday(TODAY),week*7), days=weekDays(mon);
     box.appendChild(el("h1",null,"Routes, "+niceDay(days[0])+" to "+niceDay(days[4])+" "+mon.getFullYear()));
     box.appendChild(el("p","sub","Coggin SOS. Printed "+new Date().toLocaleString("en-GB",{day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"})+". The plan below is drawn to scale from Forton, one colour per day, stops numbered in driving order. Miles are road estimates."));
     var all=allJobs().filter(function(j){return j.site && !(j.contractor&&!j.who.length);});
@@ -2294,7 +2300,7 @@ var SNAP=null, DETAIL={};
   }
   var BLANK="________";
   function schedulePdf(){
-    var days=[]; if(view==="day"){ days=[dayCur]; } else { var mon=addDays(monday(TODAY),week*7); for(var i=0;i<5;i++) days.push(iso(addDays(mon,i))); }
+    var days=[]; if(view==="day"){ days=[dayCur]; } else { days=weekDays(addDays(monday(TODAY),week*7)); }
     var first=new Date(days[0]+"T12:00"), last=new Date(days[days.length-1]+"T12:00");
     var title="Operations schedule, "+(days.length===1?niceDay(days[0])+" "+first.getFullYear():niceDay(days[0])+" to "+niceDay(days[days.length-1])+" "+last.getFullYear());
     var doc=pdfDoc(title,"Printed "+new Date().toLocaleString("en-GB",{day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"})+". Working day 7h 45m. Red blanks are for you to fill in and bring back. Purple rows are dates held for sales, not booked."); if(!doc) return;
@@ -3198,7 +3204,7 @@ var SNAP=null, DETAIL={};
   window.__refresh=function(auto,fast){ return refreshBoard(auto,fast); }; window.__peek=function(){ return {pending:!!PENDING_SNAP,foreign:FOREIGN,open:open,me:ME}; }; window.__setOpen=function(k){ open=k; openOp=null; openRound=null; render(); }; // reachable by the offline checks
   window.__daySheetBuild=daySheetBuild; // reachable by check.mjs and the offline render
   function routesPdf(){
-    var mon=addDays(monday(TODAY),week*7), days=[]; for(var i=0;i<5;i++) days.push(iso(addDays(mon,i)));
+    var mon=addDays(monday(TODAY),week*7), days=weekDays(mon);
     var doc=pdfDoc("Routes, "+niceDay(days[0])+" to "+niceDay(days[4])+" "+mon.getFullYear(),"Printed "+new Date().toLocaleString("en-GB",{day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"})+". One colour per day, stops numbered in driving order from Forton. Miles are road estimates."); if(!doc) return;
     var all=allJobs().filter(function(j){return j.site && !(j.contractor&&!j.who.length);});
     var weekJobs=all.filter(function(j){return days.some(function(k){return onDay(j,k);});});
@@ -3314,9 +3320,9 @@ var SNAP=null, DETAIL={};
     $("#src").textContent=NEED?"FILTER ON: only outstanding jobs are showing. Press Outstanding to show everything.":"Select a job to assign operatives and allocate time."; $("#src").className="src"+(NEED?" filt":"");
     var old=document.querySelector(".veil"); if(old) old.parentNode.removeChild(old);
     var b=$("#board"); b.innerHTML=""; b.style.gridTemplateRows="1fr auto"; var WEEK_REC={};
-    for(var i=0;i<5;i++){
+    for(var i=0;i<7;i++){
       var d=addDays(mon,i), k=iso(d), isToday=k===iso(TODAY);
-      var list=el("div","list"+(isToday?" today":""));
+      var list=el("div","list"+(isToday?" today":"")+(isWeekend(k)?" wkend":""));
       var jobs=allJobs().filter(function(j){return onDay(j,k);});
       var preps=prepJobs().filter(function(j){return j.prep&&j.prep.date&&daysOf(j.prep).indexOf(k)>=0;});
       var n=NEED?planFilter(jobs,preps).jobs.length+planFilter(jobs,preps).preps.length:jobs.length;
@@ -3358,6 +3364,7 @@ var SNAP=null, DETAIL={};
         var unset=mine.filter(function(j){return j.mins==null;}).length+myPreps.filter(function(j){return j.prep.mins==null;}).length;
         mine=mine.concat(myPreps);
         if(FIELD_CREW.indexOf(w)<0&&!mine.length&&!myRound) return;   // the office with nothing on is not a free operative
+        if(isWeekend(k)&&!mine.length&&!myRound) return;   // nobody is rostered on a weekend; only someone put on a job shows
         var txt, cls;
         if(off.indexOf(w)>=0){ var lvc=LEAVE.filter(function(l){return l.date===k&&crewOf(l.text.split(" ")[0])===w;})[0]; txt=lvc&&lvc.bh?"bank hol":lvc&&lvc.off?"off":"leave"; cls="free"; }
         else if(!mine.length){ txt="free"; cls="free"; }
