@@ -145,6 +145,7 @@
   // OFF ON THE SCHEDULER IS OFF HERE (Sam, 1 Oct 2026: "why is it showing Rob available here?"). Rob was marked off with
   // the Scheduler's Mark as off, which lives on the board, not as a card in Holidays / Leave, so this panel never saw it.
   // THIS CARD'S OTHER PARTS COUNT TOO: Jack and Jordan in production on this card are not free for its loading.
+  PREP_OFF=function(w,k){ return LEAVE.some(function(l){ return l.date===k&&l.who===w; }); };
   function loadOn(k,skip){
     var out={}; CREW.forEach(function(w){ out[w]={mins:0,done:0,n:0,away:[],forton:0}; });
     LEAVE.forEach(function(l){ if(l.date===k&&out[l.who]){ out[l.who].off=true; out[l.who].why="annual leave"; } });

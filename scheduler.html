@@ -745,6 +745,7 @@ var SNAP=null, DETAIL={};
     var vans=vansOnRoad(k);
     return {need:need,avail:avail,overTime:need>avail,trips:trips,vans:vans,overVans:trips>vans,holds:jobs.filter(function(j){return j.isHold;}).length};
   }
+  PREP_OFF=function(w,k){ return LEAVE.some(function(l){ return l.date===k&&crewOf(l.text.split(" ")[0])===w; }); };
   function loadOn(k){
     var jobs=allJobs().filter(function(j){return onDay(j,k);}), preps=capPreps(k), rounds=roundsOn(k,jobs), out={};
     var off=LEAVE.filter(function(l){return l.date===k;}).map(function(l){return crewOf(l.text.split(" ")[0]);});

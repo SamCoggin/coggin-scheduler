@@ -639,16 +639,19 @@ function setPrepPerDay(P,v){ var n=prepDayCount(P); var was=prepPerDay(P); if(n<
 // sheet and the card back all read cells. A plan saved before the grid existed (whole window, or the per-person spans
 // of 19 Oct) is turned into cells the first time it is read, so nothing already planned moves.
 var AM_MINS=225, PM_MINS=240;
+// LEAVE WINS (Sam, 21 Oct 2026, Ecosave: Jordan drawn Full on Thu 22 and Tue 27 while on leave). Each page sets this to
+// its own leave check; a leave day is off whatever the grid holds, is never filled, and cannot be clicked on.
+var PREP_OFF=function(w,k){ return false; };
 function prepDayList(P){ if(!P||!P.date) return []; var a=P.start&&P.start<P.date?P.start:P.date, out=[]; for(var x=new Date(a+"T12:00"); x.toISOString().slice(0,10)<=P.date; x.setDate(x.getDate()+1)){ if(x.getDay()!==0&&x.getDay()!==6) out.push(x.toISOString().slice(0,10)); } return out; }
 function prepSpanFor(P,w){ var r=P&&P.days&&P.days[w]; return r&&(r.from||r.to)?r:null; }
 // per-day minutes for a person before the grid: their own time (each holds a total over the window) or the block's
 function prepLegacyPerDay(P,w){ var e=P&&P.each&&P.each[w]; var n=prepDayCount(P)||1; if(e===0||e) return n>1?Math.round(e/n):e; return prepPerDay(P); }
 function prepGrid(P){ if(!P) return {}; if(P.grid&&typeof P.grid==="object") return P.grid;
   var g={}; var all=prepDayList(P); var who=P.who||[];
-  who.forEach(function(w){ var r=prepSpanFor(P,w), pd=prepLegacyPerDay(P,w); if(pd==null) pd=DAY_MINS; g[w]={}; all.forEach(function(k){ if(r&&((r.from&&k<r.from)||(r.to&&k>r.to))) return; g[w][k]=pd; }); });
+  who.forEach(function(w){ var r=prepSpanFor(P,w), pd=prepLegacyPerDay(P,w); if(pd==null) pd=DAY_MINS; g[w]={}; all.forEach(function(k){ if(PREP_OFF(w,k)) return; if(r&&((r.from&&k<r.from)||(r.to&&k>r.to))) return; g[w][k]=pd; }); });
   if(who.length&&all.length) P.grid=g;
   return g; }
-function prepCell(P,w,k){ var g=prepGrid(P); var v=g[w]&&g[w][k]; return v>0?v:0; }
+function prepCell(P,w,k){ if(PREP_OFF(w,k)) return 0; var g=prepGrid(P); var v=g[w]&&g[w][k]; return v>0?v:0; }
 function prepDaysFor(P,w){ var g=prepGrid(P); return Object.keys(g[w]||{}).filter(function(k){ return g[w][k]>0; }).sort(); }
 function prepOn(P,w,k){ return prepCell(P,w,k)>0; }
 function prepWhoOn(P,k){ return ((P&&P.who)||[]).filter(function(w){ return prepOn(P,w,k); }); }
@@ -660,14 +663,14 @@ function prepMinsFor(P,w){ if(!P) return null; var ds=prepDaysFor(P,w); if(!ds.l
 function prepHasSpans(P){ if(!P||!(P.who||[]).length) return false; var all=prepDayList(P), pd=prepPerDay(P); return (P.who||[]).some(function(w){ var ds=prepDaysFor(P,w); return ds.length!==all.length||ds.some(function(k){ return prepCell(P,w,k)!==pd; }); }); }
 function prepSpanText(P,w){ var ds=prepDaysFor(P,w); if(!ds.length) return "no days"; var n=ds.length, mins=prepMinsFor(P,w); return (n===1?niceShort(ds[0]):niceShort(ds[0])+" to "+niceShort(ds[n-1]))+", "+n+(n===1?" day":" days")+(mins?", "+fmt(mins):""); }
 // cells: set one, cycle one, fill a row, clear a row; the window follows the cells
-function setPrepCell(P,w,k,mins){ var g=prepGrid(P); g[w]=g[w]||{}; g[w][k]=mins>0?Math.min(DAY_MINS,Math.round(mins)):0; P.grid=g; if((P.who||[]).indexOf(w)<0){ P.who=(P.who||[]).concat([w]); } stretchPrepWindow(P); }
+function setPrepCell(P,w,k,mins){ if(PREP_OFF(w,k)) return; var g=prepGrid(P); g[w]=g[w]||{}; g[w][k]=mins>0?Math.min(DAY_MINS,Math.round(mins)):0; P.grid=g; if((P.who||[]).indexOf(w)<0){ P.who=(P.who||[]).concat([w]); } stretchPrepWindow(P); }
 function cyclePrepCell(P,w,k){ var v=prepCell(P,w,k), pd=prepPerDay(P)||DAY_MINS; var next=v===0?pd:v===pd?AM_MINS:v===AM_MINS?PM_MINS:0; setPrepCell(P,w,k,next); return next; }
 function fillPrepRow(P,w){ var pd=prepPerDay(P)||DAY_MINS; prepDayList(P).forEach(function(k){ setPrepCell(P,w,k,pd); }); }
 function clearPrepRow(P,w){ var g=prepGrid(P); delete g[w]; P.grid=g; P.who=(P.who||[]).filter(function(x){ return x!==w; }); stretchPrepWindow(P); }
 // the block's per-day figure changed: cells that sat at the old figure follow it, typed ones stay
 function rescalePrepGrid(P,oldPd,newPd){ if(!P||!P.grid||oldPd==null||newPd==null) return; Object.keys(P.grid).forEach(function(w){ Object.keys(P.grid[w]).forEach(function(k){ if(P.grid[w][k]===oldPd) P.grid[w][k]=newPd; }); }); }
 // the window dates changed: new days come on at the block's figure for everyone, days outside the window go
-function fitPrepGrid(P){ if(!P||!P.grid) return; var all=prepDayList(P), pd=prepPerDay(P)||DAY_MINS; Object.keys(P.grid).forEach(function(w){ var row=P.grid[w]; Object.keys(row).forEach(function(k){ if(all.indexOf(k)<0) delete row[k]; }); all.forEach(function(k){ if(row[k]===undefined) row[k]=pd; }); }); }
+function fitPrepGrid(P){ if(!P||!P.grid) return; var all=prepDayList(P), pd=prepPerDay(P)||DAY_MINS; Object.keys(P.grid).forEach(function(w){ var row=P.grid[w]; Object.keys(row).forEach(function(k){ if(all.indexOf(k)<0) delete row[k]; }); all.forEach(function(k){ if(row[k]===undefined&&!PREP_OFF(w,k)) row[k]=pd; }); }); }
 function stretchPrepWindow(P){ if(!P||!P.grid) return; var days=[]; Object.keys(P.grid).forEach(function(w){ days=days.concat(Object.keys(P.grid[w]).filter(function(k){ return P.grid[w][k]>0; })); }); if(!days.length) return; days.sort(); if(!P.start||days[0]<P.start) P.start=days[0]; if(!P.date||days[days.length-1]>P.date) P.date=days[days.length-1]; if(P.start>P.date) P.start=P.date; delete P.days; }
 // THE GRID ON SCREEN, one drawing for the Scheduler editor and the card back. Click cycles Full, AM, PM, off; double
 // click types hours (editor only); toggle mode (the card back) flips a day on or off at the block's figure.
@@ -683,6 +686,7 @@ function renderPrepGrid(P,o){ o=o||{}; var all=prepDayList(P); if(o.byWeek&&all.
   days.forEach(function(k){ var th=document.createElement("th"); var d=new Date(k+"T12:00"); th.textContent=DN[d.getDay()]+" "+d.getDate(); th.setAttribute("scope","col"); hr.appendChild(th); }); if(o.totals!==false) hr.appendChild(document.createElement("th"));
   who.forEach(function(w){ var r=t.insertRow(); var nm=r.insertCell(); nm.className="nm"; nm.textContent=firstName(w); nm.title=w;
     days.forEach(function(k){ var c=r.insertCell(); var v=prepCell(P,w,k), st=prepCellState(P,w,k); c.className="c "+st; c.textContent=st==="off"?"":st==="full"?"Full":st==="am"?"AM":st==="pm"?"PM":fmt(v); var nice=DN[new Date(k+"T12:00").getDay()]+" "+niceShort(k);
+      if(PREP_OFF(w,k)){ c.className="c leave"; c.textContent="Off"; c.title=firstName(w)+" is off on "+nice; return; }
       if(!o.editable){ c.title=firstName(w)+", "+nice+": "+(v?fmt(v):"off"); return; }
       c.setAttribute("role","button"); c.tabIndex=0; c.setAttribute("aria-label",firstName(w)+", "+nice+": "+(v?fmt(v):"off")+(o.toggle?". Click to turn "+(v?"off":"on"):". Click for the next state, double click to type hours"));
       var fire=function(){ if(o.toggle) setPrepCell(P,w,k,v?0:(prepPerDay(P)||DAY_MINS)); else cyclePrepCell(P,w,k); if(o.onChange) o.onChange(); };
@@ -692,7 +696,7 @@ function renderPrepGrid(P,o){ o=o||{}; var all=prepDayList(P); if(o.byWeek&&all.
         var done=function(){ var m=parseDurText(inp.value); if(m!=null) setPrepCell(P,w,k,m); if(o.onChange) o.onChange(); }; inp.onblur=done; inp.onkeydown=function(ev){ ev.stopPropagation(); if(ev.key==="Enter") inp.blur(); if(ev.key==="Escape"){ inp.onblur=null; if(o.onChange) o.onChange(); } }; }; });
     if(o.totals===false) return; var tc=r.insertCell(); tc.className="tot"; var n=prepDayCountFor(P,w), m=prepMinsFor(P,w); tc.textContent=n?n+(n===1?" day":" days")+", "+fmt(m):"no days"; });
   return t; }
-var PREP_GRID_CSS=".dgrid{border-collapse:separate;border-spacing:3px 3px;font-size:12px;margin:4px 0 2px -3px}.dgrid th{font-weight:600;color:#64748b;padding:0 2px 2px;white-space:nowrap;text-align:center;font-size:11px}.dgrid td.nm{font-weight:600;white-space:nowrap;padding:0 8px 0 0;font-size:13px}.dgrid td.c{min-width:46px;height:28px;text-align:center;border-radius:6px;border:1px solid #cbd5e1;background:#fff;color:#64748b;user-select:none;padding:0 4px;white-space:nowrap}.dgrid td.c[role=button]{cursor:pointer}.dgrid td.c[role=button]:focus-visible{outline:2px solid #0c66e4;outline-offset:1px}.dgrid td.c.full{background:#1D3058;color:#fff;border-color:#1D3058}.dgrid td.c.am,.dgrid td.c.pm{background:#dbe7ff;color:#1D3058;border-color:#9ab3e8}.dgrid td.c.typed{background:#fff3d6;color:#7a4b00;border-color:#e4b96a}.dgrid td.c.off{background:#f1f5f9;border-color:#e2e8f0}.dgrid td.c.typing{padding:0}.dgrid td.c input.hrs{width:60px;height:24px;border:1px solid #0c66e4;border-radius:5px;font-size:12px;text-align:center;padding:0 2px}.dgrid td.tot{color:#64748b;white-space:nowrap;padding-left:6px;font-size:12px}.dgrid .key{color:#64748b;font-size:11px}.dgridweeks .dgrid+.dgrid{margin-top:2px}.dgridweeks .dgrid td.c{min-width:40px;height:26px}.dgridtot{color:#64748b;font-size:12px;margin:4px 0 0}";
+var PREP_GRID_CSS=".dgrid{border-collapse:separate;border-spacing:3px 3px;font-size:12px;margin:4px 0 2px -3px}.dgrid th{font-weight:600;color:#64748b;padding:0 2px 2px;white-space:nowrap;text-align:center;font-size:11px}.dgrid td.nm{font-weight:600;white-space:nowrap;padding:0 8px 0 0;font-size:13px}.dgrid td.c{min-width:46px;height:28px;text-align:center;border-radius:6px;border:1px solid #cbd5e1;background:#fff;color:#64748b;user-select:none;padding:0 4px;white-space:nowrap}.dgrid td.c[role=button]{cursor:pointer}.dgrid td.c[role=button]:focus-visible{outline:2px solid #0c66e4;outline-offset:1px}.dgrid td.c.full{background:#1D3058;color:#fff;border-color:#1D3058}.dgrid td.c.am,.dgrid td.c.pm{background:#dbe7ff;color:#1D3058;border-color:#9ab3e8}.dgrid td.c.typed{background:#fff3d6;color:#7a4b00;border-color:#e4b96a}.dgrid td.c.off{background:#f1f5f9;border-color:#e2e8f0}.dgrid td.c.leave{background:repeating-linear-gradient(135deg,#f1f5f9 0 4px,#e2e8f0 4px 8px);color:#94a3b8;border-color:#e2e8f0;cursor:default}.dgrid td.c.typing{padding:0}.dgrid td.c input.hrs{width:60px;height:24px;border:1px solid #0c66e4;border-radius:5px;font-size:12px;text-align:center;padding:0 2px}.dgrid td.tot{color:#64748b;white-space:nowrap;padding-left:6px;font-size:12px}.dgrid .key{color:#64748b;font-size:11px}.dgridweeks .dgrid+.dgrid{margin-top:2px}.dgridweeks .dgrid td.c{min-width:40px;height:26px}.dgridtot{color:#64748b;font-size:12px;margin:4px 0 0}";
 function firstName(w){ return String(w||"").split(" ")[0]; }
 function nameList(a){ a=(a||[]).map(firstName); return a.length<=1?a.join(""):a.slice(0,-1).join(", ")+" and "+a[a.length-1]; }
 function syncPrepTotal(P){ if(P&&P.perDay!=null&&P.date){ var n=prepDayCount(P); if(n>1) P.mins=P.perDay*n; else { P.mins=P.perDay; P.perDay=null; } } }
