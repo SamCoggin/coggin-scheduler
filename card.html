@@ -348,7 +348,11 @@
     // The full editor, on this job's day, with this job open. Same modal the round link uses.
     if(card&&card.id){ var ob0=el("div","open-sched"); var ob1=el("button","p","Open in the Scheduler"); ob1.title="The full Scheduler, on this job's day, with this job open";
       ob1.onclick=function(){ try{ t.modal({ url:"./scheduler.html?open="+encodeURIComponent(card.id)+"&v="+Math.floor(Date.now()/60000), fullscreen:true, title:"Scheduler" }); }catch(e){ alert("Could not open the Scheduler: "+(e&&e.message||e)); } };
-      ob0.appendChild(ob1); app.appendChild(ob0); }
+      // THE JOB SHEET FROM THE CARD (Sam, 21 Oct 2026: "I want to be able to download the job sheet from this view"). The
+      // sheet is built by the Scheduler, so this opens it on the job and it downloads the sheet as it opens.
+      var jsb=el("button","p","Job sheet"); jsb.title="Download this job's own page for the day"; jsb.style.marginRight="8px";
+      jsb.onclick=function(){ try{ t.modal({ url:"./scheduler.html?open="+encodeURIComponent(card.id)+"&sheet="+(workshop?"prep":"job")+"&v="+Math.floor(Date.now()/60000), fullscreen:true, title:"Scheduler" }); }catch(e){ alert("Could not open the Scheduler: "+(e&&e.message||e)); } };
+      ob0.appendChild(jsb); ob0.appendChild(ob1); app.appendChild(ob0); }
     var due=(card.due||"").slice(0,10);
     var contractorOnly=(!!d.contractor||CARRIER_PENDING) && !d.who.length;
 
