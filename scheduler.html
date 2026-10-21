@@ -1,6 +1,6 @@
 <title>Coggin Scheduler</title>
 <style>
-    .oplist .opspan{display:flex;align-items:center;gap:6px;padding:2px 12px 8px 12px;font-size:12px;background:#eef2fb}.oplist .opspan input[type=date]{width:auto;flex:0 0 auto;height:26px;padding:1px 6px;font-size:12px;border:1px solid #cbd5e1;border-radius:6px;background:#fff}.oplist .opspan .hint{margin:0;white-space:nowrap}
+    .oplist .dgridbox{padding:4px 12px 8px;background:#eef2fb;overflow-x:auto}.oplist .dgridbox .hint{margin:4px 0 0}
   :root{ --board:#cfd6e0; --list:#eef0f3; --card:#fff; --text:#172b4d; --muted:#5e6c84; --line:#b8c0cc; --blue:#0c66e4; --blue-bg:#e9f2ff; --red:#c9372c; --red-bg:#ffeceb; --green:#1f845a; --green-bg:#e3fcef; --amber:#974f0c; --amber-bg:#fff7d6; --shadow:0 1px 1px rgba(9,30,66,.25),0 0 1px rgba(9,30,66,.31); }
   @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){ --board:#1d2125; --list:#101204; --card:#22272b; --text:#b6c2cf; --muted:#8c9bab; --line:#4a5661; --blue:#579dff; --blue-bg:#1c2b41; --red:#f87168; --red-bg:#42221f; --green:#4bce97; --green-bg:#1c3329; --amber:#f5cd47; --amber-bg:#3d2e00; --shadow:0 1px 1px rgba(0,0,0,.5); }}
   :root[data-theme="dark"]{ --board:#1d2125; --list:#101204; --card:#22272b; --text:#b6c2cf; --muted:#8c9bab; --line:#4a5661; --blue:#579dff; --blue-bg:#1c2b41; --red:#f87168; --red-bg:#42221f; --green:#4bce97; --green-bg:#1c3329; --amber:#f5cd47; --amber-bg:#3d2e00; --shadow:0 1px 1px rgba(0,0,0,.5); }
@@ -674,7 +674,7 @@ var SNAP=null, DETAIL={};
       if(d.who) j.who=d.who.slice(); if(d.cube!=null) j.cubeSet=d.cube; if(d.ignore&&d.ignore.length){ j.ignore=d.ignore.slice(); j.items=j.allItems.filter(function(l){return j.ignore.indexOf(l)<0;}); } if(d.items&&d.items.length){ j.manual=d.items.slice(); } j.load=loadOf(j.items.concat(j.manual).concat(j.loanItems||[])); if(d.mins!=null) j.mins=d.mins; if(d.each) j.each=d.each; if(d.at) j.at=d.at; if(d.drive!=null) j.drive=d.drive; if(d.driveAuto) j.driveAuto=true; /* A worked-out figure STAYS (Sam, 17 Oct 2026: "not saving"): the 28 Sep switch-off wiped any saved driveAuto on load, which also wiped Work it out from the postcode. The automatic estimate is still off; a figure someone asked for is kept. */ if(d.contractor) j.contractor=d.contractor; if(d.from) j.from=d.from; if(d.by) j.by=d.by; if(d.collectAt) j.collectAt=d.collectAt; if(d.vehicles&&d.vehicles.length) setVans(j,d.vehicles); else if(d.vehicle) setVans(j,[d.vehicle]); if(d.soloOk) j.soloOk=d.soloOk; if(d.qc&&d.qc.by) j.qc=d.qc; if(d.done&&d.done.status) j.done=(d.done.status==="no"&&d.date&&d.date!==j.date)?null:d.done;   // a did-not-go record clears once the card has a new date
       // DATE MOVED (Sam, 13 Sep 2026): the plan remembers the date it was made for. If sales move the card, the plan flags itself until someone presses Replanned.
       if(d.date&&d.date!==j.date&&((d.who&&d.who.length)||d.mins!=null||d.vehicle)) j.moved={from:d.date}; if(d.hireRef) j.hireRef=d.hireRef; if(d.hireFrom) j.hireFrom=d.hireFrom; if(d.hireBooked) j.hireBooked=true;
-      if(d.prep&&j.prep){ j.prep.who=d.prep.who||[]; j.prep.mins=d.prep.mins; j.prep.perDay=d.prep.perDay!=null?d.prep.perDay:null; if(d.prep.each) j.prep.each=d.prep.each; j.prep.start=d.prep.start||null; j.prep.date=d.prep.date||null; if(d.prep.done&&d.prep.done.status) j.prep.done=d.prep.done; if(d.prep.picked) j.prep.picked=d.prep.picked; if(d.prep.stages) j.prep.stages=true; if(d.prep.days) j.prep.days=d.prep.days; }
+      if(d.prep&&j.prep){ j.prep.who=d.prep.who||[]; j.prep.mins=d.prep.mins; j.prep.perDay=d.prep.perDay!=null?d.prep.perDay:null; if(d.prep.each) j.prep.each=d.prep.each; j.prep.start=d.prep.start||null; j.prep.date=d.prep.date||null; if(d.prep.done&&d.prep.done.status) j.prep.done=d.prep.done; if(d.prep.picked) j.prep.picked=d.prep.picked; if(d.prep.stages) j.prep.stages=true; if(d.prep.grid) j.prep.grid=d.prep.grid; else if(d.prep.days) j.prep.days=d.prep.days; }
       // FINISHED PRODUCTION KEEPS ITS PLAN (Sam, 2 Oct 2026: "I don't think is taking into concideration they have also
       // completed to other jobs"): a card moved on to Ready or beyond has no production part any more, but the plan says
       // who worked on it and when, so it is kept, saved back unchanged, and its hours stay on those days as finished work.
@@ -727,7 +727,7 @@ var SNAP=null, DETAIL={};
   // of those days, so everyone showed over capacity). The time per operative is for the whole job, so each day
   // carries its share.
   // a person's share of a production day: the per-day figure, their own when they have one (19 Oct 2026, per-operative days)
-  function prepShare(j,w){ var P=j&&j.prep; if(!P) return 0; var v=w?prepPerDayFor(P,w):prepPerDay(P); return Math.round(v||0); }
+  function prepShare(j,w,k){ var P=j&&j.prep; if(!P) return 0; var v=w?prepPerDayFor(P,w,k):prepPerDay(P); return Math.round(v||0); }
   // "Jordan 19 Oct to 30 Oct, Bradley 20 Oct to 21 Oct": each person's own production days, blank when nobody has their own
   function prepSpansLine(P){ if(!prepHasSpans(P)) return ""; return (P.who||[]).map(function(w){ var ds=prepDaysFor(P,w); if(!ds.length) return firstName(w)+" no days"; return firstName(w)+" "+(ds.length===1?shortDay(ds[0]):shortDay(ds[0])+" to "+shortDay(ds[ds.length-1])); }).join(", "); }   // whole minutes (1 Oct 2026: 72h over 11 days showed "1h 12.2727m free")
   function daysOf(j){ if(!j.start||j.start>=j.date) return [j.date]; var out=[]; for(var d=new Date(j.start+"T12:00");iso(d)<=j.date;d.setDate(d.getDate()+1)){ if(d.getDay()!==0&&d.getDay()!==6) out.push(iso(d)); } return out; }
@@ -740,7 +740,7 @@ var SNAP=null, DETAIL={};
     var avail=FIELD_CREW.filter(function(w){return off.indexOf(w)<0;}).length*DAY_MINS;
     var need=0, trips=0;
     jobs.forEach(function(j){ if(j.contractor&&!j.who.length) return; var fw=j.who.filter(function(w){return FIELD_CREW.indexOf(w)>=0;}); if(j.who.length&&!fw.length){ if(j.site) trips+=1; return; } var crew=j.isHold?(j.holdCrew!=null?j.holdCrew:2):Math.max(1,fw.length); var own=(!j.isHold&&fw.length)?fw.reduce(function(t,w){return t+(minsFor(j,w)||0);},0):(j.mins||0)*crew; need+=own+(j.site?(j.drive||0)*crew:0); if(j.site) trips+=1; });
-    preps.forEach(function(j){ var pw=prepWhoOn(j.prep,k).filter(function(w){return FIELD_CREW.indexOf(w)>=0;}); if(j.prep.who.length&&!pw.length) return; need+=(!j.isHold&&pw.length)?pw.reduce(function(t,w){return t+prepShare(j,w);},0):prepShare(j)*(j.isHold?(j.prep.crew||1):1); });
+    preps.forEach(function(j){ var pw=prepWhoOn(j.prep,k).filter(function(w){return FIELD_CREW.indexOf(w)>=0;}); if(j.prep.who.length&&!pw.length) return; need+=(!j.isHold&&pw.length)?pw.reduce(function(t,w){return t+prepShare(j,w,k);},0):prepShare(j)*(j.isHold?(j.prep.crew||1):1); });
     var rounds=roundsOn(k,jobs); trips=Math.max(0,trips-rounds.reduce(function(t,r){return t+r.stops.length-1;},0));
     var vans=vansOnRoad(k);
     return {need:need,avail:avail,overTime:need>avail,trips:trips,vans:vans,overVans:trips>vans,holds:jobs.filter(function(j){return j.isHold;}).length};
@@ -751,7 +751,7 @@ var SNAP=null, DETAIL={};
     TEAM.forEach(function(w){
       if(off.indexOf(w)>=0){ var lvw=LEAVE.filter(function(l){return l.date===k&&crewOf(l.text.split(" ")[0])===w;})[0]; out[w]={t:lvw&&lvw.bh?"bank holiday":lvw&&lvw.off?"off today":"annual leave",c:"off",mins:0,rec:0,avail:0,s:"Off",d:lvw&&lvw.bh?"bank holiday":lvw&&lvw.off?"off today":"annual leave",r:3}; return; }
       var mine=jobs.filter(function(j){return j.who.indexOf(w)>=0;}), myPreps=preps.filter(function(j){return prepOn(j.prep,w,k);}), myRound=rounds.filter(function(r){return r.who===w;})[0];
-      var mins=mine.reduce(function(s,j){return s+(minsFor(j,w)||0)+(j.site&&!j.onRound?(j.drive||0):0);},0)+(myRound&&myRound.drive?myRound.drive:0)+myPreps.reduce(function(s,j){return s+prepShare(j,w);},0);
+      var mins=mine.reduce(function(s,j){return s+(minsFor(j,w)||0)+(j.site&&!j.onRound?(j.drive||0):0);},0)+(myRound&&myRound.drive?myRound.drive:0)+myPreps.reduce(function(s,j){return s+prepShare(j,w,k);},0);
       var n=mine.length+myPreps.length;
       // WHAT IS ALREADY DONE TODAY (Sam, 2 Oct 2026: "I want it automated when the job card moves to complete"): a card in a
       // completed list, and the legs of one, has used its time; whatever is left of today is free once the unfinished work
@@ -817,7 +817,7 @@ var SNAP=null, DETAIL={};
   function persist(){
     if(!t) return;
     JOBS.forEach(function(j){
-      tidyEach(j); var d={date:j.moved?j.moved.from:j.date,who:j.who,mins:j.mins,each:j.each||undefined,drive:j.drive,driveAuto:!!j.driveAuto,at:j.at||undefined,cube:j.cubeSet,ignore:j.ignore&&j.ignore.length?j.ignore:undefined,items:j.manual&&j.manual.length?j.manual:undefined,load:j.load&&j.load.any?{m3:j.load.m3,kg:j.load.kg,complete:j.load.complete,rows:j.load.rows.map(function(r){return {n:r.n,type:r.type,m3:r.m3,kg:r.kg,built:r.built,est:r.est};}),unmatched:j.load.unmatched}:undefined,contractor:j.contractor||"",from:j.from||null,by:j.by||null,collectAt:j.collectAt||undefined,vehicle:j.vehicle||null,vehicles:vansOf(j).length>1?vansOf(j):undefined,soloOk:j.soloOk||"",qc:j.qc||null,done:j.done||null,hireRef:j.hireRef||"",hireFrom:j.hireFrom||"",hireBooked:!!j.hireBooked,prodDue:j.prodDueSet?j.prodDue:null,prep:j.prep?{who:j.prep.who,mins:j.prep.mins,perDay:j.prep.perDay!=null?j.prep.perDay:undefined,each:j.prep.each&&Object.keys(j.prep.each).length?j.prep.each:undefined,start:j.prep.start,date:j.prep.date,done:j.prep.done||null,picked:j.prep.picked&&Object.keys(j.prep.picked).length?j.prep.picked:undefined,stages:j.prep.stages?true:undefined,days:j.prep.days&&Object.keys(j.prep.days).length?j.prep.days:undefined}:(j.donePrep||null),
+      tidyEach(j); var d={date:j.moved?j.moved.from:j.date,who:j.who,mins:j.mins,each:j.each||undefined,drive:j.drive,driveAuto:!!j.driveAuto,at:j.at||undefined,cube:j.cubeSet,ignore:j.ignore&&j.ignore.length?j.ignore:undefined,items:j.manual&&j.manual.length?j.manual:undefined,load:j.load&&j.load.any?{m3:j.load.m3,kg:j.load.kg,complete:j.load.complete,rows:j.load.rows.map(function(r){return {n:r.n,type:r.type,m3:r.m3,kg:r.kg,built:r.built,est:r.est};}),unmatched:j.load.unmatched}:undefined,contractor:j.contractor||"",from:j.from||null,by:j.by||null,collectAt:j.collectAt||undefined,vehicle:j.vehicle||null,vehicles:vansOf(j).length>1?vansOf(j):undefined,soloOk:j.soloOk||"",qc:j.qc||null,done:j.done||null,hireRef:j.hireRef||"",hireFrom:j.hireFrom||"",hireBooked:!!j.hireBooked,prodDue:j.prodDueSet?j.prodDue:null,prep:j.prep?{who:j.prep.who,mins:j.prep.mins,perDay:j.prep.perDay!=null?j.prep.perDay:undefined,each:j.prep.each&&Object.keys(j.prep.each).length?j.prep.each:undefined,start:j.prep.start,date:j.prep.date,done:j.prep.done||null,picked:j.prep.picked&&Object.keys(j.prep.picked).length?j.prep.picked:undefined,stages:j.prep.stages?true:undefined,grid:j.prep.grid&&Object.keys(j.prep.grid).length?j.prep.grid:undefined,days:!j.prep.grid&&j.prep.days&&Object.keys(j.prep.days).length?j.prep.days:undefined}:(j.donePrep||null),
         legs:LEGS.filter(function(L){return L.parent===j.id;}).map(function(L){ tidyEach(L); return {type:L.type,date:L.date,who:L.who,mins:L.mins,each:L.each||undefined,drive:L.drive,where:L.where,from:L.from||null,by:L.by||null,pc:L.pc||null,src:L.src||null};})};
       var js=JSON.stringify(d); if(lastSaved[j.id]===js) return; lastSaved[j.id]=js; PLAN_SIG[j.id]=js;
       // WHO SAVED IT AND WHEN (18 Oct 2026): so another open Scheduler can say whose change it is pulling in.
@@ -904,7 +904,7 @@ var SNAP=null, DETAIL={};
   function dayParts(k){
     var out=[];
     prepJobs().filter(function(j){ return !j.isHold&&j.prep&&j.prep.date&&daysOf(j.prep).indexOf(k)>=0; }).forEach(function(j){
-      var dayWho=prepWhoOn(j.prep,k); if(j.prep.who.length&&!dayWho.length) return; var w0=dayWho[0]; out.push({key:k+"|"+j.id+"|prep",card:j.id,part:"production",title:jobName(j),sub:"Production",work:j.work||"",movement:j.movement||"",who:dayWho,mins:j.prep.mins!=null?Math.round(prepShare(j,w0)):null}); });
+      var dayWho=prepWhoOn(j.prep,k); if(j.prep.who.length&&!dayWho.length) return; var w0=dayWho[0]; out.push({key:k+"|"+j.id+"|prep",card:j.id,part:"production",title:jobName(j),sub:"Production",work:j.work||"",movement:j.movement||"",who:dayWho,mins:j.prep.mins!=null?Math.round(prepShare(j,w0,k)):null}); });
     allJobs().filter(function(j){ return onDay(j,k)&&!j.isHold&&!(j.contractor&&!j.who.length); }).forEach(function(j){
       if(j.isLeg&&j.leg){ var pj=j.parentJob||j, part=j.leg.type==="production"?"production":(j.leg.type==="labour"?"labour":"transport");
         out.push({key:k+"|"+pj.id+"|"+j.leg.type+"|"+(j.leg.where||""),card:pj.id,part:part,title:jobName(pj),sub:(part==="production"?"Production":"Goods In and Out")+(j.leg.where?", "+j.leg.where:""),work:pj.work||"",movement:j.leg.type,who:(j.who||[]).slice(),mins:j.mins!=null?j.mins:null}); return; }
@@ -1054,7 +1054,7 @@ var SNAP=null, DETAIL={};
         stops.push({j:j,arrive:arrive,start:st,end:t,wait:wait,by:by,late:by!=null&&t>by,noDrive:leg==null}); t=breakAt(t,taken,brk); });
       if(realLegs){ var lgb=realLegs[li]||0; t+=lgb+breakDuring(t,lgb,taken,brk); drive+=lgb; } else if(leg!=null){ t+=leg+breakDuring(t,leg,taken,brk); drive+=leg; }
     }
-    var back=t; other.forEach(function(j){ t=breakAt(t,taken,brk); t+=(j.mins||0); }); preps.forEach(function(j){ t=breakAt(t,taken,brk); t+=(j.prep.who.length?prepWhoOn(j.prep,k).reduce(function(x,w){return x+prepShare(j,w);},0):prepShare(j)); }); t=breakAt(t,taken,brk);
+    var back=t; other.forEach(function(j){ t=breakAt(t,taken,brk); t+=(j.mins||0); }); preps.forEach(function(j){ t=breakAt(t,taken,brk); t+=(j.prep.who.length?prepWhoOn(j.prep,k).reduce(function(x,w){return x+prepShare(j,w,k);},0):prepShare(j)); }); t=breakAt(t,taken,brk);
     var isDriver=CAN_DRIVE.indexOf(w)>=0&&site.length>0;
     return {stops:stops,drive:Math.round(drive),back:back,breaks:brk,end:t,isDriver:isDriver,driveOver:isDriver&&drive>DRIVE_MAX,longDay:isDriver&&(t-DAY_START)>DRIVER_DAY_MAX};
   }
@@ -1261,16 +1261,15 @@ var SNAP=null, DETAIL={};
     var freeN=FIELD_CREW.filter(function(w){return load[w].c==="free";}).length; pl.appendChild(el("div","ophead",(prodDays.length>1?shortDay(prodDays[0])+" to "+shortDay(prodDays[prodDays.length-1]):shortDay(prodDays[0]||dayK))+" \u00b7 "+freeCount(load)));
     opOrder(load).forEach(function(w){ var on=part.who.indexOf(w)>=0;
       var row=opRow(w,load[w],{button:true,on:on,driver:!o.shop&&j.site&&DRIVERS.indexOf(w)>=0,beside:[el("span","tick",on?"Assigned":"Assign")]}); row.setAttribute("aria-pressed",on?"true":"false");
-      row.onclick=function(){ var i=part.who.indexOf(w); if(i<0) part.who.push(w); else part.who.splice(i,1);
+      row.onclick=function(){ var i=part.who.indexOf(w); if(i<0){ part.who.push(w); if(o.shop&&part.date) fillPrepRow(part,w); } else { part.who.splice(i,1); if(o.shop&&part.grid) delete part.grid[w]; }
         // a time cannot be missed (Sam, 14 Sep 2026): the first operative on brings the estimated time with them
         if(part.who.length&&part.mins==null){ var sf=o.shop?prodStandardFor(j.load,part.who.length,j.prodDue?Math.max(1,workDaysBetween((part.start&&part.start>iso(TODAY)?part.start:iso(TODAY)),j.prodDue)):1):((!contractorOnly&&!attending(j)&&!j.isLeg)?standardFor(j.movement||j.label,j.load):null); if(sf&&sf.mins!=null) part.mins=sf.mins; }
         render(); }; pl.appendChild(row);
-      // THEIR OWN DAYS (Jack, 19 Oct 2026): on a production over several days each assigned person can be narrowed to
-      // their own from and to. Blank means the whole window; the window stretches to fit what is typed.
-      if(o.shop&&on&&prepDayCount(part)>1){ var sp=part.days&&part.days[w]||{}; var dr=el("div","opspan"); dr.appendChild(el("span","hint","Days"));
-        var f1=el("input"); f1.type="date"; f1.value=sp.from||part.start||""; f1.setAttribute("aria-label",w+" from"); var f2=el("input"); f2.type="date"; f2.value=sp.to||part.date||""; f2.setAttribute("aria-label",w+" to");
-        var setSpan=function(){ part.days=part.days||{}; var fr=f1.value||null, to=f2.value||null; if((!fr||fr===part.start)&&(!to||to===part.date)) delete part.days[w]; else part.days[w]={from:fr,to:to}; stretchPrepWindow(part); persist(); render(); };
-        f1.onchange=setSpan; f2.onchange=setSpan; dr.appendChild(f1); dr.appendChild(el("span","hint","to")); dr.appendChild(f2); dr.appendChild(el("span","hint",prepSpanFor(part,w)?prepDaysFor(part,w).length+" of "+prepDayCount(part)+" days":"whole window")); pl.appendChild(dr); } });
+      });
+    // THE DAY GRID (Sam, 21 Oct 2026, mock approved: "the operative can be on and off days with ranging times"): one row
+    // per assigned person, one cell per production day. Click cycles Full, AM, PM, off; double click types hours.
+    if(o.shop&&part.who.length&&part.date){ var gbox=el("div","dgridbox"); gbox.appendChild(renderPrepGrid(part,{editable:true,onChange:function(){ persist(); render(); }}));
+      gbox.appendChild(el("div","hint","Click a day for Full, AM, PM or off. Double click to type hours. Change the dates above to add days.")); pl.appendChild(gbox); }
     var setMins=function(v){ part.mins=v; if(part.leg) part.leg.mins=v; }, setDrive=function(v){ part.drive=v; part.driveAuto=false; if(part.leg) part.leg.drive=v; };
     wb.appendChild(pl);
     if(!freeN) wb.appendChild(el("div","hint","No operative is free "+(prodDays.length>1?"on every day from "+shortDay(prodDays[0])+" to "+shortDay(prodDays[prodDays.length-1]):"all day on "+shortDay(prodDays[0]||dayK))+"."));
@@ -1293,15 +1292,15 @@ var SNAP=null, DETAIL={};
       if(j.prodDueSet){ var rs=el("button","close","Reset"); rs.onclick=function(){ j.prodDue=productionDueFor(j.labels,j.out); j.prodDueSet=false; render(); }; pdr.appendChild(rs); }
       box.appendChild(pdr); box.appendChild(el("div","hint",j.prodDueSet?"Set by you.":PRODUCTION_BUFFER_DAYS+" working days before delivery. Change it if this job needs more or less.")); };
     if(oneDayP){ var db=block("Production Day","days"); var r=el("div","row");   // one date for a job that fits in a day, as on the card
-      var d0=el("input"); d0.type="date"; d0.value=part.date||""; d0.setAttribute("aria-label","Production day"); d0.onchange=function(){ part.date=d0.value||null; part.start=part.date; render(); };
-      r.appendChild(d0); var clr0=el("button","close","Clear"); clr0.onclick=function(){ part.start=null; part.date=null; render(); }; r.appendChild(clr0); db.appendChild(r);
+      var d0=el("input"); d0.type="date"; d0.value=part.date||""; d0.setAttribute("aria-label","Production day"); d0.onchange=function(){ part.date=d0.value||null; part.start=part.date; fitPrepGrid(part); render(); };
+      r.appendChild(d0); var clr0=el("button","close","Clear"); clr0.onclick=function(){ part.start=null; part.date=null; delete part.grid; render(); }; r.appendChild(clr0); db.appendChild(r);
       if(!part.date) db.appendChild(el("div","hint","Not scheduled. Pick the day and it appears under Production."));
       if(j.prodDue){ var dst0=prodStatus(j); if(dst0) db.appendChild(el("div","for "+dst0.cls,dst0.full)); }
       mustBy(db); right.appendChild(db); }
     else if(o.shop){ var db=block("Production Dates","days"); var r=el("div","row");
-      var d1=el("input"); d1.type="date"; d1.value=part.start||""; d1.setAttribute("aria-label","From"); d1.onchange=function(){ part.start=d1.value||null; if(part.start&&(!part.date||part.date<part.start)) part.date=part.start; if(!part.start) part.date=null; syncPrepTotal(part); render(); };
-      var d2=el("input"); d2.type="date"; d2.value=part.date||""; d2.setAttribute("aria-label","To"); d2.onchange=function(){ part.date=d2.value||null; if(part.date&&(!part.start||part.start>part.date)) part.start=part.date; if(!part.date) part.start=null; syncPrepTotal(part); render(); };
-      r.appendChild(d1); r.appendChild(el("span",null,"to")); r.appendChild(d2); var clr=el("button","close","Clear"); clr.onclick=function(){ part.start=null; part.date=null; render(); }; r.appendChild(clr); db.appendChild(r);
+      var d1=el("input"); d1.type="date"; d1.value=part.start||""; d1.setAttribute("aria-label","From"); d1.onchange=function(){ part.start=d1.value||null; if(part.start&&(!part.date||part.date<part.start)) part.date=part.start; if(!part.start) part.date=null; syncPrepTotal(part); fitPrepGrid(part); render(); };
+      var d2=el("input"); d2.type="date"; d2.value=part.date||""; d2.setAttribute("aria-label","To"); d2.onchange=function(){ part.date=d2.value||null; if(part.date&&(!part.start||part.start>part.date)) part.start=part.date; if(!part.date) part.start=null; syncPrepTotal(part); fitPrepGrid(part); render(); };
+      r.appendChild(d1); r.appendChild(el("span",null,"to")); r.appendChild(d2); var clr=el("button","close","Clear"); clr.onclick=function(){ part.start=null; part.date=null; delete part.grid; render(); }; r.appendChild(clr); db.appendChild(r);
       var nd=part.date?daysOf(part).length:0; db.appendChild(el("div","hint",!part.date?"Not scheduled. Set the production dates and it appears under Production.":nd>1?nd+" days. The time above is for each day.":"One day. Set the second date later if it needs more."));
       var pf=prodFit(part.mins,nd); if(pf) db.appendChild(el("div","hint far",pf));
       // the same on-time line as the card's Production section, so the two mirror
@@ -1528,7 +1527,7 @@ var SNAP=null, DETAIL={};
     var takeOff=function(part){ part.who=(part.who||[]).filter(function(o){ return o!==w; }); if(part.each) delete part.each[w]; if(part.leg){ part.leg.who=part.who; part.leg.each=part.each; } persist(); render(); };
     var tiers=[["Production","p"],["Transport","s"],["Facility","l"],["Goods In and Out","l"]], rowsBy={};
     var push=function(tier,j,part,sub,openKey){ (rowsBy[tier]=rowsBy[tier]||[]).push({j:j,part:part,sub:sub,openKey:openKey}); };
-    myPreps.forEach(function(j){ var nd=daysOf(j.prep).length||1; push("Production",j,j.prep,nd>1?"day "+(daysOf(j.prep).indexOf(k)+1)+" of "+nd+", "+fmt(Math.round(prepShare(j,w)))+" today":"",j.id+":prep"); });
+    myPreps.forEach(function(j){ var nd=daysOf(j.prep).length||1; push("Production",j,j.prep,nd>1?"day "+(daysOf(j.prep).indexOf(k)+1)+" of "+nd+", "+fmt(Math.round(prepShare(j,w,k)))+" today":"",j.id+":prep"); });
     mine.forEach(function(j){ var tm=jobTiming(j,k), isProdLeg=j.isLeg&&j.leg&&j.leg.type==="production";
       var tier=isProdLeg?"Production":j.site?"Transport":j.facility?"Facility":"Goods In and Out";
       var sub=j.site?[(tm&&tm.arrive!=null?"arrive "+hmStr(tm.arrive):""),(j.onRound?"on the round":j.drive?fmt(j.drive)+" travel":"")].filter(Boolean).join(" · "):"";
@@ -1862,7 +1861,7 @@ var SNAP=null, DETAIL={};
       var seg=function(cls,mins){ if(mins>0) segs.push({cls:cls,mins:mins}); };
       if(isOff&&OFF_WHY[k+"|"+w]) line("Off","r",OFF_WHY[k+"|"+w],"","");
       if(!past&&load[w].c==="off") line("Off","r",load[w].d||load[w].t,"","");
-      prepsP.forEach(function(j){ var nd=daysOf(j.prep).length||1, me=minsFor(j.prep,w), today=Math.round(prepShare(j,w)); seg("p",today); line("Production","p",j.title.split(" - ").slice(1).join(" - ")||j.title,(nd>1?"day "+(daysOf(j.prep).indexOf(k)+1)+" of "+nd:"")+(j.prepDone?(nd>1?" · ":"")+"finished":"")+(past&&!j.prepDone?doneOf(j.prep):""),me!=null?fmt(today):"no time"); });
+      prepsP.forEach(function(j){ var nd=daysOf(j.prep).length||1, me=minsFor(j.prep,w), today=Math.round(prepShare(j,w,k)); seg("p",today); line("Production","p",j.title.split(" - ").slice(1).join(" - ")||j.title,(nd>1?"day "+(daysOf(j.prep).indexOf(k)+1)+" of "+nd:"")+(j.prepDone?(nd>1?" · ":"")+"finished":"")+(past&&!j.prepDone?doneOf(j.prep):""),me!=null?fmt(today):"no time"); });
       var r=rounds.filter(function(x){return x.who===w;})[0], tlw=dayTimeline(k,w);
       if(r){ seg("s",r.drive||0); line("Transport","round",r.stops.map(function(j){return j.title.split(" - ")[0];}).join(", ")+(r.start&&r.start!==HOME_PC?" \u00b7 from "+placeName(r.start):"")+(tlw.back?" \u00b7 back "+hmStr(tlw.back):""),"",r.drive?fmt(r.drive)+" driving":"no travel yet"); }
       // stops in the order the day runs them, not the order the cards sit in (Sam's screenshot, 29 Sep 2026: York 11:20 above Bolton 08:40)
@@ -2432,7 +2431,7 @@ var SNAP=null, DETAIL={};
     var finished=function(j){ return !!(j.completed||(j.isLeg&&j.parentJob&&j.parentJob.completed)); };
     var leftOff=allJobs().filter(function(j){ return onDay(j,k)&&!j.isHold&&finished(j); }).length;
     prepJobs().filter(function(j){ return !j.isHold&&!finished(j)&&!(j.prep&&j.prep.done&&j.prep.done.status==="done")&&j.prep&&j.prep.date&&daysOf(j.prep).indexOf(k)>=0; }).forEach(function(j){ var nd=daysOf(j.prep).length;
-      A4({key:"p"+j.id,card:j.id,short:j.short||"",pickable:"first"   /* EVERY PRODUCTION DAY (Sam, 2 Oct 2026: big orders like Sketch Studios are picked in phases as workshop space allows, so "picked on day 1" was wrong) */,part:"Production",name:name(j),sub:prepSpansLine(j.prep),   /* no "Day 10 of 13" (Sam, 2 Oct 2026: "We also do not need the day count"); each person's own days when they differ (Jack, 19 Oct 2026) */who:prepWhoOn(j.prep,k),contractor:"",mins:function(w){ return Math.round(prepShare(j,w)); },extra:"",at:null,cid:j.short||j.id}); });
+      A4({key:"p"+j.id,card:j.id,short:j.short||"",pickable:"first"   /* EVERY PRODUCTION DAY (Sam, 2 Oct 2026: big orders like Sketch Studios are picked in phases as workshop space allows, so "picked on day 1" was wrong) */,part:"Production",name:name(j),sub:prepSpansLine(j.prep),   /* no "Day 10 of 13" (Sam, 2 Oct 2026: "We also do not need the day count"); each person's own days when they differ (Jack, 19 Oct 2026) */who:prepWhoOn(j.prep,k),contractor:"",mins:function(w){ return Math.round(prepShare(j,w,k)); },extra:"",at:null,cid:j.short||j.id}); });
     allJobs().filter(function(j){ return onDay(j,k)&&!j.isHold&&!finished(j); }).forEach(function(j){ var pj=j.isLeg&&j.parentJob?j.parentJob:j, cid=pj.short||pj.id;
       var base={key:"j"+j.id,card:j.isLeg?"":j.id,short:j.isLeg?"":(j.short||""),pickable:!j.isLeg&&!j.prep&&!/^(Workshop: Ready|Completed)$/.test(j.stageLabel||"")?"first":"",name:name(j),who:j.who.slice(),contractor:j.who.length?"":(j.contractor||""),mins:function(w){ return minsFor(j,w); },extra:"",at:null,cid:cid};
       if(j.isLeg&&j.leg&&j.leg.type==="production"){ base.part="Production"; base.sub=""; A4(base); return; }
@@ -3345,7 +3344,7 @@ var SNAP=null, DETAIL={};
         var mine=jobs.filter(function(j){return j.who.indexOf(w)>=0;}), myPreps=preps.filter(function(j){return prepOn(j.prep,w,k);});
         var myRound=rounds.filter(function(r){return r.who===w;})[0];
         var mins=mine.reduce(function(s,j){return s+(minsFor(j,w)||0)+(j.site&&!j.onRound?(j.drive||0):0);},0)+(myRound&&myRound.drive?myRound.drive:0);
-        mins+=myPreps.reduce(function(s,j){return s+prepShare(j,w);},0);
+        mins+=myPreps.reduce(function(s,j){return s+prepShare(j,w,k);},0);
         var unset=mine.filter(function(j){return j.mins==null;}).length+myPreps.filter(function(j){return j.prep.mins==null;}).length;
         mine=mine.concat(myPreps);
         if(FIELD_CREW.indexOf(w)<0&&!mine.length&&!myRound) return;   // the office with nothing on is not a free operative

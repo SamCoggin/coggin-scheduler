@@ -1,8 +1,7 @@
 <!DOCTYPE html>
 <html title="Scheduling"><head><meta charset="utf-8"><title>Scheduling</title>
 <style>
-    .ownday{display:grid;grid-template-columns:84px auto auto auto 1fr;align-items:center;gap:8px;padding:4px 0}.ownday .nm{font-weight:600;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:clip}.ownday .to{color:#64748b;font-size:12px}.ownday .st{color:#64748b;font-size:12px;white-space:nowrap;text-align:right}.sed .ownday input[type=date]{width:150px;min-width:0;height:32px;min-height:32px;padding:2px 8px;font-size:14px;box-sizing:border-box}
-    .opspans{display:flex;flex-direction:column;gap:2px}.opspan b{font-weight:600}.opspan span{color:#64748b;font-size:12px}
+    .dgridwrap{overflow-x:auto;max-width:100%}.sv .dgridwrap{margin-top:2px}
   :root{ --text:#172b4d; --muted:#5e6c84; --line:#c7ced8; --blue:#0c66e4; --blue-bg:#e9f2ff; --green:#1f845a; --green-bg:#e3fcef; --amber:#974f0c; --amber-bg:#fff7d6; --red:#c9372c; --red-bg:#ffeceb; --card:#fff; --list:#f1f2f4; }
   *{box-sizing:border-box}
   html,body{overflow:hidden}
@@ -291,7 +290,7 @@
     // NEVER ASSUMED OUT ALL DAY (Sam, 6 Oct 2026: "Why wont it let me select Bart when he has free time?"). Another site job
     // with no arrival time marked him out on site all day here, while the bars below showed his free time: the same rule
     // the Scheduler dropped on 2 Oct ("why is it also saying bart is out all day?"). His free time below is the answer.
-    CREW.forEach(function(n){ var picked=part.who.indexOf(n)>=0, off=offOn[n]&&!picked, away=awayOn[n]&&!picked&&!off; var b=el("button","p"+(picked?" on":"")+(off?" off":"")+(away?" away":""),n); if(away) b.title=n+" is out on site all day"; if(off){ b.disabled=true; b.title=n+" is on leave"; b.appendChild(el("i","lv","on leave")); } if(transport&&DRIVERS.indexOf(n)>=0) b.appendChild(el("i","drv","driver")); b.onclick=function(){ var i=part.who.indexOf(n); if(i<0) part.who.push(n); else part.who.splice(i,1); if(part.who.length&&part.mins==null&&fill){ var m=fill(); if(m!=null) part.mins=m; } save(); render(); }; w.appendChild(b); });
+    CREW.forEach(function(n){ var picked=part.who.indexOf(n)>=0, off=offOn[n]&&!picked, away=awayOn[n]&&!picked&&!off; var b=el("button","p"+(picked?" on":"")+(off?" off":"")+(away?" away":""),n); if(away) b.title=n+" is out on site all day"; if(off){ b.disabled=true; b.title=n+" is on leave"; b.appendChild(el("i","lv","on leave")); } if(transport&&DRIVERS.indexOf(n)>=0) b.appendChild(el("i","drv","driver")); b.onclick=function(){ var i=part.who.indexOf(n); if(i<0){ part.who.push(n); if(!transport&&part===d.prep&&part.date) fillPrepRow(part,n); } else { part.who.splice(i,1); if(part.grid) delete part.grid[n]; } if(part.who.length&&part.mins==null&&fill){ var m=fill(); if(m!=null) part.mins=m; } save(); render(); }; w.appendChild(b); });
     return w;
   }
   function fld(label){ var f=el("div","fld"); if(label) f.appendChild(el("div","lbl",label)); return f; }
@@ -389,13 +388,12 @@
       // default"). The red banner already says nobody is on it; Change opens the picker.
       // WHO IS ON WHICH DAYS (Jack, 19 Oct 2026): once anyone has their own span the row lists each person's days, and the
       // editor gains a from and to per assigned person under the picker. Blank means the whole window.
-      var pwhoVal=d.prep.who.length?(prepHasSpans(d.prep)?(function(){ var box=el("div","opspans"); d.prep.who.forEach(function(w){ var r=el("div","opspan"); r.appendChild(el("b",null,w+" ")); r.appendChild(el("span",null,prepSpanText(d.prep,w))); box.appendChild(r); }); return box; })():d.prep.who.join(", ")):"Unassigned";
+      // THE DAY GRID (Sam, 21 Oct 2026): the row shows each person's days as cells, a tap turns a day on or off; the
+      // editor has the full grid (Full, AM, PM, off, typed hours) under the picker.
+      var gridWrap=function(editable){ var wrap=el("div","dgridwrap"); wrap.appendChild(renderPrepGrid(d.prep,{editable:true,toggle:!editable,onChange:function(){ save(); render(); }})); return wrap; };
+      var pwhoVal=d.prep.who.length?(d.prep.date&&prepDayCount(d.prep)>1?gridWrap(false):d.prep.who.join(", ")):"Unassigned";
       var pwhoRow=ps.appendChild(rowEl("pwho",d.prep.who.length===1?"Operative":"Operatives",pwhoVal,function(ed){ ed.appendChild(people(d.prep,false,function(){ var s2=prodStandardFor(loadNow(),d.prep.who.length,pdaysAvail); return s2&&s2.mins!=null?s2.mins:null; },d.prep.date?workDays(d.prep.start||d.prep.date,d.prep.date):[]));
-        if(prepDayCount(d.prep)>1&&d.prep.who.length){ ed.appendChild(el("div","lbl","Their own days, blank for the whole window"));
-          d.prep.who.forEach(function(w){ var sp=d.prep.days&&d.prep.days[w]||{}; var dr=el("div","ownday"); dr.appendChild(el("span","nm",w));
-            var f1=el("input"); f1.type="date"; f1.value=sp.from||d.prep.start||""; f1.setAttribute("aria-label",w+" from"); var f2=el("input"); f2.type="date"; f2.value=sp.to||d.prep.date||""; f2.setAttribute("aria-label",w+" to");
-            var setSpan=function(){ d.prep.days=d.prep.days||{}; var fr=f1.value||null, to=f2.value||null; if((!fr||fr===d.prep.start)&&(!to||to===d.prep.date)) delete d.prep.days[w]; else d.prep.days[w]={from:fr,to:to}; stretchPrepWindow(d.prep); save(); render(); };
-            f1.onchange=setSpan; f2.onchange=setSpan; dr.appendChild(f1); dr.appendChild(el("span","to","to")); dr.appendChild(f2); dr.appendChild(el("span","st",prepSpanFor(d.prep,w)?prepDaysFor(d.prep,w).length+" of "+prepDayCount(d.prep)+" days":"all "+prepDayCount(d.prep)+" days")); ed.appendChild(dr); }); }
+        if(d.prep.date&&d.prep.who.length){ ed.appendChild(el("div","lbl","Who is on which day. Click a day for Full, AM, PM or off, double click to type hours.")); ed.appendChild(gridWrap(true)); }
         ed.appendChild(availability(d.prep.date?workDays(d.prep.start||d.prep.date,d.prep.date):[],d.prep)); },d.prep.who.length?"":"bad"));
       // DAY AND DUE ARE ONE ROW (Sam, 1 Oct 2026: "production day and production due feels like it is doing the same
       // thing"). The due date is in the header; the row says the day booked, or by when it must be. Moving the due
@@ -411,13 +409,13 @@
       // already set as a range.
       var oneDay=d.prep.mins!=null&&d.prep.mins<=DAY_MINS&&!(d.prep.start&&d.prep.date&&d.prep.start!==d.prep.date);
       var pdaysRow=ps.appendChild(rowEl("pdays",oneDay?"Production day":"Production days",daysTxt,oneDay?function(ed){ var pr=el("div","row");
-        var d0=el("input"); d0.type="date"; d0.value=d.prep.date||""; d0.setAttribute("aria-label","Production day"); d0.onchange=function(){ d.prep.date=d0.value||null; d.prep.start=d.prep.date; save(); render(); };
-        pr.appendChild(d0); var clr0=el("button","p","Clear"); clr0.onclick=function(){ d.prep.start=null; d.prep.date=null; save(); render(); }; pr.appendChild(clr0); ed.appendChild(pr);
+        var d0=el("input"); d0.type="date"; d0.value=d.prep.date||""; d0.setAttribute("aria-label","Production day"); d0.onchange=function(){ d.prep.date=d0.value||null; d.prep.start=d.prep.date; fitPrepGrid(d.prep); save(); render(); };
+        pr.appendChild(d0); var clr0=el("button","p","Clear"); clr0.onclick=function(){ d.prep.start=null; d.prep.date=null; delete d.prep.grid; save(); render(); }; pr.appendChild(clr0); ed.appendChild(pr);
         ed.appendChild(el("div","hint","Pick the day and it appears under Production in the Scheduler.")); dueEd(ed); }:function(ed){ var pr=el("div","row");
         var d1=el("input"); d1.type="date"; d1.value=d.prep.start||""; var d2=el("input"); d2.type="date"; d2.value=d.prep.date||"";
-        d1.onchange=function(){ d.prep.start=d1.value||null; if(d.prep.start&&(!d.prep.date||d.prep.date<d.prep.start)) d.prep.date=d.prep.start; if(!d.prep.start) d.prep.date=null; syncPrepTotal(d.prep); save(); render(); };
-        d2.onchange=function(){ d.prep.date=d2.value||null; if(d.prep.date&&(!d.prep.start||d.prep.start>d.prep.date)) d.prep.start=d.prep.date; if(!d.prep.date) d.prep.start=null; syncPrepTotal(d.prep); save(); render(); };
-        pr.appendChild(el("span",null,"From")); pr.appendChild(d1); pr.appendChild(el("span",null,"to")); pr.appendChild(d2); var clr=el("button","p","Clear"); clr.onclick=function(){ d.prep.start=null; d.prep.date=null; save(); render(); }; pr.appendChild(clr); ed.appendChild(pr);
+        d1.onchange=function(){ d.prep.start=d1.value||null; if(d.prep.start&&(!d.prep.date||d.prep.date<d.prep.start)) d.prep.date=d.prep.start; if(!d.prep.start) d.prep.date=null; syncPrepTotal(d.prep); fitPrepGrid(d.prep); save(); render(); };
+        d2.onchange=function(){ d.prep.date=d2.value||null; if(d.prep.date&&(!d.prep.start||d.prep.start>d.prep.date)) d.prep.start=d.prep.date; if(!d.prep.date) d.prep.start=null; syncPrepTotal(d.prep); fitPrepGrid(d.prep); save(); render(); };
+        pr.appendChild(el("span",null,"From")); pr.appendChild(d1); pr.appendChild(el("span",null,"to")); pr.appendChild(d2); var clr=el("button","p","Clear"); clr.onclick=function(){ d.prep.start=null; d.prep.date=null; delete d.prep.grid; save(); render(); }; pr.appendChild(clr); ed.appendChild(pr);
         ed.appendChild(el("div","hint","Set the days and it appears under Production in the Scheduler.")); dueEd(ed); var pf=prodFit(d.prep.mins,d.prep.date?workDays(d.prep.start||d.prep.date,d.prep.date).length:0); if(pf) ed.appendChild(el("div","hint far",pf)); },d.prep.date?"":(prodFit(d.prep.mins,d.prep.date?workDays(d.prep.start||d.prep.date,d.prep.date).length:0)?"todo":"")));
       var pnd=prepDayCount(d.prep);
       /* SAYS WHO GETS WHAT (Sam, 2 Oct 2026: "it say 30 mins each when i want it 30 mins for one and 15 for the other"):

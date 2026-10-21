@@ -631,32 +631,63 @@ function minsLeftOn(k){ var n=new Date(), t=n.getFullYear()+"-"+String(n.getMont
 // step when the days change. One-day production is unchanged: mins is the day's time.
 function prepDayCount(P){ if(!P||!P.date) return 0; var a=P.start&&P.start<P.date?P.start:P.date, n=0; for(var x=new Date(a+"T12:00"); x.toISOString().slice(0,10)<=P.date; x.setDate(x.getDate()+1)){ if(x.getDay()!==0&&x.getDay()!==6) n++; } return n; }
 function prepPerDay(P){ var n=prepDayCount(P); if(n<=1) return P.mins; return P.perDay!=null?P.perDay:(P.mins!=null?Math.round(P.mins/n):null); }
-function setPrepPerDay(P,v){ var n=prepDayCount(P); if(n<=1){ P.mins=v; P.perDay=null; return; } P.perDay=v; P.mins=v==null?null:v*n; }
-// PER-OPERATIVE DAYS ON A PRODUCTION (Jack on B60788, 19 Oct 2026: "will need Brad for 2 full days, Bart for 8 days and
-// Jack/Jordan for 10 days on this job... Jordan will also be starting production on an earlier date"). P.days holds,
-// per name, an optional from and to inside the production window; no entry means the whole window. The window itself
-// stretches to the earliest start and the latest finish. Hours a day stay one figure for the block; a person's total is
-// that figure times their own days. Everything that counts the crew on a day asks prepWhoOn, never P.who.
+function setPrepPerDay(P,v){ var n=prepDayCount(P); var was=prepPerDay(P); if(n<=1){ P.mins=v; P.perDay=null; } else { P.perDay=v; P.mins=v==null?null:v*n; } if(P.grid&&was!=null&&v!=null) rescalePrepGrid(P,was,v); }
+// THE PRODUCTION DAY GRID (Sam, 21 Oct 2026: "the operative can be on and off days with ranging times", mock approved).
+// P.grid = { "Jack C": { "2026-10-20": 465, "2026-10-22": 225 } }: one cell per person per day, minutes that day, no
+// key means off. Full is the block's per-day figure, AM is 3h 45m, PM is 4h, anything else is typed. The grid is the
+// one source for who is in the workshop on a day: the capacity strip, each person's free time, the tally, the day
+// sheet and the card back all read cells. A plan saved before the grid existed (whole window, or the per-person spans
+// of 19 Oct) is turned into cells the first time it is read, so nothing already planned moves.
+var AM_MINS=225, PM_MINS=240;
 function prepDayList(P){ if(!P||!P.date) return []; var a=P.start&&P.start<P.date?P.start:P.date, out=[]; for(var x=new Date(a+"T12:00"); x.toISOString().slice(0,10)<=P.date; x.setDate(x.getDate()+1)){ if(x.getDay()!==0&&x.getDay()!==6) out.push(x.toISOString().slice(0,10)); } return out; }
 function prepSpanFor(P,w){ var r=P&&P.days&&P.days[w]; return r&&(r.from||r.to)?r:null; }
-function prepDaysFor(P,w){ var all=prepDayList(P), r=prepSpanFor(P,w); if(!r) return all; return all.filter(function(k){ return (!r.from||k>=r.from)&&(!r.to||k<=r.to); }); }
-function prepOn(P,w,k){ return !!(P&&P.who&&P.who.indexOf(w)>=0)&&prepDaysFor(P,w).indexOf(k)>=0; }
+// per-day minutes for a person before the grid: their own time (each holds a total over the window) or the block's
+function prepLegacyPerDay(P,w){ var e=P&&P.each&&P.each[w]; var n=prepDayCount(P)||1; if(e===0||e) return n>1?Math.round(e/n):e; return prepPerDay(P); }
+function prepGrid(P){ if(!P) return {}; if(P.grid&&typeof P.grid==="object") return P.grid;
+  var g={}; var all=prepDayList(P); var who=P.who||[];
+  who.forEach(function(w){ var r=prepSpanFor(P,w), pd=prepLegacyPerDay(P,w); if(pd==null) pd=DAY_MINS; g[w]={}; all.forEach(function(k){ if(r&&((r.from&&k<r.from)||(r.to&&k>r.to))) return; g[w][k]=pd; }); });
+  if(who.length&&all.length) P.grid=g;
+  return g; }
+function prepCell(P,w,k){ var g=prepGrid(P); var v=g[w]&&g[w][k]; return v>0?v:0; }
+function prepDaysFor(P,w){ var g=prepGrid(P); return Object.keys(g[w]||{}).filter(function(k){ return g[w][k]>0; }).sort(); }
+function prepOn(P,w,k){ return prepCell(P,w,k)>0; }
 function prepWhoOn(P,k){ return ((P&&P.who)||[]).filter(function(w){ return prepOn(P,w,k); }); }
-function prepDayCountFor(P,w){ var n=prepDaysFor(P,w).length; return n||prepDayCount(P); }
-function prepHasSpans(P){ return !!(P&&P.who&&P.who.some(function(w){ return prepSpanFor(P,w); })); }
-// a person's time on one day: their own time if set (each holds a total over the window, as before), else the block's
-function prepPerDayFor(P,w){ var e=P&&P.each&&P.each[w]; var n=prepDayCount(P)||1; if(e===0||e) return n>1?Math.round(e/n):e; return prepPerDay(P); }
-// a person's total: their per-day time over their own days once anyone has their own span, otherwise as before
-function prepMinsFor(P,w){ if(!P) return null; if(!prepHasSpans(P)) return minsFor(P,w); var pd=prepPerDayFor(P,w); return pd==null?null:pd*prepDayCountFor(P,w); }
-function prepSpanText(P,w){ var ds=prepDaysFor(P,w); if(!ds.length) return ""; return (ds.length===1?niceShort(ds[0]):niceShort(ds[0])+" to "+niceShort(ds[ds.length-1]))+", "+ds.length+(ds.length===1?" day":" days"); }
-function stretchPrepWindow(P){ if(!P||!P.days) return; var oldStart=P.start, oldDate=P.date;
-  Object.keys(P.days).forEach(function(w){ var r=P.days[w]; if(!r) return; if(r.from&&r.to&&r.from>r.to) r.to=r.from; if(r.from&&(!P.start||r.from<P.start)) P.start=r.from; if(r.to&&(!P.date||r.to>P.date)) P.date=r.to; if(!r.from&&!r.to) delete P.days[w]; });
-  if(P.start&&P.date&&P.start>P.date) P.start=P.date; if(P.date&&!P.start) P.start=P.date;
-  // THE OTHERS KEEP THEIR DAYS when one person stretches the window (19 Oct 2026): Jordan starting a day earlier must not
-  // quietly put everybody else on that day too, so anyone whose blank edge sat on the old boundary is pinned to it.
-  if(oldStart&&P.start<oldStart) (P.who||[]).forEach(function(w){ var r=P.days[w]; if(!r||!r.from){ P.days[w]=P.days[w]||{}; P.days[w].from=oldStart; } });
-  if(oldDate&&P.date>oldDate) (P.who||[]).forEach(function(w){ var r=P.days[w]; if(!r||!r.to){ P.days[w]=P.days[w]||{}; P.days[w].to=oldDate; } });
-  syncPrepTotal(P); }
+function prepDayCountFor(P,w){ return prepDaysFor(P,w).length; }
+// a person's minutes on a day; without a day, their average day (what the old callers meant by "per day")
+function prepPerDayFor(P,w,k){ if(k) return prepCell(P,w,k); var ds=prepDaysFor(P,w); if(!ds.length) return prepPerDay(P); return Math.round(ds.reduce(function(t,d){ return t+prepCell(P,w,d); },0)/ds.length); }
+function prepMinsFor(P,w){ if(!P) return null; var ds=prepDaysFor(P,w); if(!ds.length) return 0; return ds.reduce(function(t,d){ return t+prepCell(P,w,d); },0); }
+// true when anyone's row differs from every day at the block's figure, which is when the card lists people separately
+function prepHasSpans(P){ if(!P||!(P.who||[]).length) return false; var all=prepDayList(P), pd=prepPerDay(P); return (P.who||[]).some(function(w){ var ds=prepDaysFor(P,w); return ds.length!==all.length||ds.some(function(k){ return prepCell(P,w,k)!==pd; }); }); }
+function prepSpanText(P,w){ var ds=prepDaysFor(P,w); if(!ds.length) return "no days"; var n=ds.length, mins=prepMinsFor(P,w); return (n===1?niceShort(ds[0]):niceShort(ds[0])+" to "+niceShort(ds[n-1]))+", "+n+(n===1?" day":" days")+(mins?", "+fmt(mins):""); }
+// cells: set one, cycle one, fill a row, clear a row; the window follows the cells
+function setPrepCell(P,w,k,mins){ var g=prepGrid(P); g[w]=g[w]||{}; g[w][k]=mins>0?Math.min(DAY_MINS,Math.round(mins)):0; P.grid=g; if((P.who||[]).indexOf(w)<0){ P.who=(P.who||[]).concat([w]); } stretchPrepWindow(P); }
+function cyclePrepCell(P,w,k){ var v=prepCell(P,w,k), pd=prepPerDay(P)||DAY_MINS; var next=v===0?pd:v===pd?AM_MINS:v===AM_MINS?PM_MINS:0; setPrepCell(P,w,k,next); return next; }
+function fillPrepRow(P,w){ var pd=prepPerDay(P)||DAY_MINS; prepDayList(P).forEach(function(k){ setPrepCell(P,w,k,pd); }); }
+function clearPrepRow(P,w){ var g=prepGrid(P); delete g[w]; P.grid=g; P.who=(P.who||[]).filter(function(x){ return x!==w; }); stretchPrepWindow(P); }
+// the block's per-day figure changed: cells that sat at the old figure follow it, typed ones stay
+function rescalePrepGrid(P,oldPd,newPd){ if(!P||!P.grid||oldPd==null||newPd==null) return; Object.keys(P.grid).forEach(function(w){ Object.keys(P.grid[w]).forEach(function(k){ if(P.grid[w][k]===oldPd) P.grid[w][k]=newPd; }); }); }
+// the window dates changed: new days come on at the block's figure for everyone, days outside the window go
+function fitPrepGrid(P){ if(!P||!P.grid) return; var all=prepDayList(P), pd=prepPerDay(P)||DAY_MINS; Object.keys(P.grid).forEach(function(w){ var row=P.grid[w]; Object.keys(row).forEach(function(k){ if(all.indexOf(k)<0) delete row[k]; }); all.forEach(function(k){ if(row[k]===undefined) row[k]=pd; }); }); }
+function stretchPrepWindow(P){ if(!P||!P.grid) return; var days=[]; Object.keys(P.grid).forEach(function(w){ days=days.concat(Object.keys(P.grid[w]).filter(function(k){ return P.grid[w][k]>0; })); }); if(!days.length) return; days.sort(); if(!P.start||days[0]<P.start) P.start=days[0]; if(!P.date||days[days.length-1]>P.date) P.date=days[days.length-1]; if(P.start>P.date) P.start=P.date; delete P.days; }
+// THE GRID ON SCREEN, one drawing for the Scheduler editor and the card back. Click cycles Full, AM, PM, off; double
+// click types hours (editor only); toggle mode (the card back) flips a day on or off at the block's figure.
+function parseDurText(t){ t=String(t||"").trim().toLowerCase(); if(!t) return 0; var m; if((m=t.match(/^(\d+):(\d{1,2})$/))) return +m[1]*60+ +m[2]; if((m=t.match(/^(\d+(?:\.\d+)?)\s*h(?:ours?)?\s*(\d+)?\s*m?/))) return Math.round(+m[1]*60+(+m[2]||0)); if((m=t.match(/^(\d+)\s*m/))) return +m[1]; if((m=t.match(/^(\d+(?:\.\d+)?)$/))) return +m[1]<=12?Math.round(+m[1]*60):Math.round(+m[1]); return null; }
+function prepCellState(P,w,k){ var v=prepCell(P,w,k), pd=prepPerDay(P)||DAY_MINS; return v===0?"off":v===pd?"full":v===AM_MINS?"am":v===PM_MINS?"pm":"typed"; }
+function renderPrepGrid(P,o){ o=o||{}; var days=prepDayList(P), who=P.who||[], DN=["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+  var t=document.createElement("table"); t.className="dgrid"; var hr=t.insertRow(); hr.appendChild(document.createElement("th"));
+  days.forEach(function(k){ var th=document.createElement("th"); var d=new Date(k+"T12:00"); th.textContent=DN[d.getDay()]+" "+d.getDate(); th.setAttribute("scope","col"); hr.appendChild(th); }); hr.appendChild(document.createElement("th"));
+  who.forEach(function(w){ var r=t.insertRow(); var nm=r.insertCell(); nm.className="nm"; nm.textContent=firstName(w); nm.title=w;
+    days.forEach(function(k){ var c=r.insertCell(); var v=prepCell(P,w,k), st=prepCellState(P,w,k); c.className="c "+st; c.textContent=st==="off"?"":st==="full"?"Full":st==="am"?"AM":st==="pm"?"PM":fmt(v); var nice=DN[new Date(k+"T12:00").getDay()]+" "+niceShort(k);
+      if(!o.editable){ c.title=firstName(w)+", "+nice+": "+(v?fmt(v):"off"); return; }
+      c.setAttribute("role","button"); c.tabIndex=0; c.setAttribute("aria-label",firstName(w)+", "+nice+": "+(v?fmt(v):"off")+(o.toggle?". Click to turn "+(v?"off":"on"):". Click for the next state, double click to type hours"));
+      var fire=function(){ if(o.toggle) setPrepCell(P,w,k,v?0:(prepPerDay(P)||DAY_MINS)); else cyclePrepCell(P,w,k); if(o.onChange) o.onChange(); };
+      c.onclick=function(e){ e.stopPropagation(); if(c._typing) return; fire(); };
+      c.onkeydown=function(e){ if(e.key==="Enter"||e.key===" "){ e.preventDefault(); fire(); } };
+      if(!o.toggle) c.ondblclick=function(e){ e.preventDefault(); e.stopPropagation(); if(c._typing) return; c._typing=true; var inp=document.createElement("input"); inp.type="text"; inp.className="hrs"; inp.value=v?fmt(v):""; inp.placeholder="3h 30m"; inp.setAttribute("aria-label","Hours for "+firstName(w)+" on "+nice); c.textContent=""; c.className="c typing"; c.appendChild(inp); inp.focus(); inp.select();
+        var done=function(){ var m=parseDurText(inp.value); if(m!=null) setPrepCell(P,w,k,m); if(o.onChange) o.onChange(); }; inp.onblur=done; inp.onkeydown=function(ev){ ev.stopPropagation(); if(ev.key==="Enter") inp.blur(); if(ev.key==="Escape"){ inp.onblur=null; if(o.onChange) o.onChange(); } }; }; });
+    var tc=r.insertCell(); tc.className="tot"; var n=prepDayCountFor(P,w), m=prepMinsFor(P,w); tc.textContent=n?n+(n===1?" day":" days")+", "+fmt(m):"no days"; });
+  return t; }
+var PREP_GRID_CSS=".dgrid{border-collapse:separate;border-spacing:3px 3px;font-size:12px;margin:4px 0 2px -3px}.dgrid th{font-weight:600;color:#64748b;padding:0 2px 2px;white-space:nowrap;text-align:center;font-size:11px}.dgrid td.nm{font-weight:600;white-space:nowrap;padding:0 8px 0 0;font-size:13px}.dgrid td.c{min-width:46px;height:28px;text-align:center;border-radius:6px;border:1px solid #cbd5e1;background:#fff;color:#64748b;user-select:none;padding:0 4px;white-space:nowrap}.dgrid td.c[role=button]{cursor:pointer}.dgrid td.c[role=button]:focus-visible{outline:2px solid #0c66e4;outline-offset:1px}.dgrid td.c.full{background:#1D3058;color:#fff;border-color:#1D3058}.dgrid td.c.am,.dgrid td.c.pm{background:#dbe7ff;color:#1D3058;border-color:#9ab3e8}.dgrid td.c.typed{background:#fff3d6;color:#7a4b00;border-color:#e4b96a}.dgrid td.c.off{background:#f1f5f9;border-color:#e2e8f0}.dgrid td.c.typing{padding:0}.dgrid td.c input.hrs{width:60px;height:24px;border:1px solid #0c66e4;border-radius:5px;font-size:12px;text-align:center;padding:0 2px}.dgrid td.tot{color:#64748b;white-space:nowrap;padding-left:6px;font-size:12px}.dgrid .key{color:#64748b;font-size:11px}";
 function firstName(w){ return String(w||"").split(" ")[0]; }
 function nameList(a){ a=(a||[]).map(firstName); return a.length<=1?a.join(""):a.slice(0,-1).join(", ")+" and "+a[a.length-1]; }
 function syncPrepTotal(P){ if(P&&P.perDay!=null&&P.date){ var n=prepDayCount(P); if(n>1) P.mins=P.perDay*n; else { P.mins=P.perDay; P.perDay=null; } } }
@@ -699,3 +730,5 @@ function arrivalWarning(kind,day){
 }
 // the CRM's drop-off plan writes "Arriving: 10:00 am" on the card; take it as the arrival time until someone changes it
 function arrivalFromDesc(desc){ var m=/Arriving:\s*(\d{1,2})[:.](\d{2})\s*(am|pm)?/i.exec(String(desc||"")); if(!m) return ""; var h=parseInt(m[1],10); if(m[3]&&/pm/i.test(m[3])&&h<12) h+=12; if(m[3]&&/am/i.test(m[3])&&h===12) h=0; return String(h).padStart(2,"0")+":"+m[2]; }
+
+if(typeof document!=="undefined"&&document.head&&!document.getElementById("dgridcss")){ var __st=document.createElement("style"); __st.id="dgridcss"; __st.textContent=PREP_GRID_CSS; document.head.appendChild(__st); }
