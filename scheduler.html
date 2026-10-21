@@ -405,12 +405,12 @@
   .modal{max-height:none;overflow:visible;margin:0 auto}
   .two{display:grid;grid-template-columns:1fr 1fr;gap:18px}
   @media (max-width:700px){.two{grid-template-columns:1fr}}
-  .modal.wide{width:min(960px,100%);padding:0}
+  .modal.wide{width:min(1280px,100%);padding:0}   /* wider, not a side scroll (Sam, 21 Oct 2026): nine production days fit beside the items */
   .modal.wide .head{padding:20px 24px 14px;border-bottom:1px solid var(--line);margin:0;align-items:flex-start}
   .modal.wide .head h3{font-size:28px;margin:8px 0 4px;font-weight:800}
   .modal.wide .sub{margin:0}
   .labs .lab{margin-bottom:0}
-  .cols{display:grid;grid-template-columns:1.1fr 1fr;gap:0}.cols>.colL,.cols>.colR{min-width:0}
+  .cols{display:grid;grid-template-columns:1fr 1.25fr;gap:0}.cols>.colL,.cols>.colR{min-width:0}
   .colL{padding:18px 24px;border-right:1px solid var(--line);background:var(--list)}
   .colR{padding:18px 24px;display:flex;flex-direction:column;gap:14px}
   .colL .blk+.blk{margin-top:14px}
