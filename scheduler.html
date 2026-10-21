@@ -456,6 +456,9 @@
   .blk .hint{margin-top:8px}
   .hint.ok{color:var(--green);font-weight:700}
   .plan-sum{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+  .modal.wide .head{align-items:flex-start} .modal.wide .head>div:first-child{flex:1;min-width:0} .hact{display:flex;gap:8px;align-items:center;margin-left:auto;flex:none} .hact .close{margin:0;height:36px;padding:0 14px;border-radius:8px;font-weight:600} .hact .xbtn{width:36px;padding:0;font-size:20px;line-height:1}
+  .modal.wide h3 .tsmall{font-weight:500;color:var(--muted);font-size:16px;margin-left:8px}
+  .hstats{display:grid;grid-template-columns:repeat(5,1fr);margin:14px 24px 0;border:1px solid var(--line);border-radius:10px;overflow:hidden;zoom:1} .hstats>div{padding:10px 14px;border-right:1px solid var(--line);min-width:0} .hstats>div:last-child{border-right:0} .hstats small{display:block;font-size:10px;letter-spacing:.08em;font-weight:700;color:var(--muted);text-transform:uppercase} .hstats b{display:block;font-size:15px;margin-top:2px;overflow-wrap:anywhere} .hstats span{display:block;font-size:12px;color:var(--muted)} .hstats span.bad{color:#c9372c;font-weight:600} .hstats .bar{height:5px;background:#e5e9f0;border-radius:3px;margin-top:6px} .hstats .bar i{display:block;height:100%;background:#1D3058;border-radius:3px}
   .plan-sum span{background:var(--list);border-radius:6px;padding:3px 9px;font-size:14px;font-weight:700}
   .plan-sum span.bad{background:var(--red-bg);color:var(--red)}
   details.more{border:1px dashed var(--line);border-radius:10px;padding:0 14px}
@@ -1176,7 +1179,8 @@ var SNAP=null, DETAIL={};
     if(j.work){ var lw=el("span","lab",j.work); lw.style.background=COL[j.work]||"#626f86"; labs.appendChild(lw); }
     if(j.label){ var lb=el("span","lab",j.label); lb.style.background=COL[j.label]||"#626f86"; labs.appendChild(lb); }
     labs.appendChild(el("span","lab stage",j.stageLabel)); ht.appendChild(labs);
-    ht.appendChild(el("h3",null,j.title));
+    // CUSTOMER BIG, TOWN AND REF SMALL (Sam, 21 Oct 2026, header mock approved)
+    var tParts=String(j.title||"").split(/\s+-\s+/), h3=el("h3",null,tParts.length>1?tParts.slice(1).join(" - "):j.title); if(tParts.length>1||j.short) h3.appendChild(el("span","tsmall",[tParts.length>1?tParts[0]:"",j.short||""].filter(Boolean).join(" \u00b7 "))); ht.appendChild(h3);
     if(FOREIGN&&FOREIGN.card===(j.isLeg&&j.parentJob?j.parentJob.id:j.id)){
       var fb=el("div","foreign"); var fw=FOREIGN.by||"Someone else", fat=FOREIGN.at?hhmm(new Date(FOREIGN.at)):"";
       fb.appendChild(el("span",null,fw+" saved this job"+(fat?" at "+fat:"")+". Reload it to see their change, or carry on and your next save replaces it."));
@@ -1184,8 +1188,8 @@ var SNAP=null, DETAIL={};
       var cb=el("button",null,"Carry on"); cb.onclick=function(){ SEEN_FOREIGN[FOREIGN.card]=FOREIGN.sig; FOREIGN=null; PENDING_SNAP=null; render(); };
       fb.appendChild(rb); fb.appendChild(cb); ht.appendChild(fb);
     }
-    ht.appendChild(el("div","sub",o.shop?(j.prodDue?"Due "+niceDay(j.prodDue)+", for "+(j.collect?"collection ":"delivery ")+niceDay(j.date):"Production for "+niceDay(j.date)+(j.collect?", customer collecting":"")):(j.start?niceDay(j.start)+" to "+niceDay(j.date)+", "+daysOf(j).length+" days":niceDay(j.date))));
-    head.appendChild(ht);
+    if(!o.shop) ht.appendChild(el("div","sub",j.start?niceDay(j.start)+" to "+niceDay(j.date)+", "+daysOf(j).length+" days":niceDay(j.date)));
+    head.appendChild(ht); var hact=el("div","hact"), hjs=el("span","hjs"); hact.appendChild(hjs); head.appendChild(hact);
     // Straight to the card (Sam, 16 Sep 2026: "a button to click into the Trello card from here").
     // Inside Trello the Power-Up opens it in place; anywhere else the plain card link does.
     var tc=el("button","close","Open in Trello"); tc.style.marginRight="8px";
@@ -1194,8 +1198,8 @@ var SNAP=null, DETAIL={};
     // a leg is part of its job's card, so it opens that card (Sam, 1 Oct 2026, Balfour Beatty: "Malformed URL")
     var cardJ=j.isLeg&&j.parentJob?j.parentJob:j; if(j.isHold) tc.style.display="none";
     tc.onclick=function(){ var url="https://trello.com/c/"+(cardJ.short||cardJ.id); var w=window.open(url,"_blank"); if(w){ try{ w.opener=null; }catch(e){} } else { try{ if(t&&typeof t.showCard==="function") t.showCard(cardJ.id); }catch(e){} } };
-    head.appendChild(tc);
-    var x=el("button","close","Close"); x.onclick=function(){open=null;render();}; head.appendChild(x); m.appendChild(head);
+    tc.style.marginRight=""; hact.appendChild(tc);
+    var x=el("button","close xbtn","\u00d7"); x.setAttribute("aria-label","Close"); x.title="Close"; x.onclick=function(){open=null;render();}; hact.appendChild(x); m.appendChild(head);
 
     var cols=el("div","cols"), left=el("div","colL"), right=el("div","colR");
     // left: the job
@@ -1527,12 +1531,23 @@ var SNAP=null, DETAIL={};
     if(!o.shop&&j.site&&!contractorOnly&&part.who.length){ var tls=dayTimeline(j.date,part.who[0]), sts=tls.stops.filter(function(x){return x.j===j;})[0]; if(sts&&!sts.noDrive){ var rsx=roundsOn(j.date,allJobs().filter(function(x){return onDay(x,j.date);})).filter(function(x){return x.who===part.who[0];})[0], so=rsx&&rsx.setOff&&parseHM(rsx.setOff)!=null?parseHM(rsx.setOff):DAY_START+LOAD_MINS; sumBits.push("leave "+hmStr(so)+", arrive "+hmStr(sts.arrive)+", back "+hmStr(tls.back)); } else if(j.drive!=null) sumBits.push(fmt(j.drive)+" travel"); }
     sumBits.push(part.mins!=null?(eachDiffers(part)?eachText(part)+(o.shop?" production":j.site?" on site":" at Forton"):fmt(part.mins)+(o.shop?" production":j.site?" on site":" at Forton")+(part.who.length>1?" each":"")):"no time set");
     if(!o.shop&&j.site&&cubeOf(j)!=null&&!attending(j)) sumBits.push(fmtM3(cubeOf(j))+(daysN(j)>1?", about "+fmtM3(cubeOn(j))+" a day over "+daysN(j)+" days":""));
-    var sumEl=el("div","plan-sum"); sumBits.forEach(function(t,i){ var sp=el("span",/Unassigned|No vehicle|not booked|no time set/.test(t)?"bad":"",t); sumEl.appendChild(sp); }); ht.appendChild(sumEl);
+    if(o.shop){
+      // THE STRIP (Sam, 21 Oct 2026, header mock approved): due, delivery, crew, planned against the estimate, finished.
+      var hs=el("div","hstats"), stat=function(lbl,big,sub,bad){ var d0=el("div"); d0.appendChild(el("small",null,lbl)); d0.appendChild(el("b",null,big)); if(sub) d0.appendChild(el("span",bad?"bad":"",sub)); hs.appendChild(d0); return d0; };
+      var lateN=j.prodDue&&part.date&&part.date>j.prodDue?Math.max(1,workDaysBetween(j.prodDue,part.date)):0;
+      stat("Production due",j.prodDue?niceDay(j.prodDue):"Not set",lateN?"Booked to "+niceDay(part.date)+", "+lateN+(lateN===1?" day late":" days late"):(part.date?"Booked to "+niceDay(part.date):"No days booked"),!!lateN);
+      stat(j.collect?"Collection":"Delivery",j.date?niceDay(j.date):"Not set",j.collect?"Customer collecting":(j.contractor?j.contractor:(j.site?"Our van":"")));
+      stat("Crew",part.who.length?nameList(part.who):"Unassigned",part.who.length?part.who.map(function(w){ return prepDayCountFor(part,w); }).join(", ")+" days":"",!part.who.length);
+      var plannedM=plannedProdMins(part), estW=pstdB&&pstdB.work?pstdB.work:0; stat("Planned",plannedM?fmt(plannedM):"No time",estW?"of "+fmt(estW)+" estimated":"",!plannedM);
+      var tq0=0, tf0=0; if(plc&&plc.lines) plc.lines.forEach(function(l){ if(isPartLine(l)) return; var c=pickCount(j.prep.picked||{},l); tq0+=c.q; tf0+=c.f; });
+      var fd=stat("Finished",(plc&&plc.lines)?tf0+" of "+tq0:"Reading",""); if(plc&&plc.lines){ var fbar=el("div","bar"), fbi=el("i"); fbi.style.width=(tq0?Math.round(tf0/tq0*100):0)+"%"; fbar.appendChild(fbi); fd.appendChild(fbar); }
+      m.appendChild(hs); }
+    else { var sumEl=el("div","plan-sum"); sumBits.forEach(function(t,i){ var sp=el("span",/Unassigned|No vehicle|not booked|no time set/.test(t)?"bad":"",t); sumEl.appendChild(sp); }); ht.appendChild(sumEl); }
     cols.appendChild(left); cols.appendChild(right); m.appendChild(cols);
     var sv=el("div","save sticky");
     // the loading sheet button went on 29 Sep 2026 (Sam: "not used and is redundant"); loadingPdf stays for the check
     // the job sheet came back on 14 Oct 2026 (Sam: "print the job sheet from the schedule editor"): this job's pages only
-    if(!o.leg){ var jsb=el("button",null,"Job sheet"); jsb.title="Print this job's own page for the day. The van's loading sheet is on the Day view's job sheets."; jsb.onclick=function(){ jobSheetDownload(j,o,jsb).catch(function(e){ alert("The job sheet could not be built: "+(e&&e.message||e)); }); }; sv.appendChild(jsb); }
+    if(!o.leg){ var jsb=el("button","close","Job sheet"); jsb.title="Print this job's own page for the day. The van's loading sheet is on the Day view's job sheets."; jsb.onclick=function(){ jobSheetDownload(j,o,jsb).catch(function(e){ alert("The job sheet could not be built: "+(e&&e.message||e)); }); }; hjs.appendChild(jsb); }
     var sb=el("button",null,"Done"); sb.onclick=function(){open=null;render();}; sv.appendChild(sb); m.appendChild(sv);
     veil.appendChild(m); return veil;
   }

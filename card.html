@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html title="Scheduling"><head><meta charset="utf-8"><title>Scheduling</title>
 <style>
-    .dgridwrap{max-width:100%}.sbelow{padding:4px 12px 10px}
+    .dgridwrap{max-width:100%;overflow-x:auto}.sbelow{padding:0 14px 12px}.sbelow .dgridwrap{background:#f6f8fb;border-radius:8px;padding:8px 10px}.gridhint{font-size:11px;color:#64748b;margin-top:4px}.sec-h .latechip{margin-left:auto;background:var(--red);color:#fff;font-size:12px;font-weight:700;padding:2px 9px;border-radius:10px;white-space:nowrap}.sec-h{flex-wrap:wrap}
   :root{ --text:#172b4d; --muted:#5e6c84; --line:#c7ced8; --blue:#0c66e4; --blue-bg:#e9f2ff; --green:#1f845a; --green-bg:#e3fcef; --amber:#974f0c; --amber-bg:#fff7d6; --red:#c9372c; --red-bg:#ffeceb; --card:#fff; --list:#f1f2f4; }
   *{box-sizing:border-box}
   html,body{overflow:hidden}
@@ -378,7 +378,9 @@
       if(!d.prep.who.length) ps.appendChild(banner("Unassigned. Choose who is on production."));
       else if(!d.prep.date) ps.appendChild(banner("No production days set."));
       if(prodDue&&d.prep.date&&d.prep.date>prodDue){ var lateWho=prepHasSpans(d.prep)?d.prep.who.filter(function(w){ var ds=prepDaysFor(d.prep,w); return ds.length&&ds[ds.length-1]>prodDue; }):[];
-        ps.appendChild(banner((lateWho.length&&lateWho.length<d.prep.who.length?nameList(lateWho)+(lateWho.length===1?" finishes ":" finish "):"Finishes ")+niceShort(d.prep.date)+", after the production due date.")); }
+        // IN THE HEADER, NOT A RED BAND (Sam, 21 Oct 2026, card mock approved): a red chip beside the due date
+        var lateTxt=(lateWho.length&&lateWho.length<d.prep.who.length?nameList(lateWho)+(lateWho.length===1?" finishes ":" finish "):"Finishes ")+niceShort(d.prep.date)+", "+(function(){ var n=workDaysBetween(prodDue,d.prep.date); return n+(n===1?" day late":" days late"); })();
+        var shh=ps.querySelector(".sec-h"); if(shh){ var lc=el("span","latechip",lateTxt); shh.appendChild(lc); } }
       if(overP) ps.appendChild(banner("Above the estimate: "+overP+". The estimate is "+fmt(pstd.work)+" of work."));
       // WILL IT BE READY (Sam, 18 Sep 2026: "the things we need to make sure do not get affected is the due date.
       // If it is looking like the due date is going to be affected it should be prompting sub contractor support").
@@ -397,9 +399,9 @@
       // editor gains a from and to per assigned person under the picker. Blank means the whole window.
       // THE DAY GRID (Sam, 21 Oct 2026): the row shows each person's days as cells, a tap turns a day on or off; the
       // editor has the full grid (Full, AM, PM, off, typed hours) under the picker.
-      var gridWrap=function(editable){ var wrap=el("div","dgridwrap"); wrap.appendChild(renderPrepGrid(d.prep,{editable:true,toggle:!editable,byWeek:true,onChange:function(){ save(); render(); }})); return wrap; };
+      var gridWrap=function(editable){ var wrap=el("div","dgridwrap"); wrap.appendChild(renderPrepGrid(d.prep,{editable:true,toggle:!editable,inline:!editable,byWeek:editable,onChange:function(){ save(); render(); }})); if(!editable) wrap.appendChild(el("div","gridhint","Tap a day to turn it on or off. Full, AM, PM and typed hours are set in the Scheduler.")); return wrap; };
       var pwhoGrid=d.prep.who.length&&d.prep.date&&prepDayCount(d.prep)>1;
-      var pwhoVal=d.prep.who.length?(pwhoGrid?nameList(d.prep.who)+", by day below":d.prep.who.join(", ")):"Unassigned";
+      var pwhoVal=d.prep.who.length?nameList(d.prep.who):"Unassigned";
       var pwhoRow=ps.appendChild(rowEl("pwho",d.prep.who.length===1?"Operative":"Operatives",pwhoVal,function(ed){ ed.appendChild(people(d.prep,false,function(){ var s2=prodStandardFor(loadNow(),d.prep.who.length,pdaysAvail); return s2&&s2.mins!=null?s2.mins:null; },d.prep.date?workDays(d.prep.start||d.prep.date,d.prep.date):[]));
         if(d.prep.date&&d.prep.who.length){ ed.appendChild(el("div","lbl","Who is on which day. Click a day for Full, AM, PM or off, double click to type hours.")); ed.appendChild(gridWrap(true)); }
         ed.appendChild(availability(d.prep.date?workDays(d.prep.start||d.prep.date,d.prep.date):[],d.prep)); },d.prep.who.length?"":"bad",pwhoGrid&&!OPEN.pwho?gridWrap(false):null));
