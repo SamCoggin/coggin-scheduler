@@ -507,7 +507,11 @@ var SNAP=null, DETAIL={};
 <script>
 (function(){
   "use strict";
-  var t=window.TrelloPowerUp?TrelloPowerUp.iframe():null;
+  // EMBED MODE (Sam, 21 Oct 2026: "I don't want it to open the scheduler"): the card back loads this page in a hidden
+  // frame, posts it the board's cards, lists and plans, and this page builds the job sheet and downloads it. No Power-Up
+  // client here, nothing is saved, nothing is shown.
+  var EMBED=typeof location!=="undefined"&&/(?:^|[?&])embed=1(?:&|$)/.test(location.search||"");
+  var t=(!EMBED&&window.TrelloPowerUp)?TrelloPowerUp.iframe():null;
   var TODAY_REAL=new Date(); TODAY_REAL.setHours(12,0,0,0);
   var TODAY=window.__TODAY?new Date(window.__TODAY):new Date(TODAY_REAL);   // __TODAY is only set by check.mjs
   var TEAM=CREW, open=null, week=0;
@@ -522,13 +526,16 @@ var SNAP=null, DETAIL={};
   var LAST_CRM={holds:[],downtime:[],requests:[]};   // the CRM's last answer, reused on the fast ticks that only re-read the cards
   function loadBoard(opts){
     opts=opts||{};
-    var cardsP=t.cards("id","name","desc","due","start","idList","labels","members","customFieldItems","checklists","badges","shortLink").catch(function(){ return t.cards("all"); });
-    return Promise.all([t.lists("all"),cardsP,t.board("name","members"),t.get("board","shared","sched",{})]).then(function(r){
+    var rawP;
+    if(opts.raw){ rawP=Promise.resolve([opts.raw.lists||[],opts.raw.cards||[],opts.raw.board||{name:""},opts.raw.boardData||{}]); }
+    else { var cardsP=t.cards("id","name","desc","due","start","idList","labels","members","customFieldItems","checklists","badges","shortLink").catch(function(){ return t.cards("all"); });
+      rawP=Promise.all([t.lists("all"),cardsP,t.board("name","members"),t.get("board","shared","sched",{})]); }
+    return rawP.then(function(r){
       var lists=r[0], cards=r[1], board=r[2], boardData=r[3];
       CRM_KEY=(boardData&&boardData.crmKey)||"";
       // THE KEY FOLLOWS THE PERSON (17 Sep 2026): kept in your own private Power-Up data too, so the card back on
       // Operations - Planning can read checklists without anyone pasting the key there again.
-      if(CRM_KEY) t.set("member","private","crmKey",CRM_KEY).catch(function(){});
+      if(CRM_KEY&&t) t.set("member","private","crmKey",CRM_KEY).catch(function(){});
       var lm={}; lists.forEach(function(l){ lm[l.id]=l; });
       var out=[];
       cards.forEach(function(c){
@@ -542,7 +549,7 @@ var SNAP=null, DETAIL={};
         var checks=[]; (c.checklists||[]).forEach(function(cl){ (cl.checkItems||[]).forEach(function(it){ checks.push({n:(it.name||"").slice(0,160),done:it.state==="complete"}); }); });
         out.push({id:c.id,short:c.shortLink||"",qc:qcDone(c.badges),name:c.name.trim(),role:role,due:due,start:start,ready_by:ready,labels:(c.labels||[]).map(function(x){return x.name;}),who:(c.members||[]).map(function(m){return (m.fullName||m.username||"").split(" ")[0];}).filter(Boolean),desc:c.desc||"",checks:checks});
       });
-      return Promise.all(out.map(function(c){ return t.get(c.id,"shared","sched",null).then(function(d){ c.saved=normPlan(d); return c; }); })).then(function(cs){
+      return Promise.all(out.map(function(c){ var pp=opts.raw?Promise.resolve((opts.raw.plans||{})[c.id]||null):t.get(c.id,"shared","sched",null); return pp.then(function(d){ c.saved=normPlan(d); return c; }); })).then(function(cs){
         // a fast tick keeps the checklists the CRM gave last time: Trello's client does not send them
         cs.forEach(function(c){ var was=DETAIL[c.id]; DETAIL[c.id]={desc:c.desc,checks:(c.checks&&c.checks.length)?c.checks:(opts.skipCrm&&was&&was.checks&&was.checks.length?was.checks:(c.checks||[]))}; });
         var snap={board:board.name,crew:CREW,cards:cs,boardData:boardData};
@@ -3549,9 +3556,13 @@ var SNAP=null, DETAIL={};
   }
   // when an editor closes, anything that arrived meanwhile goes on screen
   function flushPending(){ if(PENDING_SNAP&&!editorOpen()){ var sn=PENDING_SNAP; PENDING_SNAP=null; FOREIGN=null; applySnap(sn); } }
-  if(t){
+  if(t||EMBED){
     $("#src").textContent="Reading the board...";
-    loadBoard().then(function(snap){ buildFromSnap(snap); lastSaved={}; wireRefresh(); try{ var P0=new URLSearchParams(location.search), rq=P0.get("round"), oq=P0.get("open"); if(rq&&/^\d{4}-\d{2}-\d{2}\|/.test(rq)){ dayCur=rq.split("|")[0]; view="day"; openRound=rq; } else if(oq){ var oj=JOBS.filter(function(j){return j.id===oq;})[0]; if(oj){ if(oj.date) dayCur=oj.date; view="day"; var sq=P0.get("sheet"); open=sq==="prep"&&oj.prep?oq+":prep":oq; if(sq){ var sheetJob=oj; } } } }catch(e){} /* ?open=<card id>: the card back opens its own job here (Sam, 19 Oct 2026); &sheet=prep|job downloads the job sheet as it opens (21 Oct 2026) */ render();
+    if(EMBED){ window.addEventListener("message",function(ev){ var msg=ev.data||{}; if(msg.type!=="coggin-sheet") return; var reply=function(m){ try{ ev.source.postMessage(m,"*"); }catch(e){} };
+        loadBoard({raw:msg.raw||{}}).then(function(snap){ buildFromSnap(snap); lastSaved={}; var oj=JOBS.filter(function(j){return j.id===msg.open;})[0]; if(!oj) throw new Error("This card is not a job the Scheduler knows yet. Does it have a due date and a list the Scheduler reads?"); if(oj.date) dayCur=oj.date; view="day"; open=msg.sheet==="prep"&&oj.prep?oj.id+":prep":oj.id; render(); var oo=findOpen(); if(!oo) throw new Error("This job has no page to print yet.");
+          return jobSheetDownload(oo.job,oo,null); }).then(function(){ reply({type:"coggin-sheet-done"}); }).catch(function(e){ reply({type:"coggin-sheet-error",error:String(e&&e.message||e)}); }); });
+      try{ window.parent.postMessage({type:"coggin-sheet-ready"},"*"); }catch(e){} }
+    if(!EMBED) loadBoard().then(function(snap){ buildFromSnap(snap); lastSaved={}; wireRefresh(); try{ var P0=new URLSearchParams(location.search), rq=P0.get("round"), oq=P0.get("open"); if(rq&&/^\d{4}-\d{2}-\d{2}\|/.test(rq)){ dayCur=rq.split("|")[0]; view="day"; openRound=rq; } else if(oq){ var oj=JOBS.filter(function(j){return j.id===oq;})[0]; if(oj){ if(oj.date) dayCur=oj.date; view="day"; var sq=P0.get("sheet"); open=sq==="prep"&&oj.prep?oq+":prep":oq; if(sq){ var sheetJob=oj; } } } }catch(e){} /* ?open=<card id>: the card back opens its own job here (Sam, 19 Oct 2026); &sheet=prep|job downloads the job sheet as it opens (21 Oct 2026) */ render();
       // FROM THE CARD, JUST THE SHEET (Sam, 21 Oct 2026: "when I click job sheet it opens the schedule editor?"): build it,
       // download it, and close this window again so the card is back on screen.
       if(typeof sheetJob!=="undefined"&&sheetJob){ var srcEl=$("#src"); if(srcEl) srcEl.textContent="Building the job sheet..."; setTimeout(function(){ var oo=findOpen(); if(!oo){ alert("This job has no page to print yet."); return; }

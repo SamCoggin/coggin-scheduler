@@ -351,7 +351,21 @@
       // THE JOB SHEET FROM THE CARD (Sam, 21 Oct 2026: "I want to be able to download the job sheet from this view"). The
       // sheet is built by the Scheduler, so this opens it on the job and it downloads the sheet as it opens.
       var jsb=el("button","p","Job sheet"); jsb.title="Download this job's own page for the day"; jsb.style.marginRight="8px";
-      jsb.onclick=function(){ try{ t.modal({ url:"./scheduler.html?open="+encodeURIComponent(card.id)+"&sheet="+(workshop?"prep":"job")+"&v="+Math.floor(Date.now()/60000), fullscreen:true, title:"Scheduler" }); }catch(e){ alert("Could not open the Scheduler: "+(e&&e.message||e)); } };
+      // WITHOUT OPENING THE SCHEDULER (Sam, 21 Oct 2026: "I don't want it to open the scheduler"): the board's cards, lists
+      // and the plans of the jobs around this one go to a hidden copy of the Scheduler page, which draws the sheet and
+      // downloads it. The button says Building until the file lands.
+      jsb.onclick=function(){ if(jsb.disabled) return; jsb.disabled=true; var was=jsb.textContent; jsb.textContent="Building..."; var fr=null, timer=null;
+        var finish=function(err){ clearTimeout(timer); window.removeEventListener("message",onMsg); if(fr&&fr.parentNode) fr.parentNode.removeChild(fr); jsb.disabled=false; jsb.textContent=was; if(err) alert("The job sheet could not be built: "+err); };
+        var raw=null, cardsP=t.cards("id","name","desc","due","start","idList","labels","members","customFieldItems","checklists","badges","shortLink").catch(function(){ return t.cards("all"); });
+        var onMsg=function(ev){ var m=ev.data||{}; if(m.type==="coggin-sheet-ready"&&raw&&fr){ fr.contentWindow.postMessage({type:"coggin-sheet",raw:raw,open:card.id,sheet:workshop?"prep":"job"},"*"); } else if(m.type==="coggin-sheet-done"){ finish(); } else if(m.type==="coggin-sheet-error"){ finish(m.error||"unknown"); } };
+        window.addEventListener("message",onMsg); timer=setTimeout(function(){ finish("it took too long"); },90000);
+        Promise.all([t.lists("all"),cardsP,t.board("name","members"),t.get("board","shared","sched",{})]).then(function(r){
+          var lists=r[0], cards=r[1], mine=cards.filter(function(c){ return c.id===card.id; })[0], k=(mine&&mine.due||card.due||"").slice(0,10);
+          // the plans of this job and of every dated job within two weeks of it: the day's rounds and crew need them
+          var near=cards.filter(function(c){ var d=(c.due||"").slice(0,10); if(c.id===card.id) return true; if(!d||!k) return false; return Math.abs((new Date(d+"T12:00")-new Date(k+"T12:00"))/864e5)<=14; });
+          return Promise.all(near.map(function(c){ return t.get(c.id,"shared","sched",null).catch(function(){ return null; }).then(function(p){ return [c.id,p]; }); })).then(function(ps){ var plans={}; ps.forEach(function(x){ if(x[1]) plans[x[0]]=x[1]; }); raw={lists:lists,cards:cards,board:r[2],boardData:r[3],plans:plans};
+            fr=document.createElement("iframe"); fr.setAttribute("aria-hidden","true"); fr.style.cssText="position:absolute;width:1px;height:1px;left:-9999px;top:0;border:0;opacity:0"; fr.src="./scheduler.html?embed=1&v="+Math.floor(Date.now()/60000); document.body.appendChild(fr); });
+        }).catch(function(e){ finish(e&&e.message||e); }); };
       ob0.appendChild(jsb); ob0.appendChild(ob1); app.appendChild(ob0); }
     var due=(card.due||"").slice(0,10);
     var contractorOnly=(!!d.contractor||CARRIER_PENDING) && !d.who.length;
