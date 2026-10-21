@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html title="Scheduling"><head><meta charset="utf-8"><title>Scheduling</title>
 <style>
-    .dgridwrap{overflow-x:auto;max-width:100%}.sv .dgridwrap{margin-top:2px}
+    .dgridwrap{max-width:100%}.sbelow{padding:4px 12px 10px}
   :root{ --text:#172b4d; --muted:#5e6c84; --line:#c7ced8; --blue:#0c66e4; --blue-bg:#e9f2ff; --green:#1f845a; --green-bg:#e3fcef; --amber:#974f0c; --amber-bg:#fff7d6; --red:#c9372c; --red-bg:#ffeceb; --card:#fff; --list:#f1f2f4; }
   *{box-sizing:border-box}
   html,body{overflow:hidden}
@@ -321,9 +321,12 @@
   // the same on-time line as the Scheduler's
   function cardProdStatus(prodDue){ if(!d||!d.prep||(d.prep.done&&d.prep.done.status==="done")) return null;
     return prodStatusOf(d.prep,prodDue,todayIso(),workshop&&!/^(New Jobs|Transfer to Job Board)$/i.test(String(card.listName||"").trim())); }
-  function rowEl(key,label,value,editor,cls){
+  // below: something wide that sits under the label row at full width, like the day grid (Sam, 21 Oct 2026: "ui is fucked
+  // here", the grid in the value column pushed Change off the edge)
+  function rowEl(key,label,value,editor,cls,below){
     var r=el("div","srow"+(cls?" "+cls:"")); var top=el("div","stop2"); top.appendChild(el("span","sl",label)); var v=el("span","sv"); if(typeof value==="string") v.textContent=value; else v.appendChild(value); top.appendChild(v);
     if(editor){ var bt=el("button","chg",OPEN[key]?"Done":"Change"); bt.onclick=function(){ OPEN[key]=!OPEN[key]; render(); }; top.appendChild(bt); } r.appendChild(top);
+    if(below){ var bw=el("div","sbelow"); bw.appendChild(below); r.appendChild(bw); }
     if(editor&&OPEN[key]){ var ed=el("div","sed"); editor(ed); r.appendChild(ed); }
     return r;
   }
@@ -395,10 +398,11 @@
       // THE DAY GRID (Sam, 21 Oct 2026): the row shows each person's days as cells, a tap turns a day on or off; the
       // editor has the full grid (Full, AM, PM, off, typed hours) under the picker.
       var gridWrap=function(editable){ var wrap=el("div","dgridwrap"); wrap.appendChild(renderPrepGrid(d.prep,{editable:true,toggle:!editable,byWeek:true,onChange:function(){ save(); render(); }})); return wrap; };
-      var pwhoVal=d.prep.who.length?(d.prep.date&&prepDayCount(d.prep)>1?gridWrap(false):d.prep.who.join(", ")):"Unassigned";
+      var pwhoGrid=d.prep.who.length&&d.prep.date&&prepDayCount(d.prep)>1;
+      var pwhoVal=d.prep.who.length?(pwhoGrid?nameList(d.prep.who)+", by day below":d.prep.who.join(", ")):"Unassigned";
       var pwhoRow=ps.appendChild(rowEl("pwho",d.prep.who.length===1?"Operative":"Operatives",pwhoVal,function(ed){ ed.appendChild(people(d.prep,false,function(){ var s2=prodStandardFor(loadNow(),d.prep.who.length,pdaysAvail); return s2&&s2.mins!=null?s2.mins:null; },d.prep.date?workDays(d.prep.start||d.prep.date,d.prep.date):[]));
         if(d.prep.date&&d.prep.who.length){ ed.appendChild(el("div","lbl","Who is on which day. Click a day for Full, AM, PM or off, double click to type hours.")); ed.appendChild(gridWrap(true)); }
-        ed.appendChild(availability(d.prep.date?workDays(d.prep.start||d.prep.date,d.prep.date):[],d.prep)); },d.prep.who.length?"":"bad"));
+        ed.appendChild(availability(d.prep.date?workDays(d.prep.start||d.prep.date,d.prep.date):[],d.prep)); },d.prep.who.length?"":"bad",pwhoGrid&&!OPEN.pwho?gridWrap(false):null));
       // DAY AND DUE ARE ONE ROW (Sam, 1 Oct 2026: "production day and production due feels like it is doing the same
       // thing"). The due date is in the header; the row says the day booked, or by when it must be. Moving the due
       // date sits in the same row's Change, under the day.
