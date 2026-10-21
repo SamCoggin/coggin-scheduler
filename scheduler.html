@@ -892,7 +892,9 @@ var SNAP=null, DETAIL={};
   // sheet prints only what is still to pick. The key is the product, its section and its label, so a desk build's
   // variants stay separate lines.
   var PICK_LINES={};   // card id -> null while loading, or {picks, lines}
-  function pickKey(l){ return [l.product_id||l.name||"",l.section||"",l.label||""].join("|"); }
+  // TWO LINES OF ONE PRODUCT (Sam, 21 Oct 2026, Ecosave: "when I update 8x cantilever desks the 80x also updates"): the 8
+  // and the 80 are the same white desk cut to two sizes, so the cut joins the key. A line with no cut keeps its old key.
+  function pickKey(l){ var cut=l.cut_down&&l.cut_down.to?String(l.cut_down.to):""; return [l.product_id||l.name||"",l.section||"",l.label||""].join("|")+(cut?"|"+cut:""); }
   // FINISHED, NOTHING ELSE (Sam, 2 Oct 2026: "I think we are over complicating it with items picked and just need to track
   // items finished"). Each pick line holds how many are finished; picking starts the work straight away, so what is
   // not finished is what is still to pick or on the bench. log keeps one entry per day.
