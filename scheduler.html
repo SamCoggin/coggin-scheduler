@@ -367,6 +367,7 @@
   .pwarn{display:flex;align-items:center;justify-content:space-between;gap:12px;border:1px solid #f0c7a6;background:#fff7f0;border-radius:9px;padding:10px 12px;margin:0 0 12px} .pwarn b{display:block;color:#9a3412;font-size:13.5px} .pwarn span{display:block;font-size:12.5px;color:#7c2d12;margin-top:2px} .pwarn button{white-space:nowrap}
   .psum.one{grid-template-columns:1fr} .picks2.one li{grid-template-columns:56px minmax(0,1fr) 128px;height:72px;box-sizing:border-box;padding-top:0;padding-bottom:0} .picks2.one .pnm b{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden} .picks2.one .pnm small{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .picks2{list-style:none;margin:0;padding:0;border:1px solid var(--line);border-radius:9px;overflow:hidden}
+  .picks2.parts li{display:block;padding:10px 12px} .picks2.parts .ptop{display:grid;grid-template-columns:56px minmax(0,1fr);gap:12px;align-items:center} .picks2.parts .ptable{margin-top:8px} .picks2.parts .prow{display:grid;grid-template-columns:minmax(0,1fr) 112px 112px 56px;gap:8px;align-items:center;padding:4px 0;border-top:1px solid #eef0f3} .picks2.parts .prow.head{border-top:0;font-size:10.5px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.04em} .picks2.parts .prow.head span{text-align:center} .picks2.parts .prow.head span:first-child{text-align:left} .picks2.parts .prow.done .pnme{color:#1f845a} .picks2.parts .pnme{font-size:13px;display:flex;align-items:center;gap:6px} .picks2.parts .pnme .close{padding:0 4px;font-size:14px} .picks2.parts .of{font-size:12px;color:var(--muted)} .picks2.parts .pstep input{width:40px} .picks2.parts .padd{display:flex;gap:6px;align-items:center;margin-top:6px} .picks2.parts .padd input[type=text]{flex:1;min-width:0;height:28px;font-size:12.5px} .picks2.parts .padd input[type=number]{width:84px;height:28px;font-size:12.5px}
   .picks2 li{display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:12px;align-items:center;padding:10px 12px} .picks2 li+li{border-top:1px solid var(--line)}
   .picks2 li.done{background:#f3faf6} .picks2 li.done .pnm b{color:#1f845a}
   .pnm{min-width:0} .pnm b{display:block;font-size:13.5px;font-weight:600;overflow-wrap:anywhere} .pnm small{font-size:12px;color:var(--muted)}
@@ -900,7 +901,22 @@ var SNAP=null, DETAIL={};
   // the line (headerCustomer, "8 desks") is the unit; the picking pages turn what is left back into tops.
   function pickUnits(l){ var h=parseInt(String(l.headerCustomer||""),10); return h>0?h:(Number(l.qty)||0); }
   function isPartLine(l){ return l.section==="desk_legs"; }   // legs are parts of the desks above, never a finished item
-  function pickCount(P,l){ var q=pickUnits(l), e=P[pickKey(l)]; if(!e) return {f:0,q:q}; return {f:Math.max(0,Math.min(Number(e.f)||0,q)),q:q,on:e.on||""}; }
+  // PICKED AND FINISHED, BY PART (Sam, 21 Oct 2026, mock approved: "Tops picked, Modesty panels picked, Legs picked, Tops
+  // finished ..."). A desk is three parts, a chair is one; each part carries a picked count and a finished count. The item
+  // is finished when all its parts are, so the item's finished number is worked out, never typed. Stored on the plan as
+  // picked[key] = { parts:{ Tops:{p,f}, ... }, extra:[{n,q}], f, on, log } with f the worked-out finished units.
+  function pickPartsOf(l,extra){ var u=pickUnits(l), hb=String(l.headerBreakdown||""), out;
+    if(/desk/i.test(String(l.headerCustomer||""))){ out=[{n:"Tops",q:u}]; if(/panels from scrap/i.test(hb)) out.push({n:"Back panels",q:u}); else if(/\+\s*\d+\s*legs/i.test(hb)) out.push({n:"Modesty panels",q:u}); var lg=/(\d+)\s*legs/i.exec(hb); if(lg&&+lg[1]>0) out.push({n:"Legs",q:+lg[1]}); }
+    else if(Array.isArray(l.build_components)&&l.build_components.length) out=l.build_components.map(function(c){ return {n:String(c.name||"Part"),q:Number(c.qty)||Number(c.quantity)||u}; });
+    else out=[{n:l.section==="seating"?"Chairs":l.section==="storage"?"Units":l.section==="tables"?"Tables":l.section==="desk_tops"?"Tops":"Items",q:u}];
+    (extra||[]).forEach(function(e){ if(e&&e.n) out.push({n:String(e.n),q:Number(e.q)||u,x:true}); }); return out; }
+  function pickCount(P,l){ var q=pickUnits(l), e=P[pickKey(l)]||null; var ps=pickPartsOf(l,e&&e.extra);
+    var rows=ps.map(function(pt){ var r=(e&&e.parts&&e.parts[pt.n])||{}; var cl=function(v){ return Math.max(0,Math.min(pt.q,Math.round(Number(v)||0))); }; return {n:pt.n,q:pt.q,x:!!pt.x,p:cl(r.p),f:cl(r.f)}; });
+    var scale=function(key){ return rows.length?Math.min.apply(null,rows.map(function(x){ return x.q?Math.floor(x[key]*q/x.q):0; })):0; };
+    if(!e) return {f:0,p:0,q:q,parts:rows};
+    if(e.parts) return {f:Math.min(q,scale("f")),p:Math.min(q,scale("p")),q:q,on:e.on||"",parts:rows};
+    // a plan from before the parts: one finished number, taken as picked too
+    var f0=Math.max(0,Math.min(Number(e.f)||0,q)); rows.forEach(function(x){ x.f=Math.round(f0*x.q/q); x.p=x.f; }); return {f:f0,p:f0,q:q,on:e.on||"",parts:rows}; }
   function pickedOf(id){ var j=JOBS.filter(function(x){return x.id===id;})[0]; if(!j) return {}; return (j.prep&&j.prep.picked)||(j.donePrep&&j.donePrep.picked)||{}; }
   var ITEM_PHOTOS={};   // card id -> [{name, qty, photo}] from the CRM, fetched when the card is opened
   var CRM_PICKING_URL="https://coggin-sos-os.base44.app/api/apps/69c930a6240fba922f369aa2/functions/pickingSheets";
@@ -1233,24 +1249,31 @@ var SNAP=null, DETAIL={};
         var stg=el("label","pstage"); var sc=el("input"); sc.type="checkbox"; sc.checked=!!j.prep.stages; sc.onchange=function(){ if(sc.checked) j.prep.stages=true; else delete j.prep.stages; window.__keepScroll=(document.querySelector(".veil")||{}).scrollTop||0; persist(); render(); };
         stg.appendChild(sc); var stx=el("span"); stx.appendChild(el("b",null,"Still picking in stages")); stx.appendChild(el("small",null,j.prep.stages?"Picking pages print every day until it is all finished.":"Once In-progress, it drops off the picking pages.")); stg.appendChild(stx); pb.appendChild(stg);
         var keep=function(){ window.__keepScroll=(document.querySelector(".veil")||{}).scrollTop||0; };
-        var setF=function(l,f){ var c=pickCount(j.prep.picked||{},l); f=Math.max(0,Math.min(c.q,Math.round(f))); var P=Object.assign({},j.prep.picked||{}), k0=pickKey(l), old=P[k0]||{}, log=(old.log||[]).filter(function(x){return x.on!==iso(TODAY);});
-          if(f===0){ delete P[k0]; } else { log.push({on:iso(TODAY),f:f}); P[k0]={f:f,on:iso(TODAY),log:log.slice(-30)}; } j.prep.picked=P; keep(); persist(); render(); };
-        var stepper=function(lbl,val,max,onSet){ var w=el("div","pct"); var st=el("div","pstep"); var mi=el("button",null,"\u2212"); mi.type="button"; mi.setAttribute("aria-label",lbl+" one fewer"); var inp=el("input"); inp.type="number"; inp.min="0"; inp.max=String(max); inp.value=String(val); inp.setAttribute("aria-label",lbl); inp.inputMode="numeric"; var pl=el("button",null,"+"); pl.type="button"; pl.setAttribute("aria-label",lbl+" one more");
+        var setPart=function(l,name,key,v){ var c=pickCount(j.prep.picked||{},l), row=c.parts.filter(function(x){ return x.n===name; })[0]; if(!row) return; v=Math.max(0,Math.min(row.q,Math.round(Number(v)||0)));
+          var P=Object.assign({},j.prep.picked||{}), k0=pickKey(l), old=Object.assign({},P[k0]||{}); var parts=Object.assign({},old.parts||{}); c.parts.forEach(function(x){ parts[x.n]=Object.assign({},parts[x.n]||{p:x.p,f:x.f}); }); parts[name]=Object.assign({},parts[name],{});
+          parts[name][key]=v; if(key==="f"&&parts[name].p<v) parts[name].p=v; if(key==="p"&&parts[name].f>v) parts[name].f=v;
+          old.parts=parts; var c2=pickCount(Object.assign({},P,{[k0]:old}),l); var log=(old.log||[]).filter(function(x){return x.on!==iso(TODAY);}); log.push({on:iso(TODAY),f:c2.f}); old.f=c2.f; old.on=iso(TODAY); old.log=log.slice(-30); P[k0]=old; j.prep.picked=P; keep(); persist(); render(); };
+        var addPart=function(l,name,q){ var P=Object.assign({},j.prep.picked||{}), k0=pickKey(l), old=Object.assign({},P[k0]||{}); old.extra=(old.extra||[]).concat([{n:name,q:q}]); P[k0]=old; j.prep.picked=P; keep(); persist(); render(); };
+        var dropPart=function(l,name){ var P=Object.assign({},j.prep.picked||{}), k0=pickKey(l), old=Object.assign({},P[k0]||{}); old.extra=(old.extra||[]).filter(function(e){ return e.n!==name; }); if(old.parts) delete old.parts[name]; P[k0]=old; j.prep.picked=P; keep(); persist(); render(); };
+        var stepper=function(lbl,val,max,onSet){ var st=el("div","pstep"); var mi=el("button",null,"\u2212"); mi.type="button"; mi.setAttribute("aria-label",lbl+" one fewer"); var inp=el("input"); inp.type="number"; inp.min="0"; inp.max=String(max); inp.value=String(val); inp.setAttribute("aria-label",lbl); inp.inputMode="numeric"; var pl=el("button",null,"+"); pl.type="button"; pl.setAttribute("aria-label",lbl+" one more");
           mi.onclick=function(){ onSet(val-1); }; pl.onclick=function(){ onSet(val+1); }; inp.onchange=function(){ var v=parseInt(inp.value,10); onSet(isNaN(v)?0:v); }; inp.onkeydown=function(e){ if(e.key==="Enter") inp.blur(); };
-          st.appendChild(mi); st.appendChild(inp); st.appendChild(pl); w.appendChild(st); w.appendChild(el("span","of","of "+max)); return w; };
-        var pul=el("ul","picks2 one");
-        // THE PRODUCT, NOT ITS SECTION (Sam, 2 Oct 2026: two rows both read "2 x BOOTHS", "It is not obvious which one is
-        // which"). label is the picking sheet's section heading; the name and the photo tell the lines apart.
+          st.appendChild(mi); st.appendChild(inp); st.appendChild(pl); return st; };
+        var pul=el("ul","picks2 parts");
         plc.lines.forEach(function(l){ if(isPartLine(l)) return; var c=pickCount(P0,l), all=c.f>=c.q&&c.q>0, li=el("li",all?"done":"");
           var ph=l.product_photo||l.storage_photo||"", nmTxt=l.name||l.label||"";
-          if(ph){ var im=el("img","ithumb zoom"); im.src=ph; im.alt=nmTxt; im.loading="lazy"; im.tabIndex=0; im.title="Click to see it bigger"; im.setAttribute("role","button"); im.onclick=function(e){ e.stopPropagation(); photoPopup(ph,nmTxt); }; im.onkeydown=function(e){ if(e.key==="Enter"||e.key===" "){ e.preventDefault(); photoPopup(ph,nmTxt); } }; li.appendChild(im); }
-          else li.appendChild(el("span","ithumb none","No photo"));
-          var nm=el("div","pnm"); nm.appendChild(el("b",null,c.q+" x "+nmTxt)); nm.appendChild(el("small",null,[l.section&&!/^other$/i.test(l.section)?l.section:"",l.stock_location?"Location "+l.stock_location:"",all?"all finished":(c.on?"updated "+niceDay(c.on):"")].filter(Boolean).join(" \u00b7 "))); li.appendChild(nm);
-          li.appendChild(stepper("Finished",c.f,c.q,function(v){ setF(l,v); }));
+          var top=el("div","ptop"); if(ph){ var im=el("img","ithumb zoom"); im.src=ph; im.alt=nmTxt; im.loading="lazy"; im.tabIndex=0; im.title="Click to see it bigger"; im.setAttribute("role","button"); im.onclick=function(e){ e.stopPropagation(); photoPopup(ph,nmTxt); }; im.onkeydown=function(e){ if(e.key==="Enter"||e.key===" "){ e.preventDefault(); photoPopup(ph,nmTxt); } }; top.appendChild(im); }
+          else top.appendChild(el("span","ithumb none","No photo"));
+          var nm=el("div","pnm"); nm.appendChild(el("b",null,c.q+" x "+nmTxt)); nm.appendChild(el("small",null,[l.section&&!/^other$/i.test(l.section)?l.section:"",l.stock_location?"Location "+l.stock_location:"",all?"all finished":c.f+" of "+c.q+" finished"+(c.on?", updated "+niceDay(c.on):"")].filter(Boolean).join(" \u00b7 "))); top.appendChild(nm); li.appendChild(top);
+          var tb=el("div","ptable"); var hd=el("div","prow head"); hd.appendChild(el("span",null,"")); hd.appendChild(el("span",null,"Picked")); hd.appendChild(el("span",null,"Finished")); hd.appendChild(el("span",null,"")); tb.appendChild(hd);
+          c.parts.forEach(function(pt){ var r=el("div","prow"+(pt.f>=pt.q&&pt.q>0?" done":"")); var nmc=el("span","pnme",pt.n); if(pt.x){ var xb=el("button","close","\u00d7"); xb.type="button"; xb.title="Remove this part"; xb.setAttribute("aria-label","Remove "+pt.n); xb.onclick=function(){ dropPart(l,pt.n); }; nmc.appendChild(xb); } r.appendChild(nmc);
+            r.appendChild(stepper(pt.n+" picked",pt.p,pt.q,function(v){ setPart(l,pt.n,"p",v); })); r.appendChild(stepper(pt.n+" finished",pt.f,pt.q,function(v){ setPart(l,pt.n,"f",v); })); r.appendChild(el("span","of","of "+pt.q)); tb.appendChild(r); });
+          var ad=el("div","padd"); var ai=el("input"); ai.type="text"; ai.placeholder="Add a part, e.g. Recover"; ai.setAttribute("aria-label","Part name"); var aq=el("input"); aq.type="number"; aq.min="1"; aq.placeholder="how many"; aq.setAttribute("aria-label","How many"); var ab=el("button","link","Add"); ab.type="button";
+          ab.onclick=function(){ var n=ai.value.trim(); if(!n) { ai.focus(); return; } if(c.parts.some(function(x){ return x.n.toLowerCase()===n.toLowerCase(); })){ ai.focus(); return; } addPart(l,n,parseInt(aq.value,10)||c.q); }; ai.onkeydown=function(e){ if(e.key==="Enter") ab.onclick(); };
+          ad.appendChild(ai); ad.appendChild(aq); ad.appendChild(ab); tb.appendChild(ad); li.appendChild(tb);
           pul.appendChild(li); });
         pb.appendChild(pul);
-        var pf=el("div","pfoot"); pf.appendChild(el("span","hint","Type what was finished from the day sheet. The day sheet prints only what is still to finish."));
-        var allF=tf>=tq, tb=el("button","link",allF?"Clear the counts":"Mark all finished"); tb.onclick=function(){ var P={}; if(!allF) plc.lines.forEach(function(l){ if(isPartLine(l)) return; var c=pickCount(P0,l), old=P0[pickKey(l)]||{}, log=(old.log||[]).filter(function(x){return x.on!==iso(TODAY);}); log.push({on:iso(TODAY),f:c.q}); P[pickKey(l)]={f:c.q,on:iso(TODAY),log:log.slice(-30)}; }); j.prep.picked=P; keep(); persist(); render(); }; pf.appendChild(tb);
+        var pf=el("div","pfoot"); pf.appendChild(el("span","hint","Type what was picked and finished from the day sheet, by part. An item is finished when all its parts are."));
+        var allF=tf>=tq, tb=el("button","link",allF?"Clear the counts":"Mark all finished"); tb.onclick=function(){ var P={}; if(!allF) plc.lines.forEach(function(l){ if(isPartLine(l)) return; var c=pickCount(P0,l), old=P0[pickKey(l)]||{}, log=(old.log||[]).filter(function(x){return x.on!==iso(TODAY);}); log.push({on:iso(TODAY),f:c.q}); var parts={}; c.parts.forEach(function(x){ parts[x.n]={p:x.q,f:x.q}; }); P[pickKey(l)]={f:c.q,on:iso(TODAY),log:log.slice(-30),parts:parts,extra:old.extra}; }); j.prep.picked=P; keep(); persist(); render(); }; pf.appendChild(tb);
         pb.appendChild(pf); left.appendChild(pb); } }
     // WHAT IS BEING WORKED ON (Sam, 15 Sep 2026: "so I don't have to go back into the Trello card to see what is being
     // worked on"): the card's checklist, every line with its tick, and the works lines from the description.
@@ -2622,7 +2645,7 @@ var SNAP=null, DETAIL={};
             if(r.part==="Production"){ var i=PICK[r.card]||{}, lines=i.lines||[], fin=j.stage==="In progress"&&!(j.prep&&j.prep.stages);
               var inf=DATA.info[r.card]||(DATA.byCard[r.card]?{items:DATA.byCard[r.card].stop.items}:null);
               var beforeP=doc.getNumberOfPages(); kit.production({crew:b.title,name:r.name,code:"https://trello.com/c/"+(j.short||j.id),started:j.stage==="In progress",title:i.allPicked?"All finished":(lines.length&&lines.every(function(l){ return l.section==="refurb"; }))?"Items to refurbish":fin?"Items to finish":"Pick and finish",
-                facts:[["Time",c[3]],["Due",j.prodDue?niceDay(j.prodDue):""],[j.site?"Delivery":"Ready by",j.date?niceDay(j.date):""],["Ref",i.ref||""]],lines:lines,items:inf&&inf.items?inf.items:[]});
+                facts:[["Time",c[3]],["Due",j.prodDue?niceDay(j.prodDue):""],[j.site?"Delivery":"Ready by",j.date?niceDay(j.date):""],["Ref",i.ref||""]],lines:lines,all:i.all||[],picked:i.picked||{},items:inf&&inf.items?inf.items:[]});
               starts[r.key]=beforeP+1;
               return; }
             if(r.part==="Transport"){ var bc=DATA.byCard[r.card]; if(!bc) return; if(!yardDone[bc.run.key]){ yardDone[bc.run.key]=1; if(!only&&kit.hasLoad(bc.run)) kit.yard(bc.run); }   // no loading sheet on a single job from the editor (Sam, 14 Oct 2026, DWF: "I just want the job sheet")
@@ -2972,17 +2995,29 @@ var SNAP=null, DETAIL={};
         if(l.headerBreakdown){ var hw=doc.getTextWidth(hq); doc.setFont("helvetica","normal"); doc.setFontSize(9); doc.setTextColor(90); doc.text("from "+l.headerBreakdown,TX+hw+2,y0+9); doc.setTextColor(0); doc.setFont("helvetica","bold"); }
         doc.setFontSize(11); var nl=doc.splitTextToSize(main,TW); doc.text(nl,TX,y0+14.5); var dy=y0+14.5+(nl.length-1)*4.4+4;
         doc.setFont("helvetica","normal"); doc.setFontSize(8.5); doc.setTextColor(100); var dl=det?doc.splitTextToSize(det,TW):[]; if(dl.length) doc.text(dl,TX,dy);
-        if(l._already) doc.text(l._already+" of "+l._of+" already finished",TX,dy+dl.length*3.6); doc.setTextColor(0);
+        if(l._already) doc.text(l._already+" of "+l._of+" already picked",TX,dy+dl.length*3.6); doc.setTextColor(0);
         // the right: location tag, SKU, finished today box
         var loc=String(l.stock_location||""); if(loc){ doc.setFont("courier","bold"); doc.setFontSize(10); var lw2=Math.min(RW,doc.getTextWidth(loc)+4); doc.setFillColor(17,17,17); doc.roundedRect(L+W-lw2,y0+3,lw2,6,0.8,0.8,"F"); doc.setTextColor(255); doc.text(doc.splitTextToSize(loc,RW-4)[0],L+W-2,y0+7.2,{align:"right"}); doc.setTextColor(0); }
         if(l.sku){ doc.setFont("courier","bold"); doc.setFontSize(8); doc.setTextColor(100); doc.text(String(l.sku),L+W-1,y0+13,{align:"right"}); doc.setTextColor(0); }
-        doc.setFont("helvetica","bold"); doc.setFontSize(7); doc.setTextColor(70); doc.text(["HOW MANY","FINISHED TODAY"],L+W-14,y0+18.5,{align:"right"}); doc.setTextColor(0); doc.setLineWidth(0.5); doc.setDrawColor(17); doc.roundedRect(L+W-12,y0+16,12,7,0.8,0.8); doc.setDrawColor(0);
-        y=y0+Math.max(27,dy-y0+dl.length*3.6+(l._already?3.6:0)+3);
+                y=y0+Math.max(27,dy-y0+dl.length*3.6+(l._already?3.6:0)+3);
         if(l.cut_down&&l.cut_down.to){ var cn=l.cut_down.count, nn=String(l.cut_down.noun||"TOP"), fr=l.cut_down.from?" FROM "+l.cut_down.from:""; var ct=cn?"CUT "+cn+"x "+nn+(cn===1?"":"S")+" DOWN"+fr+" TO "+l.cut_down.to+"MM":"CUT THIS "+nn+" DOWN"+fr+" TO "+l.cut_down.to+"MM";
           doc.setFillColor(244,244,244); doc.setDrawColor(17); doc.setLineWidth(0.7); doc.rect(L,y,W,7,"FD"); doc.setFont("helvetica","bold"); doc.setFontSize(9); doc.text(ct,L+3,y+4.7); y+=9; }
         y=pickBoxesDraw(doc,l,L,W,y);
         y=customBuildBox(doc,Array.isArray(l.build_components)?l.build_components:[],L,W,y,false); });
       if(o.lines.length){ doc.setDrawColor(215); doc.setLineWidth(0.25); doc.line(L,y,L+W,y); doc.setDrawColor(0); }
+      // PICKED AND FINISHED, BY PART (Sam, 21 Oct 2026, mock approved): every item on the job, its parts, so far and a box
+      // for today, picked and finished. A desk is finished when its tops, panels and legs all are.
+      if((o.all||[]).length){ if(y+30>262) cont(); y+=4; doc.setFont("helvetica","bold"); doc.setFontSize(9.5); doc.text("PICKED AND FINISHED, BY PART",L,y+3,{charSpace:0.3}); y+=5; doc.setFont("helvetica","normal"); doc.setFontSize(8.5); doc.setTextColor(90); doc.text("Write today's numbers. An item is finished when all its parts are.",L,y+3); doc.setTextColor(0); y+=6;
+        var C1=W-4*19, cx=[L,L+C1,L+C1+19,L+C1+38,L+C1+57];
+        o.all.forEach(function(l){ var c=pickCount(o.picked||{},l), rows=c.parts; if(y+8+rows.length*8.5>268) cont();
+          doc.setFillColor(243,244,246); doc.rect(L,y,W,7,"F"); doc.setFont("helvetica","bold"); doc.setFontSize(8); doc.text(doc.splitTextToSize((c.q+" x "+String(l.name||l.label||"")).toUpperCase(),C1-4)[0],L+2,y+4.8);
+          doc.setFontSize(6.5); doc.setTextColor(90); doc.text("PICKED",cx[1]+19,y+3,{align:"center"}); doc.text("FINISHED",cx[3]+19,y+3,{align:"center"}); doc.setFontSize(5.5); doc.text("so far",cx[1]+9.5,y+6,{align:"center"}); doc.text("today",cx[2]+9.5,y+6,{align:"center"}); doc.text("so far",cx[3]+9.5,y+6,{align:"center"}); doc.text("today",cx[4]+9.5,y+6,{align:"center"}); doc.setTextColor(0); y+=7;
+          rows.forEach(function(r){ doc.setDrawColor(215); doc.setLineWidth(0.25); doc.line(L,y+8.5,L+W,y+8.5); doc.line(cx[1],y,cx[1],y+8.5); doc.line(cx[3],y,cx[3],y+8.5); doc.setDrawColor(0);
+            doc.setFont("helvetica",r.f>=r.q&&r.q>0?"bold":"normal"); doc.setFontSize(9.5); doc.text(doc.splitTextToSize(r.n,C1-4)[0],L+2,y+5.6);
+            doc.setFont("helvetica","normal"); doc.setFontSize(8.5); doc.text(r.p+" of "+r.q,cx[1]+9.5,y+5.6,{align:"center"}); doc.text(r.f+" of "+r.q,cx[3]+9.5,y+5.6,{align:"center"});
+            doc.setLineWidth(0.5); doc.setDrawColor(17); if(r.p<r.q) doc.roundedRect(cx[2]+2.5,y+1,14,6.5,0.8,0.8); if(r.f<r.q) doc.roundedRect(cx[4]+2.5,y+1,14,6.5,0.8,0.8); doc.setDrawColor(0); y+=8.5; });
+          y+=3; });
+        doc.setFont("helvetica","normal"); doc.setFontSize(7.5); doc.setTextColor(110); doc.text("Parts come from the picking sheet. Add a part on the job in the Scheduler if one is missing.",L,y+2); doc.setTextColor(0); y+=5; }
       // when you finish
       if(y+38>278) cont(); y+=5; var ph2=34; doc.setFillColor(17,17,17); doc.roundedRect(L,y,W,ph2,2,2,"F"); doc.setTextColor(255); doc.setFont("helvetica","bold"); doc.setFontSize(12); doc.text("WHEN YOU FINISH",L+5,y+7.5);
       var sw=(W-10-30-8)/2, sy=y+10.5, shh=20; [["STEP 2","Tick off the checklist on the Trello card"],["STEP 3","Move the job into Ready for Delivery / Collection"]].forEach(function(st,i){ var sx=L+5+i*(sw+4); doc.setFillColor(255,255,255); doc.roundedRect(sx,sy,sw,shh,1.2,1.2,"F");
@@ -3091,18 +3126,18 @@ var SNAP=null, DETAIL={};
       if(cards.length&&CRM_KEY){
         var res=await fetch(CRM_PICKING_URL,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({key:CRM_KEY,action:"lines",cards:cards})}).then(function(x){ return x.json(); }).catch(function(){ return null; });
         if(res&&res.ok&&res.lines){ PICK={}; Object.keys(res.lines).forEach(function(id){ var e=res.lines[id]; var all=e.lines||[], pk=pickedOf(id), jj=JOBS.filter(function(x){return x.id===id;})[0], multi=!!(jj&&jj.prep&&jj.prep.date);   // every production line gets Finished today, one day or many (2 Oct 2026, the Alcove Booth line had none)
-            var deskU=0, deskLeft=0; all.forEach(function(l){ if(isPartLine(l)||!/desk/i.test(String(l.headerCustomer||""))) return; var c=pickCount(pk,l); deskU+=c.q; deskLeft+=Math.max(0,c.q-c.f); });
-            var left=[]; all.forEach(function(l){ var c=pickCount(pk,l), rem=c.q-c.f;
+            var deskU=0, deskLeft=0; all.forEach(function(l){ if(isPartLine(l)||!/desk/i.test(String(l.headerCustomer||""))) return; var c=pickCount(pk,l); deskU+=c.q; deskLeft+=Math.max(0,c.q-c.p); });
+            var left=[]; all.forEach(function(l){ var c=pickCount(pk,l), rem=c.q-c.p;
               if(isPartLine(l)){ var fr=deskU?deskLeft/deskU:1, lq=Number(l.qty)||0, lrem=Math.round(lq*fr); if(lrem<=0) return; left.push(fr<1?Object.assign({},l,{qty:lrem,headerCustomer:String(lrem),_already:lq-lrem,_of:lq,_write:false}):l); return; }
               if(rem<=0) return; var per=c.q?(Number(l.qty)||0)/c.q:1, tops=Math.round(rem*per);
-              left.push(c.f>0||multi?Object.assign({},l,{qty:tops,headerCustomer:c.f>0?(per!==1?rem+(rem===1?" desk":" desks"):String(rem)):l.headerCustomer,headerBreakdown:c.f>0?(per!==1?tops+" tops":null):l.headerBreakdown,_already:c.f,_of:c.q,_write:multi}):l); });
+              left.push(c.p>0||multi?Object.assign({},l,{qty:tops,headerCustomer:c.p>0?(per!==1?rem+(rem===1?" desk":" desks"):String(rem)):l.headerCustomer,headerBreakdown:c.p>0?(per!==1?tops+" tops":null):l.headerBreakdown,_already:c.p,_of:c.q,_write:multi}):l); });
             // PICK WHILE NOT STARTED, NOTHING ONCE IN PROGRESS (Sam, 2 Oct 2026: "when the jobs are still in the list not started the
             // picking list should show and when in progress the picking list is removed", then the To finish list was dropped too:
             // "Why do we need this when this is on the workday sheet?"). An In-progress job prints no picking pages unless it is
             // ticked Still picking in stages (Sketch Studios).
             var fin=!!(jj&&jj.prep&&jj.stage==="In progress"&&!jj.prep.stages);
             // With a page per job (2 Oct 2026) an In-progress job's page lists what is left as "Items to finish"
-            PICK[id]={picks:!!e.picks,finish:fin,lines:left,allPicked:all.length>0&&!left.length,error:e.error||"",ref:e.ref||""}; });
+            PICK[id]={picks:!!e.picks,finish:fin,lines:left,all:all.filter(function(l){ return !isPartLine(l); }),picked:pk,allPicked:all.length>0&&!left.length,error:e.error||"",ref:e.ref||""}; });
           var urls={}; Object.keys(PICK).forEach(function(id){ PICK[id].lines.forEach(function(l){ [l.product_photo,l.storage_photo].concat((l.build_components||[]).map(function(c){ return c.photo; })).forEach(function(u){ if(u&&!PICK_IMG[u]) urls[u]=1; }); }); });
           await Promise.all(Object.keys(urls).slice(0,150).map(loadPickPhoto)); } }
       if(!PICK) PICK={};
