@@ -1,6 +1,6 @@
 <title>Coggin Scheduler</title>
 <style>
-    .oplist .dgridbox{padding:4px 12px 8px;background:#eef2fb;overflow-x:auto}.oplist .dgridbox .hint{margin:4px 0 0}
+    .oplist .dgridbox{padding:4px 12px 8px;background:#eef2fb}.oplist .dgridbox .hint{margin:4px 0 0}
   :root{ --board:#cfd6e0; --list:#eef0f3; --card:#fff; --text:#172b4d; --muted:#5e6c84; --line:#b8c0cc; --blue:#0c66e4; --blue-bg:#e9f2ff; --red:#c9372c; --red-bg:#ffeceb; --green:#1f845a; --green-bg:#e3fcef; --amber:#974f0c; --amber-bg:#fff7d6; --shadow:0 1px 1px rgba(9,30,66,.25),0 0 1px rgba(9,30,66,.31); }
   @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){ --board:#1d2125; --list:#101204; --card:#22272b; --text:#b6c2cf; --muted:#8c9bab; --line:#4a5661; --blue:#579dff; --blue-bg:#1c2b41; --red:#f87168; --red-bg:#42221f; --green:#4bce97; --green-bg:#1c3329; --amber:#f5cd47; --amber-bg:#3d2e00; --shadow:0 1px 1px rgba(0,0,0,.5); }}
   :root[data-theme="dark"]{ --board:#1d2125; --list:#101204; --card:#22272b; --text:#b6c2cf; --muted:#8c9bab; --line:#4a5661; --blue:#579dff; --blue-bg:#1c2b41; --red:#f87168; --red-bg:#42221f; --green:#4bce97; --green-bg:#1c3329; --amber:#f5cd47; --amber-bg:#3d2e00; --shadow:0 1px 1px rgba(0,0,0,.5); }
@@ -1305,7 +1305,7 @@ var SNAP=null, DETAIL={};
       });
     // THE DAY GRID (Sam, 21 Oct 2026, mock approved: "the operative can be on and off days with ranging times"): one row
     // per assigned person, one cell per production day. Click cycles Full, AM, PM, off; double click types hours.
-    if(o.shop&&part.who.length&&part.date){ var gbox=el("div","dgridbox"); gbox.appendChild(renderPrepGrid(part,{editable:true,onChange:function(){ persist(); render(); }}));
+    if(o.shop&&part.who.length&&part.date){ var gbox=el("div","dgridbox"); gbox.appendChild(renderPrepGrid(part,{editable:true,byWeek:true,onChange:function(){ persist(); render(); }}));   // one week per row, no side scroll (Sam, 21 Oct 2026)
       gbox.appendChild(el("div","hint","Click a day for Full, AM, PM or off. Double click to type hours. Change the dates above to add days.")); pl.appendChild(gbox); }
     var setMins=function(v){ part.mins=v; if(part.leg) part.leg.mins=v; }, setDrive=function(v){ part.drive=v; part.driveAuto=false; if(part.leg) part.leg.drive=v; };
     wb.appendChild(pl);
