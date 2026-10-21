@@ -3510,6 +3510,8 @@ var SNAP=null, DETAIL={};
       // THE JOB ON SCREEN WAS SAVED BY SOMEONE ELSE. Never pulled out from under the person: they choose.
       var sig=planSig((snap.cards.filter(function(c){return c.id===mine;})[0]||{}).saved);
       if(SEEN_FOREIGN[mine]===sig){ return; }   // they said carry on to this version already
+      // YOUR OWN CHANGE FROM THE CARD BACK (Sam, 21 Oct 2026): nothing to choose, it is taken in.
+      if(ME&&d.by===ME){ PENDING_SNAP=null; FOREIGN=null; applySnap(snap); stampUpd("your change from the card, "+hhmm()); return; }
       PENDING_SNAP=snap; FOREIGN={card:mine,by:d.by,at:d.at,sig:sig}; stampUpd("changes waiting",true); render(); return;
     }
     if(auto&&(openRound||openOp||ACT_OPEN||TIMINGS_OPEN)){ PENDING_SNAP=snap; stampUpd("changes waiting",true); return; }
