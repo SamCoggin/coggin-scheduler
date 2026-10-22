@@ -2990,7 +2990,7 @@ var SNAP=null, DETAIL={};
     // chair or table carries its counts on its own row. A box prints only where there is something left to write. Rows flow
     // on to the next page with the column header repeated. The finishing steps are one strip at the end.
     kit.production=function(o){
-      var CWs=[19,17,19,17], CX=[L+W-72,L+W-53,L+W-34,L+W-17], NX=L+26, NW=(L+W-72)-NX-2;
+      var CWs=[19,17,19,17], CX=[L+W-72,L+W-53,L+W-34,L+W-17], NX=L+26, NW=(L+W-72)-NX-34;
       var mid=function(i){ return CX[i]+CWs[i]/2; };
       var tableHead=function(){ doc.setFont("helvetica","bold"); doc.setFontSize(6.5); doc.setTextColor(110); doc.text("ITEM · TICK WHEN ALL PICKED AND FINISHED",L,y+3,{charSpace:0.2});
         doc.text("PICKED",(CX[0]+CX[1]+CWs[1])/2,y+2.6,{align:"center"}); doc.text("FINISHED",(CX[2]+CX[3]+CWs[3])/2,y+2.6,{align:"center"}); doc.setFontSize(5.5); doc.setFont("helvetica","normal");
@@ -3039,9 +3039,9 @@ var SNAP=null, DETAIL={};
       });
       doc.setDrawColor(17); doc.setLineWidth(0.5); doc.line(L,y,L+W,y); doc.setDrawColor(0);
       // when you finish: one strip
-      if(y+18>272) cont(); y+=4; doc.setFillColor(17,17,17); doc.roundedRect(L,y,W,12,1.5,1.5,"F"); doc.setTextColor(255); doc.setFont("helvetica","bold"); doc.setFontSize(9); doc.text("WHEN YOU FINISH",L+4,y+7.5);
-      var sx=L+40, sw=(W-44-3)/2; [["Step 2","Tick off the checklist on the Trello card"],["Step 3","Move the job into Ready for Delivery / Collection"]].forEach(function(st,i){ var x=sx+i*(sw+3); doc.setFillColor(255,255,255); doc.roundedRect(x,y+2,sw,8,1,1,"F"); box(x+2,y+4,4); doc.setTextColor(110); doc.setFontSize(6.5); doc.text(st[0].toUpperCase(),x+8,y+5.4,{charSpace:0.2}); doc.setTextColor(17); doc.setFontSize(7.5); doc.text(doc.splitTextToSize(st[1],sw-10)[0],x+8,y+8.8); });
-      doc.setTextColor(0); y+=16; setFoot(""); };
+      if(y+22>272) cont(); y+=4; doc.setFillColor(17,17,17); doc.roundedRect(L,y,W,15,1.5,1.5,"F"); doc.setTextColor(255); doc.setFont("helvetica","bold"); doc.setFontSize(9); doc.text("WHEN YOU FINISH",L+4,y+9);
+      var sx=L+40, sw=(W-44-3)/2; [["Step 2","Tick off the checklist on the Trello card"],["Step 3","Move the job into Ready for Delivery / Collection"]].forEach(function(st,i){ var x=sx+i*(sw+3); doc.setFillColor(255,255,255); doc.roundedRect(x,y+2,sw,11,1,1,"F"); box(x+2,y+5.5,4); doc.setTextColor(110); doc.setFontSize(6.5); doc.text(st[0].toUpperCase(),x+8,y+5.4,{charSpace:0.2}); doc.setTextColor(17); doc.setFontSize(7.5); doc.text(doc.splitTextToSize(st[1],sw-10).slice(0,2),x+8,y+8.6); });
+      doc.setTextColor(0); y+=19; setFoot(""); };
     kit.facility=function(j,crewTxt,timeTxt,k0){ var nm=j.title.split(" - ").slice(1).join(" - ")||j.title, crewL=crewTxt.split(" + "), dd=DETAIL[j.id]||{desc:"",checks:[]};
       var where="", tasks=[];
       String(dd.desc||"").split(/\r?\n/).forEach(function(ln){ var t=ln.replace(/^\s*(?:[-*\u2022]|\d+[.)])\s*/,"").replace(/^\[[ x]\]\s*/i,"").replace(/\*\*/g,"").trim(); if(!t) return; var wm=/^where\s*:\s*(.+)$/i.exec(t); if(wm){ where=wm[1].trim(); return; } tasks.push(t); });
