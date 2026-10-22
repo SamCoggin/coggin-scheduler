@@ -926,7 +926,7 @@ var SNAP=null, DETAIL={};
       // and bay. A top from stock on a desk reads as the desk first, then "Top: ..." with the size kept in the name.
       var topComp=l.build_components.some(function(c){ return c.role==="top"||c.replaces_role==="top"; })&&/desk/i.test(String(l.name||""));
       out=l.build_components.map(function(c){ var nm=String(c.name||"Part").split(/\s*\|\s*/), isTop=c.role==="top"||c.replaces_role==="top"; var label=(isTop?"Top: ":"")+nm[0]+(nm[1]&&/\d/.test(nm[1])?" "+nm[1]:""); return {n:label,q:Number(c.qty)||Number(c.quantity)||u,photo:c.photo||"",loc:c.location||"",sku:c.sku||""}; });
-      if(topComp){ var dn=String(l.name||"").split(/\s*\|\s*/)[0]; out.unshift({n:dn+(l.attr_dims?" "+String(l.attr_dims).replace(/\s/g,"").replace(/mm$/,"mm"):""),q:u,photo:l.product_photo||"",loc:l.stock_location||"",sku:l.sku||""}); } }
+      if(topComp){ var dn=String(l.name||"").split(/\s*\|\s*/)[0]; out.unshift({n:dn,q:u,photo:l.product_photo||"",loc:l.stock_location||"",sku:l.sku||""}); } }   // no size on the desk part: the line's size is the finished one and the stock size is in the sizing note (Sam, 22 Oct 2026)
     else if(/desk/i.test(String(l.headerCustomer||""))){ out=[{n:"Tops",q:u}]; if(/panels from scrap/i.test(hb)) out.push({n:"Back panels",q:u}); else if(/\+\s*\d+\s*legs/i.test(hb)) out.push({n:"Modesty panels",q:u}); var lg=/(\d+)\s*legs/i.exec(hb); if(lg&&+lg[1]>0) out.push({n:"Legs",q:+lg[1]}); }
     else out=[{n:l.section==="seating"?"Chairs":l.section==="storage"?"Units":l.section==="tables"?"Tables":l.section==="desk_tops"?"Tops":"Items",q:u}];
     (extra||[]).forEach(function(e){ if(e&&e.n) out.push({n:String(e.n),q:Number(e.q)||u,x:true}); }); return out; }
