@@ -937,7 +937,7 @@ var SNAP=null, DETAIL={};
          row says it comes out of that batch, and a scrap panel used instead takes a top off the pick (scrap). A desk sold
          as panels from scrap has its tops and a Back panels row cut from scrap, and nothing to save. */
       var fromScrap=/panels from scrap/i.test(hb), twoTop=!fromScrap&&/\+\s*\d+\s*legs/i.test(hb), tm=/(\d+)\s*tops?/i.exec(hb), tops=tm?+tm[1]:(twoTop?u*2:u), sc=twoTop?Math.max(0,Math.min(u,Math.round(Number(scrap)||0))):0, dm=/W?(\d{3,4})\s*[x\u00D7]\s*D?(\d{3,4})/i.exec(String(l.attr_dims||"")), size=dm?dm[1]+"\u00D7"+dm[2]:"";
-      out=[{n:"Tops",q:tops-sc,size:size,drawTop:true,dbl:twoTop}];
+      out=[{n:"Tops",q:tops-sc,size:size,drawTop:true,dbl:twoTop,sku:l.sku||"",loc:l.stock_location||""}];   /* the tops come from this line's stock (Sam, 22 Oct 2026) */
       if(fromScrap) out.push({n:"Back panels",q:u,from:"cut from scrap tops",drawPanel:true});
       else if(twoTop) out.push({n:"Modesty panels",q:u,from:(u-sc)>0?"made from "+(u-sc)+" of the "+(tops-sc)+" tops above":"all from scrap panels",tied:true,drawPanel:true,canScrap:true,scrap:sc});
       var lg=/(\d+)\s*legs/i.exec(hb), lgl=l._legs||null, lc=/Legs:\s*([^\u00b7,]+)/i.exec(String(l.attr_colour||""));
