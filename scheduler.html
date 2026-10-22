@@ -3104,7 +3104,7 @@ var SNAP=null, DETAIL={};
         doc.setDrawColor(200); doc.setLineWidth(0.25); doc.line(CX[0],y0,CX[0],y0+rowH+partsH); doc.line(CX[2],y0,CX[2],y0+rowH+partsH); doc.setDrawColor(0);
         if(single) countsAt(rows[0],y0+rowH/2);
         else { // THE WHOLE ITEM, READ FROM ITS PARTS (Sam, 22 Oct 2026, mock A): parts picked so far, and the item finished, no boxes
-          var pdone=rows.filter(function(r){ return r.q>0&&r.p>=r.q; }).length, ymid=y0+rowH/2, noun=/desk/i.test(String(l.headerCustomer||""))?"desks":/bench/i.test(String(l.headerCustomer||""))?(c.q===1?"bench":"benches"):"finished";
+          var pdone=rows.filter(function(r){ return r.p>r.f; }).length,   /* parts with something in progress now (22 Oct 2026) */ ymid=y0+rowH/2, noun=/desk/i.test(String(l.headerCustomer||""))?"desks":/bench/i.test(String(l.headerCustomer||""))?(c.q===1?"bench":"benches"):"finished";
           doc.setFont("helvetica","normal"); doc.setFontSize(6.5); doc.setTextColor(110); doc.text("parts in progress",(CX[0]+CX[2])/2,ymid-2,{align:"center"}); doc.text(noun==="finished"?"finished":noun+" finished",(CX[2]+L+W)/2,ymid-2,{align:"center"});
           doc.setFont("helvetica","bold"); doc.setFontSize(9.5); doc.setTextColor(17); doc.text(pdone+" of "+rows.length,(CX[0]+CX[2])/2,ymid+2.6,{align:"center"}); doc.text(c.f+" of "+c.q,(CX[2]+L+W)/2,ymid+2.6,{align:"center"}); doc.setTextColor(0); }
         y=y0+rowH;
@@ -3620,7 +3620,7 @@ var SNAP=null, DETAIL={};
   var AUTO=true;
   var REFRESHING=false, POLL_EVERY=10000, CRM_EVERY_TICKS=6, TICK=0;
   var PENDING_SNAP=null, FOREIGN=null, SEEN_FOREIGN={};   // a change to the job on screen, waiting for the person to choose
-  var SCHED_VERSION="22 Oct 16:42";   /* bumped on every push: shows which version is running and which built a sheet (Sam, 22 Oct 2026, "still not live?!") */
+  var SCHED_VERSION="22 Oct 16:46";   /* bumped on every push: shows which version is running and which built a sheet (Sam, 22 Oct 2026, "still not live?!") */
   /* A NEWER SCHEDULER RELOADS ITSELF (Sam, 22 Oct 2026, a sheet built from a window opened before the push). Checked every two
      minutes and before any sheet is built; a reload waits while an editor is open. */
   function liveVersion(){ return fetch("./scheduler.html?vc="+Date.now(),{cache:"no-store"}).then(function(r){ return r.ok?r.text():""; }).then(function(t){ var m=/SCHED_VERSION\s*=\s*"([^"]+)"/.exec(t||""); return m?m[1]:""; }).catch(function(){ return ""; }); }
