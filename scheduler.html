@@ -367,6 +367,8 @@
   .pwarn{display:flex;align-items:center;justify-content:space-between;gap:12px;border:1px solid #f0c7a6;background:#fff7f0;border-radius:9px;padding:10px 12px;margin:0 0 12px} .pwarn b{display:block;color:#9a3412;font-size:13.5px} .pwarn span{display:block;font-size:12.5px;color:#7c2d12;margin-top:2px} .pwarn button{white-space:nowrap}
   .psum.one{grid-template-columns:1fr} .picks2.one li{grid-template-columns:56px minmax(0,1fr) 128px;height:72px;box-sizing:border-box;padding-top:0;padding-bottom:0} .picks2.one .pnm b{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden} .picks2.one .pnm small{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .picks2{list-style:none;margin:0;padding:0;border:1px solid var(--line);border-radius:9px;overflow:hidden}
+  #topsback .topsback{border:1px solid var(--line,#d4d4d8);border-left:4px solid #1D3058;border-radius:6px;padding:10px 14px;margin:0 0 10px;background:var(--card,#fff)} #topsback .tbrow{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-top:6px;flex-wrap:wrap}
+  .picks2.parts .prow.scrap{grid-template-columns:minmax(0,1fr) 112px minmax(0,1fr);background:#f8fafc} .picks2.parts .prow.scrap .hint{font-size:12px;color:var(--muted,#666)}
   .picks2.parts li{display:block;padding:10px 12px} .picks2.parts .ptop{display:grid;grid-template-columns:56px minmax(0,1fr);gap:12px;align-items:center} .picks2.parts .ptable{margin-top:8px} .picks2.parts .prow{display:grid;grid-template-columns:minmax(0,1fr) 112px 112px 56px;gap:8px;align-items:center;padding:4px 0;border-top:1px solid #eef0f3} .picks2.parts .prow.head{border-top:0;font-size:10.5px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.04em} .picks2.parts .prow.head span{text-align:center} .picks2.parts .prow.head span:first-child{text-align:left} .picks2.parts .prow.done .pnme{color:#1f845a} .picks2.parts .pnme{font-size:13px;display:flex;align-items:center;gap:6px} .picks2.parts .pnme .close{padding:0 4px;font-size:14px} .picks2.parts .of{font-size:12px;color:var(--muted)} .picks2.parts .pstep input{width:40px} .picks2.parts .padd{display:flex;gap:6px;align-items:center;margin-top:6px} .picks2.parts .padd input[type=text]{flex:1;min-width:0;height:28px;font-size:12.5px} .picks2.parts .padd input[type=number]{width:84px;height:28px;font-size:12.5px}
   .picks2 li{display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:12px;align-items:center;padding:10px 12px} .picks2 li+li{border-top:1px solid var(--line)}
   .picks2 li.done{background:#f3faf6} .picks2 li.done .pnm b{color:#1f845a}
@@ -919,7 +921,7 @@ var SNAP=null, DETAIL={};
   // finished ..."). A desk is three parts, a chair is one; each part carries a picked count and a finished count. The item
   // is finished when all its parts are, so the item's finished number is worked out, never typed. Stored on the plan as
   // picked[key] = { parts:{ Tops:{p,f}, ... }, extra:[{n,q}], f, on, log } with f the worked-out finished units.
-  function pickPartsOf(l,extra){ var u=pickUnits(l), hb=String(l.headerBreakdown||""), out;
+  function pickPartsOf(l,extra,scrap){ var u=pickUnits(l), hb=String(l.headerBreakdown||""), out;
     if(Array.isArray(l.build_components)&&l.build_components.length){
       // EACH PART IS A THING TO PICK (Sam, 22 Oct 2026: "it should be saying pick the electric sit-stand desk and where it
       // is with the photo of it, and the same again with a photo of the desk top"): the part carries its own photo, SKU
@@ -930,11 +932,20 @@ var SNAP=null, DETAIL={};
       // the tops are the line itself, so they lead the parts with the donor desk's photo, SKU and bay.
       if(!topComp&&(Number(l.bench_bank_size)||0)>0){ var tn=Number(l.qty)||u, dnm=String(l.name||"").replace(/^Tops from\s*/i,"").split(/\s*\|\s*/); out.unshift({n:"Tops only: "+dnm[0]+(dnm[1]&&/\d/.test(dnm[1])?" "+dnm[1]:""),q:tn,photo:"",drawTop:true,loc:l.stock_location||"",sku:l.sku||""}); }
       if(topComp){ var dn=String(l.name||"").split(/\s*\|\s*/)[0]; out.unshift({n:dn,q:u,photo:l.product_photo||"",loc:l.stock_location||"",sku:l.sku||""}); } }   // no size on the desk part: the line's size is the finished one and the stock size is in the sizing note (Sam, 22 Oct 2026)
-    else if(/desk/i.test(String(l.headerCustomer||""))){ out=[{n:"Tops",q:u}]; if(/panels from scrap/i.test(hb)) out.push({n:"Back panels",q:u}); else if(/\+\s*\d+\s*legs/i.test(hb)) out.push({n:"Modesty panels",q:u}); var lg=/(\d+)\s*legs/i.exec(hb); if(lg&&+lg[1]>0) out.push({n:"Legs",q:+lg[1]}); }
+    else if(/desk/i.test(String(l.headerCustomer||""))){
+      /* TWO TOPS A DESK, PANELS FROM THE BATCH (Sam, 22 Oct 2026, mock approved): the tops row is every top picked, the panel
+         row says it comes out of that batch, and a scrap panel used instead takes a top off the pick (scrap). A desk sold
+         as panels from scrap has its tops and a Back panels row cut from scrap, and nothing to save. */
+      var fromScrap=/panels from scrap/i.test(hb), twoTop=!fromScrap&&/\+\s*\d+\s*legs/i.test(hb), tm=/(\d+)\s*tops?/i.exec(hb), tops=tm?+tm[1]:(twoTop?u*2:u), sc=twoTop?Math.max(0,Math.min(u,Math.round(Number(scrap)||0))):0, dm=/W?(\d{3,4})\s*[x\u00D7]\s*D?(\d{3,4})/i.exec(String(l.attr_dims||"")), size=dm?dm[1]+"\u00D7"+dm[2]:"";
+      out=[{n:"Tops",q:tops-sc,size:size,drawTop:true,dbl:twoTop}];
+      if(fromScrap) out.push({n:"Back panels",q:u,from:"cut from scrap tops",drawPanel:true});
+      else if(twoTop) out.push({n:"Modesty panels",q:u,from:(u-sc)>0?"made from "+(u-sc)+" of the "+(tops-sc)+" tops above":"all from scrap panels",tied:true,drawPanel:true,canScrap:true,scrap:sc});
+      var lg=/(\d+)\s*legs/i.exec(hb), lgl=l._legs||null, lc=/Legs:\s*([^\u00b7,]+)/i.exec(String(l.attr_colour||""));
+      if(lg&&+lg[1]>0) out.push({n:"Legs",q:+lg[1],photo:lgl&&(lgl.product_photo||lgl.storage_photo)||"",sku:lgl&&lgl.sku||"",loc:lgl&&lgl.stock_location||"",colour:lc?lc[1].trim():""}); }
     else out=[{n:l.section==="seating"?"Chairs":l.section==="storage"?"Units":l.section==="tables"?"Tables":l.section==="desk_tops"?"Tops":"Items",q:u}];
     (extra||[]).forEach(function(e){ if(e&&e.n) out.push({n:String(e.n),q:Number(e.q)||u,x:true}); }); return out; }
-  function pickCount(P,l){ var q=pickUnits(l), e=P[pickKey(l)]||null; var ps=pickPartsOf(l,e&&e.extra);
-    var rows=ps.map(function(pt){ var r=(e&&e.parts&&e.parts[pt.n])||{}; var cl=function(v){ return Math.max(0,Math.min(pt.q,Math.round(Number(v)||0))); }; return {n:pt.n,q:pt.q,x:!!pt.x,p:cl(r.p),f:cl(r.f),photo:pt.photo||"",loc:pt.loc||"",sku:pt.sku||"",drawTop:!!pt.drawTop}; });
+  function pickCount(P,l){ var q=pickUnits(l), e=P[pickKey(l)]||null; var ps=pickPartsOf(l,e&&e.extra,e&&e.scrap);
+    var rows=ps.map(function(pt){ var r=(e&&e.parts&&e.parts[pt.n])||{}; if(pt.dbl&&e&&!e.t2) r={p:(Number(r.p)||0)*2,f:(Number(r.f)||0)*2};   /* counts saved when a desk was one top on this row */ var cl=function(v){ return Math.max(0,Math.min(pt.q,Math.round(Number(v)||0))); }; return {n:pt.n,q:pt.q,x:!!pt.x,p:cl(r.p),f:cl(r.f),photo:pt.photo||"",loc:pt.loc||"",sku:pt.sku||"",drawTop:!!pt.drawTop,drawPanel:!!pt.drawPanel,size:pt.size||"",from:pt.from||"",tied:!!pt.tied,canScrap:!!pt.canScrap,scrap:pt.scrap||0,colour:pt.colour||""}; });
     var scale=function(key){ return rows.length?Math.min.apply(null,rows.map(function(x){ return x.q?Math.floor(x[key]*q/x.q):0; })):0; };
     if(!e) return {f:0,p:0,q:q,parts:rows};
     if(e.parts) return {f:Math.min(q,scale("f")),p:Math.min(q,scale("p")),q:q,on:e.on||"",parts:rows};
@@ -1278,7 +1289,8 @@ var SNAP=null, DETAIL={};
         var setPart=function(l,name,key,v){ var c=pickCount(j.prep.picked||{},l), row=c.parts.filter(function(x){ return x.n===name; })[0]; if(!row) return; v=Math.max(0,Math.min(row.q,Math.round(Number(v)||0)));
           var P=Object.assign({},j.prep.picked||{}), k0=pickKey(l), old=Object.assign({},P[k0]||{}); var parts=Object.assign({},old.parts||{}); c.parts.forEach(function(x){ parts[x.n]=Object.assign({},parts[x.n]||{p:x.p,f:x.f}); }); parts[name]=Object.assign({},parts[name],{});
           parts[name][key]=v; if(key==="f"&&parts[name].p<v) parts[name].p=v; if(key==="p"&&parts[name].f>v) parts[name].f=v;
-          old.parts=parts; var c2=pickCount(Object.assign({},P,{[k0]:old}),l); var log=(old.log||[]).filter(function(x){return x.on!==iso(TODAY);}); log.push({on:iso(TODAY),f:c2.f}); old.f=c2.f; old.on=iso(TODAY); old.log=log.slice(-30); P[k0]=old; j.prep.picked=P; keep(); persist(); render(); };
+          old.parts=parts; old.t2=true; var c2=pickCount(Object.assign({},P,{[k0]:old}),l); var log=(old.log||[]).filter(function(x){return x.on!==iso(TODAY);}); log.push({on:iso(TODAY),f:c2.f}); old.f=c2.f; old.on=iso(TODAY); old.log=log.slice(-30); P[k0]=old; j.prep.picked=P; keep(); persist(); render(); };
+        var setScrap=function(l,v,max){ v=Math.max(0,Math.min(max,Math.round(Number(v)||0))); var P=Object.assign({},j.prep.picked||{}), k0=pickKey(l), old=Object.assign({},P[k0]||{}); old.scrap=v; old.scrapInfo={name:String(l.name||"").split(/\s*\|\s*/).slice(0,2).join(" "),sku:l.sku||"",size:l.attr_dims||""}; P[k0]=old; j.prep.picked=P; keep(); persist(); render(); };
         var addPart=function(l,name,q){ var P=Object.assign({},j.prep.picked||{}), k0=pickKey(l), old=Object.assign({},P[k0]||{}); old.extra=(old.extra||[]).concat([{n:name,q:q}]); P[k0]=old; j.prep.picked=P; keep(); persist(); render(); };
         var dropPart=function(l,name){ var P=Object.assign({},j.prep.picked||{}), k0=pickKey(l), old=Object.assign({},P[k0]||{}); old.extra=(old.extra||[]).filter(function(e){ return e.n!==name; }); if(old.parts) delete old.parts[name]; P[k0]=old; j.prep.picked=P; keep(); persist(); render(); };
         var stepper=function(lbl,val,max,onSet){ var st=el("div","pstep"); var mi=el("button",null,"\u2212"); mi.type="button"; mi.setAttribute("aria-label",lbl+" one fewer"); var inp=el("input"); inp.type="number"; inp.min="0"; inp.max=String(max); inp.value=String(val); inp.setAttribute("aria-label",lbl); inp.inputMode="numeric"; var pl=el("button",null,"+"); pl.type="button"; pl.setAttribute("aria-label",lbl+" one more");
@@ -1293,13 +1305,17 @@ var SNAP=null, DETAIL={};
           var tb=el("div","ptable"); var hd=el("div","prow head"); hd.appendChild(el("span",null,"")); hd.appendChild(el("span",null,"Picked")); hd.appendChild(el("span",null,"Finished")); hd.appendChild(el("span",null,"")); tb.appendChild(hd);
           c.parts.forEach(function(pt){ var r=el("div","prow"+(pt.f>=pt.q&&pt.q>0?" done":"")); var nmc=el("span","pnme",pt.n); if(pt.x){ var xb=el("button","close","\u00d7"); xb.type="button"; xb.title="Remove this part"; xb.setAttribute("aria-label","Remove "+pt.n); xb.onclick=function(){ dropPart(l,pt.n); }; nmc.appendChild(xb); } r.appendChild(nmc);
             r.appendChild(stepper(pt.n+" picked",pt.p,pt.q,function(v){ setPart(l,pt.n,"p",v); })); r.appendChild(stepper(pt.n+" finished",pt.f,pt.q,function(v){ setPart(l,pt.n,"f",v); })); r.appendChild(el("span","of","of "+pt.q)); tb.appendChild(r); });
+          /* SCRAP PANELS USED INSTEAD (Sam, 22 Oct 2026, mock approved): typed with the day's numbers. Each one takes a top off
+             the pick and puts the line on the Tops back to stock list until Sam marks the stock updated. */
+          c.parts.forEach(function(pt){ if(!pt.canScrap) return; var r=el("div","prow scrap"); r.appendChild(el("span","pnme","Scrap panels used instead"));
+            r.appendChild(stepper("Scrap panels used instead",pt.scrap,pt.q,function(v){ setScrap(l,v,pt.q); })); r.appendChild(el("span","hint",pt.scrap?pt.scrap+(pt.scrap===1?" top":" tops")+" not used, back to stock":"Each one saves a top")); r.appendChild(el("span","of","")); tb.appendChild(r); });
           var ad=el("div","padd"); var ai=el("input"); ai.type="text"; ai.placeholder="Add a part, e.g. Recover"; ai.setAttribute("aria-label","Part name"); var aq=el("input"); aq.type="number"; aq.min="1"; aq.placeholder="how many"; aq.setAttribute("aria-label","How many"); var ab=el("button","link","Add"); ab.type="button";
           ab.onclick=function(){ var n=ai.value.trim(); if(!n) { ai.focus(); return; } if(c.parts.some(function(x){ return x.n.toLowerCase()===n.toLowerCase(); })){ ai.focus(); return; } addPart(l,n,parseInt(aq.value,10)||c.q); }; ai.onkeydown=function(e){ if(e.key==="Enter") ab.onclick(); };
           ad.appendChild(ai); ad.appendChild(aq); ad.appendChild(ab); tb.appendChild(ad); li.appendChild(tb);
           pul.appendChild(li); });
         pb.appendChild(pul);
         var pf=el("div","pfoot"); pf.appendChild(el("span","hint","Type what was picked and finished from the day sheet, by part. An item is finished when all its parts are."));
-        var allF=tf>=tq, tb=el("button","link",allF?"Clear the counts":"Mark all finished"); tb.onclick=function(){ var P={}; if(!allF) plc.lines.forEach(function(l){ if(isPartLine(l)) return; var c=pickCount(P0,l), old=P0[pickKey(l)]||{}, log=(old.log||[]).filter(function(x){return x.on!==iso(TODAY);}); log.push({on:iso(TODAY),f:c.q}); var parts={}; c.parts.forEach(function(x){ parts[x.n]={p:x.q,f:x.q}; }); P[pickKey(l)]={f:c.q,on:iso(TODAY),log:log.slice(-30),parts:parts,extra:old.extra}; }); j.prep.picked=P; keep(); persist(); render(); }; pf.appendChild(tb);
+        var allF=tf>=tq, tb=el("button","link",allF?"Clear the counts":"Mark all finished"); tb.onclick=function(){ var P={}; if(!allF) plc.lines.forEach(function(l){ if(isPartLine(l)) return; var c=pickCount(P0,l), old=P0[pickKey(l)]||{}, log=(old.log||[]).filter(function(x){return x.on!==iso(TODAY);}); log.push({on:iso(TODAY),f:c.q}); var parts={}; c.parts.forEach(function(x){ parts[x.n]={p:x.q,f:x.q}; }); P[pickKey(l)]={f:c.q,on:iso(TODAY),log:log.slice(-30),parts:parts,extra:old.extra,scrap:old.scrap,scrapInfo:old.scrapInfo,scrapCleared:old.scrapCleared,t2:true}; }); j.prep.picked=P; keep(); persist(); render(); }; pf.appendChild(tb);
         pb.appendChild(pf); left.appendChild(pb); } }
     // WHAT IS BEING WORKED ON (Sam, 15 Sep 2026: "so I don't have to go back into the Trello card to see what is being
     // worked on"): the card's checklist, every line with its tick, and the works lines from the description.
@@ -3041,7 +3057,7 @@ var SNAP=null, DETAIL={};
       pageLines.forEach(function(l){ var c=pickCount(o.picked||{},l), rows=c.parts, single=rows.length===1, comps=Array.isArray(l.build_components)?l.build_components:[];
         var parts=String(l.name||"").split(/\s*\|\s*/), main=parts[0], loc=String(l.stock_location||"");
         // the details the picker needs and no more (Sam, 22 Oct 2026, third mock): colour, size, where the parts come from
-        var meta=[l.attr_colour,l.attr_dims,l.attr_resize,(l.attr_makeModel&&/made to order/i.test(l.attr_makeModel))?l.attr_makeModel:"",l.headerBreakdown?"from "+l.headerBreakdown:"",l.attr_other].filter(Boolean).join(" · ");
+        var meta=[l.attr_colour,l.attr_dims,l.attr_resize,(l.attr_makeModel&&/made to order/i.test(l.attr_makeModel))?l.attr_makeModel:"",(single&&l.headerBreakdown)?"from "+l.headerBreakdown:"",l.attr_other].filter(Boolean).join(" · ");
         var hq=String(l.headerCustomer||l.qty||""), title=(/^\d+/.test(hq)?/^\d+/.exec(hq)[0]+" x ":hq?hq+" · ":"")+main;   // every item reads "2 x Cantilever Desk" (Sam, 22 Oct 2026)
         var bank0=Number(l.bench_bank_size)||0; if(bank0>0){ var brow0=bank0>2&&bank0%2===0?2:1; title=hq+(brow0>1?", "+brow0+" rows of "+(bank0/brow0):""); meta=[l.attr_colour,(l.headerBreakdown?l.headerBreakdown.replace(/^(\d+ tops?)/,"$1 from ")+main.replace(/^Tops from\s*/i,"")+(l.sku?" "+l.sku:""):""),l.attr_dims?l.attr_dims+" each":""].filter(Boolean).join(" \u00b7 "); }   // the bench is the headline; the donor desk sits in the details (Sam, 22 Oct 2026)
         var specs=[]; if(l.cut_down&&l.cut_down.to){ var cn=l.cut_down.count, fr=l.cut_down.from?" FROM "+l.cut_down.from:""; specs.push("CUT "+(cn?cn+" TOPS":"THIS TOP")+" DOWN"+fr+" TO "+l.cut_down.to); } var pw=pickWork(l).map(function(t){ return t.replace(/^TOPS NEED /,""); }); if(pw.length) specs=specs.concat(pw); if(l.spec_notes) specs.push(l.spec_notes); specs=specs.length?[specs.join(" · ")]:[];
@@ -3049,9 +3065,9 @@ var SNAP=null, DETAIL={};
         doc.setFont("courier","bold"); doc.setFontSize(5.5); var locLines=loc?Math.min(2,doc.splitTextToSize(loc,16.5).length):0, locH=locLines?2.2+locLines*2.6:0;   // measured in the tag's own font, or a one-line tag was drawn two lines tall
         var textH=3+tls.length*4.2+mls.length*3.3+(sls.length?sls.length*3.4+2:0)+((Number(l.bench_bank_size)||0)>0?21:0)+3, leftH=17+(loc?locH+1:0)+(l.sku?3.5:0);
         // a part row is its name and location, wrapped to the column, never clipped (Sam, 22 Oct 2026, the bench parts ran off the edge)
-        var partTxt=function(r){ var comp=comps.filter(function(cc){ return String(cc.name||"")===r.n; })[0]; var photo=r.photo||(comp&&comp.photo)||"", loc0=r.loc||(comp&&comp.location)||"", sku0=r.sku||(comp&&comp.sku)||""; var nm=String(r.n).replace(/\s*\(.*?\)\s*/g," ").trim().replace(/^(Tops? only:)\s*[^0-9]*?(\d{3,4}\s*[x\u00D7]\s*\d{3,4}\s*mm)/i,"$1 $2"); /* a top is a top: no desk name to mislead (Sam, 22 Oct 2026) */ return {comp:{photo:photo},text:nm+(sku0?"  "+sku0:"")+(loc0?"  \u00b7 "+loc0:""),thumb:!!photo||!!r.drawTop,drawTop:!!r.drawTop}; };
-        doc.setFont("helvetica","normal"); doc.setFontSize(8.5); var partLines=rows.map(function(r){ var pt=partTxt(r); return doc.splitTextToSize(pt.text,CX[0]-NX-3).slice(0,2); });
-        var partRowsH=partLines.reduce(function(t,ls){ return t+(ls.length>1?11:9); },0);
+        var partTxt=function(r){ var comp=comps.filter(function(cc){ return String(cc.name||"")===r.n; })[0]; var photo=r.photo||(comp&&comp.photo)||"", loc0=r.loc||(comp&&comp.location)||"", sku0=r.sku||(comp&&comp.sku)||""; var nm=String(r.n).replace(/\s*\(.*?\)\s*/g," ").trim().replace(/^(Tops? only:)\s*[^0-9]*?(\d{3,4}\s*[x\u00D7]\s*\d{3,4}\s*mm)/i,"$1 $2"); /* a top is a top: no desk name to mislead (Sam, 22 Oct 2026) */ var lead=(rows.length>1&&r.q?r.q+" x ":"")+nm; var bits=[r.size||"",r.colour||"",r.from||""].filter(Boolean); return {comp:{photo:photo},text:lead+(bits.length?" \u00b7 "+bits.join(" \u00b7 "):"")+(sku0?"  "+sku0:"")+(loc0?"  \u00b7 "+loc0:""),thumb:!!photo||!!r.drawTop||!!r.drawPanel,drawTop:!!r.drawTop&&!photo,drawPanel:!!r.drawPanel,tied:!!r.tied,canScrap:!!r.canScrap}; };   /* "16 x Tops \u00b7 1400\u00d7780", the panels tied to that batch, the chosen legs (Sam, 22 Oct 2026, mock approved) */
+        doc.setFont("helvetica","normal"); doc.setFontSize(8.5); var partLines=rows.map(function(r){ var pt=partTxt(r); return doc.splitTextToSize(pt.text,CX[0]-NX-3-(pt.tied?4:0)).slice(0,2); });
+        var partRowsH=partLines.reduce(function(t,ls,ri){ return t+(ls.length>1?10:7.5)+(rows[ri].canScrap?7:0); },0);
         var rowH=Math.max(leftH,textH), partsH=single?0:partRowsH+1.5;   // parts start under the photo, tag and code, never over them (Sam, 22 Oct 2026)
         if(y+rowH+partsH>272) cont();
         var y0=y; doc.setDrawColor(17); doc.setLineWidth(0.5); doc.line(L,y0,L+W,y0); doc.setDrawColor(0);
@@ -3081,11 +3097,14 @@ var SNAP=null, DETAIL={};
           doc.setFont("helvetica","normal"); doc.setFontSize(6.5); doc.setTextColor(110); doc.text("parts picked",(CX[0]+CX[2])/2,ymid-2,{align:"center"}); doc.text(noun==="finished"?"finished":noun+" finished",(CX[2]+L+W)/2,ymid-2,{align:"center"});
           doc.setFont("helvetica","bold"); doc.setFontSize(9.5); doc.setTextColor(17); doc.text(pdone+" of "+rows.length,(CX[0]+CX[2])/2,ymid+2.6,{align:"center"}); doc.text(c.f+" of "+c.q,(CX[2]+L+W)/2,ymid+2.6,{align:"center"}); doc.setTextColor(0); }
         y=y0+rowH;
-        if(!single){ rows.forEach(function(r,ri){ var ls=partLines[ri], rh=ls.length>1?11:9; doc.setDrawColor(225); doc.setLineWidth(0.2); doc.line(L+7,y,L+W,y); doc.setDrawColor(0); var pt=partTxt(r), tx=NX;   // full width: the part picture sits under the item photo (Sam, 22 Oct 2026, mock A)
-            if(pt.drawTop){ var dm2=/(\d{3,4})\s*[x\u00D7]\s*(\d{3,4})/i.exec(r.n), tw2=dm2?+dm2[1]:1200, td2=dm2?+dm2[2]:800, sc2=Math.min(16/tw2,(rh-2)/td2); doc.setDrawColor(17); doc.setLineWidth(0.3); doc.setFillColor(255,255,255); doc.rect(L+8+(16-tw2*sc2)/2,y+1+((rh-2)-td2*sc2)/2,tw2*sc2,td2*sc2,"FD"); doc.setDrawColor(0); }   // a drawn top, never the donor desk photo (Sam, 22 Oct 2026)
+        if(!single){ rows.forEach(function(r,ri){ var ls=partLines[ri], rh=ls.length>1?10:7.5, pt=partTxt(r), tx=NX+(pt.tied?4:0); doc.setFillColor(250,250,250); doc.rect(L+7,y,W-7,rh+(pt.canScrap?7:0),"F"); doc.setDrawColor(225); doc.setLineWidth(0.2); doc.line(L+7,y,L+W,y); doc.setDrawColor(0);
+            if(pt.tied){ doc.setDrawColor(17); doc.setLineWidth(0.35); doc.line(NX+0.6,y+1.6,NX+0.6,y+3.9); doc.line(NX+0.6,y+3.9,NX+2.8,y+3.9); doc.line(NX+2.1,y+3.2,NX+2.8,y+3.9); doc.line(NX+2.1,y+4.6,NX+2.8,y+3.9); doc.setDrawColor(0); }   /* the panels hang off the tops batch */   // full width: the part picture sits under the item photo (Sam, 22 Oct 2026, mock A)
+            if(pt.drawPanel){ doc.setDrawColor(17); doc.setLineWidth(0.3); doc.setFillColor(255,255,255); doc.rect(L+10,y+rh/2-0.9,12,1.8,"FD"); doc.setDrawColor(0); }
+            else if(pt.drawTop){ var dm2=/(\d{3,4})\s*[x\u00D7]\s*(\d{3,4})/i.exec(r.n+" "+(r.size||"")), tw2=dm2?+dm2[1]:1200, td2=dm2?+dm2[2]:800, sc2=Math.min(14/tw2,(rh-2.5)/td2); doc.setDrawColor(17); doc.setLineWidth(0.3); doc.setFillColor(255,255,255); doc.rect(L+8+(16-tw2*sc2)/2,y+1.25+((rh-2.5)-td2*sc2)/2,tw2*sc2,td2*sc2,"FD"); doc.setDrawColor(0); }   // a drawn top, never the donor desk photo (Sam, 22 Oct 2026)
             else if(pt.thumb) img(pt.comp.photo,L+8,y+1,16,rh-2);
-            doc.setFont("helvetica",r.f>=r.q&&r.q>0?"bold":"normal"); doc.setFontSize(8.5); doc.text(ls,tx,y+5);
-            countsAt(r,y+rh/2+0.2); y+=rh; }); y+=1.5; }
+            doc.setFont("helvetica",r.f>=r.q&&r.q>0?"bold":"normal"); doc.setFontSize(8.5); doc.text(ls,tx,y+(ls.length>1?4.3:4.9));
+            countsAt(r,y+rh/2+0.2); y+=rh;
+            if(pt.canScrap){ doc.setFont("helvetica","normal"); doc.setFontSize(7.5); doc.setTextColor(17); var q1="Used a scrap panel instead? Write how many"; doc.text(q1,tx,y+4.2); var bxX=tx+doc.getTextWidth(q1)+2.5; doc.setLineWidth(0.45); doc.setDrawColor(17); doc.roundedRect(bxX,y+0.8,11,5,0.8,0.8); doc.setDrawColor(0); doc.setTextColor(110); doc.text("Every one saves a top. Tell Sam.",bxX+14,y+4.2); doc.setTextColor(0); y+=7; } }); y+=1.5; }
       });
       doc.setDrawColor(17); doc.setLineWidth(0.5); doc.line(L,y,L+W,y); doc.setDrawColor(0);
       // when you finish: one strip
@@ -3212,7 +3231,7 @@ var SNAP=null, DETAIL={};
         var res=null; for(var tr=0;tr<4&&!(res&&res.ok&&res.lines);tr++){ if(tr) await new Promise(function(r){ setTimeout(r,1500*tr); });
           res=await fetch(CRM_PICKING_URL,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({key:CRM_KEY,action:"lines",cards:cards})}).then(function(x){ return x.json(); }).catch(function(){ return null; }); }
         if(!(res&&res.ok&&res.lines)) throw new Error("The item list did not load from the CRM. Wait a minute and press Job sheet again.");
-        if(res&&res.ok&&res.lines){ PICK={}; Object.keys(res.lines).forEach(function(id){ var e=res.lines[id]; var all=e.lines||[], pk=pickedOf(id), jj=JOBS.filter(function(x){return x.id===id;})[0], multi=!!(jj&&jj.prep&&jj.prep.date);   // every production line gets Finished today, one day or many (2 Oct 2026, the Alcove Booth line had none)
+        if(res&&res.ok&&res.lines){ PICK={}; Object.keys(res.lines).forEach(function(id){ var e=res.lines[id]; var all=e.lines||[], legL=all.filter(isPartLine); all.forEach(function(l){ if(!isPartLine(l)&&legL.length&&/desk/i.test(String(l.headerCustomer||""))) l._legs=legL[0]; }); var _u0=0, pk=pickedOf(id), jj=JOBS.filter(function(x){return x.id===id;})[0], multi=!!(jj&&jj.prep&&jj.prep.date);   // every production line gets Finished today, one day or many (2 Oct 2026, the Alcove Booth line had none)
             var deskU=0, deskLeft=0; all.forEach(function(l){ if(isPartLine(l)||!/desk/i.test(String(l.headerCustomer||""))) return; var c=pickCount(pk,l); deskU+=c.q; deskLeft+=Math.max(0,c.q-c.p); });
             var left=[]; all.forEach(function(l){ var c=pickCount(pk,l), rem=c.q-c.p;
               if(isPartLine(l)){ var fr=deskU?deskLeft/deskU:1, lq=Number(l.qty)||0, lrem=Math.round(lq*fr); if(lrem<=0) return; left.push(fr<1?Object.assign({},l,{qty:lrem,headerCustomer:String(lrem),_already:lq-lrem,_of:lq,_write:false}):l); return; }
@@ -3225,7 +3244,7 @@ var SNAP=null, DETAIL={};
             var fin=!!(jj&&jj.prep&&jj.stage==="In progress"&&!jj.prep.stages);
             // With a page per job (2 Oct 2026) an In-progress job's page lists what is left as "Items to finish"
             PICK[id]={picks:!!e.picks,finish:fin,lines:left,all:all.filter(function(l){ return !isPartLine(l); }),picked:pk,allPicked:all.length>0&&!left.length,error:e.error||"",ref:e.ref||""}; });
-          var urls={}; Object.keys(PICK).forEach(function(id){ PICK[id].lines.forEach(function(l){ [l.product_photo,l.storage_photo].concat((l.build_components||[]).map(function(c){ return c.photo; })).forEach(function(u){ if(u&&!PICK_IMG[u]) urls[u]=1; }); }); });
+          var urls={}; Object.keys(PICK).forEach(function(id){ PICK[id].lines.forEach(function(l){ [l.product_photo,l.storage_photo,l._legs&&(l._legs.product_photo||l._legs.storage_photo)].concat((l.build_components||[]).map(function(c){ return c.photo; })).forEach(function(u){ if(u&&!PICK_IMG[u]) urls[u]=1; }); }); });
           await Promise.all(Object.keys(urls).slice(0,150).map(loadPickPhoto)); } }
       if(!PICK) PICK={};
       if(only) PICK.__only=only;
@@ -3416,7 +3435,19 @@ var SNAP=null, DETAIL={};
     doc.save("routes-"+days[0]+"-to-"+days[4]+".pdf");
     });
   }
+  /* TOPS BACK TO STOCK (Sam, 22 Oct 2026, mock approved): every desk line where the workshop used scrap panels instead of
+     tops, until Sam presses Stock updated. Nothing changes stock on its own. */
+  function topsBackRender(){ if(typeof document==="undefined"||typeof document.getElementById!=="function") return; var host=document.getElementById("topsback"); if(!host){ var bd=document.getElementById("board"); if(!bd||!bd.parentNode) return; host=document.createElement("div"); host.id="topsback"; bd.parentNode.insertBefore(host,bd); }
+    host.innerHTML=""; var rows=[];
+    JOBS.forEach(function(j){ var pr=j.prep||j.donePrep, P=pr&&pr.picked; if(!P) return; Object.keys(P).forEach(function(k){ var e=P[k]||{}, n=(Number(e.scrap)||0)-(Number(e.scrapCleared)||0); if(n>0) rows.push({j:j,pr:pr,k:k,e:e,n:n}); }); });
+    host.hidden=!rows.length; if(!rows.length) return;
+    var box=el("div","topsback"); box.appendChild(el("b",null,"Tops back to stock"));
+    rows.forEach(function(r){ var i=r.e.scrapInfo||{}, tp=String(r.j.title||"").split(/\s+-\s+/), ref=tp.filter(function(x){ return /^[0-9A-Z]{6}$/.test(x); })[0]||"", cust=tp.filter(function(x){ return !/^[0-9A-Z]{6}$/.test(x)&&!/^\d{5,}$/.test(x); }).slice(1).join(" - ")||tp[0]||"";
+      var ln=el("div","tbrow"); ln.appendChild(el("span",null,r.n+" x "+(i.name||"desk")+" top"+(i.sku?" \u00b7 "+i.sku:"")+" \u00b7 "+cust+(ref?" "+ref:"")));
+      var bt=el("button","link","Stock updated"); bt.type="button"; bt.onclick=function(){ var P=Object.assign({},r.pr.picked), o=Object.assign({},P[r.k]); o.scrapCleared=Number(o.scrap)||0; P[r.k]=o; r.pr.picked=P; persist(); render(); }; ln.appendChild(bt); box.appendChild(ln); });
+    host.appendChild(box); }
   function render(){
+    try{ topsBackRender(); }catch(e){ console.warn("tops back",e); }
     if(PENDING_SNAP&&!editorOpen()){ setTimeout(flushPending,0); }
     if(!window.__arrFilled&&JOBS.length){ window.__arrFilled=true; JOBS.forEach(function(j){ if((j.arrive==="delivers"||j.arrive==="both")&&!j.from){ var dd=DETAIL[j.id], t0=arrivalFromDesc(dd?dd.desc:""); if(t0){ j.from=t0; j.fromAuto=true; } } }); }
     persist();
