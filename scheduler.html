@@ -3050,7 +3050,7 @@ var SNAP=null, DETAIL={};
         var textH=3+tls.length*4.2+mls.length*3.3+(sls.length?sls.length*3.4+2:0)+((Number(l.bench_bank_size)||0)>0?21:0)+3, leftH=17+(loc?locH+1:0)+(l.sku?3.5:0);
         // a part row is its name and location, wrapped to the column, never clipped (Sam, 22 Oct 2026, the bench parts ran off the edge)
         var partTxt=function(r){ var comp=comps.filter(function(cc){ return String(cc.name||"")===r.n; })[0]; var photo=r.photo||(comp&&comp.photo)||"", loc0=r.loc||(comp&&comp.location)||"", sku0=r.sku||(comp&&comp.sku)||""; var nm=String(r.n).replace(/\s*\(.*?\)\s*/g," ").trim(); return {comp:{photo:photo},text:nm+(sku0?"  "+sku0:"")+(loc0?"  \u00b7 "+loc0:""),thumb:!!photo||!!r.drawTop,drawTop:!!r.drawTop}; };
-        doc.setFont("helvetica","normal"); doc.setFontSize(8.5); var partLines=rows.map(function(r){ var pt=partTxt(r); return doc.splitTextToSize(pt.text,CX[0]-(NX+(pt.thumb?14:2))-3).slice(0,2); });
+        doc.setFont("helvetica","normal"); doc.setFontSize(8.5); var partLines=rows.map(function(r){ var pt=partTxt(r); return doc.splitTextToSize(pt.text,CX[0]-NX-3).slice(0,2); });
         var partRowsH=partLines.reduce(function(t,ls){ return t+(ls.length>1?11:9); },0);
         var rowH=single?Math.max(leftH,textH):textH, partsH=single?0:Math.max(partRowsH+1.5,leftH-textH+1.5);
         if(y+rowH+partsH>272) cont();
@@ -3077,9 +3077,9 @@ var SNAP=null, DETAIL={};
         doc.setDrawColor(200); doc.setLineWidth(0.25); doc.line(CX[0],y0,CX[0],y0+rowH+partsH); doc.line(CX[2],y0,CX[2],y0+rowH+partsH); doc.setDrawColor(0);
         if(single) countsAt(rows[0],y0+rowH/2);
         y=y0+rowH;
-        if(!single){ rows.forEach(function(r,ri){ var ls=partLines[ri], rh=ls.length>1?11:9; doc.setDrawColor(225); doc.setLineWidth(0.2); doc.line(NX,y,L+W,y); doc.setDrawColor(0); var pt=partTxt(r), tx=NX+2;
-            if(pt.drawTop){ var dm2=/(\d{3,4})\s*[x\u00D7]\s*(\d{3,4})/i.exec(r.n), tw2=dm2?+dm2[1]:1200, td2=dm2?+dm2[2]:800, sc2=Math.min(11/tw2,(rh-2)/td2); doc.setDrawColor(17); doc.setLineWidth(0.3); doc.setFillColor(255,255,255); doc.rect(NX+1+(11-tw2*sc2)/2,y+1+((rh-2)-td2*sc2)/2,tw2*sc2,td2*sc2,"FD"); doc.setDrawColor(0); tx=NX+14; }   // a drawn top, never the donor desk photo (Sam, 22 Oct 2026)
-            else if(pt.thumb&&img(pt.comp.photo,NX+1,y+1,11,rh-2)) tx=NX+14;
+        if(!single){ rows.forEach(function(r,ri){ var ls=partLines[ri], rh=ls.length>1?11:9; doc.setDrawColor(225); doc.setLineWidth(0.2); doc.line(L+7,y,L+W,y); doc.setDrawColor(0); var pt=partTxt(r), tx=NX;   // full width: the part picture sits under the item photo (Sam, 22 Oct 2026, mock A)
+            if(pt.drawTop){ var dm2=/(\d{3,4})\s*[x\u00D7]\s*(\d{3,4})/i.exec(r.n), tw2=dm2?+dm2[1]:1200, td2=dm2?+dm2[2]:800, sc2=Math.min(16/tw2,(rh-2)/td2); doc.setDrawColor(17); doc.setLineWidth(0.3); doc.setFillColor(255,255,255); doc.rect(L+8+(16-tw2*sc2)/2,y+1+((rh-2)-td2*sc2)/2,tw2*sc2,td2*sc2,"FD"); doc.setDrawColor(0); }   // a drawn top, never the donor desk photo (Sam, 22 Oct 2026)
+            else if(pt.thumb) img(pt.comp.photo,L+8,y+1,16,rh-2);
             doc.setFont("helvetica",r.f>=r.q&&r.q>0?"bold":"normal"); doc.setFontSize(8.5); doc.text(ls,tx,y+5);
             countsAt(r,y+rh/2+0.2); y+=rh; }); y+=1.5; }
       });
