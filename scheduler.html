@@ -937,16 +937,16 @@ var SNAP=null, DETAIL={};
          row says it comes out of that batch, and a scrap panel used instead takes a top off the pick (scrap). A desk sold
          as panels from scrap has its tops and a Modesty panels row cut from scrap, and nothing to save. */
       var fromScrap=/panels from scrap/i.test(hb), twoTop=!fromScrap&&/\+\s*\d+\s*legs/i.test(hb), tm=/(\d+)\s*tops?/i.exec(hb), tops=tm?+tm[1]:(twoTop?u*2:u), sc=twoTop?Math.max(0,Math.min(u,Math.round(Number(scrap)||0))):0, dm=/W?(\d{3,4})\s*[x\u00D7]\s*D?(\d{3,4})/i.exec(String(l.attr_dims||"")), size=dm?dm[1]+"\u00D7"+dm[2]:"";
-      var cd=l.cut_down&&l.cut_down.to?l.cut_down:null, cn=cd&&Number(cd.count)||0, cutTxt=cd?"CUT "+(cn&&cn<tops-sc?cn+" ":"")+"DOWN TO "+String(cd.to).replace(/x/gi,"\u00D7"):"";
-      out=[{n:"Tops",q:tops-sc,size:size,drawTop:true,dbl:twoTop,sku:l.sku||"",loc:l.stock_location||"",bold:cutTxt}];   /* the cut on the tops row (Sam, 22 Oct 2026, mock approved) */   /* the tops come from this line's stock (Sam, 22 Oct 2026) */
+      var cd=l.cut_down&&l.cut_down.to?l.cut_down:null, cn=cd&&Number(cd.count)||0, cutTxt=cd?"CUT "+(cn?cn+" ":"")+"DOWN TO "+String(cd.to).replace(/x/gi,"\u00D7"):"";
+      out=[{n:"Tops",q:u,size:size,drawTop:true,sku:l.sku||"",loc:l.stock_location||"",bold:cutTxt}];   /* the desk tops only; the panel tops are on the panel row, each top counted once (Sam, 22 Oct 2026, mock approved) */   /* the cut on the tops row (Sam, 22 Oct 2026, mock approved) */   /* the tops come from this line's stock (Sam, 22 Oct 2026) */
       if(fromScrap) out.push({n:"Modesty panels",q:u,bold:"CUT FROM SCRAP TOPS",after:"scrap store",drawPanel:true});
-      else if(twoTop) out.push({n:"Modesty panels",q:u,from:(u-sc)>0?"made from "+(u-sc)+" of the "+(tops-sc)+" tops above":"all from scrap panels",tied:true,drawPanel:true,canScrap:true,scrap:sc});
+      else if(twoTop) out.push({n:"Modesty panels",q:u,from:(u-sc)>0?"from "+(u-sc)+" more tops in this batch"+(sc?", "+sc+" from scrap":""):"all from scrap panels",tied:true,drawPanel:true,canScrap:true,scrap:sc});
       var lg=/(\d+)\s*legs/i.exec(hb), lgl=l._legs||null, lc=/Legs:\s*([^\u00b7,]+)/i.exec(String(l.attr_colour||""));
       if(lg&&+lg[1]>0) out.push({n:"Legs",q:+lg[1],photo:lgl&&(lgl.product_photo||lgl.storage_photo)||"",sku:lgl&&lgl.sku||"",loc:lgl&&lgl.stock_location||"",colour:lc?lc[1].trim():""}); }
     else out=[{n:l.section==="seating"?"Chairs":l.section==="storage"?"Units":l.section==="tables"?"Tables":l.section==="desk_tops"?"Tops":"Items",q:u}];
     (extra||[]).forEach(function(e){ if(e&&e.n) out.push({n:String(e.n),q:Number(e.q)||u,x:true}); }); return out; }
   function pickCount(P,l){ var q=pickUnits(l), e=P[pickKey(l)]||null; var ps=pickPartsOf(l,e&&e.extra,e&&e.scrap);
-    var rows=ps.map(function(pt){ var r=(e&&e.parts&&(e.parts[pt.n]||(pt.n==="Modesty panels"&&e.parts["Back panels"])))||{};   /* counts saved under the old name, Back panels (renamed 22 Oct 2026) */ if(pt.dbl&&e&&!e.t2) r={p:(Number(r.p)||0)*2,f:(Number(r.f)||0)*2};   /* counts saved when a desk was one top on this row */ var cl=function(v){ return Math.max(0,Math.min(pt.q,Math.round(Number(v)||0))); }; return {n:pt.n,q:pt.q,x:!!pt.x,p:cl(r.p),f:cl(r.f),photo:pt.photo||"",loc:pt.loc||"",sku:pt.sku||"",drawTop:!!pt.drawTop,drawPanel:!!pt.drawPanel,size:pt.size||"",from:pt.from||"",tied:!!pt.tied,canScrap:!!pt.canScrap,scrap:pt.scrap||0,colour:pt.colour||"",bold:pt.bold||"",after:pt.after||""}; });
+    var rows=ps.map(function(pt){ var r=(e&&e.parts&&(e.parts[pt.n]||(pt.n==="Modesty panels"&&e.parts["Back panels"])))||{};   /* counts saved under the old name, Back panels (renamed 22 Oct 2026) */ var cl=function(v){ return Math.max(0,Math.min(pt.q,Math.round(Number(v)||0))); }; return {n:pt.n,q:pt.q,x:!!pt.x,p:cl(r.p),f:cl(r.f),photo:pt.photo||"",loc:pt.loc||"",sku:pt.sku||"",drawTop:!!pt.drawTop,drawPanel:!!pt.drawPanel,size:pt.size||"",from:pt.from||"",tied:!!pt.tied,canScrap:!!pt.canScrap,scrap:pt.scrap||0,colour:pt.colour||"",bold:pt.bold||"",after:pt.after||""}; });
     var scale=function(key){ return rows.length?Math.min.apply(null,rows.map(function(x){ return x.q?Math.floor(x[key]*q/x.q):0; })):0; };
     if(!e) return {f:0,p:0,q:q,parts:rows};
     if(e.parts) return {f:Math.min(q,scale("f")),p:Math.min(q,scale("p")),q:q,on:e.on||"",parts:rows};
@@ -3620,7 +3620,7 @@ var SNAP=null, DETAIL={};
   var AUTO=true;
   var REFRESHING=false, POLL_EVERY=10000, CRM_EVERY_TICKS=6, TICK=0;
   var PENDING_SNAP=null, FOREIGN=null, SEEN_FOREIGN={};   // a change to the job on screen, waiting for the person to choose
-  var SCHED_VERSION="22 Oct 16:46";   /* bumped on every push: shows which version is running and which built a sheet (Sam, 22 Oct 2026, "still not live?!") */
+  var SCHED_VERSION="22 Oct 16:51";   /* bumped on every push: shows which version is running and which built a sheet (Sam, 22 Oct 2026, "still not live?!") */
   /* A NEWER SCHEDULER RELOADS ITSELF (Sam, 22 Oct 2026, a sheet built from a window opened before the push). Checked every two
      minutes and before any sheet is built; a reload waits while an editor is open. */
   function liveVersion(){ return fetch("./scheduler.html?vc="+Date.now(),{cache:"no-store"}).then(function(r){ return r.ok?r.text():""; }).then(function(t){ var m=/SCHED_VERSION\s*=\s*"([^"]+)"/.exec(t||""); return m?m[1]:""; }).catch(function(){ return ""; }); }
