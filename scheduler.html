@@ -3110,7 +3110,7 @@ var SNAP=null, DETAIL={};
             if(pt.bold&&ls.length===1&&fitsB()){ /* the cut or scrap note in bold inside the line (Sam, 22 Oct 2026) */ var x0=tx; doc.setFont("helvetica","normal"); doc.text(pt.pre,x0,yb); x0+=doc.getTextWidth(pt.pre); doc.setFont("helvetica","bold"); doc.text(pt.bold,x0,yb); x0+=doc.getTextWidth(pt.bold); doc.setFont("helvetica","normal"); doc.text(pt.post,x0,yb); }
             else { doc.setFont("helvetica",(r.f>=r.q&&r.q>0)||pt.bold?"bold":"normal"); doc.text(ls,tx,yb); }
             countsAt(r,y+rh/2+0.2); y+=rh;
-            if(pt.canScrap){ doc.setFont("helvetica","normal"); doc.setFontSize(7.5); doc.setTextColor(17); var q1="Used a scrap panel instead? Write how many"; doc.text(q1,tx,y+4.2); var bxX=tx+doc.getTextWidth(q1)+2.5; doc.setLineWidth(0.45); doc.setDrawColor(17); doc.roundedRect(bxX,y+0.8,11,5,0.8,0.8); doc.setDrawColor(0); doc.setTextColor(110); doc.text("Every one saves a top. Tell Sam.",bxX+14,y+4.2); doc.setTextColor(0); y+=7; } }); y+=1.5; }
+            if(pt.canScrap){ doc.setFont("helvetica","normal"); doc.setFontSize(7.5); doc.setTextColor(17); var q1="Used a scrap panel instead? Write how many"; doc.text(q1,tx,y+4.2); var bxX=tx+doc.getTextWidth(q1)+2.5; doc.setLineWidth(0.45); doc.setDrawColor(17); doc.roundedRect(bxX,y+0.8,11,5,0.8,0.8); doc.setDrawColor(0); doc.setTextColor(110); doc.text("Every one saves a top. Tell the operations manager.",bxX+14,y+4.2); doc.setTextColor(0); y+=7; } }); y+=1.5; }
       });
       doc.setDrawColor(17); doc.setLineWidth(0.5); doc.line(L,y,L+W,y); doc.setDrawColor(0);
       // when you finish: one strip
