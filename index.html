@@ -46,7 +46,7 @@
         // labour, installation or courier badge appears once the card reaches Ready for Delivery / Collection. The back
         // of the card still shows every part.
         var inWorkshop=!!(list&&WORKSHOP_LISTS.test(String(list.name||"").trim()));
-        if(!isViewingLabels(card.labels)&&!inWorkshop) frontBadges(plan,isSite(card)?movementOf(card.labels,card.desc):false,round).forEach(function(b){ out.push({ text:b.text, color:b.color }); });
+        if(!isViewingLabels(card.labels)&&!inWorkshop) frontBadges(plan,isSite(card)?movementOf(card.labels,card.desc):false,round,list&&/^Facility Jobs$/i.test(String(list.name||"").trim())?"Facility":"").forEach(function(b){ out.push({ text:b.text, color:b.color }); });
         return out;
       });
     },

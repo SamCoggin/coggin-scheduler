@@ -296,7 +296,7 @@ function prodBadgeText(d,long){
   return {text:lead+who.join(", ")+", "+fmt(p.mins)+(who.length>1?" each":""),color:"blue"};
 }
 // short badges for the card front: Trello clips badge text at about 30 characters
-function frontBadges(d,site,round){
+function frontBadges(d,site,round,kind){
   var who=(d&&d.who)||[], out=[];
   if(d&&d.contractor&&!who.length) return [badgeText(d,site)];
   if(!who.length) return [{text:siteTag(site)+"Unassigned",color:"yellow"}];
