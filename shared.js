@@ -258,7 +258,7 @@ function endOf(at,mins){ var m=/^(\d{1,2}):(\d{2})$/.exec(String(at||"")); if(!m
 function fmt(m){ if(m==null) return ""; m=Math.round(m); if(m<60) return m+" min"; var h=Math.floor(m/60), r=m%60; return h+"h"+(r?" "+r+"m":""); }
 // THE WORD ON THE FRONT (Sam, 29 Sep 2026: "rename transport to installation as transport is misleading"). The
 // minutes are time on site, so the badge names the job: a delivery installs, a clearance collects, a visit is on site.
-function siteTag(site){ if(!site) return ""; var mv=typeof site==="string"?site:""; if(mv==="Delivery") return "Installation: "; if(mv==="Collection"||mv==="Collect and Return") return "Collection: "; if(mv==="Site Visit") return "On site: "; return "Site: "; }
+function siteTag(site){ if(!site) return ""; var mv=typeof site==="string"?site:""; if(mv==="Delivery") return "Install: "; /* "Install", not "Installation" (Sam, 22 Oct 2026) */ if(mv==="Collection"||mv==="Collect and Return") return "Collection: "; if(mv==="Site Visit") return "On site: "; return "Site: "; }
 // what the front of the card says, from the saved plan
 // THE ROUND ON THE FRONT (Sam, 29 Sep 2026: York said "No travel time" beside Bolton's "Travel 1h 40m return", the same
 // round). Travel lives on the round since 29 Sep, so a badge reads the board's round data for this date and driver
