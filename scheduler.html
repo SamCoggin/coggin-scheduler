@@ -935,17 +935,17 @@ var SNAP=null, DETAIL={};
     else if(/desk/i.test(String(l.headerCustomer||""))){
       /* TWO TOPS A DESK, PANELS FROM THE BATCH (Sam, 22 Oct 2026, mock approved): the tops row is every top picked, the panel
          row says it comes out of that batch, and a scrap panel used instead takes a top off the pick (scrap). A desk sold
-         as panels from scrap has its tops and a Back panels row cut from scrap, and nothing to save. */
+         as panels from scrap has its tops and a Modesty panels row cut from scrap, and nothing to save. */
       var fromScrap=/panels from scrap/i.test(hb), twoTop=!fromScrap&&/\+\s*\d+\s*legs/i.test(hb), tm=/(\d+)\s*tops?/i.exec(hb), tops=tm?+tm[1]:(twoTop?u*2:u), sc=twoTop?Math.max(0,Math.min(u,Math.round(Number(scrap)||0))):0, dm=/W?(\d{3,4})\s*[x\u00D7]\s*D?(\d{3,4})/i.exec(String(l.attr_dims||"")), size=dm?dm[1]+"\u00D7"+dm[2]:"";
       out=[{n:"Tops",q:tops-sc,size:size,drawTop:true,dbl:twoTop,sku:l.sku||"",loc:l.stock_location||""}];   /* the tops come from this line's stock (Sam, 22 Oct 2026) */
-      if(fromScrap) out.push({n:"Back panels",q:u,from:"cut from scrap tops",drawPanel:true});
+      if(fromScrap) out.push({n:"Modesty panels",q:u,from:"cut from scrap tops",drawPanel:true});
       else if(twoTop) out.push({n:"Modesty panels",q:u,from:(u-sc)>0?"made from "+(u-sc)+" of the "+(tops-sc)+" tops above":"all from scrap panels",tied:true,drawPanel:true,canScrap:true,scrap:sc});
       var lg=/(\d+)\s*legs/i.exec(hb), lgl=l._legs||null, lc=/Legs:\s*([^\u00b7,]+)/i.exec(String(l.attr_colour||""));
       if(lg&&+lg[1]>0) out.push({n:"Legs",q:+lg[1],photo:lgl&&(lgl.product_photo||lgl.storage_photo)||"",sku:lgl&&lgl.sku||"",loc:lgl&&lgl.stock_location||"",colour:lc?lc[1].trim():""}); }
     else out=[{n:l.section==="seating"?"Chairs":l.section==="storage"?"Units":l.section==="tables"?"Tables":l.section==="desk_tops"?"Tops":"Items",q:u}];
     (extra||[]).forEach(function(e){ if(e&&e.n) out.push({n:String(e.n),q:Number(e.q)||u,x:true}); }); return out; }
   function pickCount(P,l){ var q=pickUnits(l), e=P[pickKey(l)]||null; var ps=pickPartsOf(l,e&&e.extra,e&&e.scrap);
-    var rows=ps.map(function(pt){ var r=(e&&e.parts&&e.parts[pt.n])||{}; if(pt.dbl&&e&&!e.t2) r={p:(Number(r.p)||0)*2,f:(Number(r.f)||0)*2};   /* counts saved when a desk was one top on this row */ var cl=function(v){ return Math.max(0,Math.min(pt.q,Math.round(Number(v)||0))); }; return {n:pt.n,q:pt.q,x:!!pt.x,p:cl(r.p),f:cl(r.f),photo:pt.photo||"",loc:pt.loc||"",sku:pt.sku||"",drawTop:!!pt.drawTop,drawPanel:!!pt.drawPanel,size:pt.size||"",from:pt.from||"",tied:!!pt.tied,canScrap:!!pt.canScrap,scrap:pt.scrap||0,colour:pt.colour||""}; });
+    var rows=ps.map(function(pt){ var r=(e&&e.parts&&(e.parts[pt.n]||(pt.n==="Modesty panels"&&e.parts["Back panels"])))||{};   /* counts saved under the old name, Back panels (renamed 22 Oct 2026) */ if(pt.dbl&&e&&!e.t2) r={p:(Number(r.p)||0)*2,f:(Number(r.f)||0)*2};   /* counts saved when a desk was one top on this row */ var cl=function(v){ return Math.max(0,Math.min(pt.q,Math.round(Number(v)||0))); }; return {n:pt.n,q:pt.q,x:!!pt.x,p:cl(r.p),f:cl(r.f),photo:pt.photo||"",loc:pt.loc||"",sku:pt.sku||"",drawTop:!!pt.drawTop,drawPanel:!!pt.drawPanel,size:pt.size||"",from:pt.from||"",tied:!!pt.tied,canScrap:!!pt.canScrap,scrap:pt.scrap||0,colour:pt.colour||""}; });
     var scale=function(key){ return rows.length?Math.min.apply(null,rows.map(function(x){ return x.q?Math.floor(x[key]*q/x.q):0; })):0; };
     if(!e) return {f:0,p:0,q:q,parts:rows};
     if(e.parts) return {f:Math.min(q,scale("f")),p:Math.min(q,scale("p")),q:q,on:e.on||"",parts:rows};
