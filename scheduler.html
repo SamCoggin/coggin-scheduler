@@ -2995,7 +2995,7 @@ var SNAP=null, DETAIL={};
     // chair or table carries its counts on its own row. A box prints only where there is something left to write. Rows flow
     // on to the next page with the column header repeated. The finishing steps are one strip at the end.
     kit.production=function(o){
-      var CWs=[19,17,19,17], CX=[L+W-72,L+W-53,L+W-34,L+W-17], NX=L+26, NW=(L+W-72)-NX-34;
+      var CWs=[16,14,16,14], CX=[L+W-60,L+W-44,L+W-28,L+W-14], NX=L+27, NW=(L+W-60)-NX-3;
       var mid=function(i){ return CX[i]+CWs[i]/2; };
       var tableHead=function(){ doc.setFont("helvetica","bold"); doc.setFontSize(6.5); doc.setTextColor(110); doc.text("ITEM · TICK WHEN ALL PICKED AND FINISHED",L,y+3,{charSpace:0.2});
         doc.text("PICKED",(CX[0]+CX[1]+CWs[1])/2,y+2.6,{align:"center"}); doc.text("FINISHED",(CX[2]+CX[3]+CWs[3])/2,y+2.6,{align:"center"}); doc.setFontSize(5.5); doc.setFont("helvetica","normal");
@@ -3021,19 +3021,21 @@ var SNAP=null, DETAIL={};
       var countsAt=function(r,yc){ doc.setFont("helvetica","normal"); doc.setFontSize(8.5); doc.text(r.p+" of "+r.q,mid(0),yc+1.2,{align:"center"}); doc.text(r.f+" of "+r.q,mid(2),yc+1.2,{align:"center"});
         doc.setLineWidth(0.45); doc.setDrawColor(17); if(r.p<r.q) doc.roundedRect(mid(1)-6.5,yc-3,13,6,0.8,0.8); if(r.f<r.q) doc.roundedRect(mid(3)-6.5,yc-3,13,6,0.8,0.8); doc.setDrawColor(0); };
       pageLines.forEach(function(l){ var c=pickCount(o.picked||{},l), rows=c.parts, single=rows.length===1, comps=Array.isArray(l.build_components)?l.build_components:[];
-        var parts=String(l.name||"").split(/\s*\|\s*/), main=parts[0], meta=[parts.slice(1).join(" · "),pickDetails(l)].filter(Boolean).join(" · ");
-        var hq=String(l.headerCustomer||l.qty||""), title=(/[a-z]/i.test(hq)?hq+" · ":hq+" x ")+main+(l.headerBreakdown?"  (from "+l.headerBreakdown+")":"");
-        var specs=pickWork(l); if(l.cut_down&&l.cut_down.to){ var cn=l.cut_down.count, nn=String(l.cut_down.noun||"TOP"), fr=l.cut_down.from?" FROM "+l.cut_down.from:""; specs.unshift(cn?"CUT "+cn+"x "+nn+(cn===1?"":"S")+" DOWN"+fr+" TO "+l.cut_down.to+"MM":"CUT THIS "+nn+" DOWN"+fr+" TO "+l.cut_down.to+"MM"); } if(l.spec_notes) specs.push("Spec: "+l.spec_notes);
+        var parts=String(l.name||"").split(/\s*\|\s*/), main=parts[0], loc=String(l.stock_location||"");
+        // the details the picker needs and no more (Sam, 22 Oct 2026, third mock): colour, size, where the parts come from
+        var meta=[l.attr_colour,l.attr_dims,l.attr_resize,(l.attr_makeModel&&/made to order/i.test(l.attr_makeModel))?l.attr_makeModel:"",l.headerBreakdown?"from "+l.headerBreakdown:"",l.attr_other].filter(Boolean).join(" · ");
+        var hq=String(l.headerCustomer||l.qty||""), title=(/[a-z]/i.test(hq)?hq+" · ":hq+" x ")+main;
+        var specs=[]; if(l.cut_down&&l.cut_down.to){ var cn=l.cut_down.count, fr=l.cut_down.from?" FROM "+l.cut_down.from:""; specs.push("CUT "+(cn?cn+" TOPS":"THIS TOP")+" DOWN"+fr+" TO "+l.cut_down.to); } var pw=pickWork(l).map(function(t){ return t.replace(/^TOPS NEED /,""); }); if(pw.length) specs=specs.concat(pw); if(l.spec_notes) specs.push(l.spec_notes); specs=specs.length?[specs.join(" · ")]:[];
         doc.setFont("helvetica","bold"); doc.setFontSize(10); var tls=doc.splitTextToSize(title,NW); doc.setFont("helvetica","normal"); doc.setFontSize(7.5); var mls=meta?doc.splitTextToSize(meta,NW):[]; doc.setFont("helvetica","bold"); var sls=[]; specs.forEach(function(t){ sls=sls.concat(doc.splitTextToSize(t,NW)); });
-        var rowH=Math.max(16,3+tls.length*4.2+mls.length*3.3+sls.length*3.4+3), partsH=single?0:rows.length*7.5+1.5;
+        var rowH=Math.max(l.sku?26:(loc?22:17),3+tls.length*4.2+mls.length*3.3+(sls.length?sls.length*3.4+2:0)+3), partsH=single?0:rows.length*7.5+1.5;
         if(y+rowH+partsH>272) cont();
         var y0=y; doc.setDrawColor(17); doc.setLineWidth(0.5); doc.line(L,y0,L+W,y0); doc.setDrawColor(0);
         box(L+0.5,y0+3.5,5.5); if(!(l.product_photo&&img(l.product_photo,L+8,y0+2.5,16,13))) noPhoto(L+8,y0+2.5,16,13);
         doc.setFont("helvetica","bold"); doc.setFontSize(10); doc.text(tls,NX,y0+6.5); var ty=y0+6.5+(tls.length-1)*4.2+3.4;
         doc.setFont("helvetica","normal"); doc.setFontSize(7.5); doc.setTextColor(90); if(mls.length){ doc.text(mls,NX,ty); ty+=mls.length*3.3; } doc.setTextColor(0);
-        doc.setFont("helvetica","bold"); doc.setFontSize(7.5); if(sls.length){ doc.text(sls,NX,ty+0.4); }
-        var loc=String(l.stock_location||""); if(loc){ doc.setFont("courier","bold"); doc.setFontSize(8); var lw2=Math.min(30,doc.getTextWidth(loc)+3); doc.setFillColor(17,17,17); doc.roundedRect(CX[0]-2-lw2,y0+2.5,lw2,5,0.7,0.7,"F"); doc.setTextColor(255); doc.text(doc.splitTextToSize(loc,lw2-2)[0],CX[0]-2-lw2/2,y0+6,{align:"center"}); doc.setTextColor(0); }
-        if(l.sku){ doc.setFont("courier","bold"); doc.setFontSize(6.5); doc.setTextColor(100); doc.text(String(l.sku),CX[0]-2,y0+10.5,{align:"right"}); doc.setTextColor(0); }
+        if(sls.length){ doc.setFillColor(243,244,246); doc.rect(NX-1,ty-2.4,NW+2,sls.length*3.4+1.6,"F"); doc.setFont("helvetica","bold"); doc.setFontSize(7.5); doc.text(sls,NX,ty+0.4); }
+        if(loc){ doc.setFont("courier","bold"); doc.setFontSize(6.5); doc.setFillColor(17,17,17); doc.roundedRect(L+8,y0+16.5,17,4.2,0.6,0.6,"F"); doc.setTextColor(255); doc.text(doc.splitTextToSize(loc,16)[0],L+16.5,y0+19.5,{align:"center"}); doc.setTextColor(0); }
+        if(l.sku){ doc.setFont("courier","bold"); doc.setFontSize(6); doc.setTextColor(100); doc.text(String(l.sku),L+16.5,y0+(loc?24:19.5),{align:"center"}); doc.setTextColor(0); }
         doc.setDrawColor(200); doc.setLineWidth(0.25); doc.line(CX[0],y0,CX[0],y0+rowH+partsH); doc.line(CX[2],y0,CX[2],y0+rowH+partsH); doc.setDrawColor(0);
         if(single) countsAt(rows[0],y0+rowH/2);
         y=y0+rowH;
