@@ -3027,28 +3027,33 @@ var SNAP=null, DETAIL={};
         var hq=String(l.headerCustomer||l.qty||""), title=(/[a-z]/i.test(hq)?hq+" · ":hq+" x ")+main;
         var specs=[]; if(l.cut_down&&l.cut_down.to){ var cn=l.cut_down.count, fr=l.cut_down.from?" FROM "+l.cut_down.from:""; specs.push("CUT "+(cn?cn+" TOPS":"THIS TOP")+" DOWN"+fr+" TO "+l.cut_down.to); } var pw=pickWork(l).map(function(t){ return t.replace(/^TOPS NEED /,""); }); if(pw.length) specs=specs.concat(pw); if(l.spec_notes) specs.push(l.spec_notes); specs=specs.length?[specs.join(" · ")]:[];
         doc.setFont("helvetica","bold"); doc.setFontSize(10); var tls=doc.splitTextToSize(title,NW); doc.setFont("helvetica","normal"); doc.setFontSize(7.5); var mls=meta?doc.splitTextToSize(meta,NW):[]; doc.setFont("helvetica","bold"); var sls=[]; specs.forEach(function(t){ sls=sls.concat(doc.splitTextToSize(t,NW)); });
-        var textH=3+tls.length*4.2+mls.length*3.3+(sls.length?sls.length*3.4+2:0)+3, leftH=l.sku?26:(loc?22:17);
-        var rowH=single?Math.max(leftH,textH):textH, partsH=single?0:Math.max(rows.length*7.5+1.5,leftH-textH+1.5);
+        var locLines=loc?Math.min(2,doc.splitTextToSize(loc,16.5).length):0, locH=locLines?2.2+locLines*2.6:0;
+        var textH=3+tls.length*4.2+mls.length*3.3+(sls.length?sls.length*3.4+2:0)+3, leftH=17+(loc?locH+1:0)+(l.sku?3.5:0);
+        // a part row is its name and location, wrapped to the column, never clipped (Sam, 22 Oct 2026, the bench parts ran off the edge)
+        var partTxt=function(r){ var comp=comps.filter(function(cc){ return String(cc.name||"")===r.n; })[0]; var nm=String(r.n).split(/\s*\u00b7\s*|\s*\|\s*/)[0].replace(/\s*\(.*?\)\s*/g," ").trim(); return {comp:comp,text:nm+(comp&&comp.location?"  \u00b7 "+comp.location:""),thumb:!!(comp&&comp.photo)}; };
+        doc.setFont("helvetica","normal"); doc.setFontSize(8.5); var partLines=rows.map(function(r){ var pt=partTxt(r); return doc.splitTextToSize(pt.text,CX[0]-(NX+(pt.thumb?11:2))-3).slice(0,2); });
+        var partRowsH=partLines.reduce(function(t,ls){ return t+(ls.length>1?10.5:7.5); },0);
+        var rowH=single?Math.max(leftH,textH):textH, partsH=single?0:Math.max(partRowsH+1.5,leftH-textH+1.5);
         if(y+rowH+partsH>272) cont();
         var y0=y; doc.setDrawColor(17); doc.setLineWidth(0.5); doc.line(L,y0,L+W,y0); doc.setDrawColor(0);
         box(L+0.5,y0+3.5,5.5); if(!(l.product_photo&&img(l.product_photo,L+8,y0+2.5,16,13))) noPhoto(L+8,y0+2.5,16,13);
         doc.setFont("helvetica","bold"); doc.setFontSize(10); doc.text(tls,NX,y0+6.5); var ty=y0+6.5+(tls.length-1)*4.2+3.4;
         doc.setFont("helvetica","normal"); doc.setFontSize(7.5); doc.setTextColor(90); if(mls.length){ doc.text(mls,NX,ty); ty+=mls.length*3.3; } doc.setTextColor(0);
         if(sls.length){ doc.setFillColor(243,244,246); doc.rect(NX-1,ty-2.4,NW+2,sls.length*3.4+1.6,"F"); doc.setFont("helvetica","bold"); doc.setFontSize(7.5); doc.text(sls,NX,ty+0.4); }
-        if(loc){ doc.setFont("courier","bold"); doc.setFontSize(5.5); var tw=Math.min(24,doc.getTextWidth(loc)+2.4), tx0=L+16.5-tw/2; doc.setFillColor(17,17,17); doc.roundedRect(tx0,y0+16.5,tw,4.2,0.6,0.6,"F"); doc.setTextColor(255); doc.text(doc.splitTextToSize(loc,tw-1.6)[0],L+16.5,y0+19.4,{align:"center"}); doc.setTextColor(0); }
-        if(l.sku){ doc.setFont("courier","bold"); doc.setFontSize(6); doc.setTextColor(100); doc.text(String(l.sku),L+16.5,y0+(loc?24:19.5),{align:"center"}); doc.setTextColor(0); }
+        if(loc){ doc.setFont("courier","bold"); doc.setFontSize(5.5); var lls=doc.splitTextToSize(loc,16.5).slice(0,2), tw=Math.min(18.5,Math.max.apply(null,lls.map(function(t){ return doc.getTextWidth(t); }))+2.4), tx0=L+16.5-tw/2; doc.setFillColor(17,17,17); doc.roundedRect(tx0,y0+16.5,tw,locH,0.6,0.6,"F"); doc.setTextColor(255); lls.forEach(function(t,i){ doc.text(t,L+16.5,y0+19.2+i*2.6,{align:"center"}); }); doc.setTextColor(0); }
+        if(l.sku){ doc.setFont("courier","bold"); doc.setFontSize(6); doc.setTextColor(100); doc.text(String(l.sku),L+16.5,y0+(loc?17+locH+2.6:19.5),{align:"center"}); doc.setTextColor(0); }
         doc.setDrawColor(200); doc.setLineWidth(0.25); doc.line(CX[0],y0,CX[0],y0+rowH+partsH); doc.line(CX[2],y0,CX[2],y0+rowH+partsH); doc.setDrawColor(0);
         if(single) countsAt(rows[0],y0+rowH/2);
         y=y0+rowH;
-        if(!single){ rows.forEach(function(r){ doc.setDrawColor(225); doc.setLineWidth(0.2); doc.line(NX,y,L+W,y); doc.setDrawColor(0); var comp=comps.filter(function(cc){ return String(cc.name||"")===r.n; })[0]; var tx=NX+2;
-            if(comp&&comp.photo&&img(comp.photo,NX+1,y+0.8,8,6)) tx=NX+11;
-            doc.setFont("helvetica",r.f>=r.q&&r.q>0?"bold":"normal"); doc.setFontSize(8.5); doc.text(doc.splitTextToSize(r.n+(comp&&comp.location?"  · "+comp.location:""),CX[0]-tx-3)[0],tx,y+5);
-            countsAt(r,y+3.9); y+=7.5; }); y+=1.5; }
+        if(!single){ rows.forEach(function(r,ri){ var ls=partLines[ri], rh=ls.length>1?10.5:7.5; doc.setDrawColor(225); doc.setLineWidth(0.2); doc.line(NX,y,L+W,y); doc.setDrawColor(0); var pt=partTxt(r), tx=NX+2;
+            if(pt.thumb&&img(pt.comp.photo,NX+1,y+0.8,8,6)) tx=NX+11;
+            doc.setFont("helvetica",r.f>=r.q&&r.q>0?"bold":"normal"); doc.setFontSize(8.5); doc.text(ls,tx,y+5);
+            countsAt(r,y+rh/2+0.2); y+=rh; }); y+=1.5; }
       });
       doc.setDrawColor(17); doc.setLineWidth(0.5); doc.line(L,y,L+W,y); doc.setDrawColor(0);
       // when you finish: one strip
       if(y+17>278) cont(); y+=3; doc.setFillColor(17,17,17); doc.roundedRect(L,y,W,14,1.5,1.5,"F"); doc.setTextColor(255); doc.setFont("helvetica","bold"); doc.setFontSize(9); doc.text("WHEN YOU FINISH",L+4,y+9);
-      var sx=L+40, sw=(W-44-3)/2; [["Step 2","Tick off the checklist on the Trello card"],["Step 3","Move the job into Ready for Delivery / Collection"]].forEach(function(st,i){ var x=sx+i*(sw+3); doc.setFillColor(255,255,255); doc.roundedRect(x,y+2,sw,11,1,1,"F"); box(x+2,y+5.5,4); doc.setTextColor(110); doc.setFontSize(6.5); doc.text(st[0].toUpperCase(),x+8,y+5.4,{charSpace:0.2}); doc.setTextColor(17); doc.setFontSize(7.5); doc.text(doc.splitTextToSize(st[1],sw-10).slice(0,2),x+8,y+8.6); });
+      var sx=L+40, sw=(W-44-3)/2; [["Step 2","Tick off the checklist on the Trello card"],["Step 3","Move the job into Ready for Delivery / Collection"]].forEach(function(st,i){ var x=sx+i*(sw+3); doc.setFillColor(255,255,255); doc.roundedRect(x,y+2,sw,11,1,1,"F"); box(x+2,y+6,4); doc.setTextColor(110); doc.setFontSize(6.5); doc.text(st[0].toUpperCase(),x+8,y+5.4,{charSpace:0.2}); doc.setTextColor(17); doc.setFontSize(7.5); doc.text(doc.splitTextToSize(st[1],sw-10).slice(0,2),x+8,y+8.6); });
       doc.setTextColor(0); y+=19; setFoot(""); };
     kit.facility=function(j,crewTxt,timeTxt,k0){ var nm=j.title.split(" - ").slice(1).join(" - ")||j.title, crewL=crewTxt.split(" + "), dd=DETAIL[j.id]||{desc:"",checks:[]};
       var where="", tasks=[];
