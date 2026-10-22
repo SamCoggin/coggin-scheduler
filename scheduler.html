@@ -3177,7 +3177,7 @@ var SNAP=null, DETAIL={};
       r.doc.save("job-sheets-"+k+".pdf");
       if(btn){ btn.textContent="Putting the sheets on the cards..."; } await attachDayProductionSheets(k);
     } catch(e){ if(/did not load/.test(String(e&&e.message))) alert(e.message); else throw e; }
-    } finally { if(btn){ btn.disabled=false; btn.textContent=was||"Download job sheets"; } }
+    finally { if(btn){ btn.disabled=false; btn.textContent=was||"Download job sheets"; } }
   }
   // THE JOB SHEET FROM THE EDITOR (Sam, 14 Oct 2026). The same build as the day's job sheets, kept to this job's rows.
   async function jobSheetDownload(j,o,btn){
@@ -3191,7 +3191,7 @@ var SNAP=null, DETAIL={};
       r.doc.save("job-sheet-"+nm+"-"+k+".pdf");
       if(o&&o.shop) attachProductionSheet(j,r.doc,k);
     } catch(e){ if(/did not load/.test(String(e&&e.message))) alert(e.message); else throw e; }
-    } finally { if(btn){ btn.disabled=false; btn.textContent=was||"Job sheet"; } }
+    finally { if(btn){ btn.disabled=false; btn.textContent=was||"Job sheet"; } }
   }
   // THE PRODUCTION SHEET ON THE CARD (Sam, 22 Oct 2026: "make it so the production sheet replaces the picking sheet as they
   // will naturally still go here"). The page just built goes to the card as "Production sheet <ref>", replacing the older
