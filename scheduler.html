@@ -2716,7 +2716,7 @@ var SNAP=null, DETAIL={};
         // back either when they have completed a job or at the end of the day").
         var totalP=doc.getNumberOfPages(), jobN=totalP-dsPages; foots.forEach(function(f){ doc.setPage(f.page);
           doc.setFillColor(17,17,17); doc.roundedRect(15,279.5,180,7,1.2,1.2,"F"); doc.setTextColor(255); doc.setFont("helvetica","bold"); doc.setFontSize(8.5); doc.text("HAND THIS SHEET BACK to the operations manager when the job is done, or at the end of the day.",105,284.2,{align:"center"});
-          doc.setFont("helvetica","normal"); doc.setFontSize(8); doc.setTextColor(100); if(f.text) doc.text(f.text,15,291.5); doc.text("Page "+(f.page-dsPages)+" of "+jobN,195,291.5,{align:"right"}); doc.setTextColor(0); });
+          doc.setFont("helvetica","normal"); doc.setFontSize(8); doc.setTextColor(100); if(f.text) doc.text(f.text,15,291.5); doc.setFontSize(6); doc.text("Scheduler version "+SCHED_VERSION,105,291.5,{align:"center"}); doc.setFontSize(8); doc.text("Page "+(f.page-dsPages)+" of "+jobN,195,291.5,{align:"right"}); doc.setTextColor(0); });
         if(jobN>0){ for(var dp=0;dp<dsPages;dp++) doc.deletePage(1); jobOnly=true; }
       }
       return {doc:doc,fits:fitsDs,dsPages:dsPages,order:order,starts:starts,jobOnly:jobOnly};
@@ -3201,6 +3201,7 @@ var SNAP=null, DETAIL={};
       doc.setTextColor(0); y+=ph+4; setFoot("Any issues, contact the operations manager."); };
     return kit; }
   async function daySheetDownload(k){
+    if(await outdated()){ alert("The Scheduler has been updated. It will reload now. Press Download job sheets again after."); location.reload(); return; }
     var btn=$("#sheets"), was=btn?btn.textContent:""; if(btn){ btn.disabled=true; btn.textContent="Building the job sheets..."; }
     try{
       var r=await daySheetBuild(k,null);
@@ -3212,6 +3213,7 @@ var SNAP=null, DETAIL={};
   }
   // THE JOB SHEET FROM THE EDITOR (Sam, 14 Oct 2026). The same build as the day's job sheets, kept to this job's rows.
   async function jobSheetDownload(j,o,btn){
+    if(await outdated()){ alert("The Scheduler has been updated. It will reload now. Press Job sheet again after."); location.reload(); return; }
     var k=o&&o.shop?(j.prep&&j.prep.date)||j.date:j.date; if(!k){ alert("This job has no date yet, so there is no day to print it on."); return; }
     var keys=o&&o.shop?["p"+j.id]:["j"+j.id];
     var was=btn?btn.textContent:""; if(btn){ btn.disabled=true; btn.textContent="Building..."; }
@@ -3617,7 +3619,13 @@ var SNAP=null, DETAIL={};
   var AUTO=true;
   var REFRESHING=false, POLL_EVERY=10000, CRM_EVERY_TICKS=6, TICK=0;
   var PENDING_SNAP=null, FOREIGN=null, SEEN_FOREIGN={};   // a change to the job on screen, waiting for the person to choose
-  function stampUpd(txt,hold){ var u=$("#upd"); if(u) u.textContent=txt; var lv=$("#live"); if(lv) lv.className="live"+(hold?" hold":""); }
+  var SCHED_VERSION="22 Oct 15:40";   /* bumped on every push: shows which version is running and which built a sheet (Sam, 22 Oct 2026, "still not live?!") */
+  /* A NEWER SCHEDULER RELOADS ITSELF (Sam, 22 Oct 2026, a sheet built from a window opened before the push). Checked every two
+     minutes and before any sheet is built; a reload waits while an editor is open. */
+  function liveVersion(){ return fetch("./scheduler.html?vc="+Date.now(),{cache:"no-store"}).then(function(r){ return r.ok?r.text():""; }).then(function(t){ var m=/var SCHED_VERSION="22 Oct 15:40"]+)"/.exec(t||""); return m?m[1]:""; }).catch(function(){ return ""; }); }
+  async function outdated(){ if(typeof fetch!=="function"||typeof location==="undefined"||EMBED) return false; var v=await liveVersion(); return !!v&&v!==SCHED_VERSION; }
+  if(typeof setInterval==="function"&&typeof location!=="undefined") setInterval(function(){ outdated().then(function(o){ if(o&&!editorOpen()) location.reload(); }); },120000);
+  function stampUpd(txt,hold){ var u=$("#upd"); if(u) u.textContent=txt+" \u00b7 version "+SCHED_VERSION; var lv=$("#live"); if(lv) lv.className="live"+(hold?" hold":""); }
   function setRefreshTxt(txt){ var r=$("#refreshTxt"); if(r) r.textContent=txt; }
   function hhmm(d){ d=d||new Date(); return pad(d.getHours())+":"+pad(d.getMinutes()); }
   function editorOpen(){ return !!(open||openRound||openOp||ACT_OPEN||TIMINGS_OPEN); }
