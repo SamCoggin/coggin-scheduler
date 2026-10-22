@@ -3034,7 +3034,7 @@ var SNAP=null, DETAIL={};
         doc.setFont("helvetica","bold"); doc.setFontSize(10); doc.text(tls,NX,y0+6.5); var ty=y0+6.5+(tls.length-1)*4.2+3.4;
         doc.setFont("helvetica","normal"); doc.setFontSize(7.5); doc.setTextColor(90); if(mls.length){ doc.text(mls,NX,ty); ty+=mls.length*3.3; } doc.setTextColor(0);
         if(sls.length){ doc.setFillColor(243,244,246); doc.rect(NX-1,ty-2.4,NW+2,sls.length*3.4+1.6,"F"); doc.setFont("helvetica","bold"); doc.setFontSize(7.5); doc.text(sls,NX,ty+0.4); }
-        if(loc){ doc.setFont("courier","bold"); doc.setFontSize(6.5); doc.setFillColor(17,17,17); doc.roundedRect(L+8,y0+16.5,17,4.2,0.6,0.6,"F"); doc.setTextColor(255); doc.text(doc.splitTextToSize(loc,16)[0],L+16.5,y0+19.5,{align:"center"}); doc.setTextColor(0); }
+        if(loc){ doc.setFont("courier","bold"); doc.setFontSize(5.5); var tw=Math.min(24,doc.getTextWidth(loc)+2.4), tx0=L+16.5-tw/2; doc.setFillColor(17,17,17); doc.roundedRect(tx0,y0+16.5,tw,4.2,0.6,0.6,"F"); doc.setTextColor(255); doc.text(doc.splitTextToSize(loc,tw-1.6)[0],L+16.5,y0+19.4,{align:"center"}); doc.setTextColor(0); }
         if(l.sku){ doc.setFont("courier","bold"); doc.setFontSize(6); doc.setTextColor(100); doc.text(String(l.sku),L+16.5,y0+(loc?24:19.5),{align:"center"}); doc.setTextColor(0); }
         doc.setDrawColor(200); doc.setLineWidth(0.25); doc.line(CX[0],y0,CX[0],y0+rowH+partsH); doc.line(CX[2],y0,CX[2],y0+rowH+partsH); doc.setDrawColor(0);
         if(single) countsAt(rows[0],y0+rowH/2);
@@ -3046,7 +3046,7 @@ var SNAP=null, DETAIL={};
       });
       doc.setDrawColor(17); doc.setLineWidth(0.5); doc.line(L,y,L+W,y); doc.setDrawColor(0);
       // when you finish: one strip
-      if(y+22>272) cont(); y+=4; doc.setFillColor(17,17,17); doc.roundedRect(L,y,W,15,1.5,1.5,"F"); doc.setTextColor(255); doc.setFont("helvetica","bold"); doc.setFontSize(9); doc.text("WHEN YOU FINISH",L+4,y+9);
+      if(y+17>278) cont(); y+=3; doc.setFillColor(17,17,17); doc.roundedRect(L,y,W,14,1.5,1.5,"F"); doc.setTextColor(255); doc.setFont("helvetica","bold"); doc.setFontSize(9); doc.text("WHEN YOU FINISH",L+4,y+9);
       var sx=L+40, sw=(W-44-3)/2; [["Step 2","Tick off the checklist on the Trello card"],["Step 3","Move the job into Ready for Delivery / Collection"]].forEach(function(st,i){ var x=sx+i*(sw+3); doc.setFillColor(255,255,255); doc.roundedRect(x,y+2,sw,11,1,1,"F"); box(x+2,y+5.5,4); doc.setTextColor(110); doc.setFontSize(6.5); doc.text(st[0].toUpperCase(),x+8,y+5.4,{charSpace:0.2}); doc.setTextColor(17); doc.setFontSize(7.5); doc.text(doc.splitTextToSize(st[1],sw-10).slice(0,2),x+8,y+8.6); });
       doc.setTextColor(0); y+=19; setFoot(""); };
     kit.facility=function(j,crewTxt,timeTxt,k0){ var nm=j.title.split(" - ").slice(1).join(" - ")||j.title, crewL=crewTxt.split(" + "), dd=DETAIL[j.id]||{desc:"",checks:[]};
