@@ -3047,7 +3047,7 @@ var SNAP=null, DETAIL={};
         var specs=[]; if(l.cut_down&&l.cut_down.to){ var cn=l.cut_down.count, fr=l.cut_down.from?" FROM "+l.cut_down.from:""; specs.push("CUT "+(cn?cn+" TOPS":"THIS TOP")+" DOWN"+fr+" TO "+l.cut_down.to); } var pw=pickWork(l).map(function(t){ return t.replace(/^TOPS NEED /,""); }); if(pw.length) specs=specs.concat(pw); if(l.spec_notes) specs.push(l.spec_notes); specs=specs.length?[specs.join(" · ")]:[];
         doc.setFont("helvetica","bold"); doc.setFontSize(10); var tls=doc.splitTextToSize(title,NW); doc.setFont("helvetica","normal"); doc.setFontSize(7.5); var mls=meta?doc.splitTextToSize(meta,NW):[]; doc.setFont("helvetica","bold"); var sls=[]; specs.forEach(function(t){ sls=sls.concat(doc.splitTextToSize(t,NW)); });
         doc.setFont("courier","bold"); doc.setFontSize(5.5); var locLines=loc?Math.min(2,doc.splitTextToSize(loc,16.5).length):0, locH=locLines?2.2+locLines*2.6:0;   // measured in the tag's own font, or a one-line tag was drawn two lines tall
-        var textH=3+tls.length*4.2+mls.length*3.3+(sls.length?sls.length*3.4+2:0)+3, leftH=17+(loc?locH+1:0)+(l.sku?3.5:0);
+        var textH=3+tls.length*4.2+mls.length*3.3+(sls.length?sls.length*3.4+2:0)+((Number(l.bench_bank_size)||0)>0&&!l.photo_is_build?17:0)+3, leftH=17+(loc?locH+1:0)+(l.sku?3.5:0);
         // a part row is its name and location, wrapped to the column, never clipped (Sam, 22 Oct 2026, the bench parts ran off the edge)
         var partTxt=function(r){ var comp=comps.filter(function(cc){ return String(cc.name||"")===r.n; })[0]; var photo=r.photo||(comp&&comp.photo)||"", loc0=r.loc||(comp&&comp.location)||"", sku0=r.sku||(comp&&comp.sku)||""; var nm=String(r.n).replace(/\s*\(.*?\)\s*/g," ").trim(); return {comp:{photo:photo},text:nm+(sku0?"  "+sku0:"")+(loc0?"  \u00b7 "+loc0:""),thumb:!!photo}; };
         doc.setFont("helvetica","normal"); doc.setFontSize(8.5); var partLines=rows.map(function(r){ var pt=partTxt(r); return doc.splitTextToSize(pt.text,CX[0]-(NX+(pt.thumb?14:2))-3).slice(0,2); });
@@ -3059,13 +3059,19 @@ var SNAP=null, DETAIL={};
         // THE BENCH, DRAWN (Sam, 22 Oct 2026: "showing the single cantilever desk is misleading"): a bank of tops in its rows,
         // from the recipe, unless sales attached a build photo of the real thing.
         var bank=Number(l.bench_bank_size)||0;
-        if(bank>0&&!l.photo_is_build){ var brow=bank>2&&bank%2===0?2:1, per=Math.ceil(bank/brow), px=L+8, py=y0+2.5, pw=16, ph=13, tw=(pw-1.2)/per, th=(ph-1.2)/brow; doc.setDrawColor(17); doc.setLineWidth(0.3); doc.setFillColor(255,255,255);
-          for(var r0=0;r0<brow;r0++) for(var c0=0;c0<per;c0++) doc.rect(px+0.6+c0*tw,py+0.6+r0*th,tw,th,"FD");
-          doc.setFillColor(17,17,17); [[px+0.6,py+ph/2],[px+pw-0.6,py+ph/2]].forEach(function(pt){ doc.circle(pt[0],pt[1],0.6,"F"); }); for(var c1=1;c1<per;c1++) doc.circle(px+0.6+c1*tw,py+ph/2,0.6,"F"); doc.setDrawColor(0); }
+        // TO SCALE (Sam, 22 Oct 2026, mock approved: "the desks are 1200 wide and 800 depth side by side and the same on the
+        // opposite side"): the tops at their real proportions, back to back, the beam down the middle, a dot per leg.
+        var benchPlan=function(px,py,boxW,boxH,label){ var brow=bank>2&&bank%2===0?2:1, per=Math.ceil(bank/brow), dm=/W?(\d{3,4})\s*[x\u00D7]\s*D?(\d{3,4})/i.exec(String(l.attr_dims||l.name||"")), tw0=dm?+dm[1]:1200, td0=dm?+dm[2]:800;
+          var sc=Math.min(boxW/(per*tw0),(boxH-(label?4:0))/(brow*td0)), pw=per*tw0*sc, ph=brow*td0*sc, x0=px+(boxW-pw)/2, y1=py+(boxH-(label?4:0)-ph)/2;
+          doc.setDrawColor(17); doc.setLineWidth(0.3); doc.setFillColor(255,255,255); for(var r0=0;r0<brow;r0++) for(var c0=0;c0<per;c0++) doc.rect(x0+c0*tw0*sc,y1+r0*td0*sc,tw0*sc,td0*sc,"FD");
+          var ym=brow===2?y1+td0*sc:y1+td0*sc/2; if(brow===2){ doc.setLineWidth(0.7); doc.line(x0,ym,x0+pw,ym); } doc.setFillColor(17,17,17); var rr=Math.max(0.35,Math.min(0.9,pw/60)); for(var c1=0;c1<=per;c1++) doc.circle(x0+c1*tw0*sc,ym,rr,"F"); doc.setDrawColor(0);
+          if(label){ doc.setFont("helvetica","normal"); doc.setFontSize(6.5); doc.setTextColor(90); doc.text(per+" x "+tw0+" wide \u00b7 "+brow+(brow===1?" row of ":" rows of ")+td0+" deep \u00b7 "+(per*tw0)+" x "+(brow*td0)+" overall \u00b7 beam down the middle, a dot per leg",px+boxW/2,py+boxH-0.5,{align:"center"}); doc.setTextColor(0); } };
+        if(bank>0&&!l.photo_is_build) benchPlan(L+8,y0+2.5,16,13,false);
         else if(!(l.product_photo&&img(l.product_photo,L+8,y0+2.5,16,13))) noPhoto(L+8,y0+2.5,16,13);
         doc.setFont("helvetica","bold"); doc.setFontSize(10); doc.text(tls,NX,y0+6.5); var ty=y0+6.5+(tls.length-1)*4.2+3.4;
         doc.setFont("helvetica","normal"); doc.setFontSize(7.5); doc.setTextColor(90); if(mls.length){ doc.text(mls,NX,ty); ty+=mls.length*3.3; } doc.setTextColor(0);
-        if(sls.length){ doc.setFillColor(243,244,246); doc.rect(NX-1,ty-2.4,NW+2,sls.length*3.4+1.6,"F"); doc.setFont("helvetica","bold"); doc.setFontSize(7.5); doc.text(sls,NX,ty+0.4); }
+        if(sls.length){ doc.setFillColor(243,244,246); doc.rect(NX-1,ty-2.4,NW+2,sls.length*3.4+1.6,"F"); doc.setFont("helvetica","bold"); doc.setFontSize(7.5); doc.text(sls,NX,ty+0.4); ty+=sls.length*3.4+2; }
+        if(bank>0&&!l.photo_is_build) benchPlan(NX,ty,NW,16,true);
         if(loc){ doc.setFont("courier","bold"); doc.setFontSize(5.5); var lls=doc.splitTextToSize(loc,16.5).slice(0,2), tw=Math.min(18.5,Math.max.apply(null,lls.map(function(t){ return doc.getTextWidth(t); }))+2.4), tx0=L+16.5-tw/2; doc.setFillColor(17,17,17); doc.roundedRect(tx0,y0+16.5,tw,locH,0.6,0.6,"F"); doc.setTextColor(255); lls.forEach(function(t,i){ doc.text(t,L+16.5,y0+19.2+i*2.6,{align:"center"}); }); doc.setTextColor(0); }
         if(l.sku){ doc.setFont("courier","bold"); doc.setFontSize(6); doc.setTextColor(100); doc.text(String(l.sku),L+16.5,y0+(loc?17+locH+2.6:19.5),{align:"center"}); doc.setTextColor(0); }
         doc.setDrawColor(200); doc.setLineWidth(0.25); doc.line(CX[0],y0,CX[0],y0+rowH+partsH); doc.line(CX[2],y0,CX[2],y0+rowH+partsH); doc.setDrawColor(0);
