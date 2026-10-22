@@ -16,7 +16,7 @@
   .sec.transport .sec-h{background:var(--green)}
   .sec.production .sec-h{background:var(--blue)}
   .sec.labour .sec-h{background:#44546f}
-  .sec.loading .sec-h{background:#974f0c}
+  .sec.loading .sec-h{background:#974f0c}.sec.leave .sec-h{background:#974f0c}
   .sec.loading .who{background:var(--amber-bg)}
   .who{padding:12px 14px;font-size:16px;font-weight:800;border-bottom:1px solid var(--line);background:var(--green-bg)}
   .sec.production .who{background:var(--blue-bg)}
@@ -114,14 +114,20 @@
   var t=TrelloPowerUp.iframe();
   var el=function(tag,c,x){var n=document.createElement(tag);if(c)n.className=c;if(x!=null)n.textContent=x;return n;};
   var PARTS=null, CRM_FIRMS=[], CARRIER_PENDING=false;
-  var card=null, d=null, viewing=false, workshop=false, site=false, loading=false, saving=null, defaultDue=null, boardData={}, OTHERS=[], LEAVE=[], AWAY=[], OTHERS_OK=null, MISSED=0;
+  var card=null, d=null, viewing=false, workshop=false, site=false, loading=false, saving=null, defaultDue=null, boardData={}, OTHERS=[], LEAVE=[], AWAY=[], leaveCard=false, OTHERS_OK=null, MISSED=0;
   // the other cards on the board, with their plans, so this card can say who is free
   function loadOthers(){
     var cardsP=t.cards("id","name","due","start","idList","labels","desc","checklists").catch(function(){ return t.cards("id","name","due","start","idList","labels","desc"); });
     return Promise.all([cardsP, t.lists("all")]).then(function(r){
       var listName={}; r[1].forEach(function(l){ listName[l.id]=l.name; });
       var dated=r[0].filter(function(x){ return x.due && x.id!==card.id; }); var nameOf={}; r[0].forEach(function(x){ nameOf[x.id]=(x.name||"").split(" - ").slice(0,2).join(" - "); });
-      LEAVE=[]; AWAY=[]; dated.filter(function(x){ return /Holidays|Leave/i.test(listName[x.idList]||""); }).forEach(function(x){ var who=crewOf(x.name.split(/\s*\(/)[0].trim()), win=leaveWindow(x.name); leaveDays((x.start||"").slice(0,10),x.due.slice(0,10)).forEach(function(k){ if(win) AWAY.push({date:k,who:who,from:win.from,to:win.to,mins:win.mins}); else LEAVE.push({date:k,who:who}); }); });
+      var leaveCards=dated.filter(function(x){ return /Holidays|Leave/i.test(listName[x.idList]||""); });
+      var buildLeave=function(plans){ LEAVE=[]; AWAY=[]; leaveCards.forEach(function(x,i){ var who=crewOf(x.name.split(/\s*\(/)[0].trim()), pl=plans&&plans[i], win=(pl&&pl.leave&&pl.leave.from&&pl.leave.to)?leaveWindow("("+pl.leave.from+"-"+pl.leave.to+")"):leaveWindow(x.name); if(x.id===card.id&&d&&d.leave&&d.leave.from&&d.leave.to) win=leaveWindow("("+d.leave.from+"-"+d.leave.to+")");
+        leaveDays((x.start||"").slice(0,10),x.due.slice(0,10)).forEach(function(k){ if(win) AWAY.push({date:k,who:who,from:win.from,to:win.to,mins:win.mins}); else LEAVE.push({date:k,who:who}); }); }); };
+      buildLeave(null);
+      // THE WINDOW SAVED ON THE CARD (Sam, 22 Oct 2026: "Why can't we just have it on the scheduling section"): each leave
+      // card's own plan may carry leave:{from,to}; it beats anything typed in the title.
+      var leaveP=Promise.all(leaveCards.map(function(x){ return t.get(x.id,"shared","sched",null).catch(function(){ return null; }); })).then(buildLeave);
       // ONLY JOBS THAT CAN STILL TOUCH A DAY AHEAD (1 Oct 2026): every completed card on the board was read one by one,
       // and the panel drew "7h 45m available" for everyone while that was still going or after it failed.
       var cut=new Date(); cut.setDate(cut.getDate()-60); var cutK=cut.toISOString().slice(0,10);
@@ -132,7 +138,7 @@
         var L=loadOf(itemsOf(x.desc||"",cc).concat((p&&p.items)||[])); if(!L.any&&p&&p.load) L=p.load;
         var cube=p&&p.cube!=null?p.cube:(L.complete?L.m3:null);
         return {id:x.id,done:/complet|sign-?off/i.test(listName[x.idList]||""),name:nameOf[x.id],due:x.due.slice(0,10),start:x.start?x.start.slice(0,10):null,site:isSiteLabels(x.labels,x.desc),plan:p||{who:[]},cube:cube,kg:L.complete?L.kg:0,why:cube!=null?"":(L.unmatched&&L.unmatched.length?"items not matched":"no items on the card")}; }); }));
-    }).then(function(list){ OTHERS=list; OTHERS_OK=true; }).catch(function(){ OTHERS=[]; OTHERS_OK=false; });
+    }).then(function(list){ OTHERS=list; OTHERS_OK=true; return leaveP; }).catch(function(){ OTHERS=[]; OTHERS_OK=false; });
   }
   function todayIso(){ var t=new Date(); t.setHours(12,0,0,0); return t.toISOString().slice(0,10); }
   function nextWorkDay(k){ var x=new Date(k+"T12:00"); while(x.getDay()===0||x.getDay()===6) x.setDate(x.getDate()+1); return x.toISOString().slice(0,10); }
@@ -197,7 +203,7 @@
   function load(){
     return Promise.all([t.card("id","name","labels","idList","due","start","desc"), t.lists("all"), t.get("card","shared","sched",null).then(normPlan), t.get("board","shared","sched",{})]).then(function(r){
       boardData=r[3]||{}; (boardData.contractors||[]).forEach(function(c){ if(CONTRACTORS.indexOf(c)<0) CONTRACTORS.splice(CONTRACTORS.length-1,0,c); });
-      card=r[0]; var list=r[1].filter(function(l){return l.id===card.idList;})[0]; workshop=!!(list&&isWorkshopList(list.name,card.desc)); card.listName=list?list.name:"";
+      card=r[0]; var list=r[1].filter(function(l){return l.id===card.idList;})[0]; workshop=!!(list&&isWorkshopList(list.name,card.desc)); card.listName=list?list.name:""; leaveCard=/Holidays|Leave/i.test(card.listName);
       viewing=isViewingLabels(card.labels); site=!viewing&&isSiteLabels(card.labels,card.desc); loading=!viewing&&!site&&isCollectLabels(card.labels,card.desc);
       defaultDue=productionDueFor(card.labels,(card.due||"").slice(0,10));
       d=r[2]||{who:[],mins:null,drive:null,contractor:"",prep:null,legs:[]}; if(!d.who) d.who=[]; if(!d.legs) d.legs=[];
@@ -276,7 +282,7 @@
   // WHO SAVED IT, FROM THE CARD TOO (Sam, 21 Oct 2026: "why is this popping up on my view?"). The card back never stamped
   // its saves, so the Scheduler put the last Scheduler stamp on a change made here and named Sam to himself.
   var ME_NAME=""; try{ t.member("fullName").then(function(m){ ME_NAME=(m&&m.fullName)||""; }).catch(function(){}); }catch(e){}
-  function save(){ clearTimeout(saving); saving=setTimeout(function(){ d.savedBy=ME_NAME||undefined; d.savedAt=new Date().toISOString(); t.set("card","shared","sched",d); if(card&&card.id) syncCardMembers(card.id,d,boardData.crmKey||"",workshop); },250); }
+  function save(){ clearTimeout(saving); saving=setTimeout(function(){ d.savedBy=ME_NAME||undefined; d.savedAt=new Date().toISOString(); t.set("card","shared","sched",d); if(card&&card.id&&!leaveCard) syncCardMembers(card.id,d,boardData.crmKey||"",workshop); },250); }
   function hm(get,set,label){
     var w=el("span","row"); var v=get();
     var h=el("input"); h.type="number"; h.min="0"; h.value=v==null?"":String(Math.floor(v/60)); h.placeholder="0"; h.setAttribute("aria-label",label+" hours");
@@ -343,8 +349,23 @@
   function timedAsLines(){ var m=/Timed as:\s*([^\n]+)/i.exec(String(card.desc||"").replace(/\*\*/g,"")); if(!m) return [];
     return m[1].split(",").map(function(x){ return x.trim(); }).filter(function(x){ return /^\d+\s*x\s*/i.test(x); }); }
   function loadNow(){ var ign=d.ignore||[]; var all=itemsOf(card.desc,checksOf()), auto=all.filter(function(l){return ign.indexOf(l)<0;}), manual=d.items||[]; var L; var src="card"; if(!all.length&&d.load&&d.load.rows&&!manual.length){ L=d.load; src="scheduler"; } else { L=loadOf(auto.concat(manual)); if(!L.complete&&!manual.length){ var ta=timedAsLines(); if(ta.length){ var L2=loadOf(ta); if(L2.complete){ L=L2; src="crm"; } } } } L.src=src; L.fromCrm=(src==="crm"); L.manualN=src==="card"?manual.length:0; L.ignored=all.filter(function(l){return ign.indexOf(l)>=0;}); L.autoLines=auto; return L; }
+  // A LEAVE CARD IS NOT A JOB (Sam, 22 Oct 2026: "it should not be goods in and out for these cards", and the hours
+  // belong here, not in a title format to remember). All day, or part of the day with the hours away, saved on the card.
+  function renderLeave(app){ var who=card.name.replace(/\s*\(.*$/,"").split(/\s+-\s+/)[0].trim(), due=(card.due||"").slice(0,10), startK=card.start?String(card.start).slice(0,10):"";
+    var sec=section("leave","Leave",due?((startK&&startK<due)?niceShort(startK)+" to "+niceShort(due):niceShort(due)):"No date");
+    var lv=d.leave&&d.leave.from&&d.leave.to?d.leave:null, win=lv?leaveWindow("("+lv.from+"-"+lv.to+")"):null;
+    sec.appendChild(rowEl("lvwho","Who",who||"Not named",null));
+    sec.appendChild(rowEl("lvhrs","Hours",win?"Away "+win.from+" to "+win.to+", on site before and after":"All day off",function(ed){
+      var seg=el("div","seg"); var allB=el("button",lv?"":"on","All day"), partB=el("button",lv?"on":"","Part of the day");
+      allB.onclick=function(){ delete d.leave; save(); render(); }; partB.onclick=function(){ if(!d.leave) d.leave={from:"11:00",to:"14:00"}; OPEN.lvhrs=true; save(); render(); }; seg.appendChild(allB); seg.appendChild(partB); ed.appendChild(seg);
+      if(d.leave){ var r=el("div","row"); r.appendChild(el("span",null,"Away from")); var f1=el("input"); f1.type="time"; f1.value=d.leave.from||""; f1.setAttribute("aria-label","Away from"); var f2=el("input"); f2.type="time"; f2.value=d.leave.to||""; f2.setAttribute("aria-label","Back at");
+        var upd=function(){ if(f1.value&&f2.value&&f2.value>f1.value){ d.leave={from:f1.value,to:f2.value}; save(); render(); } }; f1.onchange=upd; f2.onchange=upd; r.appendChild(f1); r.appendChild(el("span",null,"back at")); r.appendChild(f2); ed.appendChild(r);
+        ed.appendChild(el("div","hint",win?fmt(win.mins)+" away. The rest of the day counts as on site.":"Pick the time away and the time back.")); }
+    }));
+    app.appendChild(sec); }
   function render(){
     var app=document.getElementById("app"); app.innerHTML="";
+    if(leaveCard&&card&&d){ renderLeave(app); return; }
     // OPEN THIS JOB IN THE SCHEDULER (Sam, 19 Oct 2026: "I want to be able to open the scheduler editor from this view").
     // The full editor, on this job's day, with this job open. Same modal the round link uses.
     if(card&&card.id){ var ob0=el("div","open-sched"); var ob1=el("button","p","Open in the Scheduler"); ob1.title="The full Scheduler, on this job's day, with this job open";

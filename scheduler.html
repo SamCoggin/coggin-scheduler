@@ -683,7 +683,7 @@ var SNAP=null, DETAIL={};
     var dd=DETAIL[c.id]; j.allItems=itemsOf(dd?dd.desc:c.desc,dd?dd.checks:c.checks); j.loanItems=loanItemsOf(dd?dd.desc:c.desc); j.ignore=[]; j.items=j.allItems.slice(); j.manual=[]; j.load=loadOf(j.items.concat(j.loanItems)); j.cubeSet=null;
     return j; });
   // a card with a start date is on the board every working day from start to due
-    LEAVE=[]; AWAY=[]; SNAP.cards.filter(function(c){return c.role==="leave"&&c.due;}).forEach(function(c){ var win=leaveWindow(c.name); var text=c.name.replace(/\s*\(.*$/,"").replace(/BANK HOLIDAY\s*-\s*/i,"")+(/BANK HOLIDAY/i.test(c.name)?" (bank holiday)":" on leave"); leaveDays(c.start,c.due).forEach(function(k){ if(win) AWAY.push({date:k,who:crewOf(c.name.split(" ")[0]),from:win.from,to:win.to,mins:win.mins}); else LEAVE.push({date:k,text:text}); }); });
+    LEAVE=[]; AWAY=[]; SNAP.cards.filter(function(c){return c.role==="leave"&&c.due;}).forEach(function(c){ var win=(c.saved&&c.saved.leave&&c.saved.leave.from&&c.saved.leave.to)?leaveWindow("("+c.saved.leave.from+"-"+c.saved.leave.to+")"):leaveWindow(c.name); var text=c.name.replace(/\s*\(.*$/,"").replace(/BANK HOLIDAY\s*-\s*/i,"")+(/BANK HOLIDAY/i.test(c.name)?" (bank holiday)":" on leave"); leaveDays(c.start,c.due).forEach(function(k){ if(win) AWAY.push({date:k,who:crewOf(c.name.split(" ")[0]),from:win.from,to:win.to,mins:win.mins}); else LEAVE.push({date:k,text:text}); }); });
     // what was saved on the cards last time
     // who is coming to Forton, and the CRM's "Arriving:" time when nothing is set yet (2 Oct 2026)
     JOBS.forEach(function(j){ var dd=DETAIL[j.id]; j.arrive=arrivalKind(j.labels,j.title,dd?dd.desc:""); });
