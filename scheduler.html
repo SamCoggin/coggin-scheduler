@@ -3075,9 +3075,10 @@ var SNAP=null, DETAIL={};
       });
       doc.setDrawColor(17); doc.setLineWidth(0.5); doc.line(L,y,L+W,y); doc.setDrawColor(0);
       // when you finish: one strip
-      if(y+17>278) cont(); y+=3; doc.setFillColor(17,17,17); doc.roundedRect(L,y,W,14,1.5,1.5,"F"); doc.setTextColor(255); doc.setFont("helvetica","bold"); doc.setFontSize(9); doc.text("WHEN YOU FINISH",L+4,y+8.6);
-      var sx=L+40, sw=(W-44-3)/2; [["Step 2","Tick off the checklist on the Trello card"],["Step 3","Move the job into Ready for Delivery / Collection"]].forEach(function(st,i){ var x=sx+i*(sw+3); doc.setFillColor(255,255,255); doc.roundedRect(x,y+2,sw,10,1,1,"F"); box(x+2,y+5.5,4); doc.setTextColor(110); doc.setFontSize(6.5); doc.text(st[0].toUpperCase(),x+8,y+5,{charSpace:0.2}); doc.setTextColor(17); doc.setFontSize(7.5); doc.text(doc.splitTextToSize(st[1],sw-10).slice(0,2),x+8,y+8.2); });
-      doc.setTextColor(0); y+=19; setFoot(""); };
+      var sw0=(W-44-3)/2; doc.setFont("helvetica","bold"); doc.setFontSize(7.5); var twoLine=["Tick off the checklist on the Trello card","Move the job into Ready for Delivery / Collection"].some(function(t){ return doc.splitTextToSize(t,sw0-10).length>1; }); var SH=twoLine?17:14, CH=SH-4;
+      if(y+SH+3>278) cont(); y+=3; doc.setFillColor(17,17,17); doc.roundedRect(L,y,W,SH,1.5,1.5,"F"); doc.setTextColor(255); doc.setFont("helvetica","bold"); doc.setFontSize(9); doc.text("WHEN YOU FINISH",L+4,y+SH/2+1.6);
+      var sx=L+40, sw=(W-44-3)/2; [["Step 2","Tick off the checklist on the Trello card"],["Step 3","Move the job into Ready for Delivery / Collection"]].forEach(function(st,i){ var x=sx+i*(sw+3); doc.setFillColor(255,255,255); doc.roundedRect(x,y+2,sw,CH,1,1,"F"); box(x+2,y+5.2,4); doc.setTextColor(110); doc.setFontSize(6.5); doc.text(st[0].toUpperCase(),x+8,y+4.8,{charSpace:0.2}); doc.setTextColor(17); doc.setFontSize(7.5); doc.text(doc.splitTextToSize(st[1],sw-10).slice(0,2),x+8,y+8); });
+      doc.setTextColor(0); y+=SH+5; setFoot(""); };
     kit.facility=function(j,crewTxt,timeTxt,k0){ var nm=j.title.split(" - ").slice(1).join(" - ")||j.title, crewL=crewTxt.split(" + "), dd=DETAIL[j.id]||{desc:"",checks:[]};
       var where="", tasks=[];
       String(dd.desc||"").split(/\r?\n/).forEach(function(ln){ var t=ln.replace(/^\s*(?:[-*\u2022]|\d+[.)])\s*/,"").replace(/^\[[ x]\]\s*/i,"").replace(/\*\*/g,"").trim(); if(!t) return; var wm=/^where\s*:\s*(.+)$/i.exec(t); if(wm){ where=wm[1].trim(); return; } tasks.push(t); });
