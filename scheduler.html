@@ -3085,13 +3085,15 @@ var SNAP=null, DETAIL={};
       });
       doc.setDrawColor(17); doc.setLineWidth(0.5); doc.line(L,y,L+W,y); doc.setDrawColor(0);
       // when you finish: one strip
-      // ONE LINE EACH (Sam, 22 Oct 2026, mock B approved): the step label leads the sentence, step 3 gets a little more width,
-      // and the chips are short with the box and words centred.
-      var SH=12, CH=8; if(y+SH+3>278) cont(); y+=3; doc.setFillColor(17,17,17); doc.roundedRect(L,y,W,SH,1.5,1.5,"F"); doc.setTextColor(255); doc.setFont("helvetica","bold"); doc.setFontSize(9); doc.text("WHEN YOU FINISH",L+4,y+SH/2+1.6);
-      var sx=L+38, avail=W-42, w2=avail*0.46, w3=avail-w2-2, steps=[["Step 2","Tick off the checklist on the Trello card",w2],["Step 3","Move the job into Ready for Delivery / Collection",w3]], x=sx;
-      steps.forEach(function(st){ var sw=st[2]; doc.setFillColor(255,255,255); doc.roundedRect(x,y+2,sw,CH,1,1,"F"); box(x+2,y+2+CH/2-2,4);
+      // ONE LINE EACH, NEVER CLIPPED (Sam, 22 Oct 2026, mock B, then "text is being cut off"): the label block is two short
+      // lines, the chips share the rest, and the words shrink a little before they are ever cut.
+      var steps=[["Step 2","Tick off the checklist on the Trello card"],["Step 3","Move the job into Ready for Delivery / Collection"]], lab=24, gap=2, cw=(W-lab-2-gap)/2;
+      var fs=7.4, fits=function(sz){ doc.setFont("helvetica","bold"); doc.setFontSize(6); var lw=doc.getTextWidth("STEP 3")+2.2; doc.setFontSize(sz); return steps.every(function(st){ return doc.getTextWidth(st[1])<=cw-8-lw-2; }); };
+      while(fs>6&&!fits(fs)) fs-=0.2; var oneLine=fits(fs), SH=oneLine?12:16, CH=SH-4;
+      if(y+SH+3>278) cont(); y+=3; doc.setFillColor(17,17,17); doc.roundedRect(L,y,W,SH,1.5,1.5,"F"); doc.setTextColor(255); doc.setFont("helvetica","bold"); doc.setFontSize(8); doc.text(["WHEN YOU","FINISH"],L+lab/2,y+SH/2-0.8,{align:"center"});
+      var x=L+lab+2; steps.forEach(function(st){ doc.setFillColor(255,255,255); doc.roundedRect(x,y+2,cw,CH,1,1,"F"); box(x+2,y+2+CH/2-2,4);
         doc.setTextColor(110); doc.setFont("helvetica","bold"); doc.setFontSize(6); doc.text(st[0].toUpperCase(),x+8,y+2+CH/2+1,{charSpace:0.2}); var lw=doc.getTextWidth(st[0].toUpperCase())+2.2;
-        doc.setTextColor(17); doc.setFontSize(7.2); var tx=x+8+lw; var fit=doc.splitTextToSize(st[1],sw-(tx-x)-2)[0]; doc.text(fit,tx,y+2+CH/2+1); x+=sw+2; });
+        doc.setTextColor(17); doc.setFontSize(fs); var tx=x+8+lw, lines=oneLine?[st[1]]:doc.splitTextToSize(st[1],cw-(tx-x)-2).slice(0,2); doc.text(lines,tx,y+2+CH/2+(lines.length>1?-0.6:1)); x+=cw+gap; });
       doc.setTextColor(0); y+=SH+5; setFoot(""); };
     kit.facility=function(j,crewTxt,timeTxt,k0){ var nm=j.title.split(" - ").slice(1).join(" - ")||j.title, crewL=crewTxt.split(" + "), dd=DETAIL[j.id]||{desc:"",checks:[]};
       var where="", tasks=[];
