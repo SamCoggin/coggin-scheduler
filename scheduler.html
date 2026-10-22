@@ -3031,6 +3031,7 @@ var SNAP=null, DETAIL={};
         // the details the picker needs and no more (Sam, 22 Oct 2026, third mock): colour, size, where the parts come from
         var meta=[l.attr_colour,l.attr_dims,l.attr_resize,(l.attr_makeModel&&/made to order/i.test(l.attr_makeModel))?l.attr_makeModel:"",l.headerBreakdown?"from "+l.headerBreakdown:"",l.attr_other].filter(Boolean).join(" · ");
         var hq=String(l.headerCustomer||l.qty||""), title=(/[a-z]/i.test(hq)?hq+" · ":hq+" x ")+main;
+        var bank0=Number(l.bench_bank_size)||0; if(bank0>0){ var brow0=bank0>2&&bank0%2===0?2:1; title=hq+(brow0>1?", "+brow0+" rows of "+(bank0/brow0):"")+"  · "+(l.headerBreakdown?l.headerBreakdown.replace(/^(\d+ tops?)/,"$1 from ")+main.replace(/^Tops from\s*/i,"")+(l.sku?" "+l.sku:""):main); }
         var specs=[]; if(l.cut_down&&l.cut_down.to){ var cn=l.cut_down.count, fr=l.cut_down.from?" FROM "+l.cut_down.from:""; specs.push("CUT "+(cn?cn+" TOPS":"THIS TOP")+" DOWN"+fr+" TO "+l.cut_down.to); } var pw=pickWork(l).map(function(t){ return t.replace(/^TOPS NEED /,""); }); if(pw.length) specs=specs.concat(pw); if(l.spec_notes) specs.push(l.spec_notes); specs=specs.length?[specs.join(" · ")]:[];
         doc.setFont("helvetica","bold"); doc.setFontSize(10); var tls=doc.splitTextToSize(title,NW); doc.setFont("helvetica","normal"); doc.setFontSize(7.5); var mls=meta?doc.splitTextToSize(meta,NW):[]; doc.setFont("helvetica","bold"); var sls=[]; specs.forEach(function(t){ sls=sls.concat(doc.splitTextToSize(t,NW)); });
         var locLines=loc?Math.min(2,doc.splitTextToSize(loc,16.5).length):0, locH=locLines?2.2+locLines*2.6:0;
@@ -3042,7 +3043,14 @@ var SNAP=null, DETAIL={};
         var rowH=single?Math.max(leftH,textH):textH, partsH=single?0:Math.max(partRowsH+1.5,leftH-textH+1.5);
         if(y+rowH+partsH>272) cont();
         var y0=y; doc.setDrawColor(17); doc.setLineWidth(0.5); doc.line(L,y0,L+W,y0); doc.setDrawColor(0);
-        box(L+0.5,y0+3.5,5.5); if(!(l.product_photo&&img(l.product_photo,L+8,y0+2.5,16,13))) noPhoto(L+8,y0+2.5,16,13);
+        box(L+0.5,y0+3.5,5.5);
+        // THE BENCH, DRAWN (Sam, 22 Oct 2026: "showing the single cantilever desk is misleading"): a bank of tops in its rows,
+        // from the recipe, unless sales attached a build photo of the real thing.
+        var bank=Number(l.bench_bank_size)||0;
+        if(bank>0&&!l.photo_is_build){ var brow=bank>2&&bank%2===0?2:1, per=Math.ceil(bank/brow), px=L+8, py=y0+2.5, pw=16, ph=13, tw=(pw-1.2)/per, th=(ph-1.2)/brow; doc.setDrawColor(17); doc.setLineWidth(0.3); doc.setFillColor(255,255,255);
+          for(var r0=0;r0<brow;r0++) for(var c0=0;c0<per;c0++) doc.rect(px+0.6+c0*tw,py+0.6+r0*th,tw,th,"FD");
+          doc.setFillColor(17,17,17); [[px+0.6,py+ph/2],[px+pw-0.6,py+ph/2]].forEach(function(pt){ doc.circle(pt[0],pt[1],0.6,"F"); }); for(var c1=1;c1<per;c1++) doc.circle(px+0.6+c1*tw,py+ph/2,0.6,"F"); doc.setDrawColor(0); }
+        else if(!(l.product_photo&&img(l.product_photo,L+8,y0+2.5,16,13))) noPhoto(L+8,y0+2.5,16,13);
         doc.setFont("helvetica","bold"); doc.setFontSize(10); doc.text(tls,NX,y0+6.5); var ty=y0+6.5+(tls.length-1)*4.2+3.4;
         doc.setFont("helvetica","normal"); doc.setFontSize(7.5); doc.setTextColor(90); if(mls.length){ doc.text(mls,NX,ty); ty+=mls.length*3.3; } doc.setTextColor(0);
         if(sls.length){ doc.setFillColor(243,244,246); doc.rect(NX-1,ty-2.4,NW+2,sls.length*3.4+1.6,"F"); doc.setFont("helvetica","bold"); doc.setFontSize(7.5); doc.text(sls,NX,ty+0.4); }
