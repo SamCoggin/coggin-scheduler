@@ -3622,7 +3622,7 @@ var SNAP=null, DETAIL={};
   var SCHED_VERSION="22 Oct 15:40";   /* bumped on every push: shows which version is running and which built a sheet (Sam, 22 Oct 2026, "still not live?!") */
   /* A NEWER SCHEDULER RELOADS ITSELF (Sam, 22 Oct 2026, a sheet built from a window opened before the push). Checked every two
      minutes and before any sheet is built; a reload waits while an editor is open. */
-  function liveVersion(){ return fetch("./scheduler.html?vc="+Date.now(),{cache:"no-store"}).then(function(r){ return r.ok?r.text():""; }).then(function(t){ var m=/var SCHED_VERSION="22 Oct 15:40"]+)"/.exec(t||""); return m?m[1]:""; }).catch(function(){ return ""; }); }
+  function liveVersion(){ return fetch("./scheduler.html?vc="+Date.now(),{cache:"no-store"}).then(function(r){ return r.ok?r.text():""; }).then(function(t){ var m=/SCHED_VERSION\s*=\s*"([^"]+)"/.exec(t||""); return m?m[1]:""; }).catch(function(){ return ""; }); }
   async function outdated(){ if(typeof fetch!=="function"||typeof location==="undefined"||EMBED) return false; var v=await liveVersion(); return !!v&&v!==SCHED_VERSION; }
   if(typeof setInterval==="function"&&typeof location!=="undefined") setInterval(function(){ outdated().then(function(o){ if(o&&!editorOpen()) location.reload(); }); },120000);
   function stampUpd(txt,hold){ var u=$("#upd"); if(u) u.textContent=txt+" \u00b7 version "+SCHED_VERSION; var lv=$("#live"); if(lv) lv.className="live"+(hold?" hold":""); }
