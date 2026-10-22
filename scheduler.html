@@ -1194,7 +1194,7 @@ var SNAP=null, DETAIL={};
     if(j.facility){ var fl=el("span","lab","Facility"); fl.style.background="#5e4db2"; labs.appendChild(fl); }
     if(j.work){ var lw=el("span","lab",j.work); lw.style.background=COL[j.work]||"#626f86"; labs.appendChild(lw); }
     if(j.label&&!(j.facility&&/^facility$/i.test(j.label))){ var lb=el("span","lab",j.label); lb.style.background=COL[j.label]||"#626f86"; labs.appendChild(lb); }   // one Facility label, not two (22 Oct 2026)
-    labs.appendChild(el("span","lab stage",j.stageLabel)); ht.appendChild(labs);
+    if(!(j.facility&&/^facility$/i.test(String(j.stageLabel||"")))) labs.appendChild(el("span","lab stage",j.stageLabel)); ht.appendChild(labs);   // the stage word was Facility too
     // CUSTOMER BIG, TOWN AND REF SMALL (Sam, 21 Oct 2026, header mock approved)
     var tParts=String(j.title||"").split(/\s+-\s+/), h3=el("h3",null,tParts.length>1?tParts.slice(1).join(" - "):j.title); var refTxt=/^[0-9A-Z]{6}$/.test(String(j.short||""))?j.short:"";   // a CRM reference, never a Trello short link (22 Oct 2026, "8w2MRPym")
     if(tParts.length>1||refTxt) h3.appendChild(el("span","tsmall",[tParts.length>1?tParts[0]:"",refTxt].filter(Boolean).join(" \u00b7 "))); ht.appendChild(h3);
@@ -1205,7 +1205,7 @@ var SNAP=null, DETAIL={};
       var cb=el("button",null,"Carry on"); cb.onclick=function(){ SEEN_FOREIGN[FOREIGN.card]=FOREIGN.sig; FOREIGN=null; PENDING_SNAP=null; render(); };
       fb.appendChild(rb); fb.appendChild(cb); ht.appendChild(fb);
     }
-    if(!o.shop&&!(j.facility&&String(j.title||"").indexOf(niceDay(j.date))>=0)) ht.appendChild(el("div","sub",j.start?niceDay(j.start)+" to "+niceDay(j.date)+", "+daysOf(j).length+" days":niceDay(j.date)));
+    if(!o.shop&&!(j.facility&&String(j.title||"").indexOf(niceDay(j.date).split(" ").slice(1).join(" "))>=0)) ht.appendChild(el("div","sub",j.start?niceDay(j.start)+" to "+niceDay(j.date)+", "+daysOf(j).length+" days":niceDay(j.date)));
     head.appendChild(ht); var hact=el("div","hact"), hjs=el("span","hjs"); hact.appendChild(hjs); head.appendChild(hact);
     // Straight to the card (Sam, 16 Sep 2026: "a button to click into the Trello card from here").
     // Inside Trello the Power-Up opens it in place; anywhere else the plain card link does.
