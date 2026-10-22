@@ -3228,9 +3228,11 @@ var SNAP=null, DETAIL={};
       if(cards.length&&CRM_KEY){
         // A FAILED LOAD IS NOT AN EMPTY JOB (Sam, 22 Oct 2026: the sheet printed checklist boxes with "no photo" because the
         // item list had not come back): try four times, then stop with a message rather than print the wrong sheet.
-        var res=null; for(var tr=0;tr<4&&!(res&&res.ok&&res.lines);tr++){ if(tr) await new Promise(function(r){ setTimeout(r,1500*tr); });
+        // a production job that comes back with an error, or with no deal and no items, is a failed read too (22 Oct 2026)
+        var shortJob=function(r){ if(!(r&&r.ok&&r.lines)) return "all"; var bad=Object.keys(r.lines).filter(function(id){ var e=r.lines[id]||{}, jj=JOBS.filter(function(x){ return x.id===id; })[0]; return !!e.error||(!!(jj&&(jj.prep||jj.donePrep))&&/(^|\s-\s)[0-9A-Z]{6}(\s-\s|$)/.test(String(jj.title||""))&&!e.ref&&!(e.lines||[]).length); }); return bad.length?bad:null; };
+        var res=null; for(var tr=0;tr<4&&(tr===0||shortJob(res));tr++){ if(tr) await new Promise(function(r){ setTimeout(r,1500*tr); });
           res=await fetch(CRM_PICKING_URL,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({key:CRM_KEY,action:"lines",cards:cards})}).then(function(x){ return x.json(); }).catch(function(){ return null; }); }
-        if(!(res&&res.ok&&res.lines)) throw new Error("The item list did not load from the CRM. Wait a minute and press Job sheet again.");
+        var stillBad=shortJob(res); if(stillBad){ var who=stillBad==="all"?"":stillBad.map(function(id){ var jj=JOBS.filter(function(x){ return x.id===id; })[0]; return jj?(jj.title.split(" - ").slice(1).join(" - ")||jj.title):""; }).filter(Boolean).join(", "); throw new Error("The item list did not load from the CRM"+(who?" for "+who:"")+". Wait a minute and press Job sheet again."); }
         if(res&&res.ok&&res.lines){ PICK={}; Object.keys(res.lines).forEach(function(id){ var e=res.lines[id]; var all=e.lines||[], legL=all.filter(isPartLine); all.forEach(function(l){ if(!isPartLine(l)&&legL.length&&/desk/i.test(String(l.headerCustomer||""))) l._legs=legL[0]; }); var _u0=0, pk=pickedOf(id), jj=JOBS.filter(function(x){return x.id===id;})[0], multi=!!(jj&&jj.prep&&jj.prep.date);   // every production line gets Finished today, one day or many (2 Oct 2026, the Alcove Booth line had none)
             var deskU=0, deskLeft=0; all.forEach(function(l){ if(isPartLine(l)||!/desk/i.test(String(l.headerCustomer||""))) return; var c=pickCount(pk,l); deskU+=c.q; deskLeft+=Math.max(0,c.q-c.p); });
             var left=[]; all.forEach(function(l){ var c=pickCount(pk,l), rem=c.q-c.p;
