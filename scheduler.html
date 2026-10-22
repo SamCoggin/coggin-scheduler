@@ -3043,11 +3043,11 @@ var SNAP=null, DETAIL={};
         // the details the picker needs and no more (Sam, 22 Oct 2026, third mock): colour, size, where the parts come from
         var meta=[l.attr_colour,l.attr_dims,l.attr_resize,(l.attr_makeModel&&/made to order/i.test(l.attr_makeModel))?l.attr_makeModel:"",l.headerBreakdown?"from "+l.headerBreakdown:"",l.attr_other].filter(Boolean).join(" · ");
         var hq=String(l.headerCustomer||l.qty||""), title=(/[a-z]/i.test(hq)?hq+" · ":hq+" x ")+main;
-        var bank0=Number(l.bench_bank_size)||0; if(bank0>0){ var brow0=bank0>2&&bank0%2===0?2:1; title=hq+(brow0>1?", "+brow0+" rows of "+(bank0/brow0):"")+"  · "+(l.headerBreakdown?l.headerBreakdown.replace(/^(\d+ tops?)/,"$1 from ")+main.replace(/^Tops from\s*/i,"")+(l.sku?" "+l.sku:""):main); }
+        var bank0=Number(l.bench_bank_size)||0; if(bank0>0){ var brow0=bank0>2&&bank0%2===0?2:1; title=hq+(brow0>1?", "+brow0+" rows of "+(bank0/brow0):""); meta=[l.attr_colour,(l.headerBreakdown?l.headerBreakdown.replace(/^(\d+ tops?)/,"$1 from ")+main.replace(/^Tops from\s*/i,"")+(l.sku?" "+l.sku:""):""),l.attr_dims?l.attr_dims+" each":""].filter(Boolean).join(" \u00b7 "); }   // the bench is the headline; the donor desk sits in the details (Sam, 22 Oct 2026)
         var specs=[]; if(l.cut_down&&l.cut_down.to){ var cn=l.cut_down.count, fr=l.cut_down.from?" FROM "+l.cut_down.from:""; specs.push("CUT "+(cn?cn+" TOPS":"THIS TOP")+" DOWN"+fr+" TO "+l.cut_down.to); } var pw=pickWork(l).map(function(t){ return t.replace(/^TOPS NEED /,""); }); if(pw.length) specs=specs.concat(pw); if(l.spec_notes) specs.push(l.spec_notes); specs=specs.length?[specs.join(" · ")]:[];
         doc.setFont("helvetica","bold"); doc.setFontSize(10); var tls=doc.splitTextToSize(title,NW); doc.setFont("helvetica","normal"); doc.setFontSize(7.5); var mls=meta?doc.splitTextToSize(meta,NW):[]; doc.setFont("helvetica","bold"); var sls=[]; specs.forEach(function(t){ sls=sls.concat(doc.splitTextToSize(t,NW)); });
         doc.setFont("courier","bold"); doc.setFontSize(5.5); var locLines=loc?Math.min(2,doc.splitTextToSize(loc,16.5).length):0, locH=locLines?2.2+locLines*2.6:0;   // measured in the tag's own font, or a one-line tag was drawn two lines tall
-        var textH=3+tls.length*4.2+mls.length*3.3+(sls.length?sls.length*3.4+2:0)+((Number(l.bench_bank_size)||0)>0&&!l.photo_is_build?21:0)+3, leftH=17+(loc?locH+1:0)+(l.sku?3.5:0);
+        var textH=3+tls.length*4.2+mls.length*3.3+(sls.length?sls.length*3.4+2:0)+((Number(l.bench_bank_size)||0)>0?21:0)+3, leftH=17+(loc?locH+1:0)+(l.sku?3.5:0);
         // a part row is its name and location, wrapped to the column, never clipped (Sam, 22 Oct 2026, the bench parts ran off the edge)
         var partTxt=function(r){ var comp=comps.filter(function(cc){ return String(cc.name||"")===r.n; })[0]; var photo=r.photo||(comp&&comp.photo)||"", loc0=r.loc||(comp&&comp.location)||"", sku0=r.sku||(comp&&comp.sku)||""; var nm=String(r.n).replace(/\s*\(.*?\)\s*/g," ").trim(); return {comp:{photo:photo},text:nm+(sku0?"  "+sku0:"")+(loc0?"  \u00b7 "+loc0:""),thumb:!!photo||!!r.drawTop,drawTop:!!r.drawTop}; };
         doc.setFont("helvetica","normal"); doc.setFontSize(8.5); var partLines=rows.map(function(r){ var pt=partTxt(r); return doc.splitTextToSize(pt.text,CX[0]-(NX+(pt.thumb?14:2))-3).slice(0,2); });
@@ -3071,7 +3071,7 @@ var SNAP=null, DETAIL={};
         doc.setFont("helvetica","bold"); doc.setFontSize(10); doc.text(tls,NX,y0+6.5); var ty=y0+6.5+(tls.length-1)*4.2+3.4;
         doc.setFont("helvetica","normal"); doc.setFontSize(7.5); doc.setTextColor(90); if(mls.length){ doc.text(mls,NX,ty); ty+=mls.length*3.3; } doc.setTextColor(0);
         if(sls.length){ doc.setFillColor(243,244,246); doc.rect(NX-1,ty-2.4,NW+2,sls.length*3.4+1.6,"F"); doc.setFont("helvetica","bold"); doc.setFontSize(7.5); doc.text(sls,NX,ty+0.4); ty+=sls.length*3.4+2; }
-        if(bank>0&&!l.photo_is_build) benchPlan(NX,ty,NW,20,true);
+        if(bank>0) benchPlan(NX,ty,NW,20,true);   // the plan prints under the name whether or not a photo fills the slot (Sam, 22 Oct 2026)
         if(loc){ doc.setFont("courier","bold"); doc.setFontSize(5.5); var lls=doc.splitTextToSize(loc,16.5).slice(0,2), tw=Math.min(18.5,Math.max.apply(null,lls.map(function(t){ return doc.getTextWidth(t); }))+2.4), tx0=L+16.5-tw/2; doc.setFillColor(17,17,17); doc.roundedRect(tx0,y0+16.5,tw,locH,0.6,0.6,"F"); doc.setTextColor(255); lls.forEach(function(t,i){ doc.text(t,L+16.5,y0+19.2+i*2.6,{align:"center"}); }); doc.setTextColor(0); }
         if(l.sku){ doc.setFont("courier","bold"); doc.setFontSize(6); doc.setTextColor(100); doc.text(String(l.sku),L+16.5,y0+(loc?17+locH+2.6:19.5),{align:"center"}); doc.setTextColor(0); }
         doc.setDrawColor(200); doc.setLineWidth(0.25); doc.line(CX[0],y0,CX[0],y0+rowH+partsH); doc.line(CX[2],y0,CX[2],y0+rowH+partsH); doc.setDrawColor(0);
@@ -3087,13 +3087,13 @@ var SNAP=null, DETAIL={};
       // when you finish: one strip
       // ONE LINE EACH, NEVER CLIPPED (Sam, 22 Oct 2026, mock B, then "text is being cut off"): the label block is two short
       // lines, the chips share the rest, and the words shrink a little before they are ever cut.
-      var steps=[["Step 2","Tick off the checklist on the Trello card"],["Step 3","Move the job into Ready for Delivery / Collection"]], lab=24, gap=2, cw=(W-lab-2-gap)/2;
-      var fs=7.4, fits=function(sz){ doc.setFont("helvetica","bold"); doc.setFontSize(6); var lw=doc.getTextWidth("STEP 3")+2.2; doc.setFontSize(sz); return steps.every(function(st){ return doc.getTextWidth(st[1])<=cw-8-lw-2; }); };
+      var steps=[["Step 2","Tick off the checklist on the Trello card"],["Step 3","Move the job into Ready for Delivery / Collection"]], lab=24, gap=2, cw=(W-lab-2-gap-2)/2;
+      var fs=7.4, fits=function(sz){ doc.setFont("helvetica","bold"); doc.setFontSize(6); var lw=doc.getTextWidth("STEP 3")+2.2; doc.setFontSize(sz); return steps.every(function(st){ return doc.getTextWidth(st[1])<=cw-8-lw-5; }); };
       while(fs>6&&!fits(fs)) fs-=0.2; var oneLine=fits(fs), SH=oneLine?12:16, CH=SH-4;
       if(y+SH+3>278) cont(); y+=3; doc.setFillColor(17,17,17); doc.roundedRect(L,y,W,SH,1.5,1.5,"F"); doc.setTextColor(255); doc.setFont("helvetica","bold"); doc.setFontSize(8); doc.text(["WHEN YOU","FINISH"],L+lab/2,y+SH/2-0.8,{align:"center"});
       var x=L+lab+2; steps.forEach(function(st){ doc.setFillColor(255,255,255); doc.roundedRect(x,y+2,cw,CH,1,1,"F"); box(x+2,y+2+CH/2-2,4);
         doc.setTextColor(110); doc.setFont("helvetica","bold"); doc.setFontSize(6); doc.text(st[0].toUpperCase(),x+8,y+2+CH/2+1,{charSpace:0.2}); var lw=doc.getTextWidth(st[0].toUpperCase())+2.2;
-        doc.setTextColor(17); doc.setFontSize(fs); var tx=x+8+lw, lines=oneLine?[st[1]]:doc.splitTextToSize(st[1],cw-(tx-x)-2).slice(0,2); doc.text(lines,tx,y+2+CH/2+(lines.length>1?-0.6:1)); x+=cw+gap; });
+        doc.setTextColor(17); doc.setFontSize(fs); var tx=x+8+lw, lines=oneLine?[st[1]]:doc.splitTextToSize(st[1],cw-(tx-x)-5).slice(0,2); doc.text(lines,tx,y+2+CH/2+(lines.length>1?-0.6:1)); x+=cw+gap; });
       doc.setTextColor(0); y+=SH+5; setFoot(""); };
     kit.facility=function(j,crewTxt,timeTxt,k0){ var nm=j.title.split(" - ").slice(1).join(" - ")||j.title, crewL=crewTxt.split(" + "), dd=DETAIL[j.id]||{desc:"",checks:[]};
       var where="", tasks=[];
