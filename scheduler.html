@@ -3042,7 +3042,7 @@ var SNAP=null, DETAIL={};
         var parts=String(l.name||"").split(/\s*\|\s*/), main=parts[0], loc=String(l.stock_location||"");
         // the details the picker needs and no more (Sam, 22 Oct 2026, third mock): colour, size, where the parts come from
         var meta=[l.attr_colour,l.attr_dims,l.attr_resize,(l.attr_makeModel&&/made to order/i.test(l.attr_makeModel))?l.attr_makeModel:"",l.headerBreakdown?"from "+l.headerBreakdown:"",l.attr_other].filter(Boolean).join(" · ");
-        var hq=String(l.headerCustomer||l.qty||""), title=(/[a-z]/i.test(hq)?hq+" · ":hq+" x ")+main;
+        var hq=String(l.headerCustomer||l.qty||""), title=(/^\d+/.test(hq)?/^\d+/.exec(hq)[0]+" x ":hq?hq+" · ":"")+main;   // every item reads "2 x Cantilever Desk" (Sam, 22 Oct 2026)
         var bank0=Number(l.bench_bank_size)||0; if(bank0>0){ var brow0=bank0>2&&bank0%2===0?2:1; title=hq+(brow0>1?", "+brow0+" rows of "+(bank0/brow0):""); meta=[l.attr_colour,(l.headerBreakdown?l.headerBreakdown.replace(/^(\d+ tops?)/,"$1 from ")+main.replace(/^Tops from\s*/i,"")+(l.sku?" "+l.sku:""):""),l.attr_dims?l.attr_dims+" each":""].filter(Boolean).join(" \u00b7 "); }   // the bench is the headline; the donor desk sits in the details (Sam, 22 Oct 2026)
         var specs=[]; if(l.cut_down&&l.cut_down.to){ var cn=l.cut_down.count, fr=l.cut_down.from?" FROM "+l.cut_down.from:""; specs.push("CUT "+(cn?cn+" TOPS":"THIS TOP")+" DOWN"+fr+" TO "+l.cut_down.to); } var pw=pickWork(l).map(function(t){ return t.replace(/^TOPS NEED /,""); }); if(pw.length) specs=specs.concat(pw); if(l.spec_notes) specs.push(l.spec_notes); specs=specs.length?[specs.join(" · ")]:[];
         doc.setFont("helvetica","bold"); doc.setFontSize(10); var tls=doc.splitTextToSize(title,NW); doc.setFont("helvetica","normal"); doc.setFontSize(7.5); var mls=meta?doc.splitTextToSize(meta,NW):[]; doc.setFont("helvetica","bold"); var sls=[]; specs.forEach(function(t){ sls=sls.concat(doc.splitTextToSize(t,NW)); });
@@ -3052,7 +3052,7 @@ var SNAP=null, DETAIL={};
         var partTxt=function(r){ var comp=comps.filter(function(cc){ return String(cc.name||"")===r.n; })[0]; var photo=r.photo||(comp&&comp.photo)||"", loc0=r.loc||(comp&&comp.location)||"", sku0=r.sku||(comp&&comp.sku)||""; var nm=String(r.n).replace(/\s*\(.*?\)\s*/g," ").trim(); return {comp:{photo:photo},text:nm+(sku0?"  "+sku0:"")+(loc0?"  \u00b7 "+loc0:""),thumb:!!photo||!!r.drawTop,drawTop:!!r.drawTop}; };
         doc.setFont("helvetica","normal"); doc.setFontSize(8.5); var partLines=rows.map(function(r){ var pt=partTxt(r); return doc.splitTextToSize(pt.text,CX[0]-NX-3).slice(0,2); });
         var partRowsH=partLines.reduce(function(t,ls){ return t+(ls.length>1?11:9); },0);
-        var rowH=single?Math.max(leftH,textH):textH, partsH=single?0:Math.max(partRowsH+1.5,leftH-textH+1.5);
+        var rowH=Math.max(leftH,textH), partsH=single?0:partRowsH+1.5;   // parts start under the photo, tag and code, never over them (Sam, 22 Oct 2026)
         if(y+rowH+partsH>272) cont();
         var y0=y; doc.setDrawColor(17); doc.setLineWidth(0.5); doc.line(L,y0,L+W,y0); doc.setDrawColor(0);
         box(L+0.5,y0+3.5,5.5);
