@@ -3070,7 +3070,7 @@ var SNAP=null, DETAIL={};
         else if(!(l.product_photo&&img(l.product_photo,L+8,y0+2.5,16,13))) noPhoto(L+8,y0+2.5,16,13);
         doc.setFont("helvetica","bold"); doc.setFontSize(10); doc.text(tls,NX,y0+6.5); var ty=y0+6.5+(tls.length-1)*4.2+3.4;
         doc.setFont("helvetica","normal"); doc.setFontSize(7.5); doc.setTextColor(90); if(mls.length){ doc.text(mls,NX,ty); ty+=mls.length*3.3; } doc.setTextColor(0);
-        if(sls.length){ doc.setFillColor(243,244,246); doc.rect(NX-1,ty-2.4,NW+2,sls.length*3.4+1.6,"F"); doc.setFont("helvetica","bold"); doc.setFontSize(7.5); doc.text(sls,NX,ty+0.4); ty+=sls.length*3.4+2; }
+        if(sls.length){ doc.setFillColor(243,244,246); doc.rect(NX-1,ty-2.4,NW+2,sls.length*3.4+1.6,"F"); doc.setFont("helvetica","bold"); doc.setFontSize(7.5); doc.text(sls,NX,ty+1.05); /* centred in the grey box: same space above and below (Sam, 22 Oct 2026, mock) */ ty+=sls.length*3.4+2; }
         if(bank>0) benchPlan(NX,ty,NW,20,true);   // the plan prints under the name whether or not a photo fills the slot (Sam, 22 Oct 2026)
         if(loc){ doc.setFont("courier","bold"); doc.setFontSize(5.5); var lls=doc.splitTextToSize(loc,16.5).slice(0,2), tw=Math.min(18.5,Math.max.apply(null,lls.map(function(t){ return doc.getTextWidth(t); }))+2.4), tx0=L+16.5-tw/2; doc.setFillColor(17,17,17); doc.roundedRect(tx0,y0+16.5,tw,locH,0.6,0.6,"F"); doc.setTextColor(255); lls.forEach(function(t,i){ doc.text(t,L+16.5,y0+19.2+i*2.6,{align:"center"}); }); doc.setTextColor(0); }
         if(l.sku){ doc.setFont("courier","bold"); doc.setFontSize(6); doc.setTextColor(100); doc.text(String(l.sku),L+16.5,y0+(loc?17+locH+2.6:19.5),{align:"center"}); doc.setTextColor(0); }
