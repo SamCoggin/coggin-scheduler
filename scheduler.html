@@ -3195,7 +3195,7 @@ var SNAP=null, DETAIL={};
   // will naturally still go here"). The page just built goes to the card as "Production sheet <ref>", replacing the older
   // one and the old picking sheet. Quietly: a failed upload never stops the download.
   function attachProductionSheet(j,doc,k){ if(!CRM_KEY||!j||!j.id||j.isHold) return Promise.resolve();
-    try{ var b64=doc.output("datauristring").split(",")[1]; var name="Production sheet"+(j.short?" "+j.short:"")+" "+k;
+    try{ var b64=doc.output("datauristring").split(",")[1]; var tp=String(j.title||"").split(/\s+-\s+/), ref=tp.filter(function(x){ return /^[0-9A-Z]{6}$/.test(x); })[0]||"", cust=tp.filter(function(x){ return !/^[0-9A-Z]{6}$/.test(x)&&!/^\d{5,}$/.test(x); }).slice(1).join(" - ")||tp[0]||j.title; var name="Production sheet \u00b7 "+cust+(ref?" \u00b7 "+ref:"")+" \u00b7 "+niceDay(k);   // the customer and the CRM reference, never Trello's short link (Sam, 22 Oct 2026: "AQovofcd")
       return fetch(CRM_ATTACH_URL,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({key:CRM_KEY,card_id:j.id,name:name,pdf_base64:b64})}).then(function(x){ return x.json(); }).then(function(r){ if(!(r&&r.ok)) console.warn("production sheet not attached",r&&r.error); }).catch(function(e){ console.warn("production sheet not attached",e); }); }
     catch(e){ return Promise.resolve(); } }
   // every production job on the day gets its page on its card, one after another, after the day's sheets are saved
