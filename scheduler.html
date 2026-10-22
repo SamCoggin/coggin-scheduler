@@ -920,12 +920,18 @@ var SNAP=null, DETAIL={};
   // is finished when all its parts are, so the item's finished number is worked out, never typed. Stored on the plan as
   // picked[key] = { parts:{ Tops:{p,f}, ... }, extra:[{n,q}], f, on, log } with f the worked-out finished units.
   function pickPartsOf(l,extra){ var u=pickUnits(l), hb=String(l.headerBreakdown||""), out;
-    if(/desk/i.test(String(l.headerCustomer||""))){ out=[{n:"Tops",q:u}]; if(/panels from scrap/i.test(hb)) out.push({n:"Back panels",q:u}); else if(/\+\s*\d+\s*legs/i.test(hb)) out.push({n:"Modesty panels",q:u}); var lg=/(\d+)\s*legs/i.exec(hb); if(lg&&+lg[1]>0) out.push({n:"Legs",q:+lg[1]}); }
-    else if(Array.isArray(l.build_components)&&l.build_components.length){ out=l.build_components.map(function(c){ return {n:String(c.name||"Part"),q:Number(c.qty)||Number(c.quantity)||u}; }); if(l.build_components.some(function(c){ return c.role==="top"||c.replaces_role==="top"; })&&/desk/i.test(String(l.name||""))) out.unshift({n:"Frame"+(l.attr_dims?" ("+String(l.attr_dims).replace(/mm$/,"")+")":""),q:u}); }   // a top from stock on a desk: the frame is handled first (Sam, 22 Oct 2026)
+    if(Array.isArray(l.build_components)&&l.build_components.length){
+      // EACH PART IS A THING TO PICK (Sam, 22 Oct 2026: "it should be saying pick the electric sit-stand desk and where it
+      // is with the photo of it, and the same again with a photo of the desk top"): the part carries its own photo, SKU
+      // and bay. A top from stock on a desk reads as the desk first, then "Top: ..." with the size kept in the name.
+      var topComp=l.build_components.some(function(c){ return c.role==="top"||c.replaces_role==="top"; })&&/desk/i.test(String(l.name||""));
+      out=l.build_components.map(function(c){ var nm=String(c.name||"Part").split(/\s*\|\s*/), isTop=c.role==="top"||c.replaces_role==="top"; var label=(isTop?"Top: ":"")+nm[0]+(nm[1]&&/\d/.test(nm[1])?" "+nm[1]:""); return {n:label,q:Number(c.qty)||Number(c.quantity)||u,photo:c.photo||"",loc:c.location||"",sku:c.sku||""}; });
+      if(topComp){ var dn=String(l.name||"").split(/\s*\|\s*/)[0]; out.unshift({n:dn+(l.attr_dims?" "+String(l.attr_dims).replace(/\s/g,"").replace(/mm$/,"mm"):""),q:u,photo:l.product_photo||"",loc:l.stock_location||"",sku:l.sku||""}); } }
+    else if(/desk/i.test(String(l.headerCustomer||""))){ out=[{n:"Tops",q:u}]; if(/panels from scrap/i.test(hb)) out.push({n:"Back panels",q:u}); else if(/\+\s*\d+\s*legs/i.test(hb)) out.push({n:"Modesty panels",q:u}); var lg=/(\d+)\s*legs/i.exec(hb); if(lg&&+lg[1]>0) out.push({n:"Legs",q:+lg[1]}); }
     else out=[{n:l.section==="seating"?"Chairs":l.section==="storage"?"Units":l.section==="tables"?"Tables":l.section==="desk_tops"?"Tops":"Items",q:u}];
     (extra||[]).forEach(function(e){ if(e&&e.n) out.push({n:String(e.n),q:Number(e.q)||u,x:true}); }); return out; }
   function pickCount(P,l){ var q=pickUnits(l), e=P[pickKey(l)]||null; var ps=pickPartsOf(l,e&&e.extra);
-    var rows=ps.map(function(pt){ var r=(e&&e.parts&&e.parts[pt.n])||{}; var cl=function(v){ return Math.max(0,Math.min(pt.q,Math.round(Number(v)||0))); }; return {n:pt.n,q:pt.q,x:!!pt.x,p:cl(r.p),f:cl(r.f)}; });
+    var rows=ps.map(function(pt){ var r=(e&&e.parts&&e.parts[pt.n])||{}; var cl=function(v){ return Math.max(0,Math.min(pt.q,Math.round(Number(v)||0))); }; return {n:pt.n,q:pt.q,x:!!pt.x,p:cl(r.p),f:cl(r.f),photo:pt.photo||"",loc:pt.loc||"",sku:pt.sku||""}; });
     var scale=function(key){ return rows.length?Math.min.apply(null,rows.map(function(x){ return x.q?Math.floor(x[key]*q/x.q):0; })):0; };
     if(!e) return {f:0,p:0,q:q,parts:rows};
     if(e.parts) return {f:Math.min(q,scale("f")),p:Math.min(q,scale("p")),q:q,on:e.on||"",parts:rows};
@@ -3037,9 +3043,9 @@ var SNAP=null, DETAIL={};
         var locLines=loc?Math.min(2,doc.splitTextToSize(loc,16.5).length):0, locH=locLines?2.2+locLines*2.6:0;
         var textH=3+tls.length*4.2+mls.length*3.3+(sls.length?sls.length*3.4+2:0)+3, leftH=17+(loc?locH+1:0)+(l.sku?3.5:0);
         // a part row is its name and location, wrapped to the column, never clipped (Sam, 22 Oct 2026, the bench parts ran off the edge)
-        var partTxt=function(r){ var comp=comps.filter(function(cc){ return String(cc.name||"")===r.n; })[0]; var nm=String(r.n).split(/\s*\u00b7\s*|\s*\|\s*/)[0].replace(/\s*\(.*?\)\s*/g," ").trim(); return {comp:comp,text:nm+(comp&&comp.location?"  \u00b7 "+comp.location:""),thumb:!!(comp&&comp.photo)}; };
-        doc.setFont("helvetica","normal"); doc.setFontSize(8.5); var partLines=rows.map(function(r){ var pt=partTxt(r); return doc.splitTextToSize(pt.text,CX[0]-(NX+(pt.thumb?11:2))-3).slice(0,2); });
-        var partRowsH=partLines.reduce(function(t,ls){ return t+(ls.length>1?10.5:7.5); },0);
+        var partTxt=function(r){ var comp=comps.filter(function(cc){ return String(cc.name||"")===r.n; })[0]; var photo=r.photo||(comp&&comp.photo)||"", loc0=r.loc||(comp&&comp.location)||"", sku0=r.sku||(comp&&comp.sku)||""; var nm=String(r.n).replace(/\s*\(.*?\)\s*/g," ").trim(); return {comp:{photo:photo},text:nm+(sku0?"  "+sku0:"")+(loc0?"  \u00b7 "+loc0:""),thumb:!!photo}; };
+        doc.setFont("helvetica","normal"); doc.setFontSize(8.5); var partLines=rows.map(function(r){ var pt=partTxt(r); return doc.splitTextToSize(pt.text,CX[0]-(NX+(pt.thumb?14:2))-3).slice(0,2); });
+        var partRowsH=partLines.reduce(function(t,ls){ return t+(ls.length>1?11:9); },0);
         var rowH=single?Math.max(leftH,textH):textH, partsH=single?0:Math.max(partRowsH+1.5,leftH-textH+1.5);
         if(y+rowH+partsH>272) cont();
         var y0=y; doc.setDrawColor(17); doc.setLineWidth(0.5); doc.line(L,y0,L+W,y0); doc.setDrawColor(0);
@@ -3059,8 +3065,8 @@ var SNAP=null, DETAIL={};
         doc.setDrawColor(200); doc.setLineWidth(0.25); doc.line(CX[0],y0,CX[0],y0+rowH+partsH); doc.line(CX[2],y0,CX[2],y0+rowH+partsH); doc.setDrawColor(0);
         if(single) countsAt(rows[0],y0+rowH/2);
         y=y0+rowH;
-        if(!single){ rows.forEach(function(r,ri){ var ls=partLines[ri], rh=ls.length>1?10.5:7.5; doc.setDrawColor(225); doc.setLineWidth(0.2); doc.line(NX,y,L+W,y); doc.setDrawColor(0); var pt=partTxt(r), tx=NX+2;
-            if(pt.thumb&&img(pt.comp.photo,NX+1,y+0.8,8,6)) tx=NX+11;
+        if(!single){ rows.forEach(function(r,ri){ var ls=partLines[ri], rh=ls.length>1?11:9; doc.setDrawColor(225); doc.setLineWidth(0.2); doc.line(NX,y,L+W,y); doc.setDrawColor(0); var pt=partTxt(r), tx=NX+2;
+            if(pt.thumb&&img(pt.comp.photo,NX+1,y+1,11,rh-2)) tx=NX+14;
             doc.setFont("helvetica",r.f>=r.q&&r.q>0?"bold":"normal"); doc.setFontSize(8.5); doc.text(ls,tx,y+5);
             countsAt(r,y+rh/2+0.2); y+=rh; }); y+=1.5; }
       });
