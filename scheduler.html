@@ -628,7 +628,8 @@ var SNAP=null, DETAIL={};
   //   Not Started / In-progress   workshop work, one card, on the day it is being done
   //   Ready for Delivery          the workshop is done, one card, the trip out
   //   removals, skips, stock etc  the trip, as dated
-  var JOBS=[], LEAVE=[];
+  var JOBS=[], LEAVE=[], AWAY=[];   // AWAY: part of a day, {date, who, from, to, mins}
+  function awayOn(k,w){ return AWAY.filter(function(a){ return a.date===k&&a.who===w; })[0]||null; }
   // OFF TODAY AND BANK HOLIDAYS (Sam, 13 Sep 2026). OFF is {date:[names]} saved on the board: sickness, a breakdown, a course.
   // Bank holidays are England and Wales, built in, and every operative is off. Both are folded into LEAVE so capacity, hours, crew picking and warnings all follow.
   var OFF={}, OFF_WHY={};
@@ -682,7 +683,7 @@ var SNAP=null, DETAIL={};
     var dd=DETAIL[c.id]; j.allItems=itemsOf(dd?dd.desc:c.desc,dd?dd.checks:c.checks); j.loanItems=loanItemsOf(dd?dd.desc:c.desc); j.ignore=[]; j.items=j.allItems.slice(); j.manual=[]; j.load=loadOf(j.items.concat(j.loanItems)); j.cubeSet=null;
     return j; });
   // a card with a start date is on the board every working day from start to due
-    LEAVE=[]; SNAP.cards.filter(function(c){return c.role==="leave"&&c.due;}).forEach(function(c){ var text=c.name.replace(/\s*\(.*$/,"").replace(/BANK HOLIDAY\s*-\s*/i,"")+(/BANK HOLIDAY/i.test(c.name)?" (bank holiday)":" on leave"); leaveDays(c.start,c.due).forEach(function(k){ LEAVE.push({date:k,text:text}); }); });
+    LEAVE=[]; AWAY=[]; SNAP.cards.filter(function(c){return c.role==="leave"&&c.due;}).forEach(function(c){ var win=leaveWindow(c.name); var text=c.name.replace(/\s*\(.*$/,"").replace(/BANK HOLIDAY\s*-\s*/i,"")+(/BANK HOLIDAY/i.test(c.name)?" (bank holiday)":" on leave"); leaveDays(c.start,c.due).forEach(function(k){ if(win) AWAY.push({date:k,who:crewOf(c.name.split(" ")[0]),from:win.from,to:win.to,mins:win.mins}); else LEAVE.push({date:k,text:text}); }); });
     // what was saved on the cards last time
     // who is coming to Forton, and the CRM's "Arriving:" time when nothing is set yet (2 Oct 2026)
     JOBS.forEach(function(j){ var dd=DETAIL[j.id]; j.arrive=arrivalKind(j.labels,j.title,dd?dd.desc:""); });
@@ -770,6 +771,7 @@ var SNAP=null, DETAIL={};
       if(off.indexOf(w)>=0){ var lvw=LEAVE.filter(function(l){return l.date===k&&crewOf(l.text.split(" ")[0])===w;})[0]; out[w]={t:lvw&&lvw.bh?"bank holiday":lvw&&lvw.off?"off today":"annual leave",c:"off",mins:0,rec:0,avail:0,s:"Off",d:lvw&&lvw.bh?"bank holiday":lvw&&lvw.off?"off today":"annual leave",r:3}; return; }
       var mine=jobs.filter(function(j){return j.who.indexOf(w)>=0;}), myPreps=preps.filter(function(j){return prepOn(j.prep,w,k);}), myRound=rounds.filter(function(r){return r.who===w;})[0];
       var mins=mine.reduce(function(s,j){return s+(minsFor(j,w)||0)+(j.site&&!j.onRound?(j.drive||0):0);},0)+(myRound&&myRound.drive?myRound.drive:0)+myPreps.reduce(function(s,j){return s+prepShare(j,w,k);},0);
+      var aw=awayOn(k,w); if(aw) mins+=aw.mins;   // away for part of the day: those hours are spoken for
       var n=mine.length+myPreps.length;
       // WHAT IS ALREADY DONE TODAY (Sam, 2 Oct 2026: "I want it automated when the job card moves to complete"): a card in a
       // completed list, and the legs of one, has used its time; whatever is left of today is free once the unfinished work
@@ -1898,7 +1900,9 @@ var SNAP=null, DETAIL={};
     // TOP OF THE LIST"). The banner names who is off and why; someone marked off here gets Back in on it, and their
     // own row below is gone.
     var lv=LEAVE.filter(function(l){return l.date===k;}), bhs=lv.filter(function(l){return l.bh;});
+    var awDay=AWAY.filter(function(a){return a.date===k;});
     if(bhs.length) pc.appendChild(el("div","leave","Bank holiday: "+BANK_HOLIDAYS[k]));
+    awDay.forEach(function(a){ pc.appendChild(el("div","leave",a.who.split(" ")[0]+" away "+a.from+" to "+a.to+", on site before and after")); });
     lv.filter(function(l){return !l.bh;}).forEach(function(l){ var lw=crewOf(l.text.split(" ")[0]), why=OFF_WHY[k+"|"+lw];
       var bn=el("div","leave",l.off?lw+" off"+(why?", "+why:""):l.text);
       if(l.off&&k>=iso(TODAY)){ var bb=el("button","olink","Back in"); bb.title="Put "+lw+" back on the day"; bb.onclick=function(){ toggleOff(k,lw); }; bn.appendChild(bb); }
@@ -1920,6 +1924,7 @@ var SNAP=null, DETAIL={};
       var seg=function(cls,mins){ if(mins>0) segs.push({cls:cls,mins:mins}); };
       if(isOff&&OFF_WHY[k+"|"+w]) line("Off","r",OFF_WHY[k+"|"+w],"","");
       if(!past&&load[w].c==="off") line("Off","r",load[w].d||load[w].t,"","");
+      var awL=awayOn(k,w); if(awL){ seg("r",awL.mins); line("Away","r","Away "+awL.from+" to "+awL.to,"back after","" ); }
       prepsP.forEach(function(j){ var nd=daysOf(j.prep).length||1, me=minsFor(j.prep,w), today=Math.round(prepShare(j,w,k)); seg("p",today); line("Production","p",j.title.split(" - ").slice(1).join(" - ")||j.title,(nd>1?"day "+(daysOf(j.prep).indexOf(k)+1)+" of "+nd:"")+(j.prepDone?(nd>1?" · ":"")+"finished":"")+(past&&!j.prepDone?doneOf(j.prep):""),me!=null?fmt(today):"no time"); });
       var r=rounds.filter(function(x){return x.who===w;})[0], tlw=dayTimeline(k,w);
       if(r){ seg("s",r.drive||0); line("Transport","round",r.stops.map(function(j){return j.title.split(" - ")[0];}).join(", ")+(r.start&&r.start!==HOME_PC?" \u00b7 from "+placeName(r.start):"")+(tlw.back?" \u00b7 back "+hmStr(tlw.back):""),"",r.drive?fmt(r.drive)+" driving":"no travel yet"); }
@@ -3385,7 +3390,7 @@ var SNAP=null, DETAIL={};
       var ld=loadOn(k); var dh={need:0,avail:0,overVans:cap.overVans}; FIELD_CREW.forEach(function(w){ if(ld[w].c!=="off"){ dh.avail+=DAY_MINS; dh.need+=ld[w].mins||0; } }); HOURS.avail+=dh.avail; HOURS.need+=dh.need; DAYH[k]=dh;
       h.appendChild(el("span",null,(isToday&&minsLeftOn(k)===0?"Day over · ":"")+(n?n+(NEED?" outstanding":(n===1?" job":" jobs")):""))); list.appendChild(h);
       var cards=el("div","cards");
-      var lv=LEAVE.filter(function(l){return l.date===k;}); if(lv.length){ var lh=el("div","sec-h"); var lhl=el("span",null,lv.some(function(l){return l.bh;})?"Bank Holiday":"Off"); lhl.appendChild(tip("leave",k)); lh.appendChild(lhl); cards.appendChild(lh); leaveLines(lv).forEach(function(tx){ cards.appendChild(el("div","leave",tx)); }); }
+      var lv=LEAVE.filter(function(l){return l.date===k;}), awv=AWAY.filter(function(a){return a.date===k;}); if(lv.length||awv.length){ var lh=el("div","sec-h"); var lhl=el("span",null,lv.some(function(l){return l.bh;})?"Bank Holiday":"Off"); lhl.appendChild(tip("leave",k)); lh.appendChild(lhl); cards.appendChild(lh); leaveLines(lv).forEach(function(tx){ cards.appendChild(el("div","leave",tx)); }); awv.forEach(function(a){ cards.appendChild(el("div","leave",a.who.split(" ")[0]+" away "+a.from+" to "+a.to)); }); }
       var rounds=roundsOn(k,jobs); jobs.forEach(function(j){ j.onRound=rounds.some(function(r){return r.stops.indexOf(j)>=0;}); j.roundVan=roundVanOf(j,rounds); });
       var pfw=planFilter(jobs,preps); var allJobsWeek=jobs, allPrepsWeek=preps; jobs=pfw.jobs; preps=pfw.preps; if(NEED) rounds=[];
       var groups=[["shop","Production",preps],["road","Transport",jobs.filter(function(j){return j.site;})],["labour","Goods In and Out",jobs.filter(function(j){return !j.site&&!(j.isLeg&&j.leg.type==="production");})]];

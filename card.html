@@ -114,14 +114,14 @@
   var t=TrelloPowerUp.iframe();
   var el=function(tag,c,x){var n=document.createElement(tag);if(c)n.className=c;if(x!=null)n.textContent=x;return n;};
   var PARTS=null, CRM_FIRMS=[], CARRIER_PENDING=false;
-  var card=null, d=null, viewing=false, workshop=false, site=false, loading=false, saving=null, defaultDue=null, boardData={}, OTHERS=[], LEAVE=[], OTHERS_OK=null, MISSED=0;
+  var card=null, d=null, viewing=false, workshop=false, site=false, loading=false, saving=null, defaultDue=null, boardData={}, OTHERS=[], LEAVE=[], AWAY=[], OTHERS_OK=null, MISSED=0;
   // the other cards on the board, with their plans, so this card can say who is free
   function loadOthers(){
     var cardsP=t.cards("id","name","due","start","idList","labels","desc","checklists").catch(function(){ return t.cards("id","name","due","start","idList","labels","desc"); });
     return Promise.all([cardsP, t.lists("all")]).then(function(r){
       var listName={}; r[1].forEach(function(l){ listName[l.id]=l.name; });
       var dated=r[0].filter(function(x){ return x.due && x.id!==card.id; }); var nameOf={}; r[0].forEach(function(x){ nameOf[x.id]=(x.name||"").split(" - ").slice(0,2).join(" - "); });
-      LEAVE=[]; dated.filter(function(x){ return /Holidays|Leave/i.test(listName[x.idList]||""); }).forEach(function(x){ var who=crewOf(x.name.split(/\s*\(/)[0].trim()); leaveDays((x.start||"").slice(0,10),x.due.slice(0,10)).forEach(function(k){ LEAVE.push({date:k,who:who}); }); });
+      LEAVE=[]; AWAY=[]; dated.filter(function(x){ return /Holidays|Leave/i.test(listName[x.idList]||""); }).forEach(function(x){ var who=crewOf(x.name.split(/\s*\(/)[0].trim()), win=leaveWindow(x.name); leaveDays((x.start||"").slice(0,10),x.due.slice(0,10)).forEach(function(k){ if(win) AWAY.push({date:k,who:who,from:win.from,to:win.to,mins:win.mins}); else LEAVE.push({date:k,who:who}); }); });
       // ONLY JOBS THAT CAN STILL TOUCH A DAY AHEAD (1 Oct 2026): every completed card on the board was read one by one,
       // and the panel drew "7h 45m available" for everyone while that was still going or after it failed.
       var cut=new Date(); cut.setDate(cut.getDate()-60); var cutK=cut.toISOString().slice(0,10);
@@ -149,6 +149,7 @@
   function loadOn(k,skip){
     var out={}; CREW.forEach(function(w){ out[w]={mins:0,done:0,n:0,away:[],forton:0}; });
     LEAVE.forEach(function(l){ if(l.date===k&&out[l.who]){ out[l.who].off=true; out[l.who].why="annual leave"; } });
+    AWAY.forEach(function(a){ if(a.date===k&&out[a.who]){ out[a.who].mins+=a.mins; out[a.who].awayWin=a.from+" to "+a.to; } });   // part of the day away: the hours are spoken for
     var offW=(boardData.off||{})[k]||[], offWhy=boardData.offWhy||{};
     offW.forEach(function(n){ var w=crewOf(n); if(!out[w]) return; out[w].off=true; var why=offWhy[k+"|"+n]||offWhy[k+"|"+w]; if(!why) Object.keys(offWhy).forEach(function(key){ var p=key.split("|"); if(p[0]===k&&crewOf(p[1])===w) why=offWhy[key]; }); if(why) out[w].why=why; });
     var mine=[]; if(card&&d&&card.due){ mine.push({name:"this job",due:card.due.slice(0,10),start:null,site:site,plan:{who:skip===d?[]:(d.who||[]),mins:d.mins,drive:d.drive,at:d.at,each:d.each,prep:skip===d.prep?null:d.prep,legs:(d.legs||[]).filter(function(L){return L!==skip;})}}); }
@@ -159,7 +160,7 @@
       if(pd.indexOf(k)>=0){ (p.prep.who||[]).forEach(function(w){ if(!out[w]) return; out[w].n++; out[w].mins+=Math.round((minsFor(p.prep,w)||0)/(pd.length||1)); out[w].forton++; }); }
       (p.legs||[]).forEach(function(L){ if(L.date===k) (L.who||[]).forEach(function(w){ if(!out[w]) return; out[w].n++; out[w].mins+=(minsFor(L,w)||0)+(L.drive||0); if(o.done) out[w].done+=(minsFor(L,w)||0)+(L.drive||0); out[w].forton++; }); });
     });
-    CREW.forEach(function(w){ var x=out[w]; x.avail=x.off?0:Math.max(0,DAY_MINS-x.mins); x.t=x.off?"on leave":!x.n?"available":x.mins>DAY_MINS?fmt(x.mins)+", over capacity":!x.mins?x.n+(x.n===1?" job, no time":" jobs, no time"):fmt(x.mins)+" allocated"; x.c=x.off?"off":!x.n?"free":x.mins>DAY_MINS?"over":"busy"; });
+    CREW.forEach(function(w){ var x=out[w]; x.avail=x.off?0:Math.max(0,DAY_MINS-x.mins); x.t=x.off?"on leave":x.awayWin&&!x.n?"away "+x.awayWin+", free the rest of the day":!x.n?"available":x.mins>DAY_MINS?fmt(x.mins)+", over capacity":!x.mins?x.n+(x.n===1?" job, no time":" jobs, no time"):fmt(x.mins)+" allocated"; x.c=x.off?"off":!x.n?"free":x.mins>DAY_MINS?"over":"busy"; });
     return out;
   }
   function availability(days,part){

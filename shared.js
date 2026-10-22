@@ -643,6 +643,14 @@ var AM_MINS=225, PM_MINS=240;
 // its own leave check; a leave day is off whatever the grid holds, is never filled, and cannot be clicked on.
 var PREP_OFF=function(w,k){ return false; };
 // a leave card runs from its start to its due date: every day between counts (a 26 to 27 Oct card was 27 Oct only)
+// PART OF A DAY OFF (Sam, 22 Oct 2026, Jordan: "he is working 8am till 11am, has to leave site for a personal appointment
+// from 11am till 14:00 and will be back"). A leave card whose title carries a time window, "Jordan - Leave (11:00-14:00)"
+// or "(11am-2pm)", is away for those hours only: not off, the hours come off the day, and the grid keeps the day on.
+function leaveWindow(name){ var m=/\((\d{1,2})(?::(\d{2}))?\s*(am|pm)?\s*(?:-|to|\u2013)\s*(\d{1,2})(?::(\d{2}))?\s*(am|pm)?\)/i.exec(String(name||"")); if(!m) return null;
+  var toM=function(hh,mm,ap){ var H=+hh, M=+(mm||0); if(ap){ ap=ap.toLowerCase(); if(ap==="pm"&&H<12) H+=12; if(ap==="am"&&H===12) H=0; } return H*60+M; };
+  var apA=m[3]||(m[6]&&+m[1]>+m[4]?"am":m[6]), apB=m[6]||m[3];   // "11-2pm": the first takes am when it is the bigger number
+  var a=toM(m[1],m[2],apA), b=toM(m[4],m[5],apB); if(!m[3]&&!m[6]&&b<=a&&+m[4]<12) b+=720; if(b<=a) return null;
+  var t=function(x){ return (x/60<10?"0":"")+Math.floor(x/60)+":"+(x%60<10?"0":"")+(x%60); }; return {from:t(a),to:t(b),mins:b-a}; }
 function leaveDays(start,due){ var out=[]; if(!due) return out; var a=start&&start<due?start:due; for(var x=new Date(a+"T12:00"); x.toISOString().slice(0,10)<=due; x.setDate(x.getDate()+1)) out.push(x.toISOString().slice(0,10)); return out; }
 function prepDayList(P){ if(!P||!P.date) return []; var a=P.start&&P.start<P.date?P.start:P.date, out=[]; for(var x=new Date(a+"T12:00"); x.toISOString().slice(0,10)<=P.date; x.setDate(x.getDate()+1)){ if(x.getDay()!==0&&x.getDay()!==6) out.push(x.toISOString().slice(0,10)); } return out; }
 function prepSpanFor(P,w){ var r=P&&P.days&&P.days[w]; return r&&(r.from||r.to)?r:null; }
