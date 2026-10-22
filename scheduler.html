@@ -3008,10 +3008,15 @@ var SNAP=null, DETAIL={};
           // the facts as three short lines on the right, the Trello code beside them
           var facts={}; (o.facts||[]).forEach(function(f){ facts[f[0]]=f[1]||""; }); var rx=L+W-20; doc.setFontSize(9);
           var l1=[facts.Time?facts.Time:"",facts.Due?"Due "+facts.Due:""].filter(Boolean).join(" · "); var dl=facts.Delivery?"Delivery "+facts.Delivery:(facts["Ready by"]?"Ready by "+facts["Ready by"]:""); var l2=[dl,facts.Ref?"Ref "+facts.Ref:""].filter(Boolean).join(" · ");
-          doc.setFont("helvetica","bold"); if(l1) doc.text(l1,rx,y+3,{align:"right"}); doc.setFont("helvetica","normal"); if(l2) doc.text(l2,rx,y+7.5,{align:"right"});
-          doc.setTextColor(110); doc.setFontSize(8); doc.text("Step 1 · move the job into In-progress",rx-7,y+12,{align:"right"}); doc.setTextColor(0); box(rx-5.5,y+9.2,4); if(o.started){ doc.setLineWidth(0.6); doc.setDrawColor(17); doc.line(rx-4.7,y+11.3,rx-3.6,y+12.4); doc.line(rx-3.6,y+12.4,rx-2.1,y+10.1); doc.setDrawColor(0); }
-          qr(o.code,L+W-17,y-0.5,17); doc.setFont("helvetica","bold"); doc.setFontSize(5.5); doc.text("Trello card",L+W-8.5,y+18.5,{align:"center"}); ty=Math.max(ty,y+19); }
+          var rx2=L+W; doc.setFont("helvetica","bold"); if(l1) doc.text(l1,rx2,y+3,{align:"right"}); doc.setFont("helvetica","normal"); if(l2) doc.text(l2,rx2,y+7.5,{align:"right"}); ty=Math.max(ty,y+9); }
+
+
         y=ty+(cont?3:4); rule(); y+=4;
+        // STEP 1 AS A BAR UNDER THE HEADER (Sam, 22 Oct 2026, mock approved: "make this more obvious and better placement")
+        if(!cont){ var bh=15; doc.setLineWidth(0.5); doc.setDrawColor(17); doc.roundedRect(L,y,W,bh,1.5,1.5); doc.setFillColor(17,17,17); doc.roundedRect(L,y,34,bh,1.5,1.5,"F"); doc.rect(L+30,y,4,bh,"F"); doc.setTextColor(255); doc.setFont("helvetica","bold"); doc.setFontSize(7); doc.text(["BEFORE","YOU START"],L+17,y+bh/2-0.6,{align:"center"}); doc.setTextColor(0);
+          box(L+39,y+bh/2-3,6); if(o.started){ doc.setLineWidth(0.8); doc.setDrawColor(17); doc.line(L+40.3,y+bh/2+0.2,L+41.8,y+bh/2+1.8); doc.line(L+41.8,y+bh/2+1.8,L+44.3,y+bh/2-1.8); doc.setDrawColor(0); }
+          doc.setTextColor(110); doc.setFontSize(6.5); doc.text("STEP 1"+(o.started?" \u00b7 DONE":""),L+48,y+bh/2-2.2,{charSpace:0.2}); doc.setTextColor(o.started?140:0); doc.setFontSize(11); doc.text("Move the job into In-progress on Trello",L+48,y+bh/2+3); doc.setTextColor(0);
+          doc.setDrawColor(200); doc.line(L+W-34,y,L+W-34,y+bh); doc.setDrawColor(0); qr(o.code,L+W-31,y+1.2,12.5); doc.setFont("helvetica","bold"); doc.setFontSize(6.5); doc.text(["Scan for","the card"],L+W-16,y+bh/2-0.5); y+=bh+5; }
         if(!cont){ doc.setFont("helvetica","bold"); doc.setFontSize(9.5); doc.text("ITEMS · PICKED AND FINISHED",L,y+3,{charSpace:0.3}); y+=5;   // one heading; the old state title ("Pick and finish") is no longer needed on top of it (Sam, 22 Oct 2026)
           doc.setFont("helvetica","normal"); doc.setFontSize(7.5); doc.setTextColor(90); doc.text("Write today's numbers in the boxes. An item with parts is finished when all its parts are.",L,y+2.8); doc.setTextColor(0); y+=5.5; }
         tableHead(); };
