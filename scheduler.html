@@ -1303,9 +1303,9 @@ var SNAP=null, DETAIL={};
           var top=el("div","ptop"); if(ph){ var im=el("img","ithumb zoom"); im.src=ph; im.alt=nmTxt; im.loading="lazy"; im.tabIndex=0; im.title="Click to see it bigger"; im.setAttribute("role","button"); im.onclick=function(e){ e.stopPropagation(); photoPopup(ph,nmTxt); }; im.onkeydown=function(e){ if(e.key==="Enter"||e.key===" "){ e.preventDefault(); photoPopup(ph,nmTxt); } }; top.appendChild(im); }
           else top.appendChild(el("span","ithumb none","No photo"));
           var nm=el("div","pnm"); nm.appendChild(el("b",null,c.q+" x "+nmTxt)); nm.appendChild(el("small",null,[l.section&&!/^other$/i.test(l.section)?l.section:"",l.stock_location?"Location "+l.stock_location:"",all?"all finished":c.f+" of "+c.q+" finished"+(c.on?", updated "+niceDay(c.on):"")].filter(Boolean).join(" \u00b7 "))); top.appendChild(nm); li.appendChild(top);
-          var tb=el("div","ptable"); var hd=el("div","prow head"); hd.appendChild(el("span",null,"")); hd.appendChild(el("span",null,"Picked")); hd.appendChild(el("span",null,"Finished")); hd.appendChild(el("span",null,"")); tb.appendChild(hd);
+          var tb=el("div","ptable"); var hd=el("div","prow head"); hd.appendChild(el("span",null,"")); hd.appendChild(el("span",null,"In progress")); hd.appendChild(el("span",null,"Finished")); hd.appendChild(el("span",null,"")); tb.appendChild(hd);
           c.parts.forEach(function(pt){ var r=el("div","prow"+(pt.f>=pt.q&&pt.q>0?" done":"")); var nmc=el("span","pnme",pt.n); if(pt.x){ var xb=el("button","close","\u00d7"); xb.type="button"; xb.title="Remove this part"; xb.setAttribute("aria-label","Remove "+pt.n); xb.onclick=function(){ dropPart(l,pt.n); }; nmc.appendChild(xb); } r.appendChild(nmc);
-            r.appendChild(stepper(pt.n+" picked",pt.p,pt.q,function(v){ setPart(l,pt.n,"p",v); })); r.appendChild(stepper(pt.n+" finished",pt.f,pt.q,function(v){ setPart(l,pt.n,"f",v); })); r.appendChild(el("span","of","of "+pt.q)); tb.appendChild(r); });
+            r.appendChild(stepper(pt.n+" in progress",pt.p,pt.q,function(v){ setPart(l,pt.n,"p",v); })); r.appendChild(stepper(pt.n+" finished",pt.f,pt.q,function(v){ setPart(l,pt.n,"f",v); })); r.appendChild(el("span","of","of "+pt.q)); tb.appendChild(r); });
           /* SCRAP PANELS USED INSTEAD (Sam, 22 Oct 2026, mock approved): typed with the day's numbers. Each one takes a top off
              the pick and puts the line on the Tops back to stock list until Sam marks the stock updated. */
           c.parts.forEach(function(pt){ if(!pt.canScrap) return; var r=el("div","prow scrap"); r.appendChild(el("span","pnme","Scrap panels used instead"));
@@ -1315,7 +1315,7 @@ var SNAP=null, DETAIL={};
           ad.appendChild(ai); ad.appendChild(aq); ad.appendChild(ab); tb.appendChild(ad); li.appendChild(tb);
           pul.appendChild(li); });
         pb.appendChild(pul);
-        var pf=el("div","pfoot"); pf.appendChild(el("span","hint","Type what was picked and finished from the day sheet, by part. An item is finished when all its parts are."));
+        var pf=el("div","pfoot"); pf.appendChild(el("span","hint","Type what is in progress and finished from the day sheet, by part. An item is finished when all its parts are."));
         var allF=tf>=tq, tb=el("button","link",allF?"Clear the counts":"Mark all finished"); tb.onclick=function(){ var P={}; if(!allF) plc.lines.forEach(function(l){ if(isPartLine(l)) return; var c=pickCount(P0,l), old=P0[pickKey(l)]||{}, log=(old.log||[]).filter(function(x){return x.on!==iso(TODAY);}); log.push({on:iso(TODAY),f:c.q}); var parts={}; c.parts.forEach(function(x){ parts[x.n]={p:x.q,f:x.q}; }); P[pickKey(l)]={f:c.q,on:iso(TODAY),log:log.slice(-30),parts:parts,extra:old.extra,scrap:old.scrap,scrapInfo:old.scrapInfo,scrapCleared:old.scrapCleared,t2:true}; }); j.prep.picked=P; keep(); persist(); render(); }; pf.appendChild(tb);
         pb.appendChild(pf); left.appendChild(pb); } }
     // WHAT IS BEING WORKED ON (Sam, 15 Sep 2026: "so I don't have to go back into the Trello card to see what is being
@@ -3027,8 +3027,8 @@ var SNAP=null, DETAIL={};
     kit.production=function(o){
       var CWs=[16,14,16,14], CX=[L+W-60,L+W-44,L+W-28,L+W-14], NX=L+27, NW=(L+W-60)-NX-3;
       var mid=function(i){ return CX[i]+CWs[i]/2; };
-      var tableHead=function(){ doc.setFont("helvetica","bold"); doc.setFontSize(6.5); doc.setTextColor(110); doc.text("ITEM · TICK WHEN ALL PICKED AND FINISHED",L,y+3,{charSpace:0.2});
-        doc.text("PICKED",(CX[0]+CX[1]+CWs[1])/2,y+2.6,{align:"center"}); doc.text("FINISHED",(CX[2]+CX[3]+CWs[3])/2,y+2.6,{align:"center"}); doc.setFontSize(5.5); doc.setFont("helvetica","normal");
+      var tableHead=function(){ doc.setFont("helvetica","bold"); doc.setFontSize(6.5); doc.setTextColor(110); doc.text("ITEM · TICK WHEN ALL FINISHED",L,y+3,{charSpace:0.2});
+        doc.text("IN PROGRESS",(CX[0]+CX[1]+CWs[1])/2,y+2.6,{align:"center"}); doc.text("FINISHED",(CX[2]+CX[3]+CWs[3])/2,y+2.6,{align:"center"}); doc.setFontSize(5.5); doc.setFont("helvetica","normal");
         doc.text("so far",mid(0),y+5.4,{align:"center"}); doc.text("today",mid(1),y+5.4,{align:"center"}); doc.text("so far",mid(2),y+5.4,{align:"center"}); doc.text("today",mid(3),y+5.4,{align:"center"}); doc.setTextColor(0);
         doc.setDrawColor(120); doc.setLineWidth(0.3); doc.line(L,y+6.6,L+W,y+6.6); doc.setDrawColor(0); y+=7.5; };
       var head=function(cont){ newPage(); label("Production"+(o.day?" · "+o.day:"")+(cont?" · continued":""),L,y+1);
@@ -3046,7 +3046,7 @@ var SNAP=null, DETAIL={};
           box(L+39,y+bh/2-3,6); if(o.started){ doc.setLineWidth(0.8); doc.setDrawColor(17); doc.line(L+40.3,y+bh/2+0.2,L+41.8,y+bh/2+1.8); doc.line(L+41.8,y+bh/2+1.8,L+44.3,y+bh/2-1.8); doc.setDrawColor(0); }
           doc.setTextColor(110); doc.setFontSize(6.5); doc.text("STEP 1"+(o.started?" \u00b7 DONE":""),L+48,y+bh/2-2.2,{charSpace:0.2}); doc.setTextColor(o.started?140:0); doc.setFontSize(11); doc.text("Move the job into In-progress on Trello",L+48,y+bh/2+3); doc.setTextColor(0);
           doc.setDrawColor(200); doc.line(L+W-34,y,L+W-34,y+bh); doc.setDrawColor(0); qr(o.code,L+W-31,y+1.2,12.5); doc.setFont("helvetica","bold"); doc.setFontSize(6.5); doc.text(["Scan for","the card"],L+W-16,y+bh/2-0.5); y+=bh+5; }
-        if(!cont){ doc.setFont("helvetica","bold"); doc.setFontSize(9.5); doc.text("ITEMS · PICKED AND FINISHED",L,y+3,{charSpace:0.3}); y+=5;   // one heading; the old state title ("Pick and finish") is no longer needed on top of it (Sam, 22 Oct 2026)
+        if(!cont){ doc.setFont("helvetica","bold"); doc.setFontSize(9.5); doc.text("ITEMS · IN PROGRESS AND FINISHED",L,y+3,{charSpace:0.3}); y+=5;   // one heading; the old state title ("Pick and finish") is no longer needed on top of it (Sam, 22 Oct 2026)
           doc.setFont("helvetica","normal"); doc.setFontSize(7.5); doc.setTextColor(90); doc.text("Write today's numbers in the boxes. An item with parts is finished when all its parts are.",L,y+2.8); doc.setTextColor(0); y+=5.5; }
         tableHead(); };
       var cont=function(){ setFoot("This job carries on over the page."); head(true); };
@@ -3104,7 +3104,7 @@ var SNAP=null, DETAIL={};
         if(single) countsAt(rows[0],y0+rowH/2);
         else { // THE WHOLE ITEM, READ FROM ITS PARTS (Sam, 22 Oct 2026, mock A): parts picked so far, and the item finished, no boxes
           var pdone=rows.filter(function(r){ return r.q>0&&r.p>=r.q; }).length, ymid=y0+rowH/2, noun=/desk/i.test(String(l.headerCustomer||""))?"desks":/bench/i.test(String(l.headerCustomer||""))?(c.q===1?"bench":"benches"):"finished";
-          doc.setFont("helvetica","normal"); doc.setFontSize(6.5); doc.setTextColor(110); doc.text("parts picked",(CX[0]+CX[2])/2,ymid-2,{align:"center"}); doc.text(noun==="finished"?"finished":noun+" finished",(CX[2]+L+W)/2,ymid-2,{align:"center"});
+          doc.setFont("helvetica","normal"); doc.setFontSize(6.5); doc.setTextColor(110); doc.text("parts in progress",(CX[0]+CX[2])/2,ymid-2,{align:"center"}); doc.text(noun==="finished"?"finished":noun+" finished",(CX[2]+L+W)/2,ymid-2,{align:"center"});
           doc.setFont("helvetica","bold"); doc.setFontSize(9.5); doc.setTextColor(17); doc.text(pdone+" of "+rows.length,(CX[0]+CX[2])/2,ymid+2.6,{align:"center"}); doc.text(c.f+" of "+c.q,(CX[2]+L+W)/2,ymid+2.6,{align:"center"}); doc.setTextColor(0); }
         y=y0+rowH;
         if(!single){ rows.forEach(function(r,ri){ var ls=partLines[ri], pt=partTxt(r), rh=partH(ls,pt), tx=NX+(pt.tied?4:0); doc.setFillColor(250,250,250); doc.rect(L+7,y,W-7,rh+(pt.canScrap?6:0),"F"); doc.setDrawColor(225); doc.setLineWidth(0.2); doc.line(L+7,y,L+W,y); doc.setDrawColor(0);
@@ -3619,7 +3619,7 @@ var SNAP=null, DETAIL={};
   var AUTO=true;
   var REFRESHING=false, POLL_EVERY=10000, CRM_EVERY_TICKS=6, TICK=0;
   var PENDING_SNAP=null, FOREIGN=null, SEEN_FOREIGN={};   // a change to the job on screen, waiting for the person to choose
-  var SCHED_VERSION="22 Oct 15:40";   /* bumped on every push: shows which version is running and which built a sheet (Sam, 22 Oct 2026, "still not live?!") */
+  var SCHED_VERSION="22 Oct 16:36";   /* bumped on every push: shows which version is running and which built a sheet (Sam, 22 Oct 2026, "still not live?!") */
   /* A NEWER SCHEDULER RELOADS ITSELF (Sam, 22 Oct 2026, a sheet built from a window opened before the push). Checked every two
      minutes and before any sheet is built; a reload waits while an editor is open. */
   function liveVersion(){ return fetch("./scheduler.html?vc="+Date.now(),{cache:"no-store"}).then(function(r){ return r.ok?r.text():""; }).then(function(t){ var m=/SCHED_VERSION\s*=\s*"([^"]+)"/.exec(t||""); return m?m[1]:""; }).catch(function(){ return ""; }); }
