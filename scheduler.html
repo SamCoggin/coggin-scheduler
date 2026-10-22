@@ -1731,7 +1731,7 @@ var SNAP=null, DETAIL={};
   var TIPS={
     shop:"Production work: jobs being prepared in the workshop. Select a job to assign operatives, set production dates and allocate time per day.",
     road:"Transport: deliveries, installations, collections and site visits. Select a job for operatives, return travel time and site time. Two or more transport jobs for one operative on the same day form a delivery round.",
-    labour:"Goods In and Out: inbound recycling loads, skip exchanges, stock deliveries and other on-site work. Select a job for operatives and time.",
+    labour:"Goods In and Out: inbound recycling loads, skip exchanges, stock deliveries, facility jobs and other work at Forton. Select a job for operatives and time.",
     leave:"Annual leave from the Holidays / Leave list on the board, bank holidays for England and Wales, and anyone marked as off in the day view. Mark as off is for sickness, a course or a breakdown on the day: press it on the operative, say why, and their jobs are flagged to reassign.",
     people:"Each operative's allocation for the day. Green is available, red is over capacity.",
     tot:"Each operative's allocated hours for the day, against a 7 hour 45 minute working day (38 hours 45 minutes a week, Monday to Friday). Amber means a job has no time allocated yet. Red means over the day.",
@@ -1771,7 +1771,7 @@ var SNAP=null, DETAIL={};
     var partX=isPrep?j.prep:j;
     var mid=el("div","mid"); mid.appendChild(el("span","ttl",j.title));
     // one line of context: what kind of work, who, which van
-    var ctx=[]; if(isPrep) ctx.push("Production"); else if(j.isLeg&&j.leg&&j.leg.type==="production") ctx.push("Production"); else if(j.isLeg){ var ltd=LEG_TYPES.filter(function(t){ return t[0]===(j.leg&&j.leg.type); })[0]; ctx.push((ltd?ltd[1]:"Goods In and Out")+(j.leg&&j.leg.where?", "+j.leg.where:"")); }   /* named for the work, never "Leg" (Sam, 1 Oct 2026) */   /* a production stint is production, not a leg (Sam, 1 Oct 2026: "why is it a leg?") */ else ctx.push([j.work,j.movement||j.label].filter(Boolean).join(", ")||"Job");
+    var ctx=[]; if(isPrep) ctx.push("Production"); else if(j.isLeg&&j.leg&&j.leg.type==="production") ctx.push("Production"); else if(j.isLeg){ var ltd=LEG_TYPES.filter(function(t){ return t[0]===(j.leg&&j.leg.type); })[0]; ctx.push((ltd?ltd[1]:"Goods In and Out")+(j.leg&&j.leg.where?", "+j.leg.where:"")); }   /* named for the work, never "Leg" (Sam, 1 Oct 2026) */   /* a production stint is production, not a leg (Sam, 1 Oct 2026: "why is it a leg?") */ else ctx.push(j.facility?"Facility":([j.work,j.movement||j.label].filter(Boolean).join(", ")||"Job"));   // a facility job says so in Goods In and Out (Sam, 22 Oct 2026: "merge it into goods in and out")
     if(!isPrep&&j.contractor&&!j.who.length) ctx.push(j.contractor); else if(!isPrep&&attending(j)) ctx.push(j.contractor+" \u00b7 "+partX.who.join(", ")+" attending"); else if(partX.who.length) ctx.push(partX.who.join(", "));
     if(!isPrep&&ourJob(j)&&j.vehicle) ctx.push(j.vehicle==="hire"?"Hire":j.vehicle.split(" ")[0]);
     mid.appendChild(el("span","for ctx",ctx.join(" \u00b7 ")));
