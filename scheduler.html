@@ -921,7 +921,7 @@ var SNAP=null, DETAIL={};
   // picked[key] = { parts:{ Tops:{p,f}, ... }, extra:[{n,q}], f, on, log } with f the worked-out finished units.
   function pickPartsOf(l,extra){ var u=pickUnits(l), hb=String(l.headerBreakdown||""), out;
     if(/desk/i.test(String(l.headerCustomer||""))){ out=[{n:"Tops",q:u}]; if(/panels from scrap/i.test(hb)) out.push({n:"Back panels",q:u}); else if(/\+\s*\d+\s*legs/i.test(hb)) out.push({n:"Modesty panels",q:u}); var lg=/(\d+)\s*legs/i.exec(hb); if(lg&&+lg[1]>0) out.push({n:"Legs",q:+lg[1]}); }
-    else if(Array.isArray(l.build_components)&&l.build_components.length) out=l.build_components.map(function(c){ return {n:String(c.name||"Part"),q:Number(c.qty)||Number(c.quantity)||u}; });
+    else if(Array.isArray(l.build_components)&&l.build_components.length){ out=l.build_components.map(function(c){ return {n:String(c.name||"Part"),q:Number(c.qty)||Number(c.quantity)||u}; }); if(l.build_components.some(function(c){ return c.role==="top"||c.replaces_role==="top"; })&&/desk/i.test(String(l.name||""))) out.unshift({n:"Frame"+(l.attr_dims?" ("+String(l.attr_dims).replace(/mm$/,"")+")":""),q:u}); }   // a top from stock on a desk: the frame is handled first (Sam, 22 Oct 2026)
     else out=[{n:l.section==="seating"?"Chairs":l.section==="storage"?"Units":l.section==="tables"?"Tables":l.section==="desk_tops"?"Tops":"Items",q:u}];
     (extra||[]).forEach(function(e){ if(e&&e.n) out.push({n:String(e.n),q:Number(e.q)||u,x:true}); }); return out; }
   function pickCount(P,l){ var q=pickUnits(l), e=P[pickKey(l)]||null; var ps=pickPartsOf(l,e&&e.extra);
@@ -934,6 +934,7 @@ var SNAP=null, DETAIL={};
   function pickedOf(id){ var j=JOBS.filter(function(x){return x.id===id;})[0]; if(!j) return {}; return (j.prep&&j.prep.picked)||(j.donePrep&&j.donePrep.picked)||{}; }
   var ITEM_PHOTOS={};   // card id -> [{name, qty, photo}] from the CRM, fetched when the card is opened
   var CRM_PICKING_URL="https://coggin-sos-os.base44.app/api/apps/69c930a6240fba922f369aa2/functions/pickingSheets";
+  var CRM_ATTACH_URL="https://coggin-sos-os.base44.app/api/apps/69c930a6240fba922f369aa2/functions/attachProductionSheet";
   var ACTUALS={}, ACTUALS_OK=false, ACT_OPEN=null, ACT_DRAFT=null, TIMINGS_OPEN=false;
   // DAY SHEET ENTRY SWITCHED OFF (Sam, 2 Oct 2026: the sheet's who-did-it and actual-time strip became notes, "yes switch it
   // off"). Enter day sheet, the "day sheets to type in" rail and Timings read what was typed from that strip, so all three
@@ -3131,6 +3132,7 @@ var SNAP=null, DETAIL={};
       var r=await daySheetBuild(k,null);
       if(!r.jobOnly){ alert("Nobody has a job with a card on "+niceDay(k)+", so there are no job sheets to print."); return; }
       r.doc.save("job-sheets-"+k+".pdf");
+      if(btn){ btn.textContent="Putting the sheets on the cards..."; } await attachDayProductionSheets(k);
     } finally { if(btn){ btn.disabled=false; btn.textContent=was||"Download job sheets"; } }
   }
   // THE JOB SHEET FROM THE EDITOR (Sam, 14 Oct 2026). The same build as the day's job sheets, kept to this job's rows.
@@ -3143,8 +3145,19 @@ var SNAP=null, DETAIL={};
       if(!r.jobOnly){ alert("This job has no page to print: it needs a card and somebody on it for "+niceDay(k)+"."); return; }
       var nm=(j.short||j.id||"job").toLowerCase().replace(/[^a-z0-9]+/g,"-");
       r.doc.save("job-sheet-"+nm+"-"+k+".pdf");
+      if(o&&o.shop) attachProductionSheet(j,r.doc,k);
     } finally { if(btn){ btn.disabled=false; btn.textContent=was||"Job sheet"; } }
   }
+  // THE PRODUCTION SHEET ON THE CARD (Sam, 22 Oct 2026: "make it so the production sheet replaces the picking sheet as they
+  // will naturally still go here"). The page just built goes to the card as "Production sheet <ref>", replacing the older
+  // one and the old picking sheet. Quietly: a failed upload never stops the download.
+  function attachProductionSheet(j,doc,k){ if(!CRM_KEY||!j||!j.id||j.isHold) return Promise.resolve();
+    try{ var b64=doc.output("datauristring").split(",")[1]; var name="Production sheet"+(j.short?" "+j.short:"")+" "+k;
+      return fetch(CRM_ATTACH_URL,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({key:CRM_KEY,card_id:j.id,name:name,pdf_base64:b64})}).then(function(x){ return x.json(); }).then(function(r){ if(!(r&&r.ok)) console.warn("production sheet not attached",r&&r.error); }).catch(function(e){ console.warn("production sheet not attached",e); }); }
+    catch(e){ return Promise.resolve(); } }
+  // every production job on the day gets its page on its card, one after another, after the day's sheets are saved
+  async function attachDayProductionSheets(k){ var jobs=prepJobs().filter(function(j){ return j.prep&&j.prep.date&&!j.isHold&&daysOf(j.prep).indexOf(k)>=0&&j.prep.who.length; });
+    for(var i=0;i<jobs.length;i++){ try{ var r=await daySheetBuild(k,["p"+jobs[i].id]); if(r&&r.jobOnly) await attachProductionSheet(jobs[i],r.doc,k); }catch(e){ console.warn("production sheet",e); } } }
   async function daySheetBuild(k,only){
     {
       var PICK=null, cards=daySheetPdf(k,null,"cards")||[];
