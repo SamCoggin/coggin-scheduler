@@ -1305,7 +1305,7 @@ var SNAP=null, DETAIL={};
           var nm=el("div","pnm"); nm.appendChild(el("b",null,c.q+" x "+nmTxt)); nm.appendChild(el("small",null,[l.section&&!/^other$/i.test(l.section)?l.section:"",l.stock_location?"Location "+l.stock_location:"",all?"all finished":c.f+" of "+c.q+" finished"+(c.on?", updated "+niceDay(c.on):"")].filter(Boolean).join(" \u00b7 "))); top.appendChild(nm); li.appendChild(top);
           var tb=el("div","ptable"); var hd=el("div","prow head"); hd.appendChild(el("span",null,"")); hd.appendChild(el("span",null,"In progress")); hd.appendChild(el("span",null,"Finished")); hd.appendChild(el("span",null,"")); tb.appendChild(hd);
           c.parts.forEach(function(pt){ var r=el("div","prow"+(pt.f>=pt.q&&pt.q>0?" done":"")); var nmc=el("span","pnme",pt.n); if(pt.x){ var xb=el("button","close","\u00d7"); xb.type="button"; xb.title="Remove this part"; xb.setAttribute("aria-label","Remove "+pt.n); xb.onclick=function(){ dropPart(l,pt.n); }; nmc.appendChild(xb); } r.appendChild(nmc);
-            r.appendChild(stepper(pt.n+" in progress",pt.p,pt.q,function(v){ setPart(l,pt.n,"p",v); })); r.appendChild(stepper(pt.n+" finished",pt.f,pt.q,function(v){ setPart(l,pt.n,"f",v); })); r.appendChild(el("span","of","of "+pt.q)); tb.appendChild(r); });
+            r.appendChild(stepper(pt.n+" in progress",Math.max(0,pt.p-pt.f),pt.q-pt.f,function(v){ setPart(l,pt.n,"p",pt.f+Math.max(0,v)); }));   /* shows started minus finished; finishing one moves it out */ r.appendChild(stepper(pt.n+" finished",pt.f,pt.q,function(v){ setPart(l,pt.n,"f",v); })); r.appendChild(el("span","of",(pt.q-pt.p)>0?(pt.q-pt.p)+" not started":"all started")); tb.appendChild(r); });
           /* SCRAP PANELS USED INSTEAD (Sam, 22 Oct 2026, mock approved): typed with the day's numbers. Each one takes a top off
              the pick and puts the line on the Tops back to stock list until Sam marks the stock updated. */
           c.parts.forEach(function(pt){ if(!pt.canScrap) return; var r=el("div","prow scrap"); r.appendChild(el("span","pnme","Scrap panels used instead"));
@@ -3029,7 +3029,7 @@ var SNAP=null, DETAIL={};
       var mid=function(i){ return CX[i]+CWs[i]/2; };
       var tableHead=function(){ doc.setFont("helvetica","bold"); doc.setFontSize(6.5); doc.setTextColor(110); doc.text("ITEM · TICK WHEN ALL FINISHED",L,y+3,{charSpace:0.2});
         doc.text("IN PROGRESS",(CX[0]+CX[1]+CWs[1])/2,y+2.6,{align:"center"}); doc.text("FINISHED",(CX[2]+CX[3]+CWs[3])/2,y+2.6,{align:"center"}); doc.setFontSize(5.5); doc.setFont("helvetica","normal");
-        doc.text("so far",mid(0),y+5.4,{align:"center"}); doc.text("today",mid(1),y+5.4,{align:"center"}); doc.text("so far",mid(2),y+5.4,{align:"center"}); doc.text("today",mid(3),y+5.4,{align:"center"}); doc.setTextColor(0);
+        doc.text("now",mid(0),y+5.4,{align:"center"}); doc.text("started today",mid(1),y+5.4,{align:"center"}); doc.text("so far",mid(2),y+5.4,{align:"center"}); doc.text("today",mid(3),y+5.4,{align:"center"}); doc.setTextColor(0);
         doc.setDrawColor(120); doc.setLineWidth(0.3); doc.line(L,y+6.6,L+W,y+6.6); doc.setDrawColor(0); y+=7.5; };
       var head=function(cont){ newPage(); label("Production"+(o.day?" · "+o.day:"")+(cont?" · continued":""),L,y+1);
         doc.setFont("helvetica","bold"); doc.setFontSize(cont?14:20); var tl=doc.splitTextToSize(o.name,W-78).slice(0,2); doc.text(tl,L,y+(cont?7:9)); var ty=y+(cont?7:9)+(tl.length-1)*7;
@@ -3053,13 +3053,14 @@ var SNAP=null, DETAIL={};
       head(false);
       var pageLines=(o.all&&o.all.length)?o.all:o.lines;   // every item, finished ones included, so finished can be written on any of them
       if(!pageLines.length){ kit.items(o.items||[],cont); }
-      var countsAt=function(r,yc){ doc.setFont("helvetica","normal"); doc.setFontSize(8.5); doc.text(r.p+" of "+r.q,mid(0),yc+1.2,{align:"center"}); doc.text(r.f+" of "+r.q,mid(2),yc+1.2,{align:"center"});
+      var countsAt=function(r,yc){ doc.setFont("helvetica","normal"); doc.setFontSize(8.5); doc.text(String(Math.max(0,r.p-r.f)),mid(0),yc+1.2,{align:"center"});   /* in progress = started, not finished (Sam, 22 Oct 2026, mock approved) */ doc.text(r.f+" of "+r.q,mid(2),yc+1.2,{align:"center"});
         doc.setLineWidth(0.45); doc.setDrawColor(17); if(r.p<r.q) doc.roundedRect(mid(1)-6.5,yc-3,13,6,0.8,0.8); if(r.f<r.q) doc.roundedRect(mid(3)-6.5,yc-3,13,6,0.8,0.8); doc.setDrawColor(0); };
       pageLines.forEach(function(l){ var c=pickCount(o.picked||{},l), rows=c.parts, single=rows.length===1, comps=Array.isArray(l.build_components)?l.build_components:[];
         var parts=String(l.name||"").split(/\s*\|\s*/), main=parts[0], loc=String(l.stock_location||"");
         // the details the picker needs and no more (Sam, 22 Oct 2026, third mock): colour, size, where the parts come from
         var fin0=(rows.length>1&&l.cut_down&&l.cut_down.to&&/desk/i.test(String(l.headerCustomer||"")))?/(\d{3,4})\s*[x\u00D7]\s*(\d{3,4})/.exec(String(l.cut_down.to)):null;
         var meta=[l.attr_colour,fin0?"W"+fin0[1]+" \u00D7 D"+fin0[2]+"mm finished":l.attr_dims,l.attr_resize,(l.attr_makeModel&&/made to order/i.test(l.attr_makeModel))?l.attr_makeModel:"",(single&&l.headerBreakdown)?"from "+l.headerBreakdown:"",l.attr_other].filter(Boolean).join(" · ");
+        if(single){ var ns0=rows[0].q-rows[0].p; if(ns0>0&&ns0<rows[0].q) meta=meta+(meta?" \u00b7 ":"")+ns0+" not started yet"; }   /* the three numbers add up (Sam, 22 Oct 2026) */
         var hq=String(l.headerCustomer||l.qty||"").replace(/^(\d+)\s*\u00D7\s*/,"$1 x "), title=(/^\d+/.test(hq)?/^\d+/.exec(hq)[0]+" x ":hq?hq+" · ":"")+main;   // every item reads "2 x Cantilever Desk" (Sam, 22 Oct 2026)
         var bank0=Number(l.bench_bank_size)||0; if(bank0>0){ var brow0=bank0>2&&bank0%2===0?2:1; title=hq+(brow0>1?", "+brow0+" rows of "+(bank0/brow0):""); meta=[l.attr_colour,(l.headerBreakdown?l.headerBreakdown.replace(/^(\d+ tops?)/,"$1 from ")+main.replace(/^Tops from\s*/i,"")+(l.sku?" "+l.sku:""):""),l.attr_dims?l.attr_dims+" each":""].filter(Boolean).join(" \u00b7 "); }   // the bench is the headline; the donor desk sits in the details (Sam, 22 Oct 2026)
         var movedCut=rows.some(function(r){ return r.n==="Tops"&&!!r.bold; }), movedScrap=rows.some(function(r){ return r.n==="Modesty panels"&&!!r.bold; });   /* said on the part rows, so not again in the grey box */
@@ -3619,7 +3620,7 @@ var SNAP=null, DETAIL={};
   var AUTO=true;
   var REFRESHING=false, POLL_EVERY=10000, CRM_EVERY_TICKS=6, TICK=0;
   var PENDING_SNAP=null, FOREIGN=null, SEEN_FOREIGN={};   // a change to the job on screen, waiting for the person to choose
-  var SCHED_VERSION="22 Oct 16:36";   /* bumped on every push: shows which version is running and which built a sheet (Sam, 22 Oct 2026, "still not live?!") */
+  var SCHED_VERSION="22 Oct 16:42";   /* bumped on every push: shows which version is running and which built a sheet (Sam, 22 Oct 2026, "still not live?!") */
   /* A NEWER SCHEDULER RELOADS ITSELF (Sam, 22 Oct 2026, a sheet built from a window opened before the push). Checked every two
      minutes and before any sheet is built; a reload waits while an editor is open. */
   function liveVersion(){ return fetch("./scheduler.html?vc="+Date.now(),{cache:"no-store"}).then(function(r){ return r.ok?r.text():""; }).then(function(t){ var m=/SCHED_VERSION\s*=\s*"([^"]+)"/.exec(t||""); return m?m[1]:""; }).catch(function(){ return ""; }); }
