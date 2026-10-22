@@ -1881,7 +1881,7 @@ var SNAP=null, DETAIL={};
     var jobs=allJobs().filter(function(j){return onDay(j,k);}), preps=prepJobs().filter(function(j){return j.prep&&j.prep.date&&daysOf(j.prep).indexOf(k)>=0;});
     var rounds=roundsOn(k,jobs); jobs.forEach(function(j){ j.onRound=rounds.some(function(r){return r.stops.indexOf(j)>=0;}); j.roundVan=roundVanOf(j,rounds); });
     var pf=planFilter(jobs,preps); var allJobsDay=jobs; jobs=pf.jobs; preps=pf.preps; if(NEED) rounds=[];
-    var cols=[["shop","Production",preps.concat(jobs.filter(function(j){return j.isLeg&&j.leg.type==="production";}))],["road","Transport",jobs.filter(function(j){return j.site;})],["labour","Goods In and Out",jobs.filter(function(j){return !j.site&&!(j.isLeg&&j.leg.type==="production");})]];
+    var cols=[["shop","Production",preps.concat(jobs.filter(function(j){return j.isLeg&&j.leg.type==="production";}))],["road","Transport",jobs.filter(function(j){return j.site;})],["labour","Goods In and Out / Facility",jobs.filter(function(j){return !j.site&&!(j.isLeg&&j.leg.type==="production");})]];
     cols.forEach(function(g){
       var list=el("div","list"+(isToday?" today":"")); var h=el("h2"); var hl=el(isToday?"em":"span",null,g[1]); hl.appendChild(tip(g[0])); h.appendChild(hl); h.appendChild(el("span",null,g[2].length?g[2].length+(g[2].length===1?" job":" jobs"):"nothing")); list.appendChild(h);
       var cards=el("div","cards");
@@ -3433,7 +3433,7 @@ var SNAP=null, DETAIL={};
       var lv=LEAVE.filter(function(l){return l.date===k;}), awv=AWAY.filter(function(a){return a.date===k;}); if(lv.length||awv.length){ var lh=el("div","sec-h"); var lhl=el("span",null,lv.some(function(l){return l.bh;})?"Bank Holiday":"Off"); lhl.appendChild(tip("leave",k)); lh.appendChild(lhl); cards.appendChild(lh); leaveLines(lv).forEach(function(tx){ cards.appendChild(el("div","leave",tx)); }); awv.forEach(function(a){ cards.appendChild(el("div","leave",a.who.split(" ")[0]+" away "+a.from+" to "+a.to)); }); }
       var rounds=roundsOn(k,jobs); jobs.forEach(function(j){ j.onRound=rounds.some(function(r){return r.stops.indexOf(j)>=0;}); j.roundVan=roundVanOf(j,rounds); });
       var pfw=planFilter(jobs,preps); var allJobsWeek=jobs, allPrepsWeek=preps; jobs=pfw.jobs; preps=pfw.preps; if(NEED) rounds=[];
-      var groups=[["shop","Production",preps],["road","Transport",jobs.filter(function(j){return j.site;})],["labour","Goods In and Out",jobs.filter(function(j){return !j.site&&!(j.isLeg&&j.leg.type==="production");})]];
+      var groups=[["shop","Production",preps],["road","Transport",jobs.filter(function(j){return j.site;})],["labour","Goods In and Out / Facility",jobs.filter(function(j){return !j.site&&!(j.isLeg&&j.leg.type==="production");})]];
       var prodLegs=jobs.filter(function(j){return j.isLeg&&j.leg.type==="production";}); prodLegs.forEach(function(j){ groups[0][2]=groups[0][2].concat([j]); });
       groups.forEach(function(g){
         if(!g[2].length) return;
