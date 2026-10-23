@@ -934,7 +934,7 @@ var SNAP=null, DETAIL={};
       // A BENCH PICKS ITS TOPS TOO (Sam, 22 Oct 2026: "it does not say anything about picking the tops for bench desk systems"):
       // the tops are the line itself, so they lead the parts with the donor desk's photo, SKU and bay.
       if(!topComp&&(Number(l.bench_bank_size)||0)>0){ var tn=Number(l.qty)||u, dnm=String(l.name||"").replace(/^Tops from\s*/i,"").split(/\s*\|\s*/); out.unshift({n:"Tops only: "+dnm[0]+(dnm[1]&&/\d/.test(dnm[1])?" "+dnm[1]:""),q:tn,photo:"",drawTop:true,loc:l.stock_location||"",sku:l.sku||""}); }
-      if(topComp){ var dn=String(l.name||"").split(/\s*\|\s*/)[0]; out.unshift({n:dn,q:u,photo:l.product_photo||"",loc:l.stock_location||"",sku:l.sku||""}); } }   // no size on the desk part: the line's size is the finished one and the stock size is in the sizing note (Sam, 22 Oct 2026)
+      if(topComp){ var dn=String(l.name||"").split(/\s*\|\s*/)[0]; out.unshift({n:dn,q:u,photo:l.storage_photo||l.product_photo||"",loc:l.stock_location||"",sku:l.sku||""}); } }   // no size on the desk part: the line's size is the finished one and the stock size is in the sizing note (Sam, 22 Oct 2026)
     else if(/desk/i.test(String(l.headerCustomer||""))){
       /* TWO TOPS A DESK, PANELS FROM THE BATCH (Sam, 22 Oct 2026, mock approved): the tops row is every top picked, the panel
          row says it comes out of that batch, and a scrap panel used instead takes a top off the pick (scrap). A desk sold
@@ -945,7 +945,7 @@ var SNAP=null, DETAIL={};
       if(fromScrap) out.push({n:"Modesty panels",q:u,bold:"CUT FROM SCRAP TOPS",after:"scrap store",drawPanel:true});
       else if(twoTop) out.push({n:"Modesty panels",q:u,from:(u-sc)>0?"from "+(u-sc)+" more tops in this batch"+(sc?", "+sc+" from scrap":""):"all from scrap panels",tied:true,drawPanel:true,canScrap:true,scrap:sc});
       var lg=/(\d+)\s*legs/i.exec(hb), lgl=l._legs||null, lc=/Legs:\s*([^\u00b7,]+)/i.exec(String(l.attr_colour||""));
-      if(lg&&+lg[1]>0) out.push({n:"Legs",q:+lg[1],photo:lgl&&(lgl.product_photo||lgl.storage_photo)||"",sku:lgl&&lgl.sku||"",loc:lgl&&lgl.stock_location||"",colour:lc?lc[1].trim():""}); }
+      if(lg&&+lg[1]>0) out.push({n:"Legs",q:+lg[1],photo:lgl&&(lgl.storage_photo||lgl.product_photo)||"",sku:lgl&&lgl.sku||"",loc:lgl&&lgl.stock_location||"",colour:lc?lc[1].trim():""}); }
     else out=[{n:l.section==="seating"?"Chairs":l.section==="storage"?"Units":l.section==="tables"?"Tables":l.section==="desk_tops"?"Tops":"Items",q:u}];
     (extra||[]).forEach(function(e){ if(e&&e.n) out.push({n:String(e.n),q:Number(e.q)||u,x:true}); }); return out; }
   function pickCount(P,l){ var q=pickUnits(l), e=P[pickKey(l)]||null; var ps=pickPartsOf(l,e&&e.extra,e&&e.scrap);
@@ -1258,7 +1258,7 @@ var SNAP=null, DETAIL={};
     // items now, each with a photo; a line carrying a part's SKU takes that photo outright, otherwise the words decide.
     var cands=[]; (photos||[]).forEach(function(p){ cands.push(p); (p.parts||[]).forEach(function(q){ cands.push(q); }); });
     /* the item lines the sheet uses count too, so a viewing or sample card shows the photo here as on its sheet (23 Oct 2026) */
-    var plc0=(typeof PICK_LINES!=="undefined"&&PICK_LINES[j.id])||null; ((plc0&&plc0.lines)||[]).forEach(function(l){ var ph=l.product_photo||l.storage_photo||""; if(ph) cands.push({name:l.name,photo:ph,sku:l.sku||""}); });
+    var plc0=(typeof PICK_LINES!=="undefined"&&PICK_LINES[j.id])||null; ((plc0&&plc0.lines)||[]).forEach(function(l){ var ph=l.storage_photo||l.product_photo||""; if(ph) cands.unshift({name:l.name,photo:ph,sku:l.sku||""}); });
     var photoFor=function(line){ var lw=words(line), best=null, bs=0, ln=String(line||"").toUpperCase();
         var bySku=cands.filter(function(p){ return p.photo&&p.sku&&ln.indexOf(String(p.sku).toUpperCase())>=0; })[0]; if(bySku) return bySku.photo;
         cands.forEach(function(p){ if(!p.photo) return; var pw=words(p.name); if(!pw.length) return;
@@ -1304,7 +1304,7 @@ var SNAP=null, DETAIL={};
           st.appendChild(mi); st.appendChild(inp); st.appendChild(pl); return st; };
         var pul=el("ul","picks2 parts");
         plc.lines.forEach(function(l){ if(isPartLine(l)) return; var c=pickCount(P0,l), all=c.f>=c.q&&c.q>0, li=el("li",all?"done":"");
-          var ph=l.product_photo||l.storage_photo||"", nmTxt=l.name||l.label||"";
+          var ph=l.storage_photo||l.product_photo||"", nmTxt=l.name||l.label||"";
           var top=el("div","ptop"); if(ph){ var im=el("img","ithumb zoom"); im.src=ph; im.alt=nmTxt; im.loading="lazy"; im.tabIndex=0; im.title="Click to see it bigger"; im.setAttribute("role","button"); im.onclick=function(e){ e.stopPropagation(); photoPopup(ph,nmTxt); }; im.onkeydown=function(e){ if(e.key==="Enter"||e.key===" "){ e.preventDefault(); photoPopup(ph,nmTxt); } }; top.appendChild(im); }
           else top.appendChild(el("span","ithumb none","No photo"));
           var nm=el("div","pnm"); nm.appendChild(el("b",null,c.q+" x "+nmTxt)); nm.appendChild(el("small",null,[l.section&&!/^other$/i.test(l.section)?l.section:"",l.stock_location?"Location "+l.stock_location:"",all?"all finished":c.f+" of "+c.q+" finished"+(c.on?", updated "+niceDay(c.on):"")].filter(Boolean).join(" \u00b7 "))); top.appendChild(nm); li.appendChild(top);
@@ -3101,7 +3101,7 @@ var SNAP=null, DETAIL={};
           var ym=brow===2?y1+td0*sc:y1+td0*sc/2; if(brow===2){ doc.setLineWidth(0.7); doc.line(x0,ym,x0+pw,ym); } doc.setFillColor(17,17,17); var rr=Math.max(0.35,Math.min(0.9,pw/60)); for(var c1=0;c1<=per;c1++) doc.circle(x0+c1*tw0*sc,ym,rr,"F"); doc.setDrawColor(0);
           if(label){ doc.setFont("helvetica","normal"); doc.setFontSize(6.5); doc.setTextColor(90); doc.text(per+" x "+tw0+" wide \u00b7 "+brow+(brow===1?" row of ":" rows of ")+td0+" deep \u00b7 "+(per*tw0)+" x "+(brow*td0)+" overall",px+boxW/2,py+boxH-3.6,{align:"center"}); doc.text("Thick line is the beam, a dot per leg",px+boxW/2,py+boxH-0.6,{align:"center"}); doc.setTextColor(0); } };
         if(bank>0&&!l.photo_is_build) benchPlan(L+8,y0+2.5,16,13,false);
-        else if(!(l.product_photo&&img(l.product_photo,L+8,y0+2.5,16,13))) noPhoto(L+8,y0+2.5,16,13);
+        else { /* THE ONE IN THE BAY (Sam, 23 Oct 2026: "the marketing image looks different to the actual product in stock"): the storage photo first, a build photo sales attached next, the marketing photo last */ var ph1=l.photo_is_build?(l.product_photo||l.storage_photo):(l.storage_photo||l.product_photo); if(!(ph1&&img(ph1,L+8,y0+2.5,16,13))) noPhoto(L+8,y0+2.5,16,13); }
         doc.setFont("helvetica","bold"); doc.setFontSize(10); doc.text(tls,NX,y0+6.5); var ty=y0+6.5+(tls.length-1)*4.2+3.4;
         doc.setFont("helvetica","normal"); doc.setFontSize(7.5); doc.setTextColor(90); if(mls.length){ doc.text(mls,NX,ty); ty+=mls.length*3.3; } doc.setTextColor(0);
         if(sls.length){ doc.setFillColor(243,244,246); doc.rect(NX-1,ty-2.4,NW+2,sls.length*3.4+1.6,"F"); doc.setFont("helvetica","bold"); doc.setFontSize(7.5); doc.text(sls,NX,ty+1.05); /* centred in the grey box: same space above and below (Sam, 22 Oct 2026, mock) */ ty+=sls.length*3.4+2; }
@@ -3627,7 +3627,7 @@ var SNAP=null, DETAIL={};
   var AUTO=true;
   var REFRESHING=false, POLL_EVERY=10000, CRM_EVERY_TICKS=6, TICK=0;
   var PENDING_SNAP=null, FOREIGN=null, SEEN_FOREIGN={};   // a change to the job on screen, waiting for the person to choose
-  var SCHED_VERSION="23 Oct 08:34";   /* bumped on every push: shows which version is running and which built a sheet (Sam, 22 Oct 2026, "still not live?!") */
+  var SCHED_VERSION="23 Oct 08:51";   /* bumped on every push: shows which version is running and which built a sheet (Sam, 22 Oct 2026, "still not live?!") */
   /* A NEWER SCHEDULER RELOADS ITSELF (Sam, 22 Oct 2026, a sheet built from a window opened before the push). Checked every two
      minutes and before any sheet is built; a reload waits while an editor is open. */
   function liveVersion(){ return fetch("./scheduler.html?vc="+Date.now(),{cache:"no-store"}).then(function(r){ return r.ok?r.text():""; }).then(function(t){ var m=/SCHED_VERSION\s*=\s*"([^"]+)"/.exec(t||""); return m?m[1]:""; }).catch(function(){ return ""; }); }
