@@ -1258,7 +1258,8 @@ var SNAP=null, DETAIL={};
     // items now, each with a photo; a line carrying a part's SKU takes that photo outright, otherwise the words decide.
     var cands=[]; (photos||[]).forEach(function(p){ cands.push(p); (p.parts||[]).forEach(function(q){ cands.push(q); }); });
     /* the item lines the sheet uses count too, so a viewing or sample card shows the photo here as on its sheet (23 Oct 2026) */
-    var plc0=(typeof PICK_LINES!=="undefined"&&PICK_LINES[j.id])||null; ((plc0&&plc0.lines)||[]).forEach(function(l){ var ph=l.storage_photo||l.product_photo||""; if(ph) cands.unshift({name:l.name,photo:ph,sku:l.sku||""}); });
+    var plc0=(typeof PICK_LINES!=="undefined"&&PICK_LINES[j.id])||null; ((plc0&&plc0.lines)||[]).forEach(function(l){ var ph=l.storage_photo||l.product_photo||""; cands.unshift({name:l.name,photo:ph,sku:l.sku||"",line:l}); });
+    var lineFor=function(x){ var lw=words(x), best=null, bs=0; cands.forEach(function(p){ if(!p.line) return; var pw=words(p.name); if(!pw.length) return; var hit=pw.filter(function(w){ return lw.indexOf(w)>=0; }).length, sc=Math.max(hit/pw.length,lw.length?hit/lw.length:0); if(sc>bs){ bs=sc; best=p.line; } }); return bs>=0.6?best:null; };
     var photoFor=function(line){ var lw=words(line), best=null, bs=0, ln=String(line||"").toUpperCase();
         var bySku=cands.filter(function(p){ return p.photo&&p.sku&&ln.indexOf(String(p.sku).toUpperCase())>=0; })[0]; if(bySku) return bySku.photo;
         cands.forEach(function(p){ if(!p.photo) return; var pw=words(p.name); if(!pw.length) return;
@@ -1266,7 +1267,8 @@ var SNAP=null, DETAIL={};
     if(items.length&&!j.facility&&!isWasteJob(j)){ var ib=block("Items ("+items.length+")"); var ul=el("ul","items plain"); items.forEach(function(x){ var li=el("li",null); var src=photoFor(x);
         if(src){ var im=el("img","ithumb zoom"); im.src=src; im.alt=x; im.loading="lazy"; im.tabIndex=0; im.title="Click to see it bigger"; im.setAttribute("role","button");
           im.onclick=function(e){ e.stopPropagation(); photoPopup(src,x); }; im.onkeydown=function(e){ if(e.key==="Enter"||e.key===" "){ e.preventDefault(); photoPopup(src,x); } }; li.appendChild(im); } else if(photos) li.appendChild(el("span","ithumb none","No photo"));
-        li.appendChild(el("span",null,x)); ul.appendChild(li); }); ib.appendChild(ul); left.appendChild(ib); }
+        var ln0=lineFor(x); if(ln0){ /* the full product name and its spec, as on the sheet (Sam, 23 Oct 2026) */ var q0=(/^\s*(\d+)\s*x/i.exec(x)||[])[1]||ln0.headerCustomer||ln0.qty||""; var tx0=el("span"); tx0.appendChild(el("span",null,(q0?q0+" x ":"")+String(ln0.name||x).split(/\s*\|\s*/)[0])); var sp0=[ln0.attr_colour,ln0.attr_dims,ln0.attr_features,ln0.attr_identify,ln0.sku,ln0.stock_location].filter(Boolean).join(" \u00b7 "); if(sp0){ var sm0=el("small",null,sp0); sm0.style.display="block"; sm0.style.color="#6b7280"; tx0.appendChild(sm0); } li.appendChild(tx0); }
+        else li.appendChild(el("span",null,x)); ul.appendChild(li); }); ib.appendChild(ul); left.appendChild(ib); }
     // FINISHED ITEMS (2 Oct 2026). Production only, Resale and Refurb only (the CRM says which).
     if(o.shop&&!j.isHold&&CRM_KEY){ var plc=PICK_LINES[j.id];
       if(plc===undefined){ PICK_LINES[j.id]=null; fetch(CRM_PICKING_URL,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({key:CRM_KEY,action:"lines",cards:[{id:j.id,short:j.short||""}]})})
@@ -3066,7 +3068,7 @@ var SNAP=null, DETAIL={};
         var parts=String(l.name||"").split(/\s*\|\s*/), main=parts[0], loc=String(l.stock_location||"");
         // the details the picker needs and no more (Sam, 22 Oct 2026, third mock): colour, size, where the parts come from
         var fin0=(rows.length>1&&l.cut_down&&l.cut_down.to&&/desk/i.test(String(l.headerCustomer||"")))?/(\d{3,4})\s*[x\u00D7]\s*(\d{3,4})/.exec(String(l.cut_down.to)):null;
-        var meta=[l.attr_colour,fin0?"W"+fin0[1]+" \u00D7 D"+fin0[2]+"mm finished":l.attr_dims,l.attr_resize,(l.attr_makeModel&&/made to order/i.test(l.attr_makeModel))?l.attr_makeModel:"",(single&&l.headerBreakdown)?"from "+l.headerBreakdown:"",l.attr_other].filter(Boolean).join(" · ");
+        var meta=[l.attr_colour,fin0?"W"+fin0[1]+" \u00D7 D"+fin0[2]+"mm finished":l.attr_dims,l.attr_resize,(l.attr_makeModel&&/made to order/i.test(l.attr_makeModel))?l.attr_makeModel:"",(single&&l.headerBreakdown)?"from "+l.headerBreakdown:"",l.attr_features,l.attr_identify,l.attr_other].filter(Boolean).join(" · ");   /* THE FULL SPEC (Sam, 23 Oct 2026: "where is the full spec?"): features and the identifying details too */
         if(single){ var ns0=rows[0].q-rows[0].p; if(ns0>0&&ns0<rows[0].q) meta=meta+(meta?" \u00b7 ":"")+ns0+" not started yet"; }   /* the three numbers add up (Sam, 22 Oct 2026) */
         var hq=String(l.headerCustomer||l.qty||"").replace(/^(\d+)\s*\u00D7\s*/,"$1 x "), title=(/^\d+/.test(hq)?/^\d+/.exec(hq)[0]+" x ":hq?hq+" · ":"")+main;   // every item reads "2 x Cantilever Desk" (Sam, 22 Oct 2026)
         var bank0=Number(l.bench_bank_size)||0; if(bank0>0){ var brow0=bank0>2&&bank0%2===0?2:1; title=hq+(brow0>1?", "+brow0+" rows of "+(bank0/brow0):""); meta=[l.attr_colour,(l.headerBreakdown?l.headerBreakdown.replace(/^(\d+ tops?)/,"$1 from ")+main.replace(/^Tops from\s*/i,"")+(l.sku?" "+l.sku:""):""),l.attr_dims?l.attr_dims+" each":""].filter(Boolean).join(" \u00b7 "); }   // the bench is the headline; the donor desk sits in the details (Sam, 22 Oct 2026)
@@ -3627,7 +3629,7 @@ var SNAP=null, DETAIL={};
   var AUTO=true;
   var REFRESHING=false, POLL_EVERY=10000, CRM_EVERY_TICKS=6, TICK=0;
   var PENDING_SNAP=null, FOREIGN=null, SEEN_FOREIGN={};   // a change to the job on screen, waiting for the person to choose
-  var SCHED_VERSION="23 Oct 09:01";   /* bumped on every push: shows which version is running and which built a sheet (Sam, 22 Oct 2026, "still not live?!") */
+  var SCHED_VERSION="23 Oct 09:05";   /* bumped on every push: shows which version is running and which built a sheet (Sam, 22 Oct 2026, "still not live?!") */
   /* A NEWER SCHEDULER RELOADS ITSELF (Sam, 22 Oct 2026, a sheet built from a window opened before the push). Checked every two
      minutes and before any sheet is built; a reload waits while an editor is open. */
   function liveVersion(){ return fetch("./scheduler.html?vc="+Date.now(),{cache:"no-store"}).then(function(r){ return r.ok?r.text():""; }).then(function(t){ var m=/SCHED_VERSION\s*=\s*"([^"]+)"/.exec(t||""); return m?m[1]:""; }).catch(function(){ return ""; }); }
