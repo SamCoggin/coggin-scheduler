@@ -3032,7 +3032,7 @@ var SNAP=null, DETAIL={};
     // chair or table carries its counts on its own row. A box prints only where there is something left to write. Rows flow
     // on to the next page with the column header repeated. The finishing steps are one strip at the end.
     kit.production=function(o){
-      var CWs=[16,14,16,14], CX=[L+W-60,L+W-44,L+W-28,L+W-14], NX=L+27, NW=(L+W-60)-NX-3;
+      var CWs=[16,14,16,14], CX=[L+W-60,L+W-44,L+W-28,L+W-14], NX=L+27, NW=(L+W-60)-NX-3, INX=L+49, INW=(L+W-60)-INX-3;   /* the item text sits right of the big photo; part rows keep NX (Sam, 23 Oct 2026, option A) */
       var mid=function(i){ return CX[i]+CWs[i]/2; };
       var tableHead=function(){ doc.setFont("helvetica","bold"); doc.setFontSize(6.5); doc.setTextColor(110); doc.text("ITEM",L,y+3,{charSpace:0.2});
         doc.text("IN PROGRESS",(CX[0]+CX[1]+CWs[1])/2,y+2.6,{align:"center"}); doc.text("FINISHED",(CX[2]+CX[3]+CWs[3])/2,y+2.6,{align:"center"}); doc.setFontSize(5.5); doc.setFont("helvetica","normal");
@@ -3077,14 +3077,14 @@ var SNAP=null, DETAIL={};
         var movedCut=rows.some(function(r){ return r.n==="Tops"&&!!r.bold; }), movedScrap=rows.some(function(r){ return r.n==="Modesty panels"&&!!r.bold; });   /* said on the part rows, so not again in the grey box */
         var specs=[]; if(l.cut_down&&l.cut_down.to&&!movedCut){ var cn=l.cut_down.count, fr=l.cut_down.from?" FROM "+l.cut_down.from:""; specs.push("CUT "+(cn?cn+" TOPS":"THIS TOP")+" DOWN"+fr+" TO "+l.cut_down.to); } var pw=pickWork(l).map(function(t){ return t.replace(/^TOPS NEED /,""); }).filter(function(t){ return !(movedScrap&&/MODESTY PANELS? FROM SCRAP/i.test(t)); }); if(pw.length) specs=specs.concat(pw); if(l.spec_notes) specs.push(l.spec_notes); var phOnly=/^\s*port\s*holes?(\s*required)?\.?\s*$/i; if(!single&&specs.some(function(t){ return phOnly.test(t); })){ specs=specs.filter(function(t){ return !phOnly.test(t); }); if(!/port holes/i.test(meta)) meta=meta+(meta?" \u00b7 ":"")+"port holes"; }   /* a short note joins the detail line, the grey box is for real instructions */
         specs=specs.length?[specs.join(" · ")]:[];
-        doc.setFont("helvetica","bold"); doc.setFontSize(10); var tls=doc.splitTextToSize(title,NW); doc.setFont("helvetica","normal"); doc.setFontSize(7.5); var mls=meta?doc.splitTextToSize(meta,NW):[]; doc.setFont("helvetica","bold"); var sls=[]; specs.forEach(function(t){ sls=sls.concat(doc.splitTextToSize(t,NW)); });
+        doc.setFont("helvetica","bold"); doc.setFontSize(10); var tls=doc.splitTextToSize(title,INW); doc.setFont("helvetica","normal"); doc.setFontSize(7.5); var mls=meta?doc.splitTextToSize(meta,INW):[]; doc.setFont("helvetica","bold"); var sls=[]; specs.forEach(function(t){ sls=sls.concat(doc.splitTextToSize(t,INW)); });
         doc.setFont("courier","bold"); doc.setFontSize(5.5); var locLines=loc?Math.min(2,doc.splitTextToSize(loc,16.5).length):0, locH=locLines?2.2+locLines*2.6:0;   // measured in the tag's own font, or a one-line tag was drawn two lines tall
         /* WHERE AND WHAT, ABOVE THE NAME; WHAT SALES SOLD IT AS, UNDER IT (Sam, 23 Oct 2026, mocks approved) */
-        doc.setFont("helvetica","normal"); doc.setFontSize(7.5); mls=meta?doc.splitTextToSize(meta,NW-4):[];
+        doc.setFont("helvetica","normal"); doc.setFontSize(7.5); mls=meta?doc.splitTextToSize(meta,INW-4):[];
         var whereH=(loc||l.sku)?8.5:0, chTxt=chg.map(function(x){ return x.label+": "+x.now+" (was "+x.was+")"; }).join(" \u00b7 ");
-        doc.setFont("helvetica","bold"); var chLines=chg.length?doc.splitTextToSize(chTxt,NW-4):[];
+        doc.setFont("helvetica","bold"); var chLines=chg.length?doc.splitTextToSize(chTxt,INW-4):[];
         var boxH=(mls.length||chLines.length)?3.6+chLines.length*3.5+mls.length*3.3+1.6:0;
-        var textH=3+whereH+tls.length*4.2+boxH+(boxH?1.5:0)+(sls.length?sls.length*3.4+2:0)+((Number(l.bench_bank_size)||0)>0?21:0)+3, leftH=20;
+        var textH=3+whereH+tls.length*4.2+boxH+(boxH?1.5:0)+(sls.length?sls.length*3.4+2:0)+3, leftH=42;
         // a part row is its name and location, wrapped to the column, never clipped (Sam, 22 Oct 2026, the bench parts ran off the edge)
         /* TWO LEVELS (Sam, 22 Oct 2026, mock approved: "this is looking really busy"): the part and its size, the cut as a black
            tag beside it, and the code and place (or where the panels come from) small and grey underneath. */
@@ -3111,23 +3111,23 @@ var SNAP=null, DETAIL={};
           doc.setDrawColor(17); doc.setLineWidth(0.3); doc.setFillColor(255,255,255); for(var r0=0;r0<brow;r0++) for(var c0=0;c0<per;c0++) doc.rect(x0+c0*tw0*sc,y1+r0*td0*sc,tw0*sc,td0*sc,"FD");
           var ym=brow===2?y1+td0*sc:y1+td0*sc/2; if(brow===2){ doc.setLineWidth(0.7); doc.line(x0,ym,x0+pw,ym); } doc.setFillColor(17,17,17); var rr=Math.max(0.35,Math.min(0.9,pw/60)); for(var c1=0;c1<=per;c1++) doc.circle(x0+c1*tw0*sc,ym,rr,"F"); doc.setDrawColor(0);
           if(label){ doc.setFont("helvetica","normal"); doc.setFontSize(6.5); doc.setTextColor(90); doc.text(per+" x "+tw0+" wide \u00b7 "+brow+(brow===1?" row of ":" rows of ")+td0+" deep \u00b7 "+(per*tw0)+" x "+(brow*td0)+" overall",px+boxW/2,py+boxH-3.6,{align:"center"}); doc.text("Thick line is the beam, a dot per leg",px+boxW/2,py+boxH-0.6,{align:"center"}); doc.setTextColor(0); } };
-        if(bank>0&&!l.photo_is_build) benchPlan(L+8,y0+2.5,16,13,false);
-        else { /* THE ONE IN THE BAY (Sam, 23 Oct 2026: "the marketing image looks different to the actual product in stock"): the storage photo first, a build photo sales attached next, the marketing photo last */ var ph1=l.photo_is_build?(l.product_photo||l.storage_photo):(l.storage_photo||l.product_photo); if(!(ph1&&img(ph1,L+8,y0+2.5,16,13))) noPhoto(L+8,y0+2.5,16,13); }
-        if(whereH){ var bx0=NX; [[loc,"LOCATION",true],[l.sku,"CODE",false]].forEach(function(b){ if(!b[0]) return; doc.setFont("helvetica","bold"); doc.setFontSize(9); var vw=doc.getTextWidth(String(b[0])); doc.setFontSize(4.6); var bw=Math.max(vw,doc.getTextWidth(b[1]))+4.5;
+        if(bank>0&&!l.photo_is_build) benchPlan(L+1,y0+2,44,35,false);   /* the bench plan fills the big photo slot */
+        else { /* THE ONE IN THE BAY (Sam, 23 Oct 2026: "the marketing image looks different to the actual product in stock"): the storage photo first, a build photo sales attached next, the marketing photo last */ var ph1=l.photo_is_build?(l.product_photo||l.storage_photo):(l.storage_photo||l.product_photo); if(!(ph1&&img(ph1,L+1,y0+2,44,35))) noPhoto(L+1,y0+2,44,35); }
+        if(whereH){ var bx0=INX; [[loc,"LOCATION",true],[l.sku,"CODE",false]].forEach(function(b){ if(!b[0]) return; doc.setFont("helvetica","bold"); doc.setFontSize(9); var vw=doc.getTextWidth(String(b[0])); doc.setFontSize(4.6); var bw=Math.max(vw,doc.getTextWidth(b[1]))+4.5;
             if(b[2]){ doc.setFillColor(17,17,17); doc.roundedRect(bx0,y0+1.6,bw,7,0.8,0.8,"F"); doc.setTextColor(200); } else { doc.setDrawColor(17); doc.setLineWidth(0.4); doc.roundedRect(bx0,y0+1.6,bw,7,0.8,0.8); doc.setDrawColor(0); doc.setTextColor(90); }
             doc.text(b[1],bx0+2.2,y0+3.7,{charSpace:0.15}); doc.setFontSize(9); doc.setTextColor(b[2]?255:17); doc.text(String(b[0]),bx0+2.2,y0+7.4); doc.setTextColor(0); bx0+=bw+2; }); }
-        doc.setFont("helvetica","bold"); doc.setFontSize(10); doc.text(tls,NX,y0+whereH+6.5); var ty=y0+whereH+6.5+(tls.length-1)*4.2+2.4;
-        if(boxH){ doc.setFillColor(243,244,246); doc.rect(NX-1,ty,NW+2,boxH,"F"); doc.setFillColor(17,17,17); doc.rect(NX-1,ty,0.8,boxH,"F");
-          doc.setFont("helvetica","bold"); doc.setFontSize(4.8); doc.setTextColor(100); doc.text(fromSel?"MAKE IT \u00b7 AS ON THE FURNITURE SELECTION":"SPEC",NX+1.5,ty+2.6,{charSpace:0.15}); var yy=ty+2.6+3.3;
+        doc.setFont("helvetica","bold"); doc.setFontSize(10); doc.text(tls,INX,y0+whereH+6.5); var ty=y0+whereH+6.5+(tls.length-1)*4.2+2.4;
+        if(boxH){ doc.setFillColor(243,244,246); doc.rect(INX-1,ty,INW+2,boxH,"F"); doc.setFillColor(17,17,17); doc.rect(INX-1,ty,0.8,boxH,"F");
+          doc.setFont("helvetica","bold"); doc.setFontSize(4.8); doc.setTextColor(100); doc.text(fromSel?"MAKE IT \u00b7 AS ON THE FURNITURE SELECTION":"SPEC",INX+1.5,ty+2.6,{charSpace:0.15}); var yy=ty+2.6+3.3;
           if(chLines.length){ doc.setFontSize(7.5); doc.setTextColor(17); var oneLn=chLines.length===1;
-            if(oneLn){ var xx=NX+1.5; chg.forEach(function(x,ci){ var a1=(ci?" \u00b7 ":"")+x.label+": "+x.now+" "; doc.setFont("helvetica","bold"); doc.text(a1,xx,yy); xx+=doc.getTextWidth(a1); doc.setFont("helvetica","normal"); doc.setTextColor(140); var a2=x.was; doc.text(a2,xx,yy); var w2=doc.getTextWidth(a2); doc.setDrawColor(140); doc.setLineWidth(0.25); doc.line(xx,yy-0.9,xx+w2,yy-0.9); doc.setDrawColor(0); xx+=w2; doc.setTextColor(17); }); }
-            else { doc.setFont("helvetica","bold"); doc.text(chLines,NX+1.5,yy); }
+            if(oneLn){ var xx=INX+1.5; chg.forEach(function(x,ci){ var a1=(ci?" \u00b7 ":"")+x.label+": "+x.now+" "; doc.setFont("helvetica","bold"); doc.text(a1,xx,yy); xx+=doc.getTextWidth(a1); doc.setFont("helvetica","normal"); doc.setTextColor(140); var a2=x.was; doc.text(a2,xx,yy); var w2=doc.getTextWidth(a2); doc.setDrawColor(140); doc.setLineWidth(0.25); doc.line(xx,yy-0.9,xx+w2,yy-0.9); doc.setDrawColor(0); xx+=w2; doc.setTextColor(17); }); }
+            else { doc.setFont("helvetica","bold"); doc.text(chLines,INX+1.5,yy); }
             yy+=chLines.length*3.5; }
-          doc.setFont("helvetica","normal"); doc.setFontSize(7.5); doc.setTextColor(80); if(mls.length) doc.text(mls,NX+1.5,yy); doc.setTextColor(0); ty+=boxH+1.5+2.4; }
+          doc.setFont("helvetica","normal"); doc.setFontSize(7.5); doc.setTextColor(80); if(mls.length) doc.text(mls,INX+1.5,yy); doc.setTextColor(0); ty+=boxH+1.5+2.4; }
         else ty+=2.4+1;
-        if(sls.length){ doc.setFillColor(243,244,246); doc.rect(NX-1,ty-2.4,NW+2,sls.length*3.4+1.6,"F"); doc.setFont("helvetica","bold"); doc.setFontSize(7.5); doc.text(sls,NX,ty+1.05); /* centred in the grey box: same space above and below (Sam, 22 Oct 2026, mock) */ ty+=sls.length*3.4+2; }
-        if(bank>0) benchPlan(NX,ty,NW,20,true);   // the plan prints under the name whether or not a photo fills the slot (Sam, 22 Oct 2026)
-        if(!(bank>0&&!l.photo_is_build)){ var cap0=l.photo_is_build?(l.product_photo?"BUILD PHOTO":""):l.storage_photo?"STOCK PHOTO":l.product_photo?"CATALOGUE PHOTO":""; if(cap0){ doc.setFont("helvetica","bold"); doc.setFontSize(4.8); doc.setTextColor(110); doc.text(cap0,L+16,y0+18.2,{align:"center",charSpace:0.15}); doc.setTextColor(0); } }   /* every photo says what it is (Sam, 23 Oct 2026) */   /* the photo is the actual item, so it says so */
+        if(sls.length){ doc.setFillColor(243,244,246); doc.rect(INX-1,ty-2.4,INW+2,sls.length*3.4+1.6,"F"); doc.setFont("helvetica","bold"); doc.setFontSize(7.5); doc.text(sls,INX,ty+1.05); /* centred in the grey box: same space above and below (Sam, 22 Oct 2026, mock) */ ty+=sls.length*3.4+2; }
+        /* the bench plan is in the photo slot now, not under the name */   // the plan prints under the name whether or not a photo fills the slot (Sam, 22 Oct 2026)
+        if(!(bank>0&&!l.photo_is_build)){ var cap0=l.photo_is_build?(l.product_photo?"BUILD PHOTO":""):l.storage_photo?"STOCK PHOTO":l.product_photo?"CATALOGUE PHOTO":""; if(cap0){ doc.setFont("helvetica","bold"); doc.setFontSize(4.8); doc.setTextColor(110); doc.text(cap0,L+23,y0+40.2,{align:"center",charSpace:0.15}); doc.setTextColor(0); } }   /* every photo says what it is (Sam, 23 Oct 2026) */   /* the photo is the actual item, so it says so */
         doc.setDrawColor(200); doc.setLineWidth(0.25); doc.line(CX[0],y0,CX[0],y0+rowH+partsH); doc.line(CX[2],y0,CX[2],y0+rowH+partsH); doc.setDrawColor(0);
         if(single) countsAt(rows[0],y0+rowH/2);
         else { // THE WHOLE ITEM, READ FROM ITS PARTS (Sam, 22 Oct 2026, mock A): parts picked so far, and the item finished, no boxes
@@ -3650,7 +3650,7 @@ var SNAP=null, DETAIL={};
   var AUTO=true;
   var REFRESHING=false, POLL_EVERY=10000, CRM_EVERY_TICKS=6, TICK=0;
   var PENDING_SNAP=null, FOREIGN=null, SEEN_FOREIGN={};   // a change to the job on screen, waiting for the person to choose
-  var SCHED_VERSION="23 Oct 10:15:46";   /* bumped on every push: shows which version is running and which built a sheet (Sam, 22 Oct 2026, "still not live?!") */
+  var SCHED_VERSION="23 Oct 10:19:45";   /* bumped on every push: shows which version is running and which built a sheet (Sam, 22 Oct 2026, "still not live?!") */
   /* A NEWER SCHEDULER RELOADS ITSELF (Sam, 22 Oct 2026, a sheet built from a window opened before the push). Checked every two
      minutes and before any sheet is built; a reload waits while an editor is open. */
   function liveVersion(){ return fetch("./scheduler.html?vc="+Date.now(),{cache:"no-store"}).then(function(r){ return r.ok?r.text():""; }).then(function(t){ var m=/SCHED_VERSION\s*=\s*"([^"]+)"/.exec(t||""); return m?m[1]:""; }).catch(function(){ return ""; }); }
