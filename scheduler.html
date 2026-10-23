@@ -1262,7 +1262,7 @@ var SNAP=null, DETAIL={};
     var photoFor=function(line){ var lw=words(line), best=null, bs=0, ln=String(line||"").toUpperCase();
         var bySku=cands.filter(function(p){ return p.photo&&p.sku&&ln.indexOf(String(p.sku).toUpperCase())>=0; })[0]; if(bySku) return bySku.photo;
         cands.forEach(function(p){ if(!p.photo) return; var pw=words(p.name); if(!pw.length) return;
-        var sc=pw.filter(function(w){ return lw.indexOf(w)>=0; }).length/pw.length; if(sc>bs){ bs=sc; best=p; } }); return bs>=0.6&&best?best.photo:""; };
+        var hit=pw.filter(function(w){ return lw.indexOf(w)>=0; }).length, sc=Math.max(hit/pw.length,lw.length?hit/lw.length:0); if(sc>bs){ bs=sc; best=p; } }); return bs>=0.6&&best?best.photo:""; };   /* either way round: a short card line still finds the full product name (23 Oct 2026) */
     if(items.length&&!j.facility&&!isWasteJob(j)){ var ib=block("Items ("+items.length+")"); var ul=el("ul","items plain"); items.forEach(function(x){ var li=el("li",null); var src=photoFor(x);
         if(src){ var im=el("img","ithumb zoom"); im.src=src; im.alt=x; im.loading="lazy"; im.tabIndex=0; im.title="Click to see it bigger"; im.setAttribute("role","button");
           im.onclick=function(e){ e.stopPropagation(); photoPopup(src,x); }; im.onkeydown=function(e){ if(e.key==="Enter"||e.key===" "){ e.preventDefault(); photoPopup(src,x); } }; li.appendChild(im); } else if(photos) li.appendChild(el("span","ithumb none","No photo"));
@@ -3627,7 +3627,7 @@ var SNAP=null, DETAIL={};
   var AUTO=true;
   var REFRESHING=false, POLL_EVERY=10000, CRM_EVERY_TICKS=6, TICK=0;
   var PENDING_SNAP=null, FOREIGN=null, SEEN_FOREIGN={};   // a change to the job on screen, waiting for the person to choose
-  var SCHED_VERSION="23 Oct 08:51";   /* bumped on every push: shows which version is running and which built a sheet (Sam, 22 Oct 2026, "still not live?!") */
+  var SCHED_VERSION="23 Oct 09:01";   /* bumped on every push: shows which version is running and which built a sheet (Sam, 22 Oct 2026, "still not live?!") */
   /* A NEWER SCHEDULER RELOADS ITSELF (Sam, 22 Oct 2026, a sheet built from a window opened before the push). Checked every two
      minutes and before any sheet is built; a reload waits while an editor is open. */
   function liveVersion(){ return fetch("./scheduler.html?vc="+Date.now(),{cache:"no-store"}).then(function(r){ return r.ok?r.text():""; }).then(function(t){ var m=/SCHED_VERSION\s*=\s*"([^"]+)"/.exec(t||""); return m?m[1]:""; }).catch(function(){ return ""; }); }
