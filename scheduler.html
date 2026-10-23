@@ -3068,7 +3068,9 @@ var SNAP=null, DETAIL={};
         var parts=String(l.name||"").split(/\s*\|\s*/), main=parts[0], loc=String(l.stock_location||"");
         // the details the picker needs and no more (Sam, 22 Oct 2026, third mock): colour, size, where the parts come from
         var fin0=(rows.length>1&&l.cut_down&&l.cut_down.to&&/desk/i.test(String(l.headerCustomer||"")))?/(\d{3,4})\s*[x\u00D7]\s*(\d{3,4})/.exec(String(l.cut_down.to)):null;
-        var meta=[l.attr_colour,fin0?"W"+fin0[1]+" \u00D7 D"+fin0[2]+"mm finished":l.attr_dims,l.attr_resize,(l.attr_makeModel&&/made to order/i.test(l.attr_makeModel))?l.attr_makeModel:"",(single&&l.headerBreakdown)?"from "+l.headerBreakdown:"",l.attr_features,l.attr_identify,l.attr_other].filter(Boolean).join(" · ");   /* THE FULL SPEC (Sam, 23 Oct 2026: "where is the full spec?"): features and the identifying details too */
+        var chg=Array.isArray(l.attr_changes)?l.attr_changes:[], fromSel=Array.isArray(l.attr_changes), chL=chg.map(function(x){ return String(x.label).toLowerCase(); });
+        var colour0=String(l.attr_colour||"").split(/\s*\u00b7\s*/).filter(function(t){ var k=String(t.split(":")[0]||"").trim().toLowerCase(); return t&&chL.indexOf(k)<0; }).join(" \u00b7 ");   /* a changed colour is printed in bold above, not twice */
+        var meta=[colour0,fin0?"W"+fin0[1]+" \u00D7 D"+fin0[2]+"mm finished":l.attr_dims,l.attr_resize,(l.attr_makeModel&&/made to order/i.test(l.attr_makeModel))?l.attr_makeModel:"",(single&&l.headerBreakdown)?"from "+l.headerBreakdown:"",l.attr_features,l.attr_identify,l.attr_other].filter(Boolean).join(" · ");   /* THE FULL SPEC (Sam, 23 Oct 2026: "where is the full spec?"): features and the identifying details too */
         if(single){ var ns0=rows[0].q-rows[0].p; if(ns0>0&&ns0<rows[0].q) meta=meta+(meta?" \u00b7 ":"")+ns0+" not started yet"; }   /* the three numbers add up (Sam, 22 Oct 2026) */
         var hq=String(l.headerCustomer||l.qty||"").replace(/^(\d+)\s*\u00D7\s*/,"$1 x "), title=(/^\d+/.test(hq)?/^\d+/.exec(hq)[0]+" x ":hq?hq+" · ":"")+main;   // every item reads "2 x Cantilever Desk" (Sam, 22 Oct 2026)
         var bank0=Number(l.bench_bank_size)||0; if(bank0>0){ var brow0=bank0>2&&bank0%2===0?2:1; title=hq+(brow0>1?", "+brow0+" rows of "+(bank0/brow0):""); meta=[l.attr_colour,(l.headerBreakdown?l.headerBreakdown.replace(/^(\d+ tops?)/,"$1 from ")+main.replace(/^Tops from\s*/i,"")+(l.sku?" "+l.sku:""):""),l.attr_dims?l.attr_dims+" each":""].filter(Boolean).join(" \u00b7 "); }   // the bench is the headline; the donor desk sits in the details (Sam, 22 Oct 2026)
@@ -3077,16 +3079,21 @@ var SNAP=null, DETAIL={};
         specs=specs.length?[specs.join(" · ")]:[];
         doc.setFont("helvetica","bold"); doc.setFontSize(10); var tls=doc.splitTextToSize(title,NW); doc.setFont("helvetica","normal"); doc.setFontSize(7.5); var mls=meta?doc.splitTextToSize(meta,NW):[]; doc.setFont("helvetica","bold"); var sls=[]; specs.forEach(function(t){ sls=sls.concat(doc.splitTextToSize(t,NW)); });
         doc.setFont("courier","bold"); doc.setFontSize(5.5); var locLines=loc?Math.min(2,doc.splitTextToSize(loc,16.5).length):0, locH=locLines?2.2+locLines*2.6:0;   // measured in the tag's own font, or a one-line tag was drawn two lines tall
-        var textH=3+tls.length*4.2+mls.length*3.3+(sls.length?sls.length*3.4+2:0)+((Number(l.bench_bank_size)||0)>0?21:0)+3, leftH=17+(loc?locH+1:0)+(l.sku?3.5:0);
+        /* WHERE AND WHAT, ABOVE THE NAME; WHAT SALES SOLD IT AS, UNDER IT (Sam, 23 Oct 2026, mocks approved) */
+        doc.setFont("helvetica","normal"); doc.setFontSize(7.5); mls=meta?doc.splitTextToSize(meta,NW-4):[];
+        var whereH=(loc||l.sku)?8.5:0, chTxt=chg.map(function(x){ return x.label+": "+x.now+" (was "+x.was+")"; }).join(" \u00b7 ");
+        doc.setFont("helvetica","bold"); var chLines=chg.length?doc.splitTextToSize(chTxt,NW-4):[];
+        var boxH=(mls.length||chLines.length)?3.6+chLines.length*3.5+mls.length*3.3+1.6:0;
+        var textH=3+whereH+tls.length*4.2+boxH+(boxH?1.5:0)+(sls.length?sls.length*3.4+2:0)+((Number(l.bench_bank_size)||0)>0?21:0)+3, leftH=20;
         // a part row is its name and location, wrapped to the column, never clipped (Sam, 22 Oct 2026, the bench parts ran off the edge)
         /* TWO LEVELS (Sam, 22 Oct 2026, mock approved: "this is looking really busy"): the part and its size, the cut as a black
            tag beside it, and the code and place (or where the panels come from) small and grey underneath. */
         var partTxt=function(r){ var comp=comps.filter(function(cc){ return String(cc.name||"")===r.n; })[0]; var photo=r.photo||(comp&&comp.photo)||"", loc0=r.loc||(comp&&comp.location)||"", sku0=r.sku||(comp&&comp.sku)||""; var nm=String(r.n).replace(/\s*\(.*?\)\s*/g," ").trim().replace(/^(Tops? only:)\s*[^0-9]*?(\d{3,4}\s*[x\u00D7]\s*\d{3,4}\s*mm)/i,"$1 $2"); var lead=(rows.length>1&&r.q?r.q+" x ":"")+nm; var bits=[r.size||"",r.colour||""].filter(Boolean);
-          var sub=r.from?String(r.from).replace(/^made from/i,"from"):[r.after||"",sku0,loc0].filter(Boolean).join(" \u00b7 ");
-          return {main:lead+(bits.length?" \u00b7 "+bits.join(" \u00b7 "):""),tag:String(r.bold||"").replace(/ DOWN TO /," TO "),sub:sub,comp:{photo:photo},thumb:!!photo||!!r.drawTop||!!r.drawPanel,drawTop:!!r.drawTop&&!photo,drawPanel:!!r.drawPanel,tied:!!r.tied,canScrap:!!r.canScrap}; };
+          var sub=r.from?String(r.from).replace(/^made from/i,"from"):(r.after||"");   /* the code and place are pills above the part now (Sam, 23 Oct 2026) */
+          return {ploc:r.from?"":loc0,psku:r.from?"":sku0,main:lead+(bits.length?" \u00b7 "+bits.join(" \u00b7 "):""),tag:String(r.bold||"").replace(/ DOWN TO /," TO "),sub:sub,comp:{photo:photo},thumb:!!photo||!!r.drawTop||!!r.drawPanel,drawTop:!!r.drawTop&&!photo,drawPanel:!!r.drawPanel,tied:!!r.tied,canScrap:!!r.canScrap}; };
         var tagW=function(t){ if(!t) return 0; doc.setFont("helvetica","bold"); doc.setFontSize(6.5); return doc.getTextWidth(t)+3.2; };
         var partLines=rows.map(function(r){ var pt=partTxt(r), avail=CX[0]-NX-3-(pt.tied?4:0); doc.setFont("helvetica","normal"); doc.setFontSize(8.5); var ls=doc.splitTextToSize(pt.main,avail).slice(0,2); if(pt.tag&&doc.getTextWidth(ls[ls.length-1])+2+tagW(pt.tag)>avail) ls=ls.concat([""]).slice(0,3); return ls; });
-        var partH=function(ls,pt){ return 2.4+ls.length*3.7+(pt.sub?3:0)+1.4; };
+        var partH=function(ls,pt){ return 2.4+((pt.ploc||pt.psku)?4.4:0)+ls.length*3.7+(pt.sub?3:0)+1.4; };
         var partRowsH=partLines.reduce(function(t,ls,ri){ return t+partH(ls,partTxt(rows[ri]))+(rows[ri].canScrap?6:0); },0);
         var rowH=Math.max(leftH,textH), partsH=single?0:partRowsH+1.5;   // parts start under the photo, tag and code, never over them (Sam, 22 Oct 2026)
         if(y+rowH+partsH>272) cont();
@@ -3104,12 +3111,21 @@ var SNAP=null, DETAIL={};
           if(label){ doc.setFont("helvetica","normal"); doc.setFontSize(6.5); doc.setTextColor(90); doc.text(per+" x "+tw0+" wide \u00b7 "+brow+(brow===1?" row of ":" rows of ")+td0+" deep \u00b7 "+(per*tw0)+" x "+(brow*td0)+" overall",px+boxW/2,py+boxH-3.6,{align:"center"}); doc.text("Thick line is the beam, a dot per leg",px+boxW/2,py+boxH-0.6,{align:"center"}); doc.setTextColor(0); } };
         if(bank>0&&!l.photo_is_build) benchPlan(L+8,y0+2.5,16,13,false);
         else { /* THE ONE IN THE BAY (Sam, 23 Oct 2026: "the marketing image looks different to the actual product in stock"): the storage photo first, a build photo sales attached next, the marketing photo last */ var ph1=l.photo_is_build?(l.product_photo||l.storage_photo):(l.storage_photo||l.product_photo); if(!(ph1&&img(ph1,L+8,y0+2.5,16,13))) noPhoto(L+8,y0+2.5,16,13); }
-        doc.setFont("helvetica","bold"); doc.setFontSize(10); doc.text(tls,NX,y0+6.5); var ty=y0+6.5+(tls.length-1)*4.2+3.4;
-        doc.setFont("helvetica","normal"); doc.setFontSize(7.5); doc.setTextColor(90); if(mls.length){ doc.text(mls,NX,ty); ty+=mls.length*3.3; } doc.setTextColor(0);
+        if(whereH){ var bx0=NX; [[loc,"LOCATION",true],[l.sku,"CODE",false]].forEach(function(b){ if(!b[0]) return; doc.setFont("helvetica","bold"); doc.setFontSize(9); var vw=doc.getTextWidth(String(b[0])); doc.setFontSize(4.6); var bw=Math.max(vw,doc.getTextWidth(b[1]))+4.5;
+            if(b[2]){ doc.setFillColor(17,17,17); doc.roundedRect(bx0,y0+1.6,bw,7,0.8,0.8,"F"); doc.setTextColor(200); } else { doc.setDrawColor(17); doc.setLineWidth(0.4); doc.roundedRect(bx0,y0+1.6,bw,7,0.8,0.8); doc.setDrawColor(0); doc.setTextColor(90); }
+            doc.text(b[1],bx0+2.2,y0+3.7,{charSpace:0.15}); doc.setFontSize(9); doc.setTextColor(b[2]?255:17); doc.text(String(b[0]),bx0+2.2,y0+7.4); doc.setTextColor(0); bx0+=bw+2; }); }
+        doc.setFont("helvetica","bold"); doc.setFontSize(10); doc.text(tls,NX,y0+whereH+6.5); var ty=y0+whereH+6.5+(tls.length-1)*4.2+2.4;
+        if(boxH){ doc.setFillColor(243,244,246); doc.rect(NX-1,ty,NW+2,boxH,"F"); doc.setFillColor(17,17,17); doc.rect(NX-1,ty,0.8,boxH,"F");
+          doc.setFont("helvetica","bold"); doc.setFontSize(4.8); doc.setTextColor(100); doc.text(fromSel?"MAKE IT \u00b7 AS ON THE FURNITURE SELECTION":"SPEC",NX+1.5,ty+2.6,{charSpace:0.15}); var yy=ty+2.6+3.3;
+          if(chLines.length){ doc.setFontSize(7.5); doc.setTextColor(17); var oneLn=chLines.length===1;
+            if(oneLn){ var xx=NX+1.5; chg.forEach(function(x,ci){ var a1=(ci?" \u00b7 ":"")+x.label+": "+x.now+" "; doc.setFont("helvetica","bold"); doc.text(a1,xx,yy); xx+=doc.getTextWidth(a1); doc.setFont("helvetica","normal"); doc.setTextColor(140); var a2=x.was; doc.text(a2,xx,yy); var w2=doc.getTextWidth(a2); doc.setDrawColor(140); doc.setLineWidth(0.25); doc.line(xx,yy-0.9,xx+w2,yy-0.9); doc.setDrawColor(0); xx+=w2; doc.setTextColor(17); }); }
+            else { doc.setFont("helvetica","bold"); doc.text(chLines,NX+1.5,yy); }
+            yy+=chLines.length*3.5; }
+          doc.setFont("helvetica","normal"); doc.setFontSize(7.5); doc.setTextColor(80); if(mls.length) doc.text(mls,NX+1.5,yy); doc.setTextColor(0); ty+=boxH+1.5+2.4; }
+        else ty+=2.4+1;
         if(sls.length){ doc.setFillColor(243,244,246); doc.rect(NX-1,ty-2.4,NW+2,sls.length*3.4+1.6,"F"); doc.setFont("helvetica","bold"); doc.setFontSize(7.5); doc.text(sls,NX,ty+1.05); /* centred in the grey box: same space above and below (Sam, 22 Oct 2026, mock) */ ty+=sls.length*3.4+2; }
         if(bank>0) benchPlan(NX,ty,NW,20,true);   // the plan prints under the name whether or not a photo fills the slot (Sam, 22 Oct 2026)
-        if(loc){ doc.setFont("courier","bold"); doc.setFontSize(5.5); var lls=doc.splitTextToSize(loc,16.5).slice(0,2), tw=Math.min(18.5,Math.max.apply(null,lls.map(function(t){ return doc.getTextWidth(t); }))+2.4), tx0=L+16.5-tw/2; doc.setFillColor(17,17,17); doc.roundedRect(tx0,y0+16.5,tw,locH,0.6,0.6,"F"); doc.setTextColor(255); lls.forEach(function(t,i){ doc.text(t,L+16.5,y0+19.2+i*2.6,{align:"center"}); }); doc.setTextColor(0); }
-        if(l.sku){ doc.setFont("courier","bold"); doc.setFontSize(6); doc.setTextColor(100); doc.text(String(l.sku),L+16.5,y0+(loc?17+locH+2.6:19.5),{align:"center"}); doc.setTextColor(0); }
+        if(!(bank>0&&!l.photo_is_build)&&!l.photo_is_build&&l.storage_photo){ doc.setFont("helvetica","bold"); doc.setFontSize(4.8); doc.setTextColor(110); doc.text("IN THE BAY",L+16,y0+18.2,{align:"center",charSpace:0.15}); doc.setTextColor(0); }   /* the photo is the actual item, so it says so */
         doc.setDrawColor(200); doc.setLineWidth(0.25); doc.line(CX[0],y0,CX[0],y0+rowH+partsH); doc.line(CX[2],y0,CX[2],y0+rowH+partsH); doc.setDrawColor(0);
         if(single) countsAt(rows[0],y0+rowH/2);
         else { // THE WHOLE ITEM, READ FROM ITS PARTS (Sam, 22 Oct 2026, mock A): parts picked so far, and the item finished, no boxes
@@ -3122,7 +3138,8 @@ var SNAP=null, DETAIL={};
             if(pt.drawPanel){ doc.setDrawColor(17); doc.setLineWidth(0.3); doc.setFillColor(255,255,255); doc.rect(L+10,y+rh/2-0.9,12,1.8,"FD"); doc.setDrawColor(0); }
             else if(pt.drawTop){ var dm2=/(\d{3,4})\s*[x\u00D7]\s*(\d{3,4})/i.exec(r.n+" "+(r.size||"")), tw2=dm2?+dm2[1]:1200, td2=dm2?+dm2[2]:800, sc2=Math.min(14/tw2,(rh-2.5)/td2); doc.setDrawColor(17); doc.setLineWidth(0.3); doc.setFillColor(255,255,255); doc.rect(L+8+(16-tw2*sc2)/2,y+1.25+((rh-2.5)-td2*sc2)/2,tw2*sc2,td2*sc2,"FD"); doc.setDrawColor(0); }   // a drawn top, never the donor desk photo (Sam, 22 Oct 2026)
             else if(pt.thumb) img(pt.comp.photo,L+8,y+1,16,rh-2);
-            var yb=y+5; doc.setFont("helvetica",r.f>=r.q&&r.q>0?"bold":"normal"); doc.setFontSize(8.5); doc.setTextColor(17); var mlines=ls.filter(function(t){ return t!==""; }); doc.text(mlines,tx,yb);
+            var hasP=!!(pt.ploc||pt.psku); if(hasP){ var px0=tx; [[pt.ploc,true],[pt.psku,false]].forEach(function(b){ if(!b[0]) return; doc.setFont("helvetica","bold"); doc.setFontSize(6.8); var pw0=doc.getTextWidth(String(b[0]))+3; if(b[1]){ doc.setFillColor(17,17,17); doc.roundedRect(px0,y+1.3,pw0,3.7,0.6,0.6,"F"); doc.setTextColor(255); } else { doc.setDrawColor(17); doc.setLineWidth(0.35); doc.roundedRect(px0,y+1.3,pw0,3.7,0.6,0.6); doc.setDrawColor(0); doc.setTextColor(17); } doc.text(String(b[0]),px0+1.5,y+4.1); doc.setTextColor(0); px0+=pw0+1.5; }); }
+            var yb=y+5+(hasP?4.4:0); doc.setFont("helvetica",r.f>=r.q&&r.q>0?"bold":"normal"); doc.setFontSize(8.5); doc.setTextColor(17); var mlines=ls.filter(function(t){ return t!==""; }); doc.text(mlines,tx,yb);
             if(pt.tag){ var lastY=yb+(ls.length-1)*3.7, tagX=ls[ls.length-1]===""?tx:tx+doc.getTextWidth(mlines[mlines.length-1])+2, tw3=tagW(pt.tag); doc.setFillColor(17,17,17); doc.roundedRect(tagX,lastY-2.9,tw3,3.9,0.6,0.6,"F"); doc.setTextColor(255); doc.setFont("helvetica","bold"); doc.setFontSize(6.5); doc.text(pt.tag,tagX+1.6,lastY-0.1); doc.setTextColor(17); }
             if(pt.sub){ doc.setFont("helvetica","normal"); doc.setFontSize(6.5); doc.setTextColor(120); doc.text(pt.sub,tx,yb+(ls.length-1)*3.7+3.2); doc.setTextColor(0); }
             countsAt(r,y+rh/2+0.2); y+=rh;
@@ -3629,7 +3646,7 @@ var SNAP=null, DETAIL={};
   var AUTO=true;
   var REFRESHING=false, POLL_EVERY=10000, CRM_EVERY_TICKS=6, TICK=0;
   var PENDING_SNAP=null, FOREIGN=null, SEEN_FOREIGN={};   // a change to the job on screen, waiting for the person to choose
-  var SCHED_VERSION="23 Oct 09:05";   /* bumped on every push: shows which version is running and which built a sheet (Sam, 22 Oct 2026, "still not live?!") */
+  var SCHED_VERSION="23 Oct 09:55";   /* bumped on every push: shows which version is running and which built a sheet (Sam, 22 Oct 2026, "still not live?!") */
   /* A NEWER SCHEDULER RELOADS ITSELF (Sam, 22 Oct 2026, a sheet built from a window opened before the push). Checked every two
      minutes and before any sheet is built; a reload waits while an editor is open. */
   function liveVersion(){ return fetch("./scheduler.html?vc="+Date.now(),{cache:"no-store"}).then(function(r){ return r.ok?r.text():""; }).then(function(t){ var m=/SCHED_VERSION\s*=\s*"([^"]+)"/.exec(t||""); return m?m[1]:""; }).catch(function(){ return ""; }); }
