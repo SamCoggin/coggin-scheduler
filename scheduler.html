@@ -3092,8 +3092,10 @@ var SNAP=null, DETAIL={};
           var sub=r.from?String(r.from).replace(/^made from/i,"from"):(r.after||"");   /* the code and place are pills above the part now (Sam, 23 Oct 2026) */
           return {ploc:r.from?"":loc0,psku:r.from?"":sku0,main:lead+(bits.length?" \u00b7 "+bits.join(" \u00b7 "):""),tag:String(r.bold||"").replace(/ DOWN TO /," TO "),sub:sub,comp:{photo:photo},thumb:!!photo||!!r.drawTop||!!r.drawPanel,drawTop:!!r.drawTop&&!photo,drawPanel:!!r.drawPanel,tied:!!r.tied,canScrap:!!r.canScrap}; };
         var tagW=function(t){ if(!t) return 0; doc.setFont("helvetica","bold"); doc.setFontSize(6.5); return doc.getTextWidth(t)+3.2; };
-        var partLines=rows.map(function(r){ var pt=partTxt(r), avail=CX[0]-NX-3-(pt.tied?4:0); doc.setFont("helvetica","normal"); doc.setFontSize(8.5); var ls=doc.splitTextToSize(pt.main,avail).slice(0,2); if(pt.tag&&doc.getTextWidth(ls[ls.length-1])+2+tagW(pt.tag)>avail) ls=ls.concat([""]).slice(0,3); return ls; });
-        var partH=function(ls,pt){ return 2.4+((pt.ploc||pt.psku)?4.4:0)+ls.length*3.7+(pt.sub?3:0)+1.4; };
+        /* the location and code run inline after the part, beside the cut tag, and move to a line of their own together when it is full (Sam, 23 Oct 2026, mock approved) */
+        var pillW=function(t){ if(!t) return 0; doc.setFont("helvetica","bold"); doc.setFontSize(6.8); return doc.getTextWidth(String(t))+3+1.5; };
+        var partLines=rows.map(function(r){ var pt=partTxt(r), avail=CX[0]-NX-3-(pt.tied?4:0); doc.setFont("helvetica","normal"); doc.setFontSize(8.5); var ls=doc.splitTextToSize(pt.main,avail).slice(0,2); var trail=(pt.tag?tagW(pt.tag)+2:0)+pillW(pt.ploc)+pillW(pt.psku)+((pt.ploc||pt.psku)?1:0); doc.setFont("helvetica","normal"); doc.setFontSize(8.5); if(trail&&doc.getTextWidth(ls[ls.length-1])+2+trail>avail) ls=ls.concat([""]).slice(0,3); return ls; });
+        var partH=function(ls,pt){ return 2.4+ls.length*3.7+(pt.sub?3:0)+1.4; };
         var partRowsH=partLines.reduce(function(t,ls,ri){ return t+partH(ls,partTxt(rows[ri]))+(rows[ri].canScrap?6:0); },0);
         var rowH=Math.max(leftH,textH), partsH=single?0:partRowsH+1.5;   // parts start under the photo, tag and code, never over them (Sam, 22 Oct 2026)
         if(y+rowH+partsH>272) cont();
@@ -3138,9 +3140,11 @@ var SNAP=null, DETAIL={};
             if(pt.drawPanel){ doc.setDrawColor(17); doc.setLineWidth(0.3); doc.setFillColor(255,255,255); doc.rect(L+10,y+rh/2-0.9,12,1.8,"FD"); doc.setDrawColor(0); }
             else if(pt.drawTop){ var dm2=/(\d{3,4})\s*[x\u00D7]\s*(\d{3,4})/i.exec(r.n+" "+(r.size||"")), tw2=dm2?+dm2[1]:1200, td2=dm2?+dm2[2]:800, sc2=Math.min(14/tw2,(rh-2.5)/td2); doc.setDrawColor(17); doc.setLineWidth(0.3); doc.setFillColor(255,255,255); doc.rect(L+8+(16-tw2*sc2)/2,y+1.25+((rh-2.5)-td2*sc2)/2,tw2*sc2,td2*sc2,"FD"); doc.setDrawColor(0); }   // a drawn top, never the donor desk photo (Sam, 22 Oct 2026)
             else if(pt.thumb) img(pt.comp.photo,L+8,y+1,16,rh-2);
-            var hasP=!!(pt.ploc||pt.psku); if(hasP){ var px0=tx; [[pt.ploc,true],[pt.psku,false]].forEach(function(b){ if(!b[0]) return; doc.setFont("helvetica","bold"); doc.setFontSize(6.8); var pw0=doc.getTextWidth(String(b[0]))+3; if(b[1]){ doc.setFillColor(17,17,17); doc.roundedRect(px0,y+1.3,pw0,3.7,0.6,0.6,"F"); doc.setTextColor(255); } else { doc.setDrawColor(17); doc.setLineWidth(0.35); doc.roundedRect(px0,y+1.3,pw0,3.7,0.6,0.6); doc.setDrawColor(0); doc.setTextColor(17); } doc.text(String(b[0]),px0+1.5,y+4.1); doc.setTextColor(0); px0+=pw0+1.5; }); }
+            var hasP=false;
             var yb=y+5+(hasP?4.4:0); doc.setFont("helvetica",r.f>=r.q&&r.q>0?"bold":"normal"); doc.setFontSize(8.5); doc.setTextColor(17); var mlines=ls.filter(function(t){ return t!==""; }); doc.text(mlines,tx,yb);
-            if(pt.tag){ var lastY=yb+(ls.length-1)*3.7, tagX=ls[ls.length-1]===""?tx:tx+doc.getTextWidth(mlines[mlines.length-1])+2, tw3=tagW(pt.tag); doc.setFillColor(17,17,17); doc.roundedRect(tagX,lastY-2.9,tw3,3.9,0.6,0.6,"F"); doc.setTextColor(255); doc.setFont("helvetica","bold"); doc.setFontSize(6.5); doc.text(pt.tag,tagX+1.6,lastY-0.1); doc.setTextColor(17); }
+            var lastY=yb+(ls.length-1)*3.7; doc.setFont("helvetica",r.f>=r.q&&r.q>0?"bold":"normal"); doc.setFontSize(8.5); var tagX=ls[ls.length-1]===""?tx:tx+doc.getTextWidth(mlines[mlines.length-1])+2;
+            if(pt.tag){ var tw3=tagW(pt.tag); doc.setFillColor(17,17,17); doc.roundedRect(tagX,lastY-2.9,tw3,3.9,0.6,0.6,"F"); doc.setTextColor(255); doc.setFont("helvetica","bold"); doc.setFontSize(6.5); doc.text(pt.tag,tagX+1.6,lastY-0.1); doc.setTextColor(17); tagX+=tw3+2; }
+            [[pt.ploc,true],[pt.psku,false]].forEach(function(b){ if(!b[0]) return; doc.setFont("helvetica","bold"); doc.setFontSize(6.8); var pw0=doc.getTextWidth(String(b[0]))+3; if(b[1]){ doc.setFillColor(17,17,17); doc.roundedRect(tagX,lastY-2.9,pw0,3.9,0.6,0.6,"F"); doc.setTextColor(255); } else { doc.setDrawColor(17); doc.setLineWidth(0.35); doc.roundedRect(tagX,lastY-2.9,pw0,3.9,0.6,0.6); doc.setDrawColor(0); doc.setTextColor(17); } doc.text(String(b[0]),tagX+1.5,lastY-0.1); doc.setTextColor(0); tagX+=pw0+1.5; });
             if(pt.sub){ doc.setFont("helvetica","normal"); doc.setFontSize(6.5); doc.setTextColor(120); doc.text(pt.sub,tx,yb+(ls.length-1)*3.7+3.2); doc.setTextColor(0); }
             countsAt(r,y+rh/2+0.2); y+=rh;
             if(pt.canScrap){ doc.setFont("helvetica","normal"); doc.setFontSize(7); doc.setTextColor(60); var q1="Scrap panels used instead"; doc.text(q1,tx,y+3.6); var bxX=tx+doc.getTextWidth(q1)+2.5; doc.setLineWidth(0.4); doc.setDrawColor(17); doc.roundedRect(bxX,y+0.6,10,4.2,0.7,0.7); doc.setDrawColor(0); doc.setTextColor(130); doc.text("tell the operations manager",bxX+12.5,y+3.6); doc.setTextColor(0); y+=6; } }); y+=1.5; }
@@ -3646,7 +3650,7 @@ var SNAP=null, DETAIL={};
   var AUTO=true;
   var REFRESHING=false, POLL_EVERY=10000, CRM_EVERY_TICKS=6, TICK=0;
   var PENDING_SNAP=null, FOREIGN=null, SEEN_FOREIGN={};   // a change to the job on screen, waiting for the person to choose
-  var SCHED_VERSION="23 Oct 10:11:11";   /* bumped on every push: shows which version is running and which built a sheet (Sam, 22 Oct 2026, "still not live?!") */
+  var SCHED_VERSION="23 Oct 10:15:46";   /* bumped on every push: shows which version is running and which built a sheet (Sam, 22 Oct 2026, "still not live?!") */
   /* A NEWER SCHEDULER RELOADS ITSELF (Sam, 22 Oct 2026, a sheet built from a window opened before the push). Checked every two
      minutes and before any sheet is built; a reload waits while an editor is open. */
   function liveVersion(){ return fetch("./scheduler.html?vc="+Date.now(),{cache:"no-store"}).then(function(r){ return r.ok?r.text():""; }).then(function(t){ var m=/SCHED_VERSION\s*=\s*"([^"]+)"/.exec(t||""); return m?m[1]:""; }).catch(function(){ return ""; }); }
