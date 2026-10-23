@@ -3034,7 +3034,7 @@ var SNAP=null, DETAIL={};
     kit.production=function(o){
       var CWs=[16,14,16,14], CX=[L+W-60,L+W-44,L+W-28,L+W-14], NX=L+27, NW=(L+W-60)-NX-3;
       var mid=function(i){ return CX[i]+CWs[i]/2; };
-      var tableHead=function(){ doc.setFont("helvetica","bold"); doc.setFontSize(6.5); doc.setTextColor(110); doc.text("ITEM · TICK WHEN ALL FINISHED",L,y+3,{charSpace:0.2});
+      var tableHead=function(){ doc.setFont("helvetica","bold"); doc.setFontSize(6.5); doc.setTextColor(110); doc.text("ITEM",L,y+3,{charSpace:0.2});
         doc.text("IN PROGRESS",(CX[0]+CX[1]+CWs[1])/2,y+2.6,{align:"center"}); doc.text("FINISHED",(CX[2]+CX[3]+CWs[3])/2,y+2.6,{align:"center"}); doc.setFontSize(5.5); doc.setFont("helvetica","normal");
         doc.text("now",mid(0),y+5.4,{align:"center"}); doc.text("started today",mid(1),y+5.4,{align:"center"}); doc.text("so far",mid(2),y+5.4,{align:"center"}); doc.text("today",mid(3),y+5.4,{align:"center"}); doc.setTextColor(0);
         doc.setDrawColor(120); doc.setLineWidth(0.3); doc.line(L,y+6.6,L+W,y+6.6); doc.setDrawColor(0); y+=7.5; };
@@ -3098,7 +3098,7 @@ var SNAP=null, DETAIL={};
         var rowH=Math.max(leftH,textH), partsH=single?0:partRowsH+1.5;   // parts start under the photo, tag and code, never over them (Sam, 22 Oct 2026)
         if(y+rowH+partsH>272) cont();
         var y0=y; doc.setDrawColor(17); doc.setLineWidth(0.5); doc.line(L,y0,L+W,y0); doc.setDrawColor(0);
-        box(L+0.5,y0+3.5,5.5);
+        /* no tick box at the start of the item (Sam, 23 Oct 2026: "we dont need this box") */
         // THE BENCH, DRAWN (Sam, 22 Oct 2026: "showing the single cantilever desk is misleading"): a bank of tops in its rows,
         // from the recipe, unless sales attached a build photo of the real thing.
         var bank=Number(l.bench_bank_size)||0;
@@ -3646,7 +3646,7 @@ var SNAP=null, DETAIL={};
   var AUTO=true;
   var REFRESHING=false, POLL_EVERY=10000, CRM_EVERY_TICKS=6, TICK=0;
   var PENDING_SNAP=null, FOREIGN=null, SEEN_FOREIGN={};   // a change to the job on screen, waiting for the person to choose
-  var SCHED_VERSION="23 Oct 10:05:00";   /* bumped on every push: shows which version is running and which built a sheet (Sam, 22 Oct 2026, "still not live?!") */
+  var SCHED_VERSION="23 Oct 10:11:11";   /* bumped on every push: shows which version is running and which built a sheet (Sam, 22 Oct 2026, "still not live?!") */
   /* A NEWER SCHEDULER RELOADS ITSELF (Sam, 22 Oct 2026, a sheet built from a window opened before the push). Checked every two
      minutes and before any sheet is built; a reload waits while an editor is open. */
   function liveVersion(){ return fetch("./scheduler.html?vc="+Date.now(),{cache:"no-store"}).then(function(r){ return r.ok?r.text():""; }).then(function(t){ var m=/SCHED_VERSION\s*=\s*"([^"]+)"/.exec(t||""); return m?m[1]:""; }).catch(function(){ return ""; }); }
