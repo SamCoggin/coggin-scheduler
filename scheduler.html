@@ -3125,7 +3125,7 @@ var SNAP=null, DETAIL={};
         else ty+=2.4+1;
         if(sls.length){ doc.setFillColor(243,244,246); doc.rect(NX-1,ty-2.4,NW+2,sls.length*3.4+1.6,"F"); doc.setFont("helvetica","bold"); doc.setFontSize(7.5); doc.text(sls,NX,ty+1.05); /* centred in the grey box: same space above and below (Sam, 22 Oct 2026, mock) */ ty+=sls.length*3.4+2; }
         if(bank>0) benchPlan(NX,ty,NW,20,true);   // the plan prints under the name whether or not a photo fills the slot (Sam, 22 Oct 2026)
-        if(!(bank>0&&!l.photo_is_build)){ var cap0=l.photo_is_build?(l.product_photo?"BUILD PHOTO":""):l.storage_photo?"STOCK IMAGE":l.product_photo?"CATALOGUE PHOTO":""; if(cap0){ doc.setFont("helvetica","bold"); doc.setFontSize(4.8); doc.setTextColor(110); doc.text(cap0,L+16,y0+18.2,{align:"center",charSpace:0.15}); doc.setTextColor(0); } }   /* every photo says what it is (Sam, 23 Oct 2026) */   /* the photo is the actual item, so it says so */
+        if(!(bank>0&&!l.photo_is_build)){ var cap0=l.photo_is_build?(l.product_photo?"BUILD PHOTO":""):l.storage_photo?"STOCK PHOTO":l.product_photo?"CATALOGUE PHOTO":""; if(cap0){ doc.setFont("helvetica","bold"); doc.setFontSize(4.8); doc.setTextColor(110); doc.text(cap0,L+16,y0+18.2,{align:"center",charSpace:0.15}); doc.setTextColor(0); } }   /* every photo says what it is (Sam, 23 Oct 2026) */   /* the photo is the actual item, so it says so */
         doc.setDrawColor(200); doc.setLineWidth(0.25); doc.line(CX[0],y0,CX[0],y0+rowH+partsH); doc.line(CX[2],y0,CX[2],y0+rowH+partsH); doc.setDrawColor(0);
         if(single) countsAt(rows[0],y0+rowH/2);
         else { // THE WHOLE ITEM, READ FROM ITS PARTS (Sam, 22 Oct 2026, mock A): parts picked so far, and the item finished, no boxes
