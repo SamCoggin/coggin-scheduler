@@ -1370,7 +1370,7 @@ var SNAP=null, DETAIL={};
     var mustBy=function(box){ box.appendChild(el("div","lbl","Must be done by")); var pdr=el("div","row"); var pdi=el("input"); pdi.type="date"; pdi.value=j.prodDue||""; pdi.setAttribute("aria-label","Must be done by");
       pdi.onchange=function(){ if(pdi.value){ j.prodDue=pdi.value; j.prodDueSet=true; } render(); }; pdr.appendChild(pdi);
       if(j.prodDueSet){ var rs=el("button","close","Reset"); rs.onclick=function(){ j.prodDue=productionDueFor(j.labels,j.out); j.prodDueSet=false; render(); }; pdr.appendChild(rs); }
-      box.appendChild(pdr); box.appendChild(el("div","hint",j.prodDueSet?"Set by you.":PRODUCTION_BUFFER_DAYS+" working days before delivery. Change it if this job needs more or less.")); };
+      box.appendChild(pdr); box.appendChild(el("div","hint",j.prodDueSet?"Set by you.":(j.viewing?"Ready on the viewing day.":isSampleLabels(j.labels)?SAMPLE_READY_DAYS+" working days before it goes out.":PRODUCTION_BUFFER_DAYS+" working days before delivery.")+" Change it if this job needs more or less.")); };
     if(oneDayP){ var db=block("Production Day","days"); var r=el("div","row");   // one date for a job that fits in a day, as on the card
       var d0=el("input"); d0.type="date"; d0.value=part.date||""; d0.setAttribute("aria-label","Production day"); d0.onchange=function(){ part.date=d0.value||null; part.start=part.date; fitPrepGrid(part); render(); };
       r.appendChild(d0); var clr0=el("button","close","Clear"); clr0.onclick=function(){ part.start=null; part.date=null; delete part.grid; render(); }; r.appendChild(clr0); db.appendChild(r);
@@ -1390,7 +1390,7 @@ var SNAP=null, DETAIL={};
       var pdr=el("div","row"); pdr.style.marginBottom="8px"; pdr.appendChild(el("span",null,"Production due")); var pdi=el("input"); pdi.type="date"; pdi.value=j.prodDue||""; pdi.setAttribute("aria-label","Production due date");
       pdi.onchange=function(){ if(pdi.value){ j.prodDue=pdi.value; j.prodDueSet=true; } render(); }; pdr.appendChild(pdi);
       if(j.prodDueSet){ var rs=el("button","close","Reset"); rs.onclick=function(){ j.prodDue=productionDueFor(j.labels,j.out); j.prodDueSet=false; render(); }; pdr.appendChild(rs); }
-      pdr.appendChild(el("span","hint",j.prodDueSet?"Set by you.":PRODUCTION_BUFFER_DAYS+" working days before delivery. Change it if this job needs more or less.")); pb.appendChild(pdr);
+      pdr.appendChild(el("span","hint",j.prodDueSet?"Set by you.":(j.viewing?"Ready on the viewing day.":isSampleLabels(j.labels)?SAMPLE_READY_DAYS+" working days before it goes out.":PRODUCTION_BUFFER_DAYS+" working days before delivery.")+" Change it if this job needs more or less.")); pb.appendChild(pdr);
       if(j.prep.date&&j.prep.date>j.prodDue) pb.appendChild(el("div","hint far","Production is scheduled to finish "+niceDay(j.prep.date)+", after it is due."));
       var pr=el("div","prep"); pr.appendChild(el("div",null,(j.prep.date?niceDay(j.prep.start)+(j.prep.start!==j.prep.date?" to "+niceDay(j.prep.date):""):"Not scheduled")));
       if(prepHasSpans(j.prep)) j.prep.who.forEach(function(w){ pr.appendChild(el("div","hint",w+": "+prepSpanText(j.prep,w))); });
@@ -1576,7 +1576,7 @@ var SNAP=null, DETAIL={};
       var lateN=j.prodDue&&part.date&&part.date>j.prodDue?Math.max(1,workDaysBetween(j.prodDue,part.date)):0;
       stat("Production due",j.prodDue?niceDay(j.prodDue):"Not set",lateN?"Booked to "+niceDay(part.date)+", "+lateN+(lateN===1?" day late":" days late"):(part.date?"Booked to "+niceDay(part.date):"No days booked"),!!lateN);
       stat(j.collect?"Collection":"Delivery",j.date?niceDay(j.date):"Not set",j.collect?"Customer collecting":(j.contractor?j.contractor:(j.site?"Our van":"")));
-      stat("Crew",part.who.length?nameList(part.who):"Unassigned",part.who.length?part.who.map(function(w){ return prepDayCountFor(part,w); }).join(", ")+" days":"",!part.who.length);
+      stat("Crew",part.who.length?nameList(part.who):"Unassigned",part.who.length?(function(ns){ return ns.join(", ")+(ns.length===1&&+ns[0]===1?" day":" days"); })(part.who.map(function(w){ return prepDayCountFor(part,w); })):"",!part.who.length);
       var plannedM=plannedProdMins(part), estW=pstdB&&pstdB.work?pstdB.work:0; stat("Planned",plannedM?fmt(plannedM):"No time",estW?"of "+fmt(estW)+" estimated":"",!plannedM);
       var tq0=0, tf0=0; if(plc&&plc.lines) plc.lines.forEach(function(l){ if(isPartLine(l)) return; var c=pickCount(j.prep.picked||{},l); tq0+=c.q; tf0+=c.f; });
       var fd=stat("Finished",(plc&&plc.lines)?tf0+" of "+tq0:"Reading",""); if(plc&&plc.lines){ var fbar=el("div","bar"), fbi=el("i"); fbi.style.width=(tq0?Math.round(tf0/tq0*100):0)+"%"; fbar.appendChild(fbi); fd.appendChild(fbar); }
@@ -3052,6 +3052,8 @@ var SNAP=null, DETAIL={};
       var cont=function(){ setFoot("This job carries on over the page."); head(true); };
       head(false);
       var pageLines=(o.all&&o.all.length)?o.all:o.lines;   // every item, finished ones included, so finished can be written on any of them
+      /* A CARD WITH NO CRM DEAL (a viewing, a sample) still prints as rows (Sam, 23 Oct 2026): the card's items become lines */
+      if(!pageLines.length&&(o.items||[]).length) pageLines=(o.items||[]).map(function(it){ var q=parseInt(String(it.qty||"1"),10)||1; return {name:String(it.name||"Item").replace(/\s+/g," ").trim(),qty:q,headerCustomer:String(q),product_photo:it.photo||"",section:"other"}; });
       if(!pageLines.length){ kit.items(o.items||[],cont); }
       var countsAt=function(r,yc){ doc.setFont("helvetica","normal"); doc.setFontSize(8.5); doc.text(String(Math.max(0,r.p-r.f)),mid(0),yc+1.2,{align:"center"});   /* in progress = started, not finished (Sam, 22 Oct 2026, mock approved) */ doc.text(r.f+" of "+r.q,mid(2),yc+1.2,{align:"center"});
         doc.setLineWidth(0.45); doc.setDrawColor(17); if(r.p<r.q) doc.roundedRect(mid(1)-6.5,yc-3,13,6,0.8,0.8); if(r.f<r.q) doc.roundedRect(mid(3)-6.5,yc-3,13,6,0.8,0.8); doc.setDrawColor(0); };
@@ -3620,7 +3622,7 @@ var SNAP=null, DETAIL={};
   var AUTO=true;
   var REFRESHING=false, POLL_EVERY=10000, CRM_EVERY_TICKS=6, TICK=0;
   var PENDING_SNAP=null, FOREIGN=null, SEEN_FOREIGN={};   // a change to the job on screen, waiting for the person to choose
-  var SCHED_VERSION="23 Oct 08:21";   /* bumped on every push: shows which version is running and which built a sheet (Sam, 22 Oct 2026, "still not live?!") */
+  var SCHED_VERSION="23 Oct 08:24";   /* bumped on every push: shows which version is running and which built a sheet (Sam, 22 Oct 2026, "still not live?!") */
   /* A NEWER SCHEDULER RELOADS ITSELF (Sam, 22 Oct 2026, a sheet built from a window opened before the push). Checked every two
      minutes and before any sheet is built; a reload waits while an editor is open. */
   function liveVersion(){ return fetch("./scheduler.html?vc="+Date.now(),{cache:"no-store"}).then(function(r){ return r.ok?r.text():""; }).then(function(t){ var m=/SCHED_VERSION\s*=\s*"([^"]+)"/.exec(t||""); return m?m[1]:""; }).catch(function(){ return ""; }); }
