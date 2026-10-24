@@ -3327,8 +3327,8 @@ var SNAP=null, DETAIL={};
   // one and the old picking sheet. Quietly: a failed upload never stops the download.
   function attachProductionSheet(j,doc,k){ if(!CRM_KEY||!j||!j.id||j.isHold) return Promise.resolve();
     try{ var b64=doc.output("datauristring").split(",")[1]; var tp=String(j.title||"").split(/\s+-\s+/), ref=tp.filter(function(x){ return /^[0-9A-Z]{6}$/.test(x); })[0]||"", cust=tp.filter(function(x){ return !/^[0-9A-Z]{6}$/.test(x)&&!/^\d{5,}$/.test(x); }).slice(1).join(" - ")||tp[0]||j.title; var name="Production sheet \u00b7 "+cust+(ref?" \u00b7 "+ref:"")+" \u00b7 "+(UNPLANNED===j.id?"not planned yet":niceDay(k));   // the customer and the CRM reference, never Trello's short link (Sam, 22 Oct 2026: "AQovofcd")
-      return fetch(CRM_ATTACH_URL,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({key:CRM_KEY,card_id:j.id,name:name,pdf_base64:b64})}).then(function(x){ return x.json(); }).then(function(r){ if(!(r&&r.ok)) console.warn("production sheet not attached",r&&r.error); }).catch(function(e){ console.warn("production sheet not attached",e); }); }
-    catch(e){ return Promise.resolve(); } }
+      return fetch(CRM_ATTACH_URL,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({key:CRM_KEY,card_id:j.id,name:name,pdf_base64:b64})}).then(function(x){ return x.json(); }).then(function(r){ if(!(r&&r.ok)) console.warn("production sheet not attached",r&&r.error); return r||{ok:false,error:"no reply"}; }).catch(function(e){ console.warn("production sheet not attached",e); return {ok:false,error:String(e&&e.message||e)}; }); }
+    catch(e){ return Promise.resolve({ok:false,error:String(e&&e.message||e)}); } }
   // every production job on the day gets its page on its card, one after another, after the day's sheets are saved
   async function attachDayProductionSheets(k){ var jobs=prepJobs().filter(function(j){ return j.prep&&j.prep.date&&!j.isHold&&daysOf(j.prep).indexOf(k)>=0&&j.prep.who.length; });
     for(var i=0;i<jobs.length;i++){ try{ var r=await daySheetBuild(k,["p"+jobs[i].id]); if(r&&r.jobOnly) await attachProductionSheet(jobs[i],r.doc,k); }catch(e){ console.warn("production sheet",e); } } }
@@ -3716,7 +3716,7 @@ var SNAP=null, DETAIL={};
   var AUTO=true;
   var REFRESHING=false, POLL_EVERY=10000, CRM_EVERY_TICKS=6, TICK=0;
   var PENDING_SNAP=null, FOREIGN=null, SEEN_FOREIGN={};   // a change to the job on screen, waiting for the person to choose
-  var SCHED_VERSION="24 Oct 13:36:23";   /* bumped on every push: shows which version is running and which built a sheet (Sam, 22 Oct 2026, "still not live?!") */
+  var SCHED_VERSION="24 Oct 13:42:44";   /* bumped on every push: shows which version is running and which built a sheet (Sam, 22 Oct 2026, "still not live?!") */
   /* A NEWER SCHEDULER RELOADS ITSELF (Sam, 22 Oct 2026, a sheet built from a window opened before the push). Checked every two
      minutes and before any sheet is built; a reload waits while an editor is open. */
   function liveVersion(){ return fetch("./scheduler.html?vc="+Date.now(),{cache:"no-store"}).then(function(r){ return r.ok?r.text():""; }).then(function(t){ var m=/SCHED_VERSION\s*=\s*"([^"]+)"/.exec(t||""); return m?m[1]:""; }).catch(function(){ return ""; }); }
@@ -3777,6 +3777,21 @@ var SNAP=null, DETAIL={};
     if(EMBED){ window.addEventListener("message",function(ev){ var msg=ev.data||{}; if(msg.type!=="coggin-sheet") return; var reply=function(m){ try{ ev.source.postMessage(m,"*"); }catch(e){} };
         loadBoard({raw:msg.raw||{}}).then(function(snap){ buildFromSnap(snap); lastSaved={}; var oj=JOBS.filter(function(j){return j.id===msg.open;})[0]; if(!oj) throw new Error("This card is not a job the Scheduler knows yet. Does it have a due date and a list the Scheduler reads?"); if(oj.date) dayCur=oj.date; view="day"; open=msg.sheet==="prep"&&oj.prep?oj.id+":prep":oj.id; render(); var oo=findOpen(); if(!oo) throw new Error("This job has no page to print yet.");
           return jobSheetDownload(oo.job,oo,null); }).then(function(){ reply({type:"coggin-sheet-done"}); }).catch(function(e){ reply({type:"coggin-sheet-error",error:String(e&&e.message||e)}); }); });
+      /* ADD THE SHEET TO THE CARD, FROM THE CARD (Sam, 24 Oct 2026, Bennett Jones 8FB359: "can we not add a button here to
+         add the relevant sheet instead?"). The card posts its board, this builds the production sheet, with a stand-in day
+         and person when the job is not planned yet, and puts it on the card. Nothing is saved: in embed mode there is no t. */
+      window.addEventListener("message",function(ev){ var msg=ev.data||{}; if(msg.type!=="coggin-attach") return; var reply=function(m){ try{ ev.source.postMessage(m,"*"); }catch(e){} };
+        var oj=null, was=null;
+        loadBoard({raw:msg.raw||{}}).then(function(snap){ buildFromSnap(snap); lastSaved={}; oj=JOBS.filter(function(j){return j.id===msg.open;})[0];
+          if(!oj) throw new Error("This card is not a job the Scheduler knows yet. Does it have a due date and a list the Scheduler reads?");
+          if(!oj.prep) throw new Error("This card has no production part, so there is no production sheet for it.");
+          if(!CRM_KEY) throw new Error("The CRM key is not on the board yet, so the sheet cannot be read or attached.");
+          var planned=!!(oj.prep.date&&oj.prep.who&&oj.prep.who.length); was=oj.prep;
+          if(!planned){ oj.prep=Object.assign({},was,{date:nextWorkday(),start:null,who:[TEAM[0]],mins:DAY_MINS}); UNPLANNED=oj.id; }
+          var k=daysOf(oj.prep)[0]||oj.prep.date;
+          return daySheetBuild(k,["p"+oj.id]).then(function(r){ if(!(r&&r.jobOnly)) throw new Error("This job has no page to print yet."); return attachProductionSheet(oj,r.doc,k); }).then(function(r){ if(!(r&&r.ok)) throw new Error(r&&r.error||"Trello did not take the file."); return {planned:planned}; }); })
+        .then(function(r){ reply({type:"coggin-attach-done",planned:r.planned}); }).catch(function(e){ reply({type:"coggin-attach-error",error:String(e&&e.message||e)}); })
+        .then(function(){ if(oj&&was) oj.prep=was; UNPLANNED=null; }); });
       try{ window.parent.postMessage({type:"coggin-sheet-ready"},"*"); }catch(e){} }
     if(!EMBED) loadBoard().then(function(snap){ buildFromSnap(snap); lastSaved={}; wireRefresh(); try{ var P0=new URLSearchParams(location.search), rq=P0.get("round"), oq=P0.get("open"); if(rq&&/^\d{4}-\d{2}-\d{2}\|/.test(rq)){ dayCur=rq.split("|")[0]; view="day"; openRound=rq; } else if(oq){ var oj=JOBS.filter(function(j){return j.id===oq;})[0]; if(oj){ if(oj.date) dayCur=oj.date; view="day"; var sq=P0.get("sheet"); open=sq==="prep"&&oj.prep?oq+":prep":oq; if(sq){ var sheetJob=oj; } } } }catch(e){} /* ?open=<card id>: the card back opens its own job here (Sam, 19 Oct 2026); &sheet=prep|job downloads the job sheet as it opens (21 Oct 2026) */ render();
       // FROM THE CARD, JUST THE SHEET (Sam, 21 Oct 2026: "when I click job sheet it opens the schedule editor?"): build it,
