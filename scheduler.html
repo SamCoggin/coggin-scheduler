@@ -838,10 +838,27 @@ var SNAP=null, DETAIL={};
      like the picking sheet used to", and "we don't have picking sheets anymore"). A sheet needs a production day and
      somebody on it, so it is built and attached as soon as both are set, and again whenever they change. The first sight
      of a job only records where it stands, so opening the Scheduler never re-sends every sheet. */
-  var PROD_SIG={}, PROD_TIMER={};
+  var PROD_SIG={}, PROD_TIMER={}, UNPLANNED=null, UNPLANNED_Q=[], UNPLANNED_RUN=false;
+  /* THE SHEET THE MOMENT THE CARD LANDS (Sam, 24 Oct 2026: "I need the production sheet to be added as soon as it goes onto
+     trello", mock approved). A job not planned yet is built with a stand-in day and person, drawn as "Not planned yet" and
+     "Team not set", then put on the card once; the card remembers it (prodSheet) so it is never sent twice. Planning the job
+     later replaces it with the real sheet. A card with nothing to make (no items from the CRM) is remembered as "none". */
+  function nextWorkday(){ var d=new Date(); while(d.getDay()===0||d.getDay()===6) d.setDate(d.getDate()+1); return iso(d); }
+  async function runUnplanned(){ if(UNPLANNED_RUN) return; UNPLANNED_RUN=true;
+    try{ while(UNPLANNED_Q.length){ var j=UNPLANNED_Q.shift(); if(!j||!j.prep||j.prep.date) continue;
+      var was=j.prep, k=nextWorkday(), out="none";
+      try{ j.prep=Object.assign({},was,{date:k,start:null,who:[TEAM[0]],mins:DAY_MINS}); UNPLANNED=j.id;
+        var r=await daySheetBuild(k,["p"+j.id]); if(r&&r.jobOnly){ await attachProductionSheet(j,r.doc,k); out="unplanned"; } }
+      catch(e){ console.warn("production sheet (unplanned)",e); out=/did not load/.test(String(e&&e.message))?"":"none"; }
+      finally{ j.prep=was; UNPLANNED=null; }
+      if(out&&t) t.set(j.id,"shared","prodSheet",out).catch(function(){});
+      await new Promise(function(res){ setTimeout(res,3000); }); } }
+    finally{ UNPLANNED_RUN=false; } }
   function queueProductionSheet(j){ if(!j||!j.id||j.isHold) return;
     var pr=j.prep, ready=!!(pr&&pr.date&&pr.who&&pr.who.length), sig=ready?JSON.stringify([pr.date,pr.start||null,pr.who]):"none";
-    if(!(j.id in PROD_SIG)){ PROD_SIG[j.id]=sig; return; }
+    if(!(j.id in PROD_SIG)){ PROD_SIG[j.id]=sig;
+      if(!ready&&pr&&!pr.date&&CRM_KEY&&t) t.get(j.id,"shared","prodSheet",null).then(function(v){ if(!v){ UNPLANNED_Q.push(j); runUnplanned(); } }).catch(function(){});
+      return; }
     if(PROD_SIG[j.id]===sig) return; PROD_SIG[j.id]=sig; if(!ready||!CRM_KEY) return;
     clearTimeout(PROD_TIMER[j.id]);
     PROD_TIMER[j.id]=setTimeout(async function(){ try{ var k=daysOf(pr)[0]||pr.date; var r=await daySheetBuild(k,["p"+j.id]); if(r&&r.jobOnly) await attachProductionSheet(j,r.doc,k); }catch(e){ console.warn("production sheet (auto)",e); } },5000); }
@@ -2718,11 +2735,11 @@ var SNAP=null, DETAIL={};
         // ONE JOB'S PAGES (Sam, 14 Oct 2026: "print the job sheet from the schedule editor"): __only names the row keys
         // to draw, so the editor prints this job's pages alone, numbered from 1, with its van's loading sheet in front.
         var only=PICK.__only||null;
-        bars.forEach(function(b){ if(!b.crew) return; kit.crew(b.title);
+        bars.forEach(function(b){ if(!b.crew) return; kit.crew(UNPLANNED?"Team not set":b.title);
           b.cells.forEach(function(c){ var r=c[6]; if(!r||!r.card) return; if(only&&only.indexOf(r.key)<0) return; var j=JOBS.filter(function(q){ return q.id===r.card; })[0]; if(!j) return;
             if(r.part==="Production"){ var i=PICK[r.card]||{}, lines=i.lines||[], fin=j.stage==="In progress"&&!(j.prep&&j.prep.stages);
               var inf=DATA.info[r.card]||(DATA.byCard[r.card]?{items:DATA.byCard[r.card].stop.items}:null);
-              var beforeP=doc.getNumberOfPages(); kit.production({day:niceDay(k),crew:b.title,name:r.name,code:"https://trello.com/c/"+(j.short||j.id),started:j.stage==="In progress",title:i.allPicked?"All finished":(lines.length&&lines.every(function(l){ return l.section==="refurb"; }))?"Items to refurbish":fin?"Items to finish":"Pick and finish",
+              var beforeP=doc.getNumberOfPages(); kit.production({unplanned:UNPLANNED===j.id,day:niceDay(k),crew:b.title,name:r.name,code:"https://trello.com/c/"+(j.short||j.id),started:j.stage==="In progress",title:i.allPicked?"All finished":(lines.length&&lines.every(function(l){ return l.section==="refurb"; }))?"Items to refurbish":fin?"Items to finish":"Pick and finish",
                 facts:[["Time",c[3]],["Due",j.prodDue?niceDay(j.prodDue):""],[j.site?"Delivery":"Ready by",j.date?niceDay(j.date):""],["Ref",i.ref||""]],lines:lines,all:i.all||[],picked:i.picked||{},items:inf&&inf.items?inf.items:[]});
               starts[r.key]=beforeP+1;
               return; }
@@ -3050,18 +3067,20 @@ var SNAP=null, DETAIL={};
         doc.text("IN PROGRESS",(CX[0]+CX[1]+CWs[1])/2,y+2.6,{align:"center"}); doc.text("FINISHED",(CX[2]+CX[3]+CWs[3])/2,y+2.6,{align:"center"}); doc.setFontSize(5.5); doc.setFont("helvetica","normal");
         doc.text("now",mid(0),y+5.4,{align:"center"}); doc.text("started today",mid(1),y+5.4,{align:"center"}); doc.text("so far",mid(2),y+5.4,{align:"center"}); doc.text("today",mid(3),y+5.4,{align:"center"}); doc.setTextColor(0);
         doc.setDrawColor(120); doc.setLineWidth(0.3); doc.line(L,y+6.6,L+W,y+6.6); doc.setDrawColor(0); y+=7.5; };
-      var head=function(cont){ newPage(); label("Production"+(o.day?" · "+o.day:"")+(cont?" · continued":""),L,y+1);
+      var head=function(cont){ newPage(); label("Production"+(o.unplanned?" · Not planned yet":o.day?" · "+o.day:"")+(cont?" · continued":""),L,y+1);
         doc.setFont("helvetica","bold"); doc.setFontSize(cont?14:20); var tl=doc.splitTextToSize(o.name,W-78).slice(0,2); doc.text(tl,L,y+(cont?7:9)); var ty=y+(cont?7:9)+(tl.length-1)*7;
-        if(!cont){ pillsAt(o.crew.split(" + "),L,ty+3); ty+=11;
+        if(!cont){ if(o.unplanned){ /* NOT PLANNED YET (Sam, 24 Oct 2026, mock approved): a dashed box where the team goes */ doc.setFont("helvetica","bold"); doc.setFontSize(10); var upw=doc.getTextWidth("Team not set")+7; doc.setLineWidth(0.35); doc.setDrawColor(17); doc.setLineDashPattern([1,0.8],0); doc.roundedRect(L,ty+3,upw,7,1.2,1.2); doc.setLineDashPattern([],0); doc.text("Team not set",L+3.5,ty+7.9); } else pillsAt(o.crew.split(" + "),L,ty+3); ty+=11;
           // the facts as three short lines on the right, the Trello code beside them
           var facts={}; (o.facts||[]).forEach(function(f){ facts[f[0]]=f[1]||""; }); var rx=L+W-20; doc.setFontSize(9);
-          var l1=[facts.Time?facts.Time:"",facts.Due?"Due "+facts.Due:""].filter(Boolean).join(" · "); var dl=facts.Delivery?"Delivery "+facts.Delivery:(facts["Ready by"]?"Ready by "+facts["Ready by"]:""); var l2=[dl,facts.Ref?"Ref "+facts.Ref:""].filter(Boolean).join(" · ");
+          var l1=[facts.Time&&!o.unplanned?facts.Time:"",facts.Due?"Due "+facts.Due:""].filter(Boolean).join(" · "); var dl=facts.Delivery?"Delivery "+facts.Delivery:(facts["Ready by"]?"Ready by "+facts["Ready by"]:""); var l2=[dl,facts.Ref?"Ref "+facts.Ref:""].filter(Boolean).join(" · ");
           var rx2=L+W; doc.setFont("helvetica","bold"); if(l1) doc.text(l1,rx2,y+3,{align:"right"}); doc.setFont("helvetica","normal"); if(l2) doc.text(l2,rx2,y+7.5,{align:"right"}); ty=Math.max(ty,y+9); }
 
 
         y=ty+(cont?3:4); rule(); y+=4;
         // STEP 1 AS A BAR UNDER THE HEADER (Sam, 22 Oct 2026, mock approved: "make this more obvious and better placement")
-        if(!cont){ var bh=15; doc.setLineWidth(0.5); doc.setDrawColor(17); doc.roundedRect(L,y,W,bh,1.5,1.5); doc.setFillColor(17,17,17); doc.roundedRect(L,y,34,bh,1.5,1.5,"F"); doc.rect(L+30,y,4,bh,"F"); doc.setTextColor(255); doc.setFont("helvetica","bold"); doc.setFontSize(7); doc.text(["BEFORE","YOU START"],L+17,y+bh/2-0.6,{align:"center"}); doc.setTextColor(0);
+        if(!cont&&o.unplanned){ var nh=10; doc.setLineWidth(0.35); doc.setDrawColor(17); doc.setLineDashPattern([1,0.8],0); doc.roundedRect(L,y,W,nh,1.5,1.5); doc.setLineDashPattern([],0);
+          doc.setFont("helvetica","bold"); doc.setFontSize(9.5); doc.text("Not planned yet.",L+4,y+6.2); var nw=doc.getTextWidth("Not planned yet. "); doc.setFont("helvetica","normal"); doc.text("This sheet is replaced on the card once the job has a production day and a team. Do not start from it.",L+4+nw,y+6.2); y+=nh+5; }
+        if(!cont&&!o.unplanned){ var bh=15; doc.setLineWidth(0.5); doc.setDrawColor(17); doc.roundedRect(L,y,W,bh,1.5,1.5); doc.setFillColor(17,17,17); doc.roundedRect(L,y,34,bh,1.5,1.5,"F"); doc.rect(L+30,y,4,bh,"F"); doc.setTextColor(255); doc.setFont("helvetica","bold"); doc.setFontSize(7); doc.text(["BEFORE","YOU START"],L+17,y+bh/2-0.6,{align:"center"}); doc.setTextColor(0);
           box(L+39,y+bh/2-3,6); if(o.started){ doc.setLineWidth(0.8); doc.setDrawColor(17); doc.line(L+40.3,y+bh/2+0.2,L+41.8,y+bh/2+1.8); doc.line(L+41.8,y+bh/2+1.8,L+44.3,y+bh/2-1.8); doc.setDrawColor(0); }
           doc.setTextColor(110); doc.setFontSize(6.5); doc.text("STEP 1"+(o.started?" \u00b7 DONE":""),L+48,y+bh/2-2.2,{charSpace:0.2}); doc.setTextColor(o.started?140:0); doc.setFontSize(11); doc.text("Move the job into In-progress on Trello",L+48,y+bh/2+3); doc.setTextColor(0);
           doc.setDrawColor(200); doc.line(L+W-34,y,L+W-34,y+bh); doc.setDrawColor(0); qr(o.code,L+W-31,y+1.2,12.5); doc.setFont("helvetica","bold"); doc.setFontSize(6.5); doc.text(["Scan for","the card"],L+W-16,y+bh/2-0.5); y+=bh+5; }
@@ -3273,7 +3292,7 @@ var SNAP=null, DETAIL={};
   // will naturally still go here"). The page just built goes to the card as "Production sheet <ref>", replacing the older
   // one and the old picking sheet. Quietly: a failed upload never stops the download.
   function attachProductionSheet(j,doc,k){ if(!CRM_KEY||!j||!j.id||j.isHold) return Promise.resolve();
-    try{ var b64=doc.output("datauristring").split(",")[1]; var tp=String(j.title||"").split(/\s+-\s+/), ref=tp.filter(function(x){ return /^[0-9A-Z]{6}$/.test(x); })[0]||"", cust=tp.filter(function(x){ return !/^[0-9A-Z]{6}$/.test(x)&&!/^\d{5,}$/.test(x); }).slice(1).join(" - ")||tp[0]||j.title; var name="Production sheet \u00b7 "+cust+(ref?" \u00b7 "+ref:"")+" \u00b7 "+niceDay(k);   // the customer and the CRM reference, never Trello's short link (Sam, 22 Oct 2026: "AQovofcd")
+    try{ var b64=doc.output("datauristring").split(",")[1]; var tp=String(j.title||"").split(/\s+-\s+/), ref=tp.filter(function(x){ return /^[0-9A-Z]{6}$/.test(x); })[0]||"", cust=tp.filter(function(x){ return !/^[0-9A-Z]{6}$/.test(x)&&!/^\d{5,}$/.test(x); }).slice(1).join(" - ")||tp[0]||j.title; var name="Production sheet \u00b7 "+cust+(ref?" \u00b7 "+ref:"")+" \u00b7 "+(UNPLANNED===j.id?"not planned yet":niceDay(k));   // the customer and the CRM reference, never Trello's short link (Sam, 22 Oct 2026: "AQovofcd")
       return fetch(CRM_ATTACH_URL,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({key:CRM_KEY,card_id:j.id,name:name,pdf_base64:b64})}).then(function(x){ return x.json(); }).then(function(r){ if(!(r&&r.ok)) console.warn("production sheet not attached",r&&r.error); }).catch(function(e){ console.warn("production sheet not attached",e); }); }
     catch(e){ return Promise.resolve(); } }
   // every production job on the day gets its page on its card, one after another, after the day's sheets are saved
@@ -3662,7 +3681,7 @@ var SNAP=null, DETAIL={};
   var AUTO=true;
   var REFRESHING=false, POLL_EVERY=10000, CRM_EVERY_TICKS=6, TICK=0;
   var PENDING_SNAP=null, FOREIGN=null, SEEN_FOREIGN={};   // a change to the job on screen, waiting for the person to choose
-  var SCHED_VERSION="24 Oct 12:28:07";   /* bumped on every push: shows which version is running and which built a sheet (Sam, 22 Oct 2026, "still not live?!") */
+  var SCHED_VERSION="24 Oct 12:32:15";   /* bumped on every push: shows which version is running and which built a sheet (Sam, 22 Oct 2026, "still not live?!") */
   /* A NEWER SCHEDULER RELOADS ITSELF (Sam, 22 Oct 2026, a sheet built from a window opened before the push). Checked every two
      minutes and before any sheet is built; a reload waits while an editor is open. */
   function liveVersion(){ return fetch("./scheduler.html?vc="+Date.now(),{cache:"no-store"}).then(function(r){ return r.ok?r.text():""; }).then(function(t){ var m=/SCHED_VERSION\s*=\s*"([^"]+)"/.exec(t||""); return m?m[1]:""; }).catch(function(){ return ""; }); }
