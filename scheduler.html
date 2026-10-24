@@ -2811,7 +2811,10 @@ var SNAP=null, DETAIL={};
   // check. Then one page per stop in drop order: name, arrival, address and contact large, a code to scan to sign off,
   // photos of what comes off, a big prompt to photograph the job for the Trello card, and only the site details the card
   // actually has. Printed black and white on A4; long lists carry onto a continued page.
-  var TRANSPORT_KIT=["Sack truck","Dollies or skates","Straps, blankets, cardboard","Drill and Allen keys","Spare castors and screws","Desk feet and fixings","Cloths and cleaning spray","Vacuum","Bin bags"];
+  /* ALWAYS IN THE VAN (Sam, 24 Oct 2026, mock approved): the standing kit, ticked before setting off. Drill, fixings and
+     castors live in the tool box, which has its own tick. No fuel line (Sam). */
+  var VAN_KIT_BACK=["Cover rags and blankets","Hoover","Skates","Sack truck","Brush","Ratchet straps","Tool box sorted, lid list ticked","Shelves tidy, nothing loose","Bin bags"];
+  var VAN_KIT_ROAD=["Spare wheel and jack","Jump leads"];
   var LOAD_MINS=30;
   // EVERYTHING IS AN ESTIMATE (Sam, 2 Oct 2026: "remove exact times as everything we do is estimated"): an ETA to the nearest quarter hour
   function etaText(m){ return "ETA around "+hmStr(Math.round(m/15)*15); }
@@ -3032,9 +3035,11 @@ var SNAP=null, DETAIL={};
       if(y+32>278){ setFoot("Loading carries on over the page."); yardHead(true); }
       y+=3; kitCheck(2); setFoot("Then turn the page for the first stop."); };
     // the kit ticks, drawn on the loading sheet or, when there is nothing to load, on the first stop page
-    var kitCheck=function(n){ heading(n,"Check you have what you need");
-      var cw=(W-8)/3; TRANSPORT_KIT.forEach(function(t,i){ var cx=L+(i%3)*(cw+4), cy=y+Math.floor(i/3)*7; box(cx,cy+1.2,4); doc.setFont("helvetica","normal"); doc.setFontSize(9); doc.text(t,cx+6.5,cy+4.6); doc.setDrawColor(215); doc.setLineWidth(0.25); doc.line(cx,cy+7,cx+cw,cy+7); doc.setDrawColor(0); });
-      y+=Math.ceil(TRANSPORT_KIT.length/3)*7+4; };
+    var kitCheck=function(n){ heading(n,"Always in the van"); doc.setFont("helvetica","normal"); doc.setFontSize(7.5); doc.setTextColor(90); doc.text("tick each one before you set off",L+W,y-4.2,{align:"right"}); doc.setTextColor(0);
+      var cw=(W-8)/3, grid=function(list){ list.forEach(function(t,i){ var cx=L+(i%3)*(cw+4), cy=y+Math.floor(i/3)*7; box(cx,cy+1.2,4); doc.setFont("helvetica",/Tool box/.test(t)?"bold":"normal"); var fz=9; doc.setFontSize(fz); while(fz>7&&doc.getTextWidth(t)>cw-8){ fz-=0.5; doc.setFontSize(fz); } doc.text(t,cx+6.5,cy+4.6);   /* never clipped: the words shrink a little instead */ doc.setDrawColor(215); doc.setLineWidth(0.25); doc.line(cx,cy+7,cx+cw,cy+7); doc.setDrawColor(0); }); y+=Math.ceil(list.length/3)*7; };
+      var sub=function(t){ doc.setFont("helvetica","bold"); doc.setFontSize(6.5); doc.setTextColor(110); doc.text(t,L,y+2.6,{charSpace:0.25}); doc.setTextColor(0); y+=4; };
+      sub("IN THE BACK"); grid(VAN_KIT_BACK); y+=3; sub("FOR THE ROAD"); grid(VAN_KIT_ROAD); y+=3;
+      doc.setLineWidth(0.5); doc.setDrawColor(17); doc.roundedRect(L,y,W,8,1,1); doc.setDrawColor(0); doc.setFont("helvetica","bold"); doc.setFontSize(8); doc.text("Anything missing:",L+3,y+5.2); var aw=doc.getTextWidth("Anything missing: "); doc.setFont("helvetica","normal"); doc.text("fetch it before you set off. If it cannot be found, tell the operations manager before you leave the yard.",L+3+aw,y+5.2); y+=8+4; };
     // NO LOADING SHEET WITHOUT A LOAD (Sam, 13 Oct 2026: "Remove the loading sheet when a run has no deliveries"). A run
     // that only collects has nothing to put in the van at Forton, so its loading sheet was a page saying so plus the kit
     // ticks. The kit ticks move to the first stop page instead and the page goes.
@@ -3708,7 +3713,7 @@ var SNAP=null, DETAIL={};
   var AUTO=true;
   var REFRESHING=false, POLL_EVERY=10000, CRM_EVERY_TICKS=6, TICK=0;
   var PENDING_SNAP=null, FOREIGN=null, SEEN_FOREIGN={};   // a change to the job on screen, waiting for the person to choose
-  var SCHED_VERSION="24 Oct 13:28:46";   /* bumped on every push: shows which version is running and which built a sheet (Sam, 22 Oct 2026, "still not live?!") */
+  var SCHED_VERSION="24 Oct 13:34:57";   /* bumped on every push: shows which version is running and which built a sheet (Sam, 22 Oct 2026, "still not live?!") */
   /* A NEWER SCHEDULER RELOADS ITSELF (Sam, 22 Oct 2026, a sheet built from a window opened before the push). Checked every two
      minutes and before any sheet is built; a reload waits while an editor is open. */
   function liveVersion(){ return fetch("./scheduler.html?vc="+Date.now(),{cache:"no-store"}).then(function(r){ return r.ok?r.text():""; }).then(function(t){ var m=/SCHED_VERSION\s*=\s*"([^"]+)"/.exec(t||""); return m?m[1]:""; }).catch(function(){ return ""; }); }
