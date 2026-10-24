@@ -871,10 +871,14 @@ var SNAP=null, DETAIL={};
       return; }
     if(!(j.id in PROD_SIG)){ PROD_SIG[j.id]=sig;
       if(!ready&&pr&&!pr.date&&CRM_KEY&&t) t.get(j.id,"shared","prodSheet",null).then(function(v){ if(!v){ UNPLANNED_Q.push(j); runUnplanned(); } }).catch(function(){});
+      /* A JOB PLANNED BEFORE THIS EXISTED (Sam, 24 Oct 2026, Tsunami Axis A81294: planned, one old attachment, no production
+         sheet): on first sight a planned job whose card does not say "planned" gets its full sheet, once. */
+      if(ready&&CRM_KEY&&t) t.get(j.id,"shared","prodSheet",null).then(function(v){ if(v==="planned") return; clearTimeout(PROD_TIMER[j.id]);
+        PROD_TIMER[j.id]=setTimeout(async function(){ try{ var k=daysOf(pr)[0]||pr.date; var r=await daySheetBuild(k,["p"+j.id]); if(r&&r.jobOnly){ var a=await attachProductionSheet(j,r.doc,k); if(a&&a.ok&&t) t.set(j.id,"shared","prodSheet","planned").catch(function(){}); } }catch(e){ console.warn("production sheet (first planned)",e); } },8000+Math.floor(Math.random()*4000)); }).catch(function(){});
       return; }
     if(PROD_SIG[j.id]===sig) return; PROD_SIG[j.id]=sig; if(!ready||!CRM_KEY) return;
     clearTimeout(PROD_TIMER[j.id]);
-    PROD_TIMER[j.id]=setTimeout(async function(){ try{ var k=daysOf(pr)[0]||pr.date; var r=await daySheetBuild(k,["p"+j.id]); if(r&&r.jobOnly) await attachProductionSheet(j,r.doc,k); }catch(e){ console.warn("production sheet (auto)",e); } },5000); }
+    PROD_TIMER[j.id]=setTimeout(async function(){ try{ var k=daysOf(pr)[0]||pr.date; var r=await daySheetBuild(k,["p"+j.id]); if(r&&r.jobOnly){ var a=await attachProductionSheet(j,r.doc,k); if(a&&a.ok&&t) t.set(j.id,"shared","prodSheet","planned").catch(function(){}); } }catch(e){ console.warn("production sheet (auto)",e); } },5000); }
   // save what changed back onto the cards
   var lastSaved={};
   function persist(){
@@ -3719,7 +3723,7 @@ var SNAP=null, DETAIL={};
   var AUTO=true;
   var REFRESHING=false, POLL_EVERY=10000, CRM_EVERY_TICKS=6, TICK=0;
   var PENDING_SNAP=null, FOREIGN=null, SEEN_FOREIGN={};   // a change to the job on screen, waiting for the person to choose
-  var SCHED_VERSION="24 Oct 13:48:31";   /* bumped on every push: shows which version is running and which built a sheet (Sam, 22 Oct 2026, "still not live?!") */
+  var SCHED_VERSION="24 Oct 14:06:02";   /* bumped on every push: shows which version is running and which built a sheet (Sam, 22 Oct 2026, "still not live?!") */
   /* A NEWER SCHEDULER RELOADS ITSELF (Sam, 22 Oct 2026, a sheet built from a window opened before the push). Checked every two
      minutes and before any sheet is built; a reload waits while an editor is open. */
   function liveVersion(){ return fetch("./scheduler.html?vc="+Date.now(),{cache:"no-store"}).then(function(r){ return r.ok?r.text():""; }).then(function(t){ var m=/SCHED_VERSION\s*=\s*"([^"]+)"/.exec(t||""); return m?m[1]:""; }).catch(function(){ return ""; }); }
