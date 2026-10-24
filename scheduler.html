@@ -3287,10 +3287,12 @@ var SNAP=null, DETAIL={};
           box(L,y+1.6,5); doc.text(tl,L+9,y+5.2); y+=h; doc.setDrawColor(215); doc.setLineWidth(0.25); doc.line(L,y,L+W,y); doc.setDrawColor(0); });
         y+=4; }
       // the notes: lines down to the finishing panel, so there is always room to write
-      if(y+40>270) cont(); heading(++nStep,"What you did");
+      /* ROOM FOR THE LINES, THE PANEL AND THE NAME (24 Oct 2026, Wood Waste Exchange: a long What to do list pushed the panel
+         off the page and the name line onto a page of its own) */
+      if(y+80+40+14>278) cont(); heading(++nStep,"What you did");
       // TEN NUMBERED LINES (Sam, 14 Oct 2026: "a list of 10 things they might have done"), spaced to fill the page above
       // the finishing panel
-      var ph=40, stopAt=278-ph-10, rowH=Math.max(8,Math.floor((stopAt-y)/10));
+      var ph=40, stopAt=278-ph-14, rowH=Math.max(8,Math.floor((stopAt-y)/10));
       for(var ni=1;ni<=10;ni++){ doc.setFont("helvetica","bold"); doc.setFontSize(9); doc.setTextColor(110); doc.text(String(ni)+".",L,y+rowH-2.5); doc.setTextColor(0);
         doc.setDrawColor(200); doc.setLineWidth(0.3); doc.line(L+8,y+rowH-1.5,L+W,y+rowH-1.5); doc.setDrawColor(0); y+=rowH; }
       y+=4; doc.setFillColor(17,17,17); doc.roundedRect(L,y,W,ph,2,2,"F");
@@ -3779,7 +3781,7 @@ var SNAP=null, DETAIL={};
   var AUTO=true;
   var REFRESHING=false, POLL_EVERY=10000, CRM_EVERY_TICKS=6, TICK=0;
   var PENDING_SNAP=null, FOREIGN=null, SEEN_FOREIGN={};   // a change to the job on screen, waiting for the person to choose
-  var SCHED_VERSION="24 Oct 14:46:43";   /* bumped on every push: shows which version is running and which built a sheet (Sam, 22 Oct 2026, "still not live?!") */
+  var SCHED_VERSION="24 Oct 14:49:14";   /* bumped on every push: shows which version is running and which built a sheet (Sam, 22 Oct 2026, "still not live?!") */
   /* A NEWER SCHEDULER RELOADS ITSELF (Sam, 22 Oct 2026, a sheet built from a window opened before the push). Checked every two
      minutes and before any sheet is built; a reload waits while an editor is open. */
   function liveVersion(){ return fetch("./scheduler.html?vc="+Date.now(),{cache:"no-store"}).then(function(r){ return r.ok?r.text():""; }).then(function(t){ var m=/SCHED_VERSION\s*=\s*"([^"]+)"/.exec(t||""); return m?m[1]:""; }).catch(function(){ return ""; }); }
