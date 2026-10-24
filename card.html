@@ -201,7 +201,7 @@
     return box;
   }
   function load(){
-    return Promise.all([t.card("id","name","labels","idList","due","start","desc"), t.lists("all"), t.get("card","shared","sched",null).then(normPlan), t.get("board","shared","sched",{})]).then(function(r){
+    return Promise.all([t.card("id","name","labels","idList","due","start","desc","attachments"), t.lists("all"), t.get("card","shared","sched",null).then(normPlan), t.get("board","shared","sched",{})]).then(function(r){
       boardData=r[3]||{}; (boardData.contractors||[]).forEach(function(c){ if(CONTRACTORS.indexOf(c)<0) CONTRACTORS.splice(CONTRACTORS.length-1,0,c); });
       card=r[0]; var list=r[1].filter(function(l){return l.id===card.idList;})[0]; workshop=!!(list&&isWorkshopList(list.name,card.desc)); card.listName=list?list.name:""; leaveCard=/Holidays|Leave/i.test(card.listName);
       viewing=isViewingLabels(card.labels); site=!viewing&&isSiteLabels(card.labels,card.desc); loading=!viewing&&!site&&isCollectLabels(card.labels,card.desc);
@@ -396,9 +396,16 @@
       jsb.onclick=function(){ viaEmbed(jsb,"coggin-sheet","Building...",null); };
       // ADD THE SHEET TO THE CARD (Sam, 24 Oct 2026): the production sheet, as the card's attachment. A job not planned yet
       // gets the "Not planned yet" sheet; planning it later replaces that with the real one.
-      var asb=null; if(workshop){ asb=el("button","p","Add the sheet to the card"); asb.title="Builds the production sheet and puts it on this card as a file"; asb.style.marginRight="8px";
-        asb.onclick=function(){ viaEmbed(asb,"coggin-attach","Adding...",function(m){ t.set("card","shared","prodSheet",m.planned?"planned":"unplanned").catch(function(){}); alert(m.planned?"The production sheet is on the card.":"The Not planned yet sheet is on the card. Planning the job replaces it with the full sheet."); }); }; }
-      if(asb) ob0.appendChild(asb); ob0.appendChild(jsb); ob0.appendChild(ob1); app.appendChild(ob0); }
+      /* SAY WHAT IS ON THE CARD (Sam, 24 Oct 2026, Bennett Jones: "the sheet is already added to the card, why is it saying add
+         the sheet"). The newest Production sheet attachment decides: none, add it; the job planned but the sheet older than
+         the plan or still the Not planned yet one, update it; otherwise a line saying it is on, no button. */
+      var asb=null, asn=null; if(workshop){ var atts=(card.attachments||[]).filter(function(a){ return /^Production sheet/i.test(String(a&&a.name||"")); }).sort(function(a,b){ return String(b.date||"").localeCompare(String(a.date||"")); }), att=atts[0]||null;
+        var planned=!!(d&&d.prep&&d.prep.date&&d.prep.who&&d.prep.who.length), attUnplanned=!!att&&/not planned yet/i.test(att.name||""), attStale=!!att&&planned&&(attUnplanned||(d.savedAt&&String(att.date||"")<String(d.savedAt)));
+        var mk2=function(label,busy){ var b=el("button","p",label); b.title="Builds the production sheet and puts it on this card as a file"; b.style.marginRight="8px";
+          b.onclick=function(){ viaEmbed(b,"coggin-attach",busy,function(m){ t.set("card","shared","prodSheet",m.planned?"planned":"unplanned").catch(function(){}); alert(m.planned?"The production sheet is on the card.":"The Not planned yet sheet is on the card. Planning the job replaces it with the full sheet."); }); }; return b; };
+        if(!att) asb=mk2("Add the sheet to the card","Adding..."); else if(attStale) asb=mk2("Update the sheet on the card","Updating...");
+        else { asn=el("div","hint",attUnplanned?"Not planned yet sheet is on the card. The full sheet goes on once the job is planned.":"Production sheet is on the card, up to date."); asn.style.cssText="margin:0 0 6px;font-size:12px;color:#5e6c84"; } }
+      if(asb) ob0.appendChild(asb); ob0.appendChild(jsb); ob0.appendChild(ob1); if(asn) app.appendChild(asn); app.appendChild(ob0); }
     var due=(card.due||"").slice(0,10);
     var contractorOnly=(!!d.contractor||CARRIER_PENDING) && !d.who.length;
 
