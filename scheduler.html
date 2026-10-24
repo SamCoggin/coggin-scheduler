@@ -3116,8 +3116,11 @@ var SNAP=null, DETAIL={};
 
         y=ty+(cont?3:4); rule(); y+=4;
         // STEP 1 AS A BAR UNDER THE HEADER (Sam, 22 Oct 2026, mock approved: "make this more obvious and better placement")
-        if(!cont&&o.unplanned){ var nh=10; doc.setLineWidth(0.35); doc.setDrawColor(17); doc.setLineDashPattern([1,0.8],0); doc.roundedRect(L,y,W,nh,1.5,1.5); doc.setLineDashPattern([],0);
-          doc.setFont("helvetica","bold"); doc.setFontSize(9.5); doc.text("Not planned yet.",L+4,y+6.2); var nw=doc.getTextWidth("Not planned yet. "); doc.setFont("helvetica","normal"); doc.text("This sheet is replaced on the card once the job has a production day and a team. Do not start from it.",L+4+nw,y+6.2); y+=nh+5; }
+        if(!cont&&o.unplanned){ /* never clipped (Sam, 24 Oct 2026): the rest wraps under the bold start when it does not fit */
+          doc.setFont("helvetica","bold"); doc.setFontSize(9.5); var nw=doc.getTextWidth("Not planned yet. "); doc.setFont("helvetica","normal"); var rest="This sheet is replaced on the card once the job has a production day and a team. Do not start from it.";
+          var oneL=doc.getTextWidth(rest)<=W-8-nw, rl=oneL?[rest]:doc.splitTextToSize(rest,W-8), nh=oneL?10:6+rl.length*4.6+2;
+          doc.setLineWidth(0.35); doc.setDrawColor(17); doc.setLineDashPattern([1,0.8],0); doc.roundedRect(L,y,W,nh,1.5,1.5); doc.setLineDashPattern([],0);
+          doc.setFont("helvetica","bold"); doc.text("Not planned yet.",L+4,y+6.2); doc.setFont("helvetica","normal"); if(oneL) doc.text(rest,L+4+nw,y+6.2); else doc.text(rl,L+4,y+6.2+4.6); y+=nh+5; }
         if(!cont&&!o.unplanned){ var bh=15; doc.setLineWidth(0.5); doc.setDrawColor(17); doc.roundedRect(L,y,W,bh,1.5,1.5); doc.setFillColor(17,17,17); doc.roundedRect(L,y,34,bh,1.5,1.5,"F"); doc.rect(L+30,y,4,bh,"F"); doc.setTextColor(255); doc.setFont("helvetica","bold"); doc.setFontSize(7); doc.text(["BEFORE","YOU START"],L+17,y+bh/2-0.6,{align:"center"}); doc.setTextColor(0);
           box(L+39,y+bh/2-3,6); if(o.started){ doc.setLineWidth(0.8); doc.setDrawColor(17); doc.line(L+40.3,y+bh/2+0.2,L+41.8,y+bh/2+1.8); doc.line(L+41.8,y+bh/2+1.8,L+44.3,y+bh/2-1.8); doc.setDrawColor(0); }
           doc.setTextColor(110); doc.setFontSize(6.5); doc.text("STEP 1"+(o.started?" \u00b7 DONE":""),L+48,y+bh/2-2.2,{charSpace:0.2}); doc.setTextColor(o.started?140:0); doc.setFontSize(11); doc.text("Move the job into In-progress on Trello",L+48,y+bh/2+3); doc.setTextColor(0);
@@ -3716,7 +3719,7 @@ var SNAP=null, DETAIL={};
   var AUTO=true;
   var REFRESHING=false, POLL_EVERY=10000, CRM_EVERY_TICKS=6, TICK=0;
   var PENDING_SNAP=null, FOREIGN=null, SEEN_FOREIGN={};   // a change to the job on screen, waiting for the person to choose
-  var SCHED_VERSION="24 Oct 13:44:29";   /* bumped on every push: shows which version is running and which built a sheet (Sam, 22 Oct 2026, "still not live?!") */
+  var SCHED_VERSION="24 Oct 13:48:31";   /* bumped on every push: shows which version is running and which built a sheet (Sam, 22 Oct 2026, "still not live?!") */
   /* A NEWER SCHEDULER RELOADS ITSELF (Sam, 22 Oct 2026, a sheet built from a window opened before the push). Checked every two
      minutes and before any sheet is built; a reload waits while an editor is open. */
   function liveVersion(){ return fetch("./scheduler.html?vc="+Date.now(),{cache:"no-store"}).then(function(r){ return r.ok?r.text():""; }).then(function(t){ var m=/SCHED_VERSION\s*=\s*"([^"]+)"/.exec(t||""); return m?m[1]:""; }).catch(function(){ return ""; }); }
