@@ -834,6 +834,17 @@ var SNAP=null, DETAIL={};
     });
     return out;
   }
+  /* THE PRODUCTION SHEET GOES ON BY ITSELF (Sam, 24 Oct 2026: "the production sheet is not being added to the trello card
+     like the picking sheet used to", and "we don't have picking sheets anymore"). A sheet needs a production day and
+     somebody on it, so it is built and attached as soon as both are set, and again whenever they change. The first sight
+     of a job only records where it stands, so opening the Scheduler never re-sends every sheet. */
+  var PROD_SIG={}, PROD_TIMER={};
+  function queueProductionSheet(j){ if(!j||!j.id||j.isHold) return;
+    var pr=j.prep, ready=!!(pr&&pr.date&&pr.who&&pr.who.length), sig=ready?JSON.stringify([pr.date,pr.start||null,pr.who]):"none";
+    if(!(j.id in PROD_SIG)){ PROD_SIG[j.id]=sig; return; }
+    if(PROD_SIG[j.id]===sig) return; PROD_SIG[j.id]=sig; if(!ready||!CRM_KEY) return;
+    clearTimeout(PROD_TIMER[j.id]);
+    PROD_TIMER[j.id]=setTimeout(async function(){ try{ var k=daysOf(pr)[0]||pr.date; var r=await daySheetBuild(k,["p"+j.id]); if(r&&r.jobOnly) await attachProductionSheet(j,r.doc,k); }catch(e){ console.warn("production sheet (auto)",e); } },5000); }
   // save what changed back onto the cards
   var lastSaved={};
   function persist(){
@@ -848,6 +859,7 @@ var SNAP=null, DETAIL={};
       d.savedBy=ME||undefined; d.savedAt=new Date().toISOString();
       t.set(j.id,"shared","sched",d); syncCardMembers(j.id,d,CRM_KEY,inWorkshop(j));
     });
+    JOBS.forEach(queueProductionSheet);
     var extra=CONTRACTORS.filter(function(c){return ["MAK Installations","Courier","Other contractor"].indexOf(c)<0;});
     var bd=JSON.stringify({roundDrive:ROUND_DRIVE,roundLegs:ROUND_LEGS,setOffPlaces:PLACES,contractors:extra,vansOff:VANS_OFF,crmKey:CRM_KEY,off:OFF,offWhy:OFF_WHY,dismissed:Object.keys(DISMISSED)}); if(lastSaved.__board!==bd){ lastSaved.__board=bd; t.set("board","shared","sched",{roundDrive:ROUND_DRIVE,roundLegs:ROUND_LEGS,setOffPlaces:PLACES,contractors:extra,vansOff:VANS_OFF,crmKey:CRM_KEY,off:OFF,offWhy:OFF_WHY,dismissed:Object.keys(DISMISSED)}); }
   }
@@ -3650,7 +3662,7 @@ var SNAP=null, DETAIL={};
   var AUTO=true;
   var REFRESHING=false, POLL_EVERY=10000, CRM_EVERY_TICKS=6, TICK=0;
   var PENDING_SNAP=null, FOREIGN=null, SEEN_FOREIGN={};   // a change to the job on screen, waiting for the person to choose
-  var SCHED_VERSION="23 Oct 10:19:45";   /* bumped on every push: shows which version is running and which built a sheet (Sam, 22 Oct 2026, "still not live?!") */
+  var SCHED_VERSION="24 Oct 12:28:07";   /* bumped on every push: shows which version is running and which built a sheet (Sam, 22 Oct 2026, "still not live?!") */
   /* A NEWER SCHEDULER RELOADS ITSELF (Sam, 22 Oct 2026, a sheet built from a window opened before the push). Checked every two
      minutes and before any sheet is built; a reload waits while an editor is open. */
   function liveVersion(){ return fetch("./scheduler.html?vc="+Date.now(),{cache:"no-store"}).then(function(r){ return r.ok?r.text():""; }).then(function(t){ var m=/SCHED_VERSION\s*=\s*"([^"]+)"/.exec(t||""); return m?m[1]:""; }).catch(function(){ return ""; }); }
