@@ -725,6 +725,9 @@ var SNAP=null, DETAIL={};
     // the member sync existed were never sent. Every open sends today's and future jobs that have operatives; the
     // helper skips anything it has already sent this session, so this costs one call per changed card.
     var ck=(SNAP.boardData&&SNAP.boardData.crmKey)||"", todayK=iso(TODAY);
+    /* A NEW CARD GETS ITS SHEET WHEN THE SCHEDULER OPENS (Sam, 24 Oct 2026, Bennett Jones 8FB359: "why did the production
+       sheet not get added"): the check ran only on a save, so a card nobody touched waited. */
+    if(ck) JOBS.forEach(queueProductionSheet);
     if(ck){ JOBS.forEach(function(j){ if(j.date<todayK) return; if(!(j.who&&j.who.length)&&!(j.prep&&j.prep.who&&j.prep.who.length)) return; syncCardMembers(j.id,{who:j.who,prep:j.prep},ck,inWorkshop(j)); }); }
     if(SNAP.boardData&&SNAP.boardData.dismissed){ DISMISSED={}; SNAP.boardData.dismissed.forEach(function(k){ DISMISSED[k]=true; }); }
     if(SNAP.boardData&&SNAP.boardData.off){ OFF=JSON.parse(JSON.stringify(SNAP.boardData.off)); } if(SNAP.boardData&&SNAP.boardData.offWhy){ OFF_WHY=JSON.parse(JSON.stringify(SNAP.boardData.offWhy)); } syncOff();
@@ -3713,7 +3716,7 @@ var SNAP=null, DETAIL={};
   var AUTO=true;
   var REFRESHING=false, POLL_EVERY=10000, CRM_EVERY_TICKS=6, TICK=0;
   var PENDING_SNAP=null, FOREIGN=null, SEEN_FOREIGN={};   // a change to the job on screen, waiting for the person to choose
-  var SCHED_VERSION="24 Oct 13:34:57";   /* bumped on every push: shows which version is running and which built a sheet (Sam, 22 Oct 2026, "still not live?!") */
+  var SCHED_VERSION="24 Oct 13:36:23";   /* bumped on every push: shows which version is running and which built a sheet (Sam, 22 Oct 2026, "still not live?!") */
   /* A NEWER SCHEDULER RELOADS ITSELF (Sam, 22 Oct 2026, a sheet built from a window opened before the push). Checked every two
      minutes and before any sheet is built; a reload waits while an editor is open. */
   function liveVersion(){ return fetch("./scheduler.html?vc="+Date.now(),{cache:"no-store"}).then(function(r){ return r.ok?r.text():""; }).then(function(t){ var m=/SCHED_VERSION\s*=\s*"([^"]+)"/.exec(t||""); return m?m[1]:""; }).catch(function(){ return ""; }); }
