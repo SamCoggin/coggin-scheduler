@@ -326,6 +326,12 @@
   function section(kind,name,when){ var s=el("div","sec "+kind); var h=el("div","sec-h"); h.appendChild(el("span","name",name)); if(when) h.appendChild(el("span","when",when)); s.appendChild(h); return s; }
   /* which editor rows are open, kept across redraws AND across Trello rebuilding this section after a save (Sam, 24 Oct
      2026: "when I make an edit it collapses the dropdown which is very annoying"). Kept in this browser tab for this card. */
+  /* WHEN THE PRODUCTS ON THE JOB LAST CHANGED (Sam, 24 Oct 2026): read once per card open, so a sheet made before a product
+     was renamed offers Update. '' until it arrives or when unknown. */
+  var PROD_CHANGED="", PROD_CHANGED_FOR="";
+  function fetchProdChanged(){ if(!card||!card.id||!workshop||PROD_CHANGED_FOR===card.id) return; PROD_CHANGED_FOR=card.id;
+    var keyP=boardData.crmKey?Promise.resolve(boardData.crmKey):t.get("member","private","crmKey","").catch(function(){return "";});
+    keyP.then(function(k){ if(!k) return; return fetch("https://coggin-sos-os.base44.app/api/apps/69c930a6240fba922f369aa2/functions/pickingSheets",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({key:k,action:"changed",cards:[{id:card.id,short:""}]})}).then(function(x){ return x.json(); }).then(function(r){ var e=r&&r.ok&&r.changed&&r.changed[card.id]; if(e&&e.changed){ PROD_CHANGED=String(e.changed); render(); } }); }).catch(function(){}); }
   var OPEN_KEY=function(){ return "coggin.cardopen."+((card&&card.id)||(t&&t.getContext&&t.getContext().card)||""); };
   var OPEN={}; try{ OPEN=JSON.parse(sessionStorage.getItem(OPEN_KEY())||"{}")||{}; }catch(e){ OPEN={}; }
   var keepOpen=function(){ try{ sessionStorage.setItem(OPEN_KEY(),JSON.stringify(OPEN)); }catch(e){} };
@@ -400,7 +406,8 @@
          the sheet"). The newest Production sheet attachment decides: none, add it; the job planned but the sheet older than
          the plan or still the Not planned yet one, update it; otherwise a line saying it is on, no button. */
       var asb=null, asn=null; if(workshop){ var atts=(card.attachments||[]).filter(function(a){ return /^Production sheet/i.test(String(a&&a.name||"")); }).sort(function(a,b){ return String(b.date||"").localeCompare(String(a.date||"")); }), att=atts[0]||null;
-        var planned=!!(d&&d.prep&&d.prep.date&&d.prep.who&&d.prep.who.length), attUnplanned=!!att&&/not planned yet/i.test(att.name||""), attStale=!!att&&planned&&(attUnplanned||(d.savedAt&&String(att.date||"")<String(d.savedAt)));
+        var planned=!!(d&&d.prep&&d.prep.date&&d.prep.who&&d.prep.who.length), attUnplanned=!!att&&/not planned yet/i.test(att.name||""), attStale=!!att&&((planned&&(attUnplanned||(d.savedAt&&String(att.date||"")<String(d.savedAt))))||(PROD_CHANGED&&String(att.date||"")<PROD_CHANGED));
+        fetchProdChanged();
         var mk2=function(label,busy){ var b=el("button","p",label); b.title="Builds the production sheet and puts it on this card as a file"; b.style.marginRight="8px";
           b.onclick=function(){ viaEmbed(b,"coggin-attach",busy,function(m){ t.set("card","shared","prodSheet",m.planned?"planned":"unplanned").catch(function(){}); alert(m.planned?"The production sheet is on the card.":"The Not planned yet sheet is on the card. Planning the job replaces it with the full sheet."); }); }; return b; };
         if(!att) asb=mk2("Add the sheet to the card","Adding..."); else if(attStale) asb=mk2("Update the sheet on the card","Updating...");
