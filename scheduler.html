@@ -2771,7 +2771,7 @@ var SNAP=null, DETAIL={};
         // from the first job page. Every page carries the hand-back strip (Sam: "make sure the operatives give me the sheets
         // back either when they have completed a job or at the end of the day").
         var totalP=doc.getNumberOfPages(), jobN=totalP-dsPages; foots.forEach(function(f){ doc.setPage(f.page);
-          doc.setFillColor(17,17,17); doc.roundedRect(15,279.5,180,7,1.2,1.2,"F"); doc.setTextColor(255); doc.setFont("helvetica","bold"); doc.setFontSize(8.5); doc.text(f.eod?"HAND THIS SHEET TO THE OPERATIONS MANAGER BY 5:00":"HAND THIS SHEET BACK to the operations manager when the job is done, or at the end of the day.",105,284.2,{align:"center"});
+          if(f.eod){ doc.setFillColor(17,17,17); doc.roundedRect(15,279.5,180,7,1.2,1.2,"F"); doc.setTextColor(255); doc.setFont("helvetica","bold"); doc.setFontSize(8.5); } if(f.eod) doc.text("HAND THIS SHEET TO THE OPERATIONS MANAGER BY 5:00",105,284.2,{align:"center"});
           doc.setFont("helvetica","normal"); doc.setFontSize(8); doc.setTextColor(100); if(f.text) doc.text(f.text,15,291.5); doc.setFontSize(6); doc.text("Scheduler version "+SCHED_VERSION,105,291.5,{align:"center"}); doc.setFontSize(8); doc.text("Page "+(f.page-dsPages)+" of "+jobN,195,291.5,{align:"right"}); doc.setTextColor(0); });
         if(jobN>0){ for(var dp=0;dp<dsPages;dp++) doc.deletePage(1); jobOnly=true; }
       }
@@ -2921,19 +2921,19 @@ var SNAP=null, DETAIL={};
        job, then a Name line. It replaces the old finishing steps, so the Trello moves live here. The sheet goes back to
        operations as it always has. */
     var HANDBACK={
-      production:["Items checked and labelled","Trello checklist ticked","Area cleared, tools put back","Offcuts and packaging in the bins","Stock not used back in its bay","Moved to Ready for Delivery / Collection"],
+      production:["Area cleared, tools put back","Offcuts and packaging in the bins","Stock not used back in its bay"],   /* three, Sam 24 Oct 2026: the Trello steps are not the point of the strip */
       delivery:["Photos of the items in place, on the card","Packaging brought back and binned","Cab and back cleaned out, shelves tidy","Tool box checked against the lid list","Anything that did not go in, reported","Moved to Jobs Completed"],
       collection:["Photos of the load, on the card","Items unloaded and put in their bays","Nothing left in the van","Cab and back cleaned out, shelves tidy","Tool box checked against the lid list","Moved to Jobs Completed"],
       clearance:["Photos of the cleared site, on the card","Waste transfer note signed","Load unloaded and sorted","Cab and back cleaned out, shelves tidy","Tool box checked against the lid list","Moved to Jobs Completed"],
       labour:["Photos of the finished job, on the card","Area cleared, tools put back","Rubbish in the bins","Cab and back cleaned out, if a van was used","Anything not finished, reported","Moved to Jobs Completed"]
     };
-    var handBack=function(kind,code){ var ticks=HANDBACK[kind]||HANDBACK.labour, colW=(W-10)/2, rh=7, H=9+3*rh+2+14;
+    var handBack=function(kind,code){ var ticks=HANDBACK[kind]||HANDBACK.labour, colW=(W-10)/2, rh=7, nr=Math.ceil(ticks.length/2), H=9+nr*rh+2+14;
       if(y+H+3>278){ doc.addPage(); y=14; }
       doc.setLineWidth(0.5); doc.setDrawColor(17); doc.roundedRect(L,y,W,H,1.5,1.5); doc.setFillColor(17,17,17); doc.rect(L,y,W,9,"F"); doc.roundedRect(L,y,W,4,1.5,1.5,"F");
-      doc.setTextColor(255); doc.setFont("helvetica","bold"); doc.setFontSize(7.5); doc.text("BEFORE YOU HAND THIS BACK",L+4,y+6,{charSpace:0.25}); doc.setFont("helvetica","normal"); doc.setFontSize(7); doc.text("tick each one, then put your name",L+W-4,y+6,{align:"right"});
+      doc.setTextColor(255); doc.setFont("helvetica","bold"); doc.setFontSize(7.5); doc.text("BEFORE YOU HAND THIS BACK TO THE OPERATIONS MANAGER",L+4,y+6,{charSpace:0.25}); doc.setFont("helvetica","normal"); doc.setFontSize(7); doc.text("when the job is done, or at the end of the day",L+W-4,y+6,{align:"right"});   /* the footer bar said this; it lives here now (Sam, 24 Oct 2026) */
       doc.setTextColor(17); ticks.forEach(function(t,i){ var cx=L+5+(i%2)*colW, cy=y+9+Math.floor(i/2)*rh; box(cx,cy+1.6,4); doc.setFont("helvetica","bold"); doc.setFontSize(8); doc.text(doc.splitTextToSize(t,colW-12)[0],cx+6.5,cy+4.8);
         doc.setDrawColor(215); doc.setLineWidth(0.25); doc.line(cx,cy+rh-0.3,cx+colW-8,cy+rh-0.3); doc.setDrawColor(0); });
-      var ny=y+9+3*rh+2; doc.setDrawColor(17); doc.setLineWidth(0.4); doc.line(L+5,ny+6,L+5+colW-8,ny+6); doc.setFont("helvetica","normal"); doc.setFontSize(7); doc.setTextColor(60); doc.text("Name",L+5,ny+9.2); doc.setTextColor(0); doc.setDrawColor(0);
+      var ny=y+9+nr*rh+2; doc.setDrawColor(17); doc.setLineWidth(0.4); doc.line(L+5,ny+6,L+5+colW-8,ny+6); doc.setFont("helvetica","normal"); doc.setFontSize(7); doc.setTextColor(60); doc.text("Name",L+5,ny+9.2); doc.setTextColor(0); doc.setDrawColor(0);
       if(code&&qr(code,L+W-5-11,ny-1,11)){ doc.setFont("helvetica","bold"); doc.setFontSize(5.5); doc.setTextColor(60); doc.text("Trello card",L+W-10.5,ny+12.4,{align:"center"}); doc.setTextColor(0); }
       y+=H+4; };
     var rule=function(t){ doc.setLineWidth(t||0.9); doc.setDrawColor(17); doc.line(L,y,L+W,y); doc.setDrawColor(0); };
@@ -3716,7 +3716,7 @@ var SNAP=null, DETAIL={};
   var AUTO=true;
   var REFRESHING=false, POLL_EVERY=10000, CRM_EVERY_TICKS=6, TICK=0;
   var PENDING_SNAP=null, FOREIGN=null, SEEN_FOREIGN={};   // a change to the job on screen, waiting for the person to choose
-  var SCHED_VERSION="24 Oct 13:42:44";   /* bumped on every push: shows which version is running and which built a sheet (Sam, 22 Oct 2026, "still not live?!") */
+  var SCHED_VERSION="24 Oct 13:44:29";   /* bumped on every push: shows which version is running and which built a sheet (Sam, 22 Oct 2026, "still not live?!") */
   /* A NEWER SCHEDULER RELOADS ITSELF (Sam, 22 Oct 2026, a sheet built from a window opened before the push). Checked every two
      minutes and before any sheet is built; a reload waits while an editor is open. */
   function liveVersion(){ return fetch("./scheduler.html?vc="+Date.now(),{cache:"no-store"}).then(function(r){ return r.ok?r.text():""; }).then(function(t){ var m=/SCHED_VERSION\s*=\s*"([^"]+)"/.exec(t||""); return m?m[1]:""; }).catch(function(){ return ""; }); }
