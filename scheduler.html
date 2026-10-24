@@ -838,7 +838,7 @@ var SNAP=null, DETAIL={};
      like the picking sheet used to", and "we don't have picking sheets anymore"). A sheet needs a production day and
      somebody on it, so it is built and attached as soon as both are set, and again whenever they change. The first sight
      of a job only records where it stands, so opening the Scheduler never re-sends every sheet. */
-  var PROD_SIG={}, PROD_TIMER={}, UNPLANNED=null, UNPLANNED_Q=[], UNPLANNED_RUN=false;
+  var STANDIN_UNDONE=[], STANDIN_T=null, PROD_SIG={}, PROD_TIMER={}, UNPLANNED=null, UNPLANNED_Q=[], UNPLANNED_RUN=false;
   /* THE SHEET THE MOMENT THE CARD LANDS (Sam, 24 Oct 2026: "I need the production sheet to be added as soon as it goes onto
      trello", mock approved). A job not planned yet is built with a stand-in day and person, drawn as "Not planned yet" and
      "Team not set", then put on the card once; the card remembers it (prodSheet) so it is never sent twice. Planning the job
@@ -856,6 +856,16 @@ var SNAP=null, DETAIL={};
     finally{ UNPLANNED_RUN=false; } }
   function queueProductionSheet(j){ if(!j||!j.id||j.isHold) return;
     var pr=j.prep, ready=!!(pr&&pr.date&&pr.who&&pr.who.length), sig=ready?JSON.stringify([pr.date,pr.start||null,pr.who]):"none";
+    if(!(j.id in PROD_SIG)&&ready&&pr.date==="2026-10-26"&&pr.who.length===1&&pr.who[0]===TEAM[0]&&pr.mins===DAY_MINS&&!pr.start&&t){
+      /* UNDO THE STAND-IN PLANS SAVED BY MISTAKE (24 Oct 2026, 12:32 to 12:38 build): the unplanned sheet borrowed Mon 26 Oct,
+         the first operative and a full day, and a save wrote them onto the card. Only a card that got the unplanned sheet and
+         was saved in that window is put back to unplanned; a real plan that happens to match is left alone. */
+      PROD_SIG[j.id]=sig;
+      Promise.all([t.get(j.id,"shared","prodSheet",null),t.get(j.id,"shared","sched",null)]).then(function(v){
+        if(v[0]!=="unplanned") return;   // the sheet only went on cards that were unplanned, so a card with it AND exactly this plan got it from the fault
+        j.prep.date=null; j.prep.who=[]; j.prep.mins=null; j.prep.start=null; PROD_SIG[j.id]="none"; STANDIN_UNDONE.push(j.title);
+        clearTimeout(STANDIN_T); STANDIN_T=setTimeout(function(){ persist(); render(); alert("Put back to not planned (a Scheduler fault had filled in Mon 26 Oct, "+TEAM[0]+", 7h 45m):\n\n"+STANDIN_UNDONE.join("\n")); STANDIN_UNDONE=[]; },3000); }).catch(function(){});
+      return; }
     if(!(j.id in PROD_SIG)){ PROD_SIG[j.id]=sig;
       if(!ready&&pr&&!pr.date&&CRM_KEY&&t) t.get(j.id,"shared","prodSheet",null).then(function(v){ if(!v){ UNPLANNED_Q.push(j); runUnplanned(); } }).catch(function(){});
       return; }
@@ -3684,7 +3694,7 @@ var SNAP=null, DETAIL={};
   var AUTO=true;
   var REFRESHING=false, POLL_EVERY=10000, CRM_EVERY_TICKS=6, TICK=0;
   var PENDING_SNAP=null, FOREIGN=null, SEEN_FOREIGN={};   // a change to the job on screen, waiting for the person to choose
-  var SCHED_VERSION="24 Oct 12:37:26";   /* bumped on every push: shows which version is running and which built a sheet (Sam, 22 Oct 2026, "still not live?!") */
+  var SCHED_VERSION="24 Oct 12:39:41";   /* bumped on every push: shows which version is running and which built a sheet (Sam, 22 Oct 2026, "still not live?!") */
   /* A NEWER SCHEDULER RELOADS ITSELF (Sam, 22 Oct 2026, a sheet built from a window opened before the push). Checked every two
      minutes and before any sheet is built; a reload waits while an editor is open. */
   function liveVersion(){ return fetch("./scheduler.html?vc="+Date.now(),{cache:"no-store"}).then(function(r){ return r.ok?r.text():""; }).then(function(t){ var m=/SCHED_VERSION\s*=\s*"([^"]+)"/.exec(t||""); return m?m[1]:""; }).catch(function(){ return ""; }); }

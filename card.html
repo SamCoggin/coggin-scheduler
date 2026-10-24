@@ -324,7 +324,11 @@
     return w;
   }
   function section(kind,name,when){ var s=el("div","sec "+kind); var h=el("div","sec-h"); h.appendChild(el("span","name",name)); if(when) h.appendChild(el("span","when",when)); s.appendChild(h); return s; }
-  var OPEN={};   // which editor rows are open, kept across redraws
+  /* which editor rows are open, kept across redraws AND across Trello rebuilding this section after a save (Sam, 24 Oct
+     2026: "when I make an edit it collapses the dropdown which is very annoying"). Kept in this browser tab for this card. */
+  var OPEN_KEY=function(){ return "coggin.cardopen."+((card&&card.id)||(t&&t.getContext&&t.getContext().card)||""); };
+  var OPEN={}; try{ OPEN=JSON.parse(sessionStorage.getItem(OPEN_KEY())||"{}")||{}; }catch(e){ OPEN={}; }
+  var keepOpen=function(){ try{ sessionStorage.setItem(OPEN_KEY(),JSON.stringify(OPEN)); }catch(e){} };
   // the same on-time line as the Scheduler's
   function cardProdStatus(prodDue){ if(!d||!d.prep||(d.prep.done&&d.prep.done.status==="done")) return null;
     return prodStatusOf(d.prep,prodDue,todayIso(),workshop&&!/^(New Jobs|Transfer to Job Board)$/i.test(String(card.listName||"").trim())); }
@@ -332,7 +336,7 @@
   // here", the grid in the value column pushed Change off the edge)
   function rowEl(key,label,value,editor,cls,below){
     var r=el("div","srow"+(cls?" "+cls:"")); var top=el("div","stop2"); top.appendChild(el("span","sl",label)); var v=el("span","sv"); if(typeof value==="string") v.textContent=value; else v.appendChild(value); top.appendChild(v);
-    if(editor){ var bt=el("button","chg",OPEN[key]?"Done":"Change"); bt.onclick=function(){ OPEN[key]=!OPEN[key]; render(); }; top.appendChild(bt); } r.appendChild(top);
+    if(editor){ var bt=el("button","chg",OPEN[key]?"Done":"Change"); bt.onclick=function(){ OPEN[key]=!OPEN[key]; keepOpen(); render(); }; top.appendChild(bt); } r.appendChild(top);
     if(below){ var bw=el("div","sbelow"); bw.appendChild(below); r.appendChild(bw); }
     if(editor&&OPEN[key]){ var ed=el("div","sed"); editor(ed); r.appendChild(ed); }
     return r;
@@ -364,6 +368,7 @@
     }));
     app.appendChild(sec); }
   function render(){
+    keepOpen();
     var app=document.getElementById("app"); app.innerHTML="";
     if(leaveCard&&card&&d){ renderLeave(app); return; }
     // OPEN THIS JOB IN THE SCHEDULER (Sam, 19 Oct 2026: "I want to be able to open the scheduler editor from this view").
