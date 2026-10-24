@@ -866,6 +866,9 @@ var SNAP=null, DETAIL={};
   var lastSaved={};
   function persist(){
     if(!t) return;
+    /* NEVER WHILE A STAND-IN PLAN IS IN PLACE (Sam, 24 Oct 2026, MedIQ A0403C: production "already filled out" as Mon 26 Oct,
+       Jack, 7h 45m). The unplanned sheet borrows a day and a person to build; saving then wrote them onto the card. */
+    if(UNPLANNED){ setTimeout(persist,4000); return; }
     JOBS.forEach(function(j){
       tidyEach(j); var d={date:j.moved?j.moved.from:j.date,who:j.who,mins:j.mins,each:j.each||undefined,drive:j.drive,driveAuto:!!j.driveAuto,at:j.at||undefined,cube:j.cubeSet,ignore:j.ignore&&j.ignore.length?j.ignore:undefined,items:j.manual&&j.manual.length?j.manual:undefined,load:j.load&&j.load.any?{m3:j.load.m3,kg:j.load.kg,complete:j.load.complete,rows:j.load.rows.map(function(r){return {n:r.n,type:r.type,m3:r.m3,kg:r.kg,built:r.built,est:r.est};}),unmatched:j.load.unmatched}:undefined,contractor:j.contractor||"",from:j.from||null,by:j.by||null,collectAt:j.collectAt||undefined,vehicle:j.vehicle||null,vehicles:vansOf(j).length>1?vansOf(j):undefined,soloOk:j.soloOk||"",qc:j.qc||null,done:j.done||null,hireRef:j.hireRef||"",hireFrom:j.hireFrom||"",hireBooked:!!j.hireBooked,prodDue:j.prodDueSet?j.prodDue:null,prep:j.prep?{who:j.prep.who,mins:j.prep.mins,perDay:j.prep.perDay!=null?j.prep.perDay:undefined,each:j.prep.each&&Object.keys(j.prep.each).length?j.prep.each:undefined,start:j.prep.start,date:j.prep.date,done:j.prep.done||null,picked:j.prep.picked&&Object.keys(j.prep.picked).length?j.prep.picked:undefined,stages:j.prep.stages?true:undefined,grid:j.prep.grid&&Object.keys(j.prep.grid).length?j.prep.grid:undefined,days:!j.prep.grid&&j.prep.days&&Object.keys(j.prep.days).length?j.prep.days:undefined}:(j.donePrep||null),
         legs:LEGS.filter(function(L){return L.parent===j.id;}).map(function(L){ tidyEach(L); return {type:L.type,date:L.date,who:L.who,mins:L.mins,each:L.each||undefined,drive:L.drive,where:L.where,from:L.from||null,by:L.by||null,pc:L.pc||null,src:L.src||null};})};
@@ -3681,7 +3684,7 @@ var SNAP=null, DETAIL={};
   var AUTO=true;
   var REFRESHING=false, POLL_EVERY=10000, CRM_EVERY_TICKS=6, TICK=0;
   var PENDING_SNAP=null, FOREIGN=null, SEEN_FOREIGN={};   // a change to the job on screen, waiting for the person to choose
-  var SCHED_VERSION="24 Oct 12:32:15";   /* bumped on every push: shows which version is running and which built a sheet (Sam, 22 Oct 2026, "still not live?!") */
+  var SCHED_VERSION="24 Oct 12:37:26";   /* bumped on every push: shows which version is running and which built a sheet (Sam, 22 Oct 2026, "still not live?!") */
   /* A NEWER SCHEDULER RELOADS ITSELF (Sam, 22 Oct 2026, a sheet built from a window opened before the push). Checked every two
      minutes and before any sheet is built; a reload waits while an editor is open. */
   function liveVersion(){ return fetch("./scheduler.html?vc="+Date.now(),{cache:"no-store"}).then(function(r){ return r.ok?r.text():""; }).then(function(t){ var m=/SCHED_VERSION\s*=\s*"([^"]+)"/.exec(t||""); return m?m[1]:""; }).catch(function(){ return ""; }); }
