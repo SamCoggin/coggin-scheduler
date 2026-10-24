@@ -2943,9 +2943,6 @@ var SNAP=null, DETAIL={};
       clearance:["Photos of the cleared site, on the card","Waste transfer note signed","Load unloaded and sorted","Cab and back cleaned out, shelves tidy","Tool box checked against the lid list","Moved to Jobs Completed"],
       labour:["Photos of the finished job, on the card","Area cleared, tools put back","Rubbish in the bins","Cab and back cleaned out, if a van was used","Anything not finished, reported","Moved to Jobs Completed"]
     };
-    /* A NAME LINE at the foot of every job page (Sam, 24 Oct 2026): the tidying and van ticks live on the person's own
-       end of day page, so a job page ends with its Trello steps and who did it. No signed, no time. */
-    var nameLine=function(){ if(y+12>278){ doc.addPage(); y=14; } doc.setFont("helvetica","bold"); doc.setFontSize(6.5); doc.setTextColor(60); doc.text("NAME",L,y+5,{charSpace:0.25}); doc.setDrawColor(17); doc.setLineWidth(0.4); doc.line(L+12,y+5.3,L+80,y+5.3); doc.setDrawColor(0); doc.setTextColor(0); y+=10; };
     var handBack=function(kind,code){ /* ONE BAR, LIKE BEFORE YOU START (Sam, 24 Oct 2026, mock B): black label on the left, the
          ticks in the middle in up to two columns, the Name on the right. The page opens and closes the same way. */
       var ticks=HANDBACK[kind]||HANDBACK.labour, LAB=34, NAMEW=40, TX0=L+LAB+4, TW0=W-LAB-NAMEW-8, cols=ticks.length>3?2:1, colW=TW0/cols, nr=Math.ceil(ticks.length/cols);
@@ -3119,7 +3116,7 @@ var SNAP=null, DETAIL={};
         doc.setTextColor(110); doc.setFont("helvetica","bold"); doc.setFontSize(7); doc.text(st[0],sx+10,sy+6.3,{charSpace:0.2}); doc.setTextColor(17); doc.setFontSize(9.5); doc.text(doc.splitTextToSize(st[1],sw-13).slice(0,3),sx+10,sy+11); });
       var qbx=L+W-5-30; doc.setFillColor(255,255,255); doc.roundedRect(qbx,sy,30,shh+0.01,1.2,1.2,"F"); qr("https://trello.com/c/"+(j.short||j.id),qbx+8,sy+1.5,14); doc.setTextColor(17); doc.setFont("helvetica","bold"); doc.setFontSize(6.5); doc.text("Trello card",qbx+15,sy+18.6,{align:"center"});
       doc.setTextColor(220); doc.setFont("helvetica","normal"); doc.setFontSize(8); doc.text("Photos are used for marketing and as proof of delivery.",L+5,y+ph-3.5); doc.setTextColor(0); y+=ph+4;
-      nameLine();
+     
       setFoot(don?"Any issues, contact the operations manager before you leave site.":"Any issues, contact the operations manager before you leave site. No sign-off, no invoice."); };
     // THE PRODUCTION PAGE, UPGRADED (Sam, 2 Oct 2026, mock approved): the name and a small Trello code, four even fact boxes,
     // Before you start (step 1, ticked when the job is already In-progress), the items with even rows, then a black When you
@@ -3266,7 +3263,7 @@ var SNAP=null, DETAIL={};
       var x=L+lab+2; steps.forEach(function(st){ doc.setFillColor(255,255,255); doc.roundedRect(x,y+2,cw,CH,1,1,"F"); box(x+2,y+2+CH/2-2,4);
         doc.setTextColor(110); doc.setFont("helvetica","bold"); doc.setFontSize(6); doc.text(st[0].toUpperCase(),x+8,y+2+CH/2+1,{charSpace:0.2}); var lw=doc.getTextWidth(st[0].toUpperCase())+2.2;
         doc.setTextColor(17); doc.setFontSize(fs); var tx=x+8+lw, lines=oneLine?[st[1]]:doc.splitTextToSize(st[1],cw-(tx-x)-5).slice(0,2); doc.text(lines,tx,y+2+CH/2+(lines.length>1?-0.6:1)); x+=cw+gap; });
-      doc.setTextColor(0); y+=SH+5; nameLine(); setFoot(""); };
+      doc.setTextColor(0); y+=SH+5; setFoot(""); };
     kit.facility=function(j,crewTxt,timeTxt,k0){ var nm=j.title.split(" - ").slice(1).join(" - ")||j.title, crewL=crewTxt.split(" + "), dd=DETAIL[j.id]||{desc:"",checks:[]};
       var where="", tasks=[];
       String(dd.desc||"").split(/\r?\n/).forEach(function(ln){ var t=ln.replace(/^\s*(?:[-*\u2022]|\d+[.)])\s*/,"").replace(/^\[[ x]\]\s*/i,"").replace(/\*\*/g,"").trim(); if(!t) return; var wm=/^where\s*:\s*(.+)$/i.exec(t); if(wm){ where=wm[1].trim(); return; } tasks.push(t); });
@@ -3289,10 +3286,10 @@ var SNAP=null, DETAIL={};
       // the notes: lines down to the finishing panel, so there is always room to write
       /* ROOM FOR THE LINES, THE PANEL AND THE NAME (24 Oct 2026, Wood Waste Exchange: a long What to do list pushed the panel
          off the page and the name line onto a page of its own) */
-      if(y+80+40+14>278) cont(); heading(++nStep,"What you did");
+      if(y+80+40+10>278) cont(); heading(++nStep,"What you did");
       // TEN NUMBERED LINES (Sam, 14 Oct 2026: "a list of 10 things they might have done"), spaced to fill the page above
       // the finishing panel
-      var ph=40, stopAt=278-ph-14, rowH=Math.max(8,Math.floor((stopAt-y)/10));
+      var ph=40, stopAt=278-ph-10, rowH=Math.max(8,Math.floor((stopAt-y)/10));
       for(var ni=1;ni<=10;ni++){ doc.setFont("helvetica","bold"); doc.setFontSize(9); doc.setTextColor(110); doc.text(String(ni)+".",L,y+rowH-2.5); doc.setTextColor(0);
         doc.setDrawColor(200); doc.setLineWidth(0.3); doc.line(L+8,y+rowH-1.5,L+W,y+rowH-1.5); doc.setDrawColor(0); y+=rowH; }
       y+=4; doc.setFillColor(17,17,17); doc.roundedRect(L,y,W,ph,2,2,"F");
@@ -3302,7 +3299,7 @@ var SNAP=null, DETAIL={};
         doc.setDrawColor(17); doc.setLineWidth(0.5); doc.roundedRect(sx+3,sy+3,4.5,4.5,0.5,0.5); doc.setDrawColor(0);
         doc.setTextColor(110); doc.setFont("helvetica","bold"); doc.setFontSize(7); doc.text(st[0],sx+10,sy+6.3,{charSpace:0.2}); doc.setTextColor(17); doc.setFontSize(9.5); doc.text(doc.splitTextToSize(st[1],sw-13).slice(0,3),sx+10,sy+11); });
       var qbx=L+W-5-30; doc.setFillColor(255,255,255); doc.roundedRect(qbx,sy,30,shh+0.01,1.2,1.2,"F"); qr("https://trello.com/c/"+(j.short||j.id),qbx+8,sy+1.5,14); doc.setTextColor(17); doc.setFont("helvetica","bold"); doc.setFontSize(6.5); doc.text("Trello card",qbx+15,sy+18.6,{align:"center"});
-      doc.setTextColor(0); y+=ph+4; nameLine(); setFoot("Any issues, tell the operations manager before you leave it."); };
+      doc.setTextColor(0); y+=ph+4; setFoot("Any issues, tell the operations manager before you leave it."); };
     kit.labour=function(j,info,crewTxt,sub,timeTxt){ var d=info.d, nm=j.title.split(" - ").slice(1).join(" - ")||j.title, don=isDonation(j), crewL=crewTxt.split(" + ");
       var head=function(cont){ newPage(); label(cont?"Goods In and Out · "+crewTxt+", continued":"Goods In and Out",L,y+1);
         doc.setFont("helvetica","bold"); doc.setFontSize(cont?14:20); var tl=doc.splitTextToSize(nm,W).slice(0,2); doc.text(tl,L,y+(cont?7:9)); y+=(cont?7:9)+(tl.length-1)*7.5+4;
@@ -3781,7 +3778,7 @@ var SNAP=null, DETAIL={};
   var AUTO=true;
   var REFRESHING=false, POLL_EVERY=10000, CRM_EVERY_TICKS=6, TICK=0;
   var PENDING_SNAP=null, FOREIGN=null, SEEN_FOREIGN={};   // a change to the job on screen, waiting for the person to choose
-  var SCHED_VERSION="24 Oct 14:49:14";   /* bumped on every push: shows which version is running and which built a sheet (Sam, 22 Oct 2026, "still not live?!") */
+  var SCHED_VERSION="24 Oct 14:51:23";   /* bumped on every push: shows which version is running and which built a sheet (Sam, 22 Oct 2026, "still not live?!") */
   /* A NEWER SCHEDULER RELOADS ITSELF (Sam, 22 Oct 2026, a sheet built from a window opened before the push). Checked every two
      minutes and before any sheet is built; a reload waits while an editor is open. */
   function liveVersion(){ return fetch("./scheduler.html?vc="+Date.now(),{cache:"no-store"}).then(function(r){ return r.ok?r.text():""; }).then(function(t){ var m=/SCHED_VERSION\s*=\s*"([^"]+)"/.exec(t||""); return m?m[1]:""; }).catch(function(){ return ""; }); }
