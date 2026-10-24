@@ -3335,7 +3335,7 @@ var SNAP=null, DETAIL={};
         qr(st[1],sx+sw-23,sy+2.5,20); doc.setFont("helvetica","bold"); doc.setFontSize(6.5); doc.text(st[2],sx+sw-13,sy+26.3,{align:"center"}); });
       doc.setTextColor(0); y+=ph+4; setFoot("Any issues, contact the operations manager."); };
     kit.myEndOfDay=function(w,info){ var vans=info.vans||[], prod=info.prod||0, other=info.other||0;
-      var today=[].concat(vans.map(function(v){ return "Van "+v.van+", "+v.drops+(v.drops===1?" drop":" drops"); }),prod?[prod+(prod===1?" production job":" production jobs")]:[],other?[other+(other===1?" other job":" other jobs")]:[]).join(" · ");
+      var today=[].concat(vans.map(function(v){ return "Van "+v.van+", "+v.drops+(v.drops===1?" drop":" drops"); }),prod?[prod+(prod===1?" production job":" production jobs")]:[],other?[other+(other===1?" other job":" other jobs")]:[]).join(" · ")||"nothing planned for you, workshop and recycling";
       newPage(""); label("End of day · "+niceDay(k),L,y+1); doc.setFont("helvetica","bold"); doc.setFontSize(20); doc.text("My end of day",L,y+9); pillsAt([w],L,y+12);
       doc.setFontSize(9); doc.setFont("helvetica","bold"); var tw=doc.getTextWidth(today); doc.text(today,L+W,y+5,{align:"right"}); doc.setFont("helvetica","normal"); doc.text("Today: ",L+W-tw-doc.getTextWidth("Today: "),y+5); doc.setFont("helvetica","normal"); doc.text("Hand back to operations with your job sheets",L+W,y+10,{align:"right"}); y+=22; rule(); y+=4;
       doc.setFontSize(8); doc.setTextColor(60); doc.text(doc.splitTextToSize("Tick each one when it is done. Rob checks the site"+(vans.length?" and the vans":"")+" from 4:30 and anything left is written against your name.",W),L,y+3); doc.setTextColor(0); y+=10;
@@ -3777,7 +3777,7 @@ var SNAP=null, DETAIL={};
   var AUTO=true;
   var REFRESHING=false, POLL_EVERY=10000, CRM_EVERY_TICKS=6, TICK=0;
   var PENDING_SNAP=null, FOREIGN=null, SEEN_FOREIGN={};   // a change to the job on screen, waiting for the person to choose
-  var SCHED_VERSION="24 Oct 14:39:49";   /* bumped on every push: shows which version is running and which built a sheet (Sam, 22 Oct 2026, "still not live?!") */
+  var SCHED_VERSION="24 Oct 14:41:08";   /* bumped on every push: shows which version is running and which built a sheet (Sam, 22 Oct 2026, "still not live?!") */
   /* A NEWER SCHEDULER RELOADS ITSELF (Sam, 22 Oct 2026, a sheet built from a window opened before the push). Checked every two
      minutes and before any sheet is built; a reload waits while an editor is open. */
   function liveVersion(){ return fetch("./scheduler.html?vc="+Date.now(),{cache:"no-store"}).then(function(r){ return r.ok?r.text():""; }).then(function(t){ var m=/SCHED_VERSION\s*=\s*"([^"]+)"/.exec(t||""); return m?m[1]:""; }).catch(function(){ return ""; }); }
