@@ -1968,7 +1968,9 @@ var SNAP=null, DETAIL={};
       // Production on every day from today, so it is seen before it is late. Select one to plan it.
       // TODAY AND ITS START DAY ONLY, UNDER ITS OWN HEADING (Sam, 1 Oct 2026: "Should harrison drury be showing on the
       // 1st Oct?"): it is a reminder to plan, not work booked on the day, so it said nothing on its own.
-      var npList=g[0]!=="shop"||k<iso(TODAY)?[]:JOBS.filter(function(j){ var st=prodStatus(j); return st&&!st.planned&&(st.cls==="soon"||st.cls==="late")&&(k===iso(TODAY)||st.start===k); });
+      // A JOB WITH NO TIME HAS NO START DAY, so it also shows on its due day (Sam, 24 Oct 2026, Bennett Jones): every
+      // unplanned job is then tied to a day ahead, not only to today.
+      var npList=g[0]!=="shop"||k<iso(TODAY)?[]:JOBS.filter(function(j){ var st=prodStatus(j); return st&&!st.planned&&(st.cls==="soon"||st.cls==="late")&&(k===iso(TODAY)||st.start===k||(!st.start&&j.prodDue===k)); });
       if(npList.length) cards.appendChild(el("div","nphead","Needs planning"));
       npList.sort(function(a,b){ var sa=(prodStatus(a).start||a.prodDue), sb=(prodStatus(b).start||b.prodDue); return sa<sb?-1:sa>sb?1:0; }).forEach(function(j){
         var st=prodStatus(j), nc=el("div","card needplan "+st.cls); nc.appendChild(el("b",null,j.title)); nc.appendChild(el("span","npstart "+st.cls,st.start?"Start "+niceDay(st.start):"No time set, so no start date")); nc.appendChild(el("span","for "+st.cls,st.full)); nc.title="Plan the production"; nc.onclick=function(){ open=j.id+":prep"; render(); }; cards.appendChild(nc); });
@@ -3777,7 +3779,7 @@ var SNAP=null, DETAIL={};
   var AUTO=true;
   var REFRESHING=false, POLL_EVERY=10000, CRM_EVERY_TICKS=6, TICK=0;
   var PENDING_SNAP=null, FOREIGN=null, SEEN_FOREIGN={};   // a change to the job on screen, waiting for the person to choose
-  var SCHED_VERSION="24 Oct 14:41:08";   /* bumped on every push: shows which version is running and which built a sheet (Sam, 22 Oct 2026, "still not live?!") */
+  var SCHED_VERSION="24 Oct 14:46:43";   /* bumped on every push: shows which version is running and which built a sheet (Sam, 22 Oct 2026, "still not live?!") */
   /* A NEWER SCHEDULER RELOADS ITSELF (Sam, 22 Oct 2026, a sheet built from a window opened before the push). Checked every two
      minutes and before any sheet is built; a reload waits while an editor is open. */
   function liveVersion(){ return fetch("./scheduler.html?vc="+Date.now(),{cache:"no-store"}).then(function(r){ return r.ok?r.text():""; }).then(function(t){ var m=/SCHED_VERSION\s*=\s*"([^"]+)"/.exec(t||""); return m?m[1]:""; }).catch(function(){ return ""; }); }
