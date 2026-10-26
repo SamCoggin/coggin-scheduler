@@ -3382,7 +3382,14 @@ var SNAP=null, DETAIL={};
           doc.setDrawColor(200); doc.setLineWidth(0.25); doc.line(L,y+rh,L+W,y+rh); doc.setDrawColor(0); y+=rh; }); y+=4; };
       vans.forEach(function(v){ sec("Van "+v.van,"when it is back",[["Cab cleaned out, no rubbish or wrappers",""],["Back emptied, shelves tidy, nothing loose",""],["Packaging brought back and binned",""],["No new damage, no warning lights","if there is, say what"]]); });
       if(vans.length) sec("Tool box","list is in the lid",[["Power tools and chargers all there","what is missing"],["Fixings topped up, bits a full set","what is low"],["Anything that does not belong, taken out",""]]);
-      sec("Workshop","",[["Work in progress parked together, production sheet on top",""],["Bench and floor cleared, tools back on the board",""],["Offcuts and packaging in the bins",""],["Stock not used back in its bay, bay left tidy",""],["Machines and heaters off in your area",""]]); };
+      sec("Workshop","",[["Bench and floor cleared, tools back on the board",""],["Offcuts and packaging in the bins",""],["Stock not used back in its bay, bay left tidy",""],["Machines and heaters off in your area",""]]);
+      // ANYTHING YOU NEED (Sam, 26 Oct 2026): materials or tools running short go on Trello, not on this sheet, so the request
+      // reaches the office whether or not the page does.
+      if(y+30>278){ doc.addPage(); y=14; }
+      doc.setFont("helvetica","bold"); doc.setFontSize(6.5); doc.setTextColor(110); doc.text("ANYTHING YOU NEED",L,y+3,{charSpace:0.25}); doc.setTextColor(0); doc.setDrawColor(120); doc.setLineWidth(0.3); doc.line(L,y+5,L+W,y+5); doc.setDrawColor(0); y+=8;
+      var OKX2=L+W-76;
+      doc.setFont("helvetica","bold"); doc.setFontSize(9.5); doc.text("Short of any materials or tools for tomorrow?",L,y+4.8); box(OKX2+1,y+2.5,5.5); doc.setFont("helvetica","normal"); doc.setFontSize(7); doc.setTextColor(110); doc.text("yes",OKX2+8,y+6.3); doc.setTextColor(0);
+      y+=11; doc.setFont("helvetica","normal"); doc.setFontSize(9); doc.setTextColor(60); doc.text(doc.splitTextToSize("If yes, put the request on the Trello board before you go: what it is, how many, and which job it is for. Do not write it here.",W),L,y+3); doc.setTextColor(0); y+=12; };
     kit.endOfDay=function(){ var CHECKS=["Warehouse stock back in bays","Bins emptied and put back, nothing left outside the workshops","Unloading area clear","Yard swept for screws with the magnet","Tools put back","Vans: cab and back clean, shelves tidy","Vans washed outside, receipt expensed the same day","Delivery tool boxes sorted","Machines, heaters and lights off","Doors locked"];
           var robOff=LEAVE.some(function(l){ return l.date===k&&crewOf(l.text.split(" ")[0])==="Rob D"; }), checker=robOff?"Closing checker":"Rob D";
           newPage(""); label("End of day check · "+niceDay(k),L,y+1); doc.setFont("helvetica","bold"); doc.setFontSize(20); doc.text("Closing checks",L,y+9); pillsAt([checker],L,y+12);
@@ -3813,7 +3820,7 @@ var SNAP=null, DETAIL={};
   var AUTO=true;
   var REFRESHING=false, POLL_EVERY=10000, CRM_EVERY_TICKS=6, TICK=0;
   var PENDING_SNAP=null, FOREIGN=null, SEEN_FOREIGN={};   // a change to the job on screen, waiting for the person to choose
-  var SCHED_VERSION="26 Oct 12:13:03";   /* bumped on every push: shows which version is running and which built a sheet (Sam, 22 Oct 2026, "still not live?!") */
+  var SCHED_VERSION="26 Oct 12:30:16";   /* bumped on every push: shows which version is running and which built a sheet (Sam, 22 Oct 2026, "still not live?!") */
   /* A NEWER SCHEDULER RELOADS ITSELF (Sam, 22 Oct 2026, a sheet built from a window opened before the push). Checked every two
      minutes and before any sheet is built; a reload waits while an editor is open. */
   function liveVersion(){ return fetch("./scheduler.html?vc="+Date.now(),{cache:"no-store"}).then(function(r){ return r.ok?r.text():""; }).then(function(t){ var m=/SCHED_VERSION\s*=\s*"([^"]+)"/.exec(t||""); return m?m[1]:""; }).catch(function(){ return ""; }); }
