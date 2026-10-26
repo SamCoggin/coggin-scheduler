@@ -3348,8 +3348,9 @@ var SNAP=null, DETAIL={};
       var OKX=L+W-76, NX2=L+W-68;
       var sec=function(t,sub,rowsT){ if(y+8+rowsT.length*11>278){ doc.addPage(); y=14; } doc.setFont("helvetica","bold"); doc.setFontSize(6.5); doc.setTextColor(110); doc.text(t.toUpperCase(),L,y+3,{charSpace:0.25}); if(sub){ doc.setFont("helvetica","normal"); doc.text(sub,L+W,y+3,{align:"right"}); } doc.setTextColor(0); doc.setDrawColor(120); doc.setLineWidth(0.3); doc.line(L,y+5,L+W,y+5); y+=7;
         rowsT.forEach(function(r2){ var rh=11, tl=doc.splitTextToSize(r2[0],OKX-L-4); doc.setFont("helvetica","bold"); doc.setFontSize(9.5); doc.text(tl,L,y+4.8); box(OKX+1,y+2.5,5.5);
-          if(r2[1]){ doc.setFont("helvetica","normal"); doc.setFontSize(7); doc.setTextColor(150); doc.text(r2[1],NX2,y+5); doc.setTextColor(0); }
-          doc.setDrawColor(215); doc.setLineWidth(0.25); doc.line(NX2-3,y,NX2-3,y+rh); doc.setDrawColor(200); doc.line(L,y+rh,L+W,y+rh); doc.setDrawColor(0); y+=rh; }); y+=4; };
+          // NO HINT TEXT AND NO DIVIDER THROUGH THE BOX (Sam, 26 Oct 2026): the box and a clear line to write on, nothing else.
+          void r2[1]; void NX2;
+          doc.setDrawColor(200); doc.setLineWidth(0.25); doc.line(L,y+rh,L+W,y+rh); doc.setDrawColor(0); y+=rh; }); y+=4; };
       vans.forEach(function(v){ sec("Van "+v.van,"when it is back",[["Cab cleaned out, no rubbish or wrappers",""],["Back emptied, shelves tidy, nothing loose",""],["Packaging brought back and binned",""],["No new damage, no warning lights","if there is, say what"]]); });
       if(vans.length) sec("Tool box","list is in the lid",[["Power tools and chargers all there","what is missing"],["Fixings topped up, bits a full set","what is low"],["Anything that does not belong, taken out",""]]);
       sec("Workshop","",[["Work in progress parked together, production sheet on top",""],["Bench and floor cleared, tools back on the board",""],["Offcuts and packaging in the bins",""],["Stock not used back in its bay, bay left tidy",""],["Machines and heaters off in your area",""]]); };
@@ -3783,7 +3784,7 @@ var SNAP=null, DETAIL={};
   var AUTO=true;
   var REFRESHING=false, POLL_EVERY=10000, CRM_EVERY_TICKS=6, TICK=0;
   var PENDING_SNAP=null, FOREIGN=null, SEEN_FOREIGN={};   // a change to the job on screen, waiting for the person to choose
-  var SCHED_VERSION="26 Oct 08:29:44";   /* bumped on every push: shows which version is running and which built a sheet (Sam, 22 Oct 2026, "still not live?!") */
+  var SCHED_VERSION="26 Oct 08:51:22";   /* bumped on every push: shows which version is running and which built a sheet (Sam, 22 Oct 2026, "still not live?!") */
   /* A NEWER SCHEDULER RELOADS ITSELF (Sam, 22 Oct 2026, a sheet built from a window opened before the push). Checked every two
      minutes and before any sheet is built; a reload waits while an editor is open. */
   function liveVersion(){ return fetch("./scheduler.html?vc="+Date.now(),{cache:"no-store"}).then(function(r){ return r.ok?r.text():""; }).then(function(t){ var m=/SCHED_VERSION\s*=\s*"([^"]+)"/.exec(t||""); return m?m[1]:""; }).catch(function(){ return ""; }); }
