@@ -2779,10 +2779,11 @@ var SNAP=null, DETAIL={};
         /* MY END OF DAY, one page per operative on the day (Sam, 24 Oct 2026, mock approved): the tidying and van ticks
            belong to the person and the day, not to each job. What prints follows their plan: a section per van they were
            on, the tool box if they drove, the workshop if they were on production or other work at Forton. */
-        /* EVERYONE IN THAT DAY (Sam, 24 Oct 2026, "think about what I need here"): the page is about the day, not the job.
-           The field crew not on leave all get one, workshop section always; anyone else gets one if they were on a job. */
+        /* THE FIELD CREW IN THAT DAY (Sam, 24 Oct 2026, "think about what I need here"): the page is about the day, not the
+           job. The field crew not on leave all get one, workshop section always. OFFICE STAFF NEVER (Sam, 26 Oct 2026: "End of
+           day for Sam and Ash should not be there"): a desk job on a card is not a yard day. */
         if(!only){ var offToday=LEAVE.filter(function(l){ return l.date===k; }).map(function(l){ return crewOf(l.text.split(" ")[0]); });
-          var ppl=FIELD_CREW.filter(function(w){ return offToday.indexOf(w)<0; }).concat(TEAM.filter(function(w){ return FIELD_CREW.indexOf(w)<0&&rows.some(function(r){ return r.who.indexOf(w)>=0; }); }));
+          var ppl=FIELD_CREW.filter(function(w){ return offToday.indexOf(w)<0; });
           ppl.forEach(function(w){ var vr=((DATA&&DATA.runs)||[]).filter(function(r){ return r.crew.indexOf(w)>=0&&r.van; });
             var prod=rows.filter(function(r){ return r.part==="Production"&&r.who.indexOf(w)>=0; }).length, other=rows.filter(function(r){ return r.part!=="Production"&&r.part!=="Transport"&&r.who.indexOf(w)>=0; }).length;
             kit.myEndOfDay(w,{vans:vr.map(function(r){ return {van:r.van==="hire"?"Hire van":r.van,drops:r.stops.length}; }),prod:prod,other:other}); }); }
@@ -3782,7 +3783,7 @@ var SNAP=null, DETAIL={};
   var AUTO=true;
   var REFRESHING=false, POLL_EVERY=10000, CRM_EVERY_TICKS=6, TICK=0;
   var PENDING_SNAP=null, FOREIGN=null, SEEN_FOREIGN={};   // a change to the job on screen, waiting for the person to choose
-  var SCHED_VERSION="26 Oct 07:59:08";   /* bumped on every push: shows which version is running and which built a sheet (Sam, 22 Oct 2026, "still not live?!") */
+  var SCHED_VERSION="26 Oct 08:29:44";   /* bumped on every push: shows which version is running and which built a sheet (Sam, 22 Oct 2026, "still not live?!") */
   /* A NEWER SCHEDULER RELOADS ITSELF (Sam, 22 Oct 2026, a sheet built from a window opened before the push). Checked every two
      minutes and before any sheet is built; a reload waits while an editor is open. */
   function liveVersion(){ return fetch("./scheduler.html?vc="+Date.now(),{cache:"no-store"}).then(function(r){ return r.ok?r.text():""; }).then(function(t){ var m=/SCHED_VERSION\s*=\s*"([^"]+)"/.exec(t||""); return m?m[1]:""; }).catch(function(){ return ""; }); }
