@@ -3396,8 +3396,9 @@ var SNAP=null, DETAIL={};
           doc.setFontSize(9); doc.setFont("helvetica","normal"); doc.text("From 4:30 · Hand to the operations manager by 5:00",L+W,y+9,{align:"right"}); y+=22; rule(); y+=4;
           doc.setFontSize(8); doc.setTextColor(60); doc.text(doc.splitTextToSize("Everyone keeps their own area right during the day. Walk round from 4:30 and tick what is right. Where it is not, write what you found and who had the job, then hand this sheet in with the operatives' end of day pages.",W),L,y+3); doc.setTextColor(0); y+=12;
           var OKX=L+W-92, NX2=L+W-84; doc.setFont("helvetica","bold"); doc.setFontSize(6.5); doc.setTextColor(110); doc.text("CHECK",L,y,{charSpace:0.25}); doc.text("OK",OKX+2,y,{charSpace:0.25}); doc.text("NOT RIGHT · WHAT AND WHO",NX2,y,{charSpace:0.25}); doc.setTextColor(0); doc.setDrawColor(120); doc.setLineWidth(0.3); doc.line(L,y+2,L+W,y+2); y+=4;
+          // NO DIVIDER THROUGH THE BOX (Sam, 26 Oct 2026: "why is there a line in the tick box?"): the row line only.
           CHECKS.forEach(function(c){ var rh=13; doc.setFont("helvetica","bold"); doc.setFontSize(10); doc.text(doc.splitTextToSize(c,OKX-L-4),L,y+5.5); box(OKX+1,y+3,6);
-            doc.setDrawColor(215); doc.setLineWidth(0.25); doc.line(NX2-3,y,NX2-3,y+rh); doc.setDrawColor(200); doc.line(L,y+rh,L+W,y+rh); doc.setDrawColor(0); y+=rh; });
+            doc.setDrawColor(200); doc.setLineWidth(0.25); doc.line(L,y+rh,L+W,y+rh); doc.setDrawColor(0); y+=rh; });
           foots[foots.length-1].eod=true; };
     return kit; }
   async function daySheetDownload(k){
@@ -3820,7 +3821,7 @@ var SNAP=null, DETAIL={};
   var AUTO=true;
   var REFRESHING=false, POLL_EVERY=10000, CRM_EVERY_TICKS=6, TICK=0;
   var PENDING_SNAP=null, FOREIGN=null, SEEN_FOREIGN={};   // a change to the job on screen, waiting for the person to choose
-  var SCHED_VERSION="26 Oct 12:38:54";   /* bumped on every push: shows which version is running and which built a sheet (Sam, 22 Oct 2026, "still not live?!") */
+  var SCHED_VERSION="26 Oct 13:04:27";   /* bumped on every push: shows which version is running and which built a sheet (Sam, 22 Oct 2026, "still not live?!") */
   /* A NEWER SCHEDULER RELOADS ITSELF (Sam, 22 Oct 2026, a sheet built from a window opened before the push). Checked every two
      minutes and before any sheet is built; a reload waits while an editor is open. */
   function liveVersion(){ return fetch("./scheduler.html?vc="+Date.now(),{cache:"no-store"}).then(function(r){ return r.ok?r.text():""; }).then(function(t){ var m=/SCHED_VERSION\s*=\s*"([^"]+)"/.exec(t||""); return m?m[1]:""; }).catch(function(){ return ""; }); }
