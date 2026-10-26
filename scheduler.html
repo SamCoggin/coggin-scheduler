@@ -3269,7 +3269,42 @@ var SNAP=null, DETAIL={};
         doc.setTextColor(110); doc.setFont("helvetica","bold"); doc.setFontSize(6); doc.text(st[0].toUpperCase(),x+8,y+2+CH/2+1,{charSpace:0.2}); var lw=doc.getTextWidth(st[0].toUpperCase())+2.2;
         doc.setTextColor(17); doc.setFontSize(fs); var tx=x+8+lw, lines=oneLine?[st[1]]:doc.splitTextToSize(st[1],cw-(tx-x)-5).slice(0,2); doc.text(lines,tx,y+2+CH/2+(lines.length>1?-0.6:1)); x+=cw+gap; });
       doc.setTextColor(0); y+=SH+5; setFoot(""); };
+    // the black WHEN YOU FINISH strip at the foot of a facility or skip page: two step chips and the card's QR
+    var finishPanel=function(j,ph,steps){ doc.setFillColor(17,17,17); doc.roundedRect(L,y,W,ph,2,2,"F");
+      doc.setTextColor(255); doc.setFont("helvetica","bold"); doc.setFontSize(13); doc.text("WHEN YOU FINISH",L+5,y+8);
+      var sw=(W-10-30-8)/2, sy=y+11, shh=20;
+      steps.forEach(function(st,i){ var sx=L+5+i*(sw+4); doc.setFillColor(255,255,255); doc.roundedRect(sx,sy,sw,shh,1.2,1.2,"F");
+        doc.setDrawColor(17); doc.setLineWidth(0.5); doc.roundedRect(sx+3,sy+3,4.5,4.5,0.5,0.5); doc.setDrawColor(0);
+        doc.setTextColor(110); doc.setFont("helvetica","bold"); doc.setFontSize(7); doc.text(st[0],sx+10,sy+6.3,{charSpace:0.2}); doc.setTextColor(17); doc.setFontSize(9.5); doc.text(doc.splitTextToSize(st[1],sw-13).slice(0,3),sx+10,sy+11); });
+      var qbx=L+W-5-30; doc.setFillColor(255,255,255); doc.roundedRect(qbx,sy,30,shh+0.01,1.2,1.2,"F"); qr("https://trello.com/c/"+(j.short||j.id),qbx+8,sy+1.5,14); doc.setTextColor(17); doc.setFont("helvetica","bold"); doc.setFontSize(6.5); doc.text("Trello card",qbx+15,sy+18.6,{align:"center"});
+      doc.setTextColor(0); };
+    /* THE SKIP SHEET (Sam, 26 Oct 2026, mock approved: "We do not need a description or what you did for these"). A card whose
+       description carries "Skip Size:" or "Waste Type:" is a skip exchange, collection or delivery. The page is the six facts
+       read off the card, four fixed ticks for when the driver comes, and the finish strip. Nothing else on the card prints,
+       so a booking email template kept on the card for the office never reaches the yard. */
+    var isSkipCard=function(dd){ return /^\s*\*?\s*(skip size|waste type)\s*:/im.test(String(dd&&dd.desc||"")); };
+    kit.skip=function(j,crewTxt,timeTxt,k0){ var nm=j.title.split(" - ").slice(1).join(" - ")||j.title, crewL=crewTxt.split(" + "), dd=DETAIL[j.id]||{desc:"",checks:[]};
+      var f={}; String(dd.desc||"").split(/\r?\n/).forEach(function(ln){ var m=/^\s*\*?\s*([a-z .]+?)\s*:\s*(.+)$/i.exec(ln); if(m) f[m[1].trim().toLowerCase()]=m[2].trim(); });
+      var g=function(k2){ return f[k2]||""; };
+      newPage(); label("Skip · "+niceDay(k0),L,y+1);
+      doc.setFont("helvetica","bold"); doc.setFontSize(20); var tl=doc.splitTextToSize(nm,W).slice(0,2); doc.text(tl,L,y+9); y+=9+(tl.length-1)*7.5+4;
+      pillsAt(crewL,L,y); y+=11;
+      var facts=[["Time",timeTxt||"Driver due 08:00 to 15:00"],["Day",niceDay(k0)],["Where","Forton, exchange area"]], fw=(W-(facts.length-1)*3)/facts.length;
+      facts.forEach(function(x,i){ var fx=L+i*(fw+3); doc.setLineWidth(0.5); doc.setDrawColor(17); doc.roundedRect(fx,y,fw,11,1.2,1.2); doc.setDrawColor(0); label(x[0],fx+3,y+4); doc.setFont("helvetica","bold"); doc.setFontSize(10); doc.text(doc.splitTextToSize(x[1],fw-6)[0],fx+3,y+9); });
+      y+=15; rule(); y+=5;
+      heading(1,"The skip");
+      var n=g("no. of skips")||g("no of skips")||g("number of skips")||"", sz=g("skip size"), cells=[["Waste",g("waste type")||"Not on the card"],["Skip",[n,sz].filter(Boolean).join(" x ")||"Not on the card"],["Service",g("service type")||"Not on the card"],["Supplier",g("supplier")||"Not on the card"],["Booked with",g("booking email")||g("booked with")||"Not on the card"],["On the day","Driver reports to the front office"]];
+      var cw2=(W-6)/3, chh=13; cells.forEach(function(c2,i){ var cx=L+(i%3)*(cw2+3), cy=y+Math.floor(i/3)*(chh+3); doc.setDrawColor(200); doc.setLineWidth(0.3); doc.roundedRect(cx,cy,cw2,chh,1.2,1.2); doc.setDrawColor(0); label(c2[0],cx+3,cy+4.5);
+        doc.setFont("helvetica","bold"); var fsz=10; doc.setFontSize(fsz); while(fsz>7&&doc.getTextWidth(c2[1])>cw2-6){ fsz-=0.5; doc.setFontSize(fsz); } doc.text(c2[1],cx+3,cy+10); });
+      y+=2*(chh+3)+4;
+      heading(2,"When the driver comes");
+      [["Photograph the full skip before it goes","Contents visible, from the side and above"],["Walk the driver to the exchange area","Nothing parked in the way, forklift clear of the swap"],["Get the waste transfer note from the driver","Signed, with the weight or volume on it. No note, ring the office before they leave"],["Photograph the empty skip in place","Lid or sheet on if it rains"]].forEach(function(st){
+        box(L,y+2,5.5); doc.setFont("helvetica","bold"); doc.setFontSize(11); doc.text(st[0],L+9,y+6); doc.setFont("helvetica","normal"); doc.setFontSize(8.5); doc.setTextColor(90); doc.text(doc.splitTextToSize(st[1],W-12)[0],L+9,y+10.5); doc.setTextColor(0);
+        y+=14; doc.setDrawColor(215); doc.setLineWidth(0.25); doc.line(L,y,L+W,y); doc.setDrawColor(0); });
+      var ph=40; y=Math.max(y+8,278-ph-14); finishPanel(j,ph,[["STEP 1","Upload the photos and the waste transfer note to the Trello card"],["STEP 2","Move the card to Jobs Completed"]]);
+      y+=ph+4; setFoot("Any issues, tell the operations manager."); };
     kit.facility=function(j,crewTxt,timeTxt,k0){ var nm=j.title.split(" - ").slice(1).join(" - ")||j.title, crewL=crewTxt.split(" + "), dd=DETAIL[j.id]||{desc:"",checks:[]};
+      if(isSkipCard(dd)) return kit.skip(j,crewTxt,timeTxt,k0);
       var where="", tasks=[];
       String(dd.desc||"").split(/\r?\n/).forEach(function(ln){ var t=ln.replace(/^\s*(?:[-*\u2022]|\d+[.)])\s*/,"").replace(/^\[[ x]\]\s*/i,"").replace(/\*\*/g,"").trim(); if(!t) return; var wm=/^where\s*:\s*(.+)$/i.exec(t); if(wm){ where=wm[1].trim(); return; } tasks.push(t); });
       if(dd.checks&&dd.checks.length) tasks=dd.checks.map(function(c){ return c.n; });
@@ -3297,14 +3332,8 @@ var SNAP=null, DETAIL={};
       var ph=40, stopAt=278-ph-10, rowH=Math.max(8,Math.floor((stopAt-y)/10));
       for(var ni=1;ni<=10;ni++){ doc.setFont("helvetica","bold"); doc.setFontSize(9); doc.setTextColor(110); doc.text(String(ni)+".",L,y+rowH-2.5); doc.setTextColor(0);
         doc.setDrawColor(200); doc.setLineWidth(0.3); doc.line(L+8,y+rowH-1.5,L+W,y+rowH-1.5); doc.setDrawColor(0); y+=rowH; }
-      y+=4; doc.setFillColor(17,17,17); doc.roundedRect(L,y,W,ph,2,2,"F");
-      doc.setTextColor(255); doc.setFont("helvetica","bold"); doc.setFontSize(13); doc.text("WHEN YOU FINISH",L+5,y+8);
-      var sw=(W-10-30-8)/2, sy=y+11, shh=20;
-      [["STEP 1","Photograph the finished job and add it to the Trello card"],["STEP 2","Move the card to Jobs Completed"]].forEach(function(st,i){ var sx=L+5+i*(sw+4); doc.setFillColor(255,255,255); doc.roundedRect(sx,sy,sw,shh,1.2,1.2,"F");
-        doc.setDrawColor(17); doc.setLineWidth(0.5); doc.roundedRect(sx+3,sy+3,4.5,4.5,0.5,0.5); doc.setDrawColor(0);
-        doc.setTextColor(110); doc.setFont("helvetica","bold"); doc.setFontSize(7); doc.text(st[0],sx+10,sy+6.3,{charSpace:0.2}); doc.setTextColor(17); doc.setFontSize(9.5); doc.text(doc.splitTextToSize(st[1],sw-13).slice(0,3),sx+10,sy+11); });
-      var qbx=L+W-5-30; doc.setFillColor(255,255,255); doc.roundedRect(qbx,sy,30,shh+0.01,1.2,1.2,"F"); qr("https://trello.com/c/"+(j.short||j.id),qbx+8,sy+1.5,14); doc.setTextColor(17); doc.setFont("helvetica","bold"); doc.setFontSize(6.5); doc.text("Trello card",qbx+15,sy+18.6,{align:"center"});
-      doc.setTextColor(0); y+=ph+4; setFoot("Any issues, tell the operations manager before you leave it."); };
+      y+=4; finishPanel(j,ph,[["STEP 1","Photograph the finished job and add it to the Trello card"],["STEP 2","Move the card to Jobs Completed"]]);
+      y+=ph+4; setFoot("Any issues, tell the operations manager before you leave it."); };
     kit.labour=function(j,info,crewTxt,sub,timeTxt){ var d=info.d, nm=j.title.split(" - ").slice(1).join(" - ")||j.title, don=isDonation(j), crewL=crewTxt.split(" + ");
       var head=function(cont){ newPage(); label(cont?"Goods In and Out · "+crewTxt+", continued":"Goods In and Out",L,y+1);
         doc.setFont("helvetica","bold"); doc.setFontSize(cont?14:20); var tl=doc.splitTextToSize(nm,W).slice(0,2); doc.text(tl,L,y+(cont?7:9)); y+=(cont?7:9)+(tl.length-1)*7.5+4;
@@ -3784,7 +3813,7 @@ var SNAP=null, DETAIL={};
   var AUTO=true;
   var REFRESHING=false, POLL_EVERY=10000, CRM_EVERY_TICKS=6, TICK=0;
   var PENDING_SNAP=null, FOREIGN=null, SEEN_FOREIGN={};   // a change to the job on screen, waiting for the person to choose
-  var SCHED_VERSION="26 Oct 08:51:22";   /* bumped on every push: shows which version is running and which built a sheet (Sam, 22 Oct 2026, "still not live?!") */
+  var SCHED_VERSION="26 Oct 12:13:03";   /* bumped on every push: shows which version is running and which built a sheet (Sam, 22 Oct 2026, "still not live?!") */
   /* A NEWER SCHEDULER RELOADS ITSELF (Sam, 22 Oct 2026, a sheet built from a window opened before the push). Checked every two
      minutes and before any sheet is built; a reload waits while an editor is open. */
   function liveVersion(){ return fetch("./scheduler.html?vc="+Date.now(),{cache:"no-store"}).then(function(r){ return r.ok?r.text():""; }).then(function(t){ var m=/SCHED_VERSION\s*=\s*"([^"]+)"/.exec(t||""); return m?m[1]:""; }).catch(function(){ return ""; }); }
