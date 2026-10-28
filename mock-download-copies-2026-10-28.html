@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Download copies mock</title>
+<style>
+:root{--navy:#1D3058;--line:#e5e7eb;--mut:#6b7280;--blue:#1769e0}
+body{margin:0;background:#eef1f6;font:14px/1.45 -apple-system,Inter,system-ui,sans-serif;color:#111827;padding:28px 16px}
+.modal{max-width:580px;margin:0 auto;background:#fff;border-radius:12px;box-shadow:0 20px 50px rgba(0,0,0,.18);overflow:hidden}
+.hd{padding:18px 20px 8px}.hd h2{margin:0;font-size:18px;color:var(--navy)}.hd p{margin:4px 0 0;color:var(--mut);font-size:13px}
+.bar{display:flex;gap:14px;padding:4px 20px 10px;font-size:12.5px}.bar a{color:var(--blue);font-weight:500;text-decoration:none}
+.sec{border-top:1px solid var(--line);padding:12px 20px}
+.sec h3{margin:0 0 6px;font-size:11.5px;letter-spacing:.05em;text-transform:uppercase;color:var(--mut);display:flex;justify-content:space-between}
+.sec h3 span:last-child{text-transform:none;letter-spacing:0;color:var(--mut);font-weight:500}
+.row{display:flex;align-items:center;gap:10px;padding:6px 0}
+input[type=checkbox]{width:16px;height:16px;accent-color:var(--navy);flex:none}
+.tx{flex:1;min-width:0}.t{font-weight:600;display:block}.s{display:block;font-size:12px;color:var(--mut)}
+.step{display:flex;align-items:center;border:1px solid var(--line);border-radius:7px;flex:none}
+.step b{width:26px;text-align:center;font-size:13px;color:var(--navy)}
+.step i{font-style:normal;width:26px;height:26px;display:flex;align-items:center;justify-content:center;color:var(--navy);font-weight:600;cursor:pointer}
+.step.hi{border-color:var(--navy);background:#1D30580d}
+.cap{font-size:10.5px;color:var(--mut);width:46px;text-align:right;flex:none}
+.ft{border-top:1px solid var(--line);padding:14px 20px;display:flex;justify-content:space-between;align-items:center;background:#fafbfc}
+.cnt{font-size:12.5px;color:var(--mut)}
+.btn{border:1px solid var(--line);background:#fff;border-radius:7px;padding:8px 14px;font-size:13px}
+.btn.pri{background:var(--blue);color:#fff;border-color:var(--blue);font-weight:600}
+</style></head><body>
+<div class="modal">
+ <div class="hd"><h2>Download job sheets</h2><p>Wed 28 Oct. Everything is ticked, one copy each. Untick what you do not need and set how many of each to print.</p></div>
+ <div class="bar"><a href="#">Select all</a><a href="#">Clear all</a><a href="#">One per person on the job</a></div>
+
+ <div class="sec"><h3><span>Loading sheets</span><span>Copies</span></h3>
+  <div class="row"><input type="checkbox" checked><span class="tx"><span class="t">AB12 CDE, Alex and Chris</span><span class="s">1 drop: Brightline Media Ltd</span></span><span class="step"><i>&minus;</i><b>1</b><i>+</i></span></div>
+ </div>
+
+ <div class="sec"><h3><span>Delivery and site jobs</span><span>Copies</span></h3>
+  <div class="row"><input type="checkbox" checked><span class="tx"><span class="t">Brightline Media Ltd</span><span class="s">Alex, Chris</span></span><span class="step hi"><i>&minus;</i><b>2</b><i>+</i></span></div>
+ </div>
+
+ <div class="sec"><h3><span>Production</span><span>Copies</span></h3>
+  <div class="row"><input type="checkbox" checked><span class="tx"><span class="t">Harbour Design Co</span><span class="s">Pat</span></span><span class="step"><i>&minus;</i><b>1</b><i>+</i></span></div>
+  <div class="row"><input type="checkbox" checked><span class="tx"><span class="t">Acme Property Ltd</span><span class="s">Pat, Kim, Dan</span></span><span class="step hi"><i>&minus;</i><b>3</b><i>+</i></span></div>
+ </div>
+
+ <div class="sec"><h3><span>End of day</span><span>Copies</span></h3>
+  <div class="row"><input type="checkbox" checked><span class="tx"><span class="t">End of day check</span><span class="s">The site walk at 4:30</span></span><span class="step"><i>&minus;</i><b>1</b><i>+</i></span></div>
+  <div class="row"><input type="checkbox" checked><span class="tx"><span class="t">My end of day pages</span><span class="s">One per operative on the day</span></span><span class="cap">1 each</span></div>
+ </div>
+
+ <div class="ft"><span class="cnt">6 sheets, 9 copies</span><span><span class="btn">Cancel</span> <span class="btn pri">Download 9 copies</span></span></div>
+</div>
+<p style="text-align:center;color:#6b7280;font-size:12.5px;margin-top:14px">Mock. Names are examples. Copies print one after another in the same PDF, so each person gets their own.</p>
+</body></html>
