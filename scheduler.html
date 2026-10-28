@@ -2505,7 +2505,7 @@ var SNAP=null, DETAIL={};
     return doc;
   }
   function pdfPortraitFooter(doc,left){
-    var pn=doc.getNumberOfPages(); for(var p=1;p<=pn;p++){ doc.setPage(p); doc.setFontSize(8); doc.setTextColor(120,120,120); doc.text(left,12,290); doc.text("Coggin SOS, page "+p+" of "+pn,198,290,{align:"right"}); }
+    var pn=doc.getNumberOfPages(); for(var p=1;p<=pn;p++){ doc.setPage(p); doc.setFontSize(8); doc.setTextColor(120,120,120); doc.text(left,12,290); doc.text("Coggin SOS",198,290,{align:"right"});   /* no page numbers (Sam, 28 Oct 2026) */ }
   }
   function pdfLines(doc,y,label,n){ doc.setFontSize(10); doc.setTextColor(17,17,17); doc.setFont("helvetica","bold"); doc.text(label,12,y); doc.setDrawColor(150,150,150); doc.setLineWidth(.3); for(var i=0;i<n;i++){ doc.line(12,y+5+i*8,198,y+5+i*8); } return y+5+n*8+4; }
   function pdfBand(doc,y,text){ if(y>265){ doc.addPage(); y=14; } doc.setFillColor(PDF_NAVY[0],PDF_NAVY[1],PDF_NAVY[2]); doc.roundedRect(12,y,186,8,1.5,1.5,"F"); doc.setTextColor(255,255,255); doc.setFont("helvetica","bold"); doc.setFontSize(11); doc.text(text,15,y+5.7); doc.setTextColor(17,17,17); return y+11; }
@@ -2604,6 +2604,8 @@ var SNAP=null, DETAIL={};
     // THE PICKING LINE (Sam, 2 Oct 2026, mock approved): a job picks on its first production day, or on its own day when
     // it has no production; its own picking sheet from the CRM goes behind the day sheet.
     if(mode==="cards"){ var seenC={}; return rows.filter(function(r){ return r.card&&r.pickable&&!seenC[r.card]&&(seenC[r.card]=1); }).map(function(r){ return {id:r.card,short:r.short}; }); }
+    // THE DOWNLOAD PICKER'S LIST (Sam, 28 Oct 2026): every job page the day would print, one entry per row key.
+    if(mode==="picker"){ var seenP={}; return rows.filter(function(r){ return r.card&&r.key&&/^(Production|Transport|Goods In and Out|Facility)$/.test(r.part)&&!seenP[r.key]&&(seenP[r.key]=1); }).map(function(r){ return {key:r.key,part:r.part,name:r.name,sub:r.sub||"",who:Array.isArray(r.who)?r.who.slice():[],contractor:r.contractor||""}; }); }
     var MON3=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
     // the job each picking section belongs to, from the first box it appears in on the day sheet
     var pickMeta={};
@@ -2762,14 +2764,15 @@ var SNAP=null, DETAIL={};
         // to draw, so the editor prints this job's pages alone, numbered from 1, with its van's loading sheet in front.
         var only=PICK.__only||null;
         bars.forEach(function(b){ if(!b.crew) return; kit.crew(UNPLANNED?"Team not set":b.title);
-          b.cells.forEach(function(c){ var r=c[6]; if(!r||!r.card) return; if(only&&only.indexOf(r.key)<0) return; var j=JOBS.filter(function(q){ return q.id===r.card; })[0]; if(!j) return;
+          b.cells.forEach(function(c){ var r=c[6]; if(!r||!r.card) return; if(only&&only.indexOf(r.key)<0&&!(SHEET_SEL&&r.part==="Transport")) return; var j=JOBS.filter(function(q){ return q.id===r.card; })[0]; if(!j) return;
             if(r.part==="Production"){ var i=PICK[r.card]||{}, lines=i.lines||[], fin=j.stage==="In progress"&&!(j.prep&&j.prep.stages);
               var inf=DATA.info[r.card]||(DATA.byCard[r.card]?{items:DATA.byCard[r.card].stop.items}:null);
               var beforeP=doc.getNumberOfPages(); kit.production({unplanned:UNPLANNED===j.id,day:niceDay(k),crew:b.title,name:r.name,code:"https://trello.com/c/"+(j.short||j.id),started:j.stage==="In progress",title:i.allPicked?"All finished":(lines.length&&lines.every(function(l){ return l.section==="refurb"; }))?"Items to refurbish":fin?"Items to finish":"Pick and finish",
                 facts:[["Time",c[3]],["Due",j.prodDue?niceDay(j.prodDue):""],[j.site?"Delivery":"Ready by",j.date?niceDay(j.date):""],["Ref",i.ref||""]],lines:lines,all:i.all||[],picked:i.picked||{},items:inf&&inf.items?inf.items:[]});
               starts[r.key]=beforeP+1;
               return; }
-            if(r.part==="Transport"){ var bc=DATA.byCard[r.card]; if(!bc) return; if(!yardDone[bc.run.key]){ yardDone[bc.run.key]=1; if(!only&&kit.hasLoad(bc.run)) kit.yard(bc.run); }   // no loading sheet on a single job from the editor (Sam, 14 Oct 2026, DWF: "I just want the job sheet")
+            if(r.part==="Transport"){ var bc=DATA.byCard[r.card]; if(!bc) return; if(!yardDone[bc.run.key]){ yardDone[bc.run.key]=1; var vanOn=!only||(SHEET_SEL&&SHEET_SEL.vans.indexOf(bc.run.key)>=0); if(vanOn&&kit.hasLoad(bc.run)) kit.yard(bc.run); }
+              if(only&&only.indexOf(r.key)<0) return;   /* the van's loading sheet can be picked without its stops (28 Oct 2026) */   // no loading sheet on a single job from the editor (Sam, 14 Oct 2026, DWF: "I just want the job sheet")
               var before=doc.getNumberOfPages(); kit.fits(function(){ kit.stop(bc.run,bc.stop); }); starts[r.key]=before+1; return; }
             if(r.part==="Goods In and Out"){ var lb=DATA.info[r.card]; if(!lb) return; var before2=doc.getNumberOfPages(); kit.fits(function(){ kit.labour(j,lb,b.title,r.sub,c[3]); }); starts[r.key]=before2+1; }
             if(r.part==="Facility"){ var before3=doc.getNumberOfPages(); kit.fits(function(){ kit.facility(j,b.title,c[3],k); }); starts[r.key]=before3+1; } }); });
@@ -2782,18 +2785,18 @@ var SNAP=null, DETAIL={};
         /* THE FIELD CREW IN THAT DAY (Sam, 24 Oct 2026, "think about what I need here"): the page is about the day, not the
            job. The field crew not on leave all get one, workshop section always. OFFICE STAFF NEVER (Sam, 26 Oct 2026: "End of
            day for Sam and Ash should not be there"): a desk job on a card is not a yard day. */
-        if(!only){ var offToday=LEAVE.filter(function(l){ return l.date===k; }).map(function(l){ return crewOf(l.text.split(" ")[0]); });
+        if(!only||(SHEET_SEL&&SHEET_SEL.my)){ var offToday=LEAVE.filter(function(l){ return l.date===k; }).map(function(l){ return crewOf(l.text.split(" ")[0]); });
           var ppl=FIELD_CREW.filter(function(w){ return offToday.indexOf(w)<0; });
           ppl.forEach(function(w){ var vr=((DATA&&DATA.runs)||[]).filter(function(r){ return r.crew.indexOf(w)>=0&&r.van; });
             var prod=rows.filter(function(r){ return r.part==="Production"&&r.who.indexOf(w)>=0; }).length, other=rows.filter(function(r){ return r.part!=="Production"&&r.part!=="Transport"&&r.who.indexOf(w)>=0; }).length;
             kit.myEndOfDay(w,{vans:vr.map(function(r){ return {van:r.van==="hire"?"Hire van":r.van,drops:r.stops.length}; }),prod:prod,other:other}); }); }
-        if(!only) kit.endOfDay();
+        if(!only||(SHEET_SEL&&SHEET_SEL.eod)) kit.endOfDay();
         // JOB PAGES ONLY (Sam, 2 Oct 2026: "just their job pages"): the day sheet in front is dropped, so the pages are numbered
         // from the first job page. Every page carries the hand-back strip (Sam: "make sure the operatives give me the sheets
         // back either when they have completed a job or at the end of the day").
         var totalP=doc.getNumberOfPages(), jobN=totalP-dsPages; foots.forEach(function(f){ doc.setPage(f.page);
           if(f.eod){ doc.setFillColor(17,17,17); doc.roundedRect(15,279.5,180,7,1.2,1.2,"F"); doc.setTextColor(255); doc.setFont("helvetica","bold"); doc.setFontSize(8.5); } if(f.eod) doc.text("HAND THIS SHEET TO THE OPERATIONS MANAGER BY 5:00",105,284.2,{align:"center"});
-          doc.setFont("helvetica","normal"); doc.setFontSize(8); doc.setTextColor(100); if(f.text){ var ft=doc.splitTextToSize(f.text,88).slice(0,2); if(ft.length>1) doc.setFontSize(7); doc.text(ft,15,ft.length>1?289.3:291.5); doc.setFontSize(8); } doc.setFontSize(6); doc.text("Scheduler version "+SCHED_VERSION,105,291.5,{align:"center"}); doc.setFontSize(8); doc.text("Page "+(f.page-dsPages)+" of "+jobN,195,291.5,{align:"right"}); doc.setTextColor(0); });
+          doc.setFont("helvetica","normal"); doc.setFontSize(8); doc.setTextColor(100); if(f.text){ var ft=doc.splitTextToSize(f.text,88).slice(0,2); if(ft.length>1) doc.setFontSize(7); doc.text(ft,15,ft.length>1?289.3:291.5); doc.setFontSize(8); } doc.setFontSize(6); doc.text("Scheduler version "+SCHED_VERSION,105,291.5,{align:"center"}); doc.setFontSize(8); /* no page numbers (Sam, 28 Oct 2026: "remove the page numbers from the sheets as there are not needed") */ doc.setTextColor(0); });
         if(jobN>0){ for(var dp=0;dp<dsPages;dp++) doc.deletePage(1); jobOnly=true; }
       }
       return {doc:doc,fits:fitsDs,dsPages:dsPages,order:order,starts:starts,jobOnly:jobOnly};
@@ -3401,16 +3404,54 @@ var SNAP=null, DETAIL={};
             doc.setDrawColor(200); doc.setLineWidth(0.25); doc.line(L,y+rh,L+W,y+rh); doc.setDrawColor(0); y+=rh; });
           foots[foots.length-1].eod=true; };
     return kit; }
+  // WHAT TO DOWNLOAD (Sam, 28 Oct 2026, mock approved: mock-download-picker-2026-10-28.html). Everything starts ticked;
+  // untick what is not needed. Resolves to null on Cancel, or {keys, vans, eod, my, all}.
+  var SHEET_SEL=null;
+  function sheetPicker(k){ return new Promise(function(resolve){
+    var items=daySheetPdf(k,null,"picker")||[], runs=[]; try{ runs=transportRuns(k); }catch(e){ runs=[]; }
+    var vans=runs.filter(function(r){ return r.stops.length; }).map(function(r){ return {key:r.key,label:(r.van==="hire"?"Hire vehicle":(r.van||"Van not set"))+", "+r.crew.join(" and "),sub:r.stops.length+(r.stops.length===1?" drop":" drops")+": "+r.stops.map(function(s){ return String(s.j.title||"").split(" - ").slice(1).join(" - ")||s.j.title; }).join(", ")}; });
+    var whoTxt=function(it){ return [it.sub,(it.who&&it.who.length?it.who.join(", "):it.contractor)].filter(Boolean).join(" \u00b7 "); };
+    var groups=[
+      {title:"Loading sheets",rows:vans.map(function(v){ return {id:"v:"+v.key,t:v.label,s:v.sub}; })},
+      {title:"Delivery and site jobs",rows:items.filter(function(it){ return it.part!=="Production"; }).map(function(it){ return {id:"k:"+it.key,t:it.name,s:whoTxt(it)}; })},
+      {title:"Production",rows:items.filter(function(it){ return it.part==="Production"; }).map(function(it){ return {id:"k:"+it.key,t:it.name,s:whoTxt(it)}; })},
+      {title:"End of day",rows:[{id:"x:eod",t:"End of day check",s:"The site walk at 4:30"},{id:"x:my",t:"My end of day pages",s:"One per operative on the day"}]}
+    ].filter(function(g){ return g.rows.length; });
+    var ov=el("div"); ov.style.cssText="position:fixed;inset:0;background:rgba(9,14,28,.55);z-index:10000;display:flex;align-items:center;justify-content:center;padding:16px";
+    var box=el("div"); box.setAttribute("role","dialog"); box.setAttribute("aria-label","Download job sheets"); box.style.cssText="background:#fff;border-radius:12px;max-width:560px;width:100%;max-height:88vh;display:flex;flex-direction:column;box-shadow:0 20px 50px rgba(0,0,0,.25);font-size:14px";
+    var hd=el("div"); hd.style.cssText="padding:18px 20px 8px"; var h2=el("div",null,"Download job sheets"); h2.style.cssText="font-size:18px;font-weight:700;color:#1D3058"; hd.appendChild(h2); var hp=el("div",null,niceDay(k)+". Everything is ticked. Untick what you do not need."); hp.style.cssText="color:#6b7280;font-size:13px;margin-top:4px"; hd.appendChild(hp); box.appendChild(hd);
+    var boxes=[]; var count=el("span"); count.style.cssText="font-size:12.5px;color:#6b7280";
+    var go=el("button",null,""); go.type="button"; go.style.cssText="border:0;background:#1769e0;color:#fff;border-radius:7px;padding:8px 14px;font-size:13px;font-weight:600;cursor:pointer";
+    var upd=function(){ var n=boxes.filter(function(b){ return b.cb.checked; }).length; count.textContent=n+" of "+boxes.length+" sheets"; go.textContent=n?"Download "+n+(n===1?" sheet":" sheets"):"Nothing ticked"; go.disabled=!n; go.style.opacity=n?"1":".5"; };
+    var link=function(txt,fn){ var a=el("button",null,txt); a.type="button"; a.style.cssText="border:0;background:none;color:#1769e0;font-weight:500;font-size:12.5px;cursor:pointer;padding:0"; a.onclick=fn; return a; };
+    var bar=el("div"); bar.style.cssText="display:flex;gap:14px;padding:4px 20px 10px"; bar.appendChild(link("Select all",function(){ boxes.forEach(function(b){ b.cb.checked=true; }); upd(); })); bar.appendChild(link("Clear all",function(){ boxes.forEach(function(b){ b.cb.checked=false; }); upd(); })); box.appendChild(bar);
+    var body=el("div"); body.style.cssText="overflow:auto"; box.appendChild(body);
+    groups.forEach(function(g){ var sec=el("div"); sec.style.cssText="border-top:1px solid #e5e7eb;padding:12px 20px"; var gh=el("div"); gh.style.cssText="display:flex;justify-content:space-between;font-size:11.5px;letter-spacing:.05em;text-transform:uppercase;color:#6b7280;margin-bottom:6px"; gh.appendChild(el("span",null,g.title)); var mine=[];
+      gh.appendChild(link("all",function(){ var on=!mine.every(function(b){ return b.checked; }); mine.forEach(function(b){ b.checked=on; }); upd(); })); sec.appendChild(gh);
+      g.rows.forEach(function(r){ var lb=el("label"); lb.style.cssText="display:flex;gap:10px;align-items:flex-start;padding:5px 0;cursor:pointer"; var cb=el("input"); cb.type="checkbox"; cb.checked=true; cb.style.cssText="margin-top:3px;width:16px;height:16px;accent-color:#1D3058"; cb.onchange=upd; lb.appendChild(cb);
+        var tx=el("span"); var t=el("span",null,r.t); t.style.cssText="font-weight:600;display:block"; tx.appendChild(t); if(r.s){ var ss=el("span",null,r.s); ss.style.cssText="display:block;font-size:12px;color:#6b7280"; tx.appendChild(ss); } lb.appendChild(tx); sec.appendChild(lb); boxes.push({id:r.id,cb:cb}); mine.push(cb); });
+      body.appendChild(sec); });
+    var ft=el("div"); ft.style.cssText="border-top:1px solid #e5e7eb;padding:14px 20px;display:flex;justify-content:space-between;align-items:center;background:#fafbfc;border-radius:0 0 12px 12px"; ft.appendChild(count);
+    var right=el("span"); var cancel=el("button",null,"Cancel"); cancel.type="button"; cancel.style.cssText="border:1px solid #e5e7eb;background:#fff;border-radius:7px;padding:8px 14px;font-size:13px;margin-right:8px;cursor:pointer"; right.appendChild(cancel); right.appendChild(go); ft.appendChild(right); box.appendChild(ft);
+    var close=function(v){ document.removeEventListener("keydown",esc); ov.remove(); resolve(v); };
+    var esc=function(e){ if(e.key==="Escape") close(null); }; document.addEventListener("keydown",esc);
+    cancel.onclick=function(){ close(null); }; ov.onclick=function(e){ if(e.target===ov) close(null); };
+    go.onclick=function(){ var on=boxes.filter(function(b){ return b.cb.checked; }).map(function(b){ return b.id; });
+      close({all:on.length===boxes.length,keys:on.filter(function(x){ return x.indexOf("k:")===0; }).map(function(x){ return x.slice(2); }),vans:on.filter(function(x){ return x.indexOf("v:")===0; }).map(function(x){ return x.slice(2); }),eod:on.indexOf("x:eod")>=0,my:on.indexOf("x:my")>=0}); };
+    upd(); ov.appendChild(box); document.body.appendChild(ov); go.focus(); }); }
   async function daySheetDownload(k){
     if(await outdated()){ alert("The Scheduler has been updated. It will reload now. Press Download job sheets again after."); location.reload(); return; }
+    var sel=await sheetPicker(k); if(!sel) return;
     var btn=$("#sheets"), was=btn?btn.textContent:""; if(btn){ btn.disabled=true; btn.textContent="Building the job sheets..."; }
     try{
-      var r=await daySheetBuild(k,null);
+      SHEET_SEL=sel.all?null:sel;
+      var r=await daySheetBuild(k,sel.all?null:sel.keys);
       if(!r.jobOnly){ alert("Nobody has a job with a card on "+niceDay(k)+", so there are no job sheets to print."); return; }
       r.doc.save("job-sheets-"+k+".pdf");
-      if(btn){ btn.textContent="Putting the sheets on the cards..."; } await attachDayProductionSheets(k);
+      SHEET_SEL=null;
+      if(btn){ btn.textContent="Putting the sheets on the cards..."; } await attachDayProductionSheets(k,sel.all?null:sel.keys);
     } catch(e){ if(/did not load/.test(String(e&&e.message))) alert(e.message); else throw e; }
-    finally { if(btn){ btn.disabled=false; btn.textContent=was||"Download job sheets"; } }
+    finally { SHEET_SEL=null; if(btn){ btn.disabled=false; btn.textContent=was||"Download job sheets"; } }
   }
   // THE JOB SHEET FROM THE EDITOR (Sam, 14 Oct 2026). The same build as the day's job sheets, kept to this job's rows.
   async function jobSheetDownload(j,o,btn){
@@ -3435,7 +3476,7 @@ var SNAP=null, DETAIL={};
       return fetch(CRM_ATTACH_URL,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({key:CRM_KEY,card_id:j.id,name:name,pdf_base64:b64})}).then(function(x){ return x.json(); }).then(function(r){ if(!(r&&r.ok)) console.warn("production sheet not attached",r&&r.error); return r||{ok:false,error:"no reply"}; }).catch(function(e){ console.warn("production sheet not attached",e); return {ok:false,error:String(e&&e.message||e)}; }); }
     catch(e){ return Promise.resolve({ok:false,error:String(e&&e.message||e)}); } }
   // every production job on the day gets its page on its card, one after another, after the day's sheets are saved
-  async function attachDayProductionSheets(k){ var jobs=prepJobs().filter(function(j){ return j.prep&&j.prep.date&&!j.isHold&&daysOf(j.prep).indexOf(k)>=0&&j.prep.who.length; });
+  async function attachDayProductionSheets(k,keys){ var jobs=prepJobs().filter(function(j){ return j.prep&&j.prep.date&&!j.isHold&&daysOf(j.prep).indexOf(k)>=0&&j.prep.who.length&&(!keys||keys.indexOf("p"+j.id)>=0); });   /* only the production sheets that were ticked (28 Oct 2026) */
     for(var i=0;i<jobs.length;i++){ try{ var r=await daySheetBuild(k,["p"+jobs[i].id]); if(r&&r.jobOnly) await attachProductionSheet(jobs[i],r.doc,k); }catch(e){ console.warn("production sheet",e); } } }
   window.__daySheetBuild=function(k,only){ return daySheetBuild(k,only); }; // reachable by check.mjs and the render harness
   async function daySheetBuild(k,only){
@@ -3821,7 +3862,7 @@ var SNAP=null, DETAIL={};
   var AUTO=true;
   var REFRESHING=false, POLL_EVERY=10000, CRM_EVERY_TICKS=6, TICK=0;
   var PENDING_SNAP=null, FOREIGN=null, SEEN_FOREIGN={};   // a change to the job on screen, waiting for the person to choose
-  var SCHED_VERSION="26 Oct 13:04:27";   /* bumped on every push: shows which version is running and which built a sheet (Sam, 22 Oct 2026, "still not live?!") */
+  var SCHED_VERSION="28 Oct 07:49:32";   /* bumped on every push: shows which version is running and which built a sheet (Sam, 22 Oct 2026, "still not live?!") */
   /* A NEWER SCHEDULER RELOADS ITSELF (Sam, 22 Oct 2026, a sheet built from a window opened before the push). Checked every two
      minutes and before any sheet is built; a reload waits while an editor is open. */
   function liveVersion(){ return fetch("./scheduler.html?vc="+Date.now(),{cache:"no-store"}).then(function(r){ return r.ok?r.text():""; }).then(function(t){ var m=/SCHED_VERSION\s*=\s*"([^"]+)"/.exec(t||""); return m?m[1]:""; }).catch(function(){ return ""; }); }
