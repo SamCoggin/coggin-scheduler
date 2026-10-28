@@ -3015,7 +3015,32 @@ var SNAP=null, DETAIL={};
           doc.setFont("helvetica","bold"); doc.setFontSize(fsz); doc.text(String(it.qty),ph0?ix+11:ix,iy+rh*0.62); doc.setFont("helvetica","normal"); doc.setFontSize(fsz-1); doc.text(doc.splitTextToSize(it.name,colW-(ph0?20:12))[0],tx0,iy+rh*0.62);
           doc.setDrawColor(215); doc.setLineWidth(0.25); doc.line(ix,iy+rh,ix+colW,iy+rh); doc.setDrawColor(0); }
         y+=half*rh+3; i0+=take; if(i0<items.length) cont(); } };
-    kit.items=function(items,cont){ if(!items.length) items=[{qty:"",name:"No items on the card",photo:""}]; if(items.length<=8&&kit.tight===0){ if(y+Math.ceil(items.length/4)*(42+partsH(items))>278) cont(); tiles(items); } else list2(items,cont); };
+    // A BUILD TAKES THE FULL WIDTH (Sam, 28 Oct 2026, mock approved: mock-build-item-2026-10-28.html). A bench or custom
+    // desk squeezed into a quarter tile cut its part names off; now the build photo, name and details sit on the left and
+    // every part on the right in two columns, full name, colour underneath and a tick box. Plain items keep the tiles.
+    var buildBlock=function(it,cont){ var ps=it.parts||[], LW=52, RX=L+LW+4, RW=W-LW-8, cols=2, colW=(RW-6)/cols, rowH=kit.tight>=1?11:13;
+      var nmParts=String(it.name||"").split(/\s*\|\s*/), main=nmParts[0], det=nmParts.slice(1).join(" \u00b7 ");
+      doc.setFont("helvetica","normal"); doc.setFontSize(8); var detL=det?doc.splitTextToSize(det.replace(/,\s*tops from\s*/i,"\nTops from ").replace(/\s\u00b7\s(?=\d)/," \n"),LW-6):[];
+      var photoH=kit.tight>=2?0:28, leftH=4+photoH+4+7+detL.length*3.6+3, rightH=10+Math.ceil(ps.length/cols)*rowH, h=Math.max(leftH,rightH);
+      if(y+h>278) cont();
+      doc.setDrawColor(180); doc.setLineWidth(0.35); doc.roundedRect(L,y,W,h,1.2,1.2); doc.setDrawColor(215); doc.setLineWidth(0.25); doc.line(L+LW,y+2,L+LW,y+h-2); doc.setDrawColor(0);
+      var ly=y+4; if(photoH){ if(!img(it.photo,L+3,ly,LW-6,photoH)) noPhoto(L+(LW-20)/2,ly+4,20,photoH-8); ly+=photoH+4; }
+      doc.setFont("helvetica","bold"); doc.setFontSize(12); var ml=doc.splitTextToSize((it.qty!==""?it.qty+" x  ":"")+main,LW-6).slice(0,2); doc.text(ml,L+3,ly+4); ly+=ml.length*5+2;
+      if(detL.length){ doc.setFont("helvetica","normal"); doc.setFontSize(8); doc.setTextColor(90); doc.text(detL,L+3,ly+1); doc.setTextColor(0); }
+      doc.setFont("helvetica","bold"); doc.setFontSize(6.5); doc.setTextColor(60); doc.text("THESE PARTS MAKE IT, NOTHING EXTRA",RX,y+6); doc.setTextColor(0);
+      ps.forEach(function(pt,pi){ var px=RX+(pi%cols)*(colW+6), qy=y+10+Math.floor(pi/cols)*rowH, ps0=rowH-3;
+        if(!img(pt.photo,px,qy,ps0,ps0)) noPhoto(px,qy,ps0,ps0);
+        doc.setFont("helvetica","bold"); doc.setFontSize(10); doc.text(String(pt.qty||1)+"x",px+ps0+2,qy+ps0/2+1.5);
+        var bits=String(pt.name||"").split(/\s*\u00b7\s*|\s*\|\s*/), pn=bits[0]||"Part", sub=bits.slice(1).join(" \u00b7 ").replace(/[()]/g,"");
+        var tx=px+ps0+11, tw2=colW-ps0-11-7; doc.setFont("helvetica","bold"); doc.setFontSize(8); var nl=doc.splitTextToSize(pn,tw2).slice(0,2); doc.text(nl,tx,qy+3.5);
+        if(sub){ doc.setFont("helvetica","normal"); doc.setFontSize(6.5); doc.setTextColor(100); doc.text(doc.splitTextToSize(sub,tw2)[0],tx,qy+3.5+nl.length*3.3); doc.setTextColor(0); }
+        box(px+colW-5,qy+ps0/2-2,4); });
+      y+=h+4; };
+    kit.items=function(items,cont){ if(!items.length) items=[{qty:"",name:"No items on the card",photo:""}];
+      var builds=items.filter(function(it){ return (it.parts||[]).length; }), plain=items.filter(function(it){ return !(it.parts||[]).length; });
+      builds.forEach(function(it){ buildBlock(it,cont); });
+      if(!plain.length) return;
+      if(plain.length<=8&&kit.tight===0){ if(y+Math.ceil(plain.length/4)*(42+partsH(plain))>278) cont(); tiles(plain); } else list2(plain,cont); };
     // draw a page; if it ran onto a second sheet, throw the sheets away and draw it tighter, up to twice
     kit.fits=function(draw){ var p0=doc.getNumberOfPages(), f0=foots.length;
       for(var lvl=0;lvl<=2;lvl++){ kit.tight=lvl; draw(); if(doc.getNumberOfPages()<=p0+1||lvl===2) break;
@@ -3874,7 +3899,7 @@ var SNAP=null, DETAIL={};
   var AUTO=true;
   var REFRESHING=false, POLL_EVERY=10000, CRM_EVERY_TICKS=6, TICK=0;
   var PENDING_SNAP=null, FOREIGN=null, SEEN_FOREIGN={};   // a change to the job on screen, waiting for the person to choose
-  var SCHED_VERSION="28 Oct 08:06:42";   /* bumped on every push: shows which version is running and which built a sheet (Sam, 22 Oct 2026, "still not live?!") */
+  var SCHED_VERSION="28 Oct 08:11:51";   /* bumped on every push: shows which version is running and which built a sheet (Sam, 22 Oct 2026, "still not live?!") */
   /* A NEWER SCHEDULER RELOADS ITSELF (Sam, 22 Oct 2026, a sheet built from a window opened before the push). Checked every two
      minutes and before any sheet is built; a reload waits while an editor is open. */
   function liveVersion(){ return fetch("./scheduler.html?vc="+Date.now(),{cache:"no-store"}).then(function(r){ return r.ok?r.text():""; }).then(function(t){ var m=/SCHED_VERSION\s*=\s*"([^"]+)"/.exec(t||""); return m?m[1]:""; }).catch(function(){ return ""; }); }
