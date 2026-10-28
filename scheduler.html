@@ -556,7 +556,13 @@ var SNAP=null, DETAIL={};
         // PLAIN TEXT ONLY (Sam, 26 Oct 2026, the Wood Waste Exchange sheet: "what is going on"). Trello autolinks an email
         // address as [addr](mailto:addr "\u200c") and the hidden zero-width character makes jsPDF space every letter of
         // the line. Links are unwrapped to their text and zero-width characters dropped before anything reads the card.
-        var plainDesc=function(t){ return String(t||"").replace(/\[([^\]]*)\]\([^)\s]*(?:\s+"[^"]*")?\)/g,"$1").replace(/[\u200b-\u200d\u2060\ufeff]/g,""); };
+        // WEB LINKS STAY (Sam, 28 Oct 2026, MediaCo: "Why is the QR code for the sign off link not pulling through?"). Unwrapping
+        // every link threw the sign-off URL away, so the stop page printed "No sign-off link". Email and phone links are
+        // still unwrapped; a web link keeps its URL and only loses Trello's hidden title.
+        var plainDesc=function(t){ return String(t||"")
+          .replace(/\[([^\]]*)\]\(((?:mailto|tel):[^)\s]*)(?:\s+"[^"]*")?\)/gi,"$1")
+          .replace(/\[([^\]]*)\]\((https?:\/\/[^)\s]*)\s+"[^"]*"\)/gi,"[$1]($2)")
+          .replace(/[\u200b-\u200d\u2060\ufeff]/g,""); };
         cs.forEach(function(c){ var was=DETAIL[c.id]; DETAIL[c.id]={desc:plainDesc(c.desc),checks:(c.checks&&c.checks.length)?c.checks:(opts.skipCrm&&was&&was.checks&&was.checks.length?was.checks:(c.checks||[]))}; });
         var snap={board:board.name,crew:CREW,cards:cs,boardData:boardData};
         // date holds from the CRM: ghost cards, counted but never booked here
@@ -3899,7 +3905,7 @@ var SNAP=null, DETAIL={};
   var AUTO=true;
   var REFRESHING=false, POLL_EVERY=10000, CRM_EVERY_TICKS=6, TICK=0;
   var PENDING_SNAP=null, FOREIGN=null, SEEN_FOREIGN={};   // a change to the job on screen, waiting for the person to choose
-  var SCHED_VERSION="28 Oct 08:11:51";   /* bumped on every push: shows which version is running and which built a sheet (Sam, 22 Oct 2026, "still not live?!") */
+  var SCHED_VERSION="28 Oct 08:21:21";   /* bumped on every push: shows which version is running and which built a sheet (Sam, 22 Oct 2026, "still not live?!") */
   /* A NEWER SCHEDULER RELOADS ITSELF (Sam, 22 Oct 2026, a sheet built from a window opened before the push). Checked every two
      minutes and before any sheet is built; a reload waits while an editor is open. */
   function liveVersion(){ return fetch("./scheduler.html?vc="+Date.now(),{cache:"no-store"}).then(function(r){ return r.ok?r.text():""; }).then(function(t){ var m=/SCHED_VERSION\s*=\s*"([^"]+)"/.exec(t||""); return m?m[1]:""; }).catch(function(){ return ""; }); }
