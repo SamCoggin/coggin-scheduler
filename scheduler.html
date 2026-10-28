@@ -2993,16 +2993,17 @@ var SNAP=null, DETAIL={};
       y=cont?ty+4:Math.max(ty+5,top+44); rule(); y+=5; return y; };
     // THE PARTS UNDER THE ITEM (Sam, 20 Oct 2026, mock approved): a custom build's parts sit inside the tile under the
     // name, each with a small photo, count and name, so eight desks never read as eight desks plus sixteen tops.
-    var partsH=function(items){ var mx=0; items.forEach(function(it){ var n=(it.parts||[]).length; if(n) mx=Math.max(mx,4+Math.ceil(n/2)*12); }); return mx; };
+    // ONE PART PER ROW (Sam, 28 Oct 2026, MediaCo bench: two columns left each name 3 mm wide, so "Bench end leg" printed a letter a line)
+    var partsH=function(items){ var mx=0; items.forEach(function(it){ var n=(it.parts||[]).length; if(n) mx=Math.max(mx,4+n*11); }); return mx; };
     var tiles=function(items){ var tw=(W-12)/4, ph=partsH(items), th=38+ph; items.forEach(function(it,i){ var tx=L+(i%4)*(tw+4), ty=y+Math.floor(i/4)*(th+4); doc.setDrawColor(180); doc.setLineWidth(0.3); doc.roundedRect(tx,ty,tw,th,1,1); doc.setDrawColor(0);
         if(!img(it.photo,tx+2,ty+2,tw-4,16)) noPhoto(tx+(tw-20)/2,ty+2,20,16);
         // the product on top, its size and colours on a smaller line (Sam, 2 Oct 2026: names were cut off mid-way)
         var parts=String(it.name||"").split(/\s*\|\s*/), main=parts[0], det=parts.slice(1).join(" · ");
         doc.setFont("helvetica","bold"); doc.setFontSize(9); var ml=doc.splitTextToSize((it.qty!==""?it.qty+" x  ":"")+main,tw-4).slice(0,2); doc.text(ml,tx+2,ty+23);
-        if(det){ doc.setFont("helvetica","normal"); doc.setFontSize(7); doc.setTextColor(100); doc.text(doc.splitTextToSize(det,tw-4).slice(0,2),tx+2,ty+23+ml.length*3.6); doc.setTextColor(0); }
+        if(det){ doc.setFont("helvetica","normal"); doc.setFontSize(7); doc.setTextColor(100); doc.text(doc.splitTextToSize(det,tw-4).slice(0,3),tx+2,ty+23+ml.length*3.6); doc.setTextColor(0); }
         var ps=it.parts||[]; if(ps.length){ var py=ty+38; doc.setDrawColor(215); doc.setLineWidth(0.25); doc.line(tx+2,py-1,tx+tw-2,py-1); doc.setFont("helvetica","bold"); doc.setFontSize(5.5); doc.setTextColor(60); doc.text("THESE PARTS MAKE IT, NOTHING EXTRA",tx+2,py+2); doc.setTextColor(0);
-          var cw=(tw-6)/2; ps.forEach(function(pt,pi){ var px=tx+2+(pi%2)*(cw+2), qy=py+4+Math.floor(pi/2)*12; if(!img(pt.photo,px,qy,9,9)) noPhoto(px,qy,9,9);
-            doc.setFont("helvetica","bold"); doc.setFontSize(6.5); doc.text(String(pt.qty||1)+"x",px+10.5,qy+4); doc.setFont("helvetica","normal"); doc.setFontSize(6); doc.text(doc.splitTextToSize(String(pt.name||""),cw-16).slice(0,2),px+16,qy+3.2); }); } });
+          ps.forEach(function(pt,pi){ var px=tx+2, qy=py+4+pi*11; if(!img(pt.photo,px,qy,9,9)) noPhoto(px,qy,9,9);
+            doc.setFont("helvetica","bold"); doc.setFontSize(7); doc.text(String(pt.qty||1)+"x",px+11,qy+4); doc.setFont("helvetica","normal"); doc.setFontSize(6.5); doc.text(doc.splitTextToSize(String(pt.name||""),tw-24).slice(0,2),px+17,qy+3.2); }); } });
       y+=Math.ceil(items.length/4)*(th+4)+2; };
     // A PAGE NEVER BLEEDS (Sam, 15 Oct 2026, DWF: "Job sheets can never page bleed"). kit.tight is 0, 1 or 2: the list
     // rows shrink, the photos go at 2, and kit.fits below redraws a page tighter until it stays on one sheet.
@@ -3862,7 +3863,7 @@ var SNAP=null, DETAIL={};
   var AUTO=true;
   var REFRESHING=false, POLL_EVERY=10000, CRM_EVERY_TICKS=6, TICK=0;
   var PENDING_SNAP=null, FOREIGN=null, SEEN_FOREIGN={};   // a change to the job on screen, waiting for the person to choose
-  var SCHED_VERSION="28 Oct 07:49:32";   /* bumped on every push: shows which version is running and which built a sheet (Sam, 22 Oct 2026, "still not live?!") */
+  var SCHED_VERSION="28 Oct 08:03:17";   /* bumped on every push: shows which version is running and which built a sheet (Sam, 22 Oct 2026, "still not live?!") */
   /* A NEWER SCHEDULER RELOADS ITSELF (Sam, 22 Oct 2026, a sheet built from a window opened before the push). Checked every two
      minutes and before any sheet is built; a reload waits while an editor is open. */
   function liveVersion(){ return fetch("./scheduler.html?vc="+Date.now(),{cache:"no-store"}).then(function(r){ return r.ok?r.text():""; }).then(function(t){ var m=/SCHED_VERSION\s*=\s*"([^"]+)"/.exec(t||""); return m?m[1]:""; }).catch(function(){ return ""; }); }
