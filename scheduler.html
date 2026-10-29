@@ -1694,7 +1694,11 @@ var SNAP=null, DETAIL={};
       rows.forEach(function(r){ var ln=el("div","oln"); ln.style.display="flex"; ln.style.alignItems="center"; ln.style.gap="14px"; ln.style.padding="8px 0"; ln.style.borderTop="1px solid #eef0f3";
         var mid=el("span"); mid.style.flex="1"; mid.style.minWidth="0"; mid.appendChild(el("b",null,r.j.title.split(" - ").slice(1).join(" - ")||r.j.title)); if(r.sub){ var sb=el("span","sub2"," "+r.sub); sb.style.display="block"; sb.style.fontWeight="normal"; mid.appendChild(sb); } ln.appendChild(mid);
         var right=el("span","t"); right.style.display="inline-flex"; right.style.gap="12px"; right.style.alignItems="center"; right.style.flex="none";
-        right.appendChild(hmBox(function(){ return minsFor(r.part,w); },function(v){ setFor(r.part,v); },"Time for "+w));
+        // A PRODUCTION BOX IS TODAY'S HOURS (Sam, 29 Oct 2026, Jordan on Ecosave: the box read 69:45 while the line under
+        // it read "7h 45m today"). The box showed the whole job's minutes for the person; the line and the day's total
+        // use the grid cell. The box now reads and writes the cell for this day, so all three agree.
+        var isPrep=r.openKey.slice(-5)===":prep";
+        right.appendChild(hmBox(function(){ return isPrep?(prepCell(r.part,w,k)||null):minsFor(r.part,w); },function(v){ if(isPrep){ setPrepCell(r.part,w,k,v==null?0:v); persist(); render(); } else setFor(r.part,v); },"Time for "+w));
         var ob=el("button","olink","Open job"); ob.onclick=function(){ open=r.openKey; openOp=null; render(); }; right.appendChild(ob);
         var tb=el("button","olink","Take off"); tb.title="Take "+w+" off this job"; tb.onclick=function(){ takeOff(r.part); }; right.appendChild(tb);
         ln.appendChild(right); bodyEl.appendChild(ln); }); });
@@ -3927,7 +3931,7 @@ var SNAP=null, DETAIL={};
   var AUTO=true;
   var REFRESHING=false, POLL_EVERY=10000, CRM_EVERY_TICKS=6, TICK=0;
   var PENDING_SNAP=null, FOREIGN=null, SEEN_FOREIGN={};   // a change to the job on screen, waiting for the person to choose
-  var SCHED_VERSION="29 Oct 08:40:27";   /* bumped on every push: shows which version is running and which built a sheet (Sam, 22 Oct 2026, "still not live?!") */
+  var SCHED_VERSION="29 Oct 09:12:00";   /* bumped on every push: shows which version is running and which built a sheet (Sam, 22 Oct 2026, "still not live?!") */
   /* A NEWER SCHEDULER RELOADS ITSELF (Sam, 22 Oct 2026, a sheet built from a window opened before the push). Checked every two
      minutes and before any sheet is built; a reload waits while an editor is open. */
   function liveVersion(){ return fetch("./scheduler.html?vc="+Date.now(),{cache:"no-store"}).then(function(r){ return r.ok?r.text():""; }).then(function(t){ var m=/SCHED_VERSION\s*=\s*"([^"]+)"/.exec(t||""); return m?m[1]:""; }).catch(function(){ return ""; }); }
