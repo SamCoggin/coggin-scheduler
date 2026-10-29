@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Waste card text mock</title>
+<style>
+body{margin:0;background:#e9ebef;font:13px/1.45 Helvetica,Arial,sans-serif;color:#111;padding:24px 16px}
+.page{max-width:760px;margin:0 auto;background:#fff;padding:34px 40px 60px;box-shadow:0 6px 24px rgba(0,0,0,.12)}
+.k{font-size:9px;font-weight:700;letter-spacing:.12em;color:#555}
+h1{margin:4px 0 8px;font-size:26px}
+.who{display:inline-block;background:#111;color:#fff;font-weight:700;font-size:12px;border-radius:4px;padding:5px 12px;margin-bottom:12px}
+.tiles{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:12px}
+.t{border:1.5px solid #111;border-radius:6px;padding:7px 12px}.t b{display:block;font-size:13px;margin-top:2px}
+.two{display:grid;grid-template-columns:1fr 1fr;border:1.5px solid #111;border-radius:6px;margin-bottom:22px}
+.two div{padding:9px 14px}.two div+div{border-left:1.5px solid #111}.two b{display:block;font-size:15px;margin-top:3px}
+.card{border:1.5px solid #111;border-radius:6px;padding:12px 16px;margin-bottom:22px}
+.card .k{margin-bottom:8px}.card p{margin:0 0 6px;font-size:13.5px}.card p:last-child{margin:0}
+.ins{border-left:3px solid #111;padding-left:10px;font-weight:700}
+.new{outline:3px dashed #1769e0;outline-offset:4px}
+.dark{background:#1a1a1a;border-radius:8px;padding:14px 18px}
+.dark h3{color:#fff;margin:0 0 10px;font-size:15px}
+.step{background:#fff;border-radius:5px;padding:12px 14px;display:flex;justify-content:space-between;align-items:flex-start}
+.qr{width:70px;height:70px;background:repeating-conic-gradient(#111 0 25%,#fff 0 50%) 0 0/10px 10px;flex:none}
+.note{font-size:12px;color:#6b7280;max-width:760px;margin:12px auto 0}
+.chg{color:#1769e0;font-weight:700}
+</style></head><body>
+<p class="note">Mock of the same page you sent, with the two changes marked in blue. The buyer name is made up.</p>
+<div class="page">
+ <div class="k">GOODS IN AND OUT</div>
+ <h1>Plastic Regrind Collection</h1>
+ <span class="who">Rob D</span>
+ <div class="tiles">
+  <div class="t"><span class="k">TIME</span><b>1h</b></div>
+  <div class="t new"><span class="k">COLLECTING</span><b>Acme Polymers Ltd</b></div>
+  <div class="t"><span class="k">ARRIVING</span><b>Not given yet</b></div>
+ </div>
+ <div class="two"><div><span class="k">CONTACT NAME</span><b>Not on the card</b></div><div><span class="k">CONTACT NUMBER</span><b>Not on the card</b></div></div>
+
+ <div class="card new">
+  <div class="k">FROM THE CARD</div>
+  <p><b>No. of Pallets:</b> 7 pallets PP - 5,900kg</p>
+  <p><b>No. of Pallets:</b> 11 pallets PA6 GF - 10,700kg</p>
+  <p><b>No. of Pallets:</b> 1 pallet PA6 GF - 1,000kg</p>
+  <p><b>Buyer:</b> Acme Polymers Ltd</p>
+  <p class="ins">"Photo evidence and signed collection note required - upload all copies of paperwork to this job card"</p>
+ </div>
+
+ <div class="dark"><h3>BEFORE THEY LEAVE</h3>
+  <div class="step"><div><span class="k">STEP 1</span><p style="margin:4px 0 0;font-weight:700">Add photos of the load to the Trello card and move the job to Job Completed</p></div><span class="qr"></span></div>
+ </div>
+</div>
+<p class="note"><span class="chg">1.</span> COLLECTING shows the buyer's name. Today it prints the word "Buyer", which is a bug.<br>
+<span class="chg">2.</span> FROM THE CARD prints every filled line of the description in order, labels in bold. Blank lines such as "Transport Provider:" are left out. Waste jobs only.</p>
+</body></html>
