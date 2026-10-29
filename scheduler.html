@@ -300,6 +300,8 @@
   /* THE TRAIL (Sam, 29 Oct 2026, "a bread crumb feature when opening tabs", option 1 built): every open layer is a tab
      along the top of the popup, the current one in front. A tab goes to that layer, its x closes it and all after it. */
   .modal .lstrip{display:flex;align-items:flex-end;gap:4px;margin:-22px -26px 14px;padding:10px 16px 0;background:#eef0f3;border-radius:12px 12px 0 0;border-bottom:1px solid #d9dde3;flex-wrap:wrap}
+  .modal.wide .lstrip{margin:0}   /* the wide popup has no padding of its own, so no pull-out (29 Oct 2026: the strip hung outside the popup) */
+  .modal.round .lstrip{margin:-22px -26px 14px}
   .modal .lstrip .ltab{display:inline-flex;align-items:center;gap:8px;padding:7px 12px;border-radius:9px 9px 0 0;background:#dfe3e9;color:#4b5563;font-weight:600;font-size:13px;border:1px solid #d9dde3;border-bottom:0;position:relative;top:1px;cursor:pointer;max-width:320px}
   .modal .lstrip .ltab .lname{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .modal .lstrip .ltab .kind{font-size:10px;text-transform:uppercase;letter-spacing:.05em;color:#6b7280;font-weight:700}
@@ -3974,7 +3976,7 @@ var SNAP=null, DETAIL={};
   var AUTO=true;
   var REFRESHING=false, POLL_EVERY=10000, CRM_EVERY_TICKS=6, TICK=0;
   var PENDING_SNAP=null, FOREIGN=null, SEEN_FOREIGN={};   // a change to the job on screen, waiting for the person to choose
-  var SCHED_VERSION="29 Oct 09:48:00";   /* bumped on every push: shows which version is running and which built a sheet (Sam, 22 Oct 2026, "still not live?!") */
+  var SCHED_VERSION="29 Oct 17:22:00";   /* bumped on every push: shows which version is running and which built a sheet (Sam, 22 Oct 2026, "still not live?!") */
   /* A NEWER SCHEDULER RELOADS ITSELF (Sam, 22 Oct 2026, a sheet built from a window opened before the push). Checked every two
      minutes and before any sheet is built; a reload waits while an editor is open. */
   function liveVersion(){ return fetch("./scheduler.html?vc="+Date.now(),{cache:"no-store"}).then(function(r){ return r.ok?r.text():""; }).then(function(t){ var m=/SCHED_VERSION\s*=\s*"([^"]+)"/.exec(t||""); return m?m[1]:""; }).catch(function(){ return ""; }); }
