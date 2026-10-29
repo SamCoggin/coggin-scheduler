@@ -1,0 +1,92 @@
+<!doctype html><html><head><meta charset="utf-8"><title>Scheduler trail, three directions</title>
+<style>
+body{font-family:-apple-system,Inter,sans-serif;background:#f5f6f8;margin:0;padding:24px;color:#1f2937;font-size:13px}
+h2{font-size:11px;color:#6b7280;font-weight:600;margin:30px 0 8px;text-transform:uppercase;letter-spacing:.05em}
+.stage{max-width:1240px;position:relative}
+.modal{background:#fff;border:1px solid #e5e7eb;border-radius:12px;box-shadow:0 8px 30px rgba(0,0,0,.08);position:relative}
+.head{padding:14px 24px 12px;border-bottom:1px solid #e5e7eb;display:flex;justify-content:space-between;align-items:flex-start}
+h3{margin:0;font-size:24px;color:#1D3058}.sub{font-size:13px;color:#6b7280;margin-top:2px}
+.btn{display:inline-block;border:1px solid #d1d5db;background:#f3f4f6;border-radius:7px;padding:7px 12px;font-weight:600;font-size:13px}.btn.p{background:#1a4fa0;color:#fff;border-color:#1a4fa0}
+.body{padding:14px 24px 18px}
+.row{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-top:1px solid #eef0f3}.row b{font-size:14px}.row .t{display:flex;gap:12px;align-items:center}
+.hm{border:1px solid #d1d5db;border-radius:7px;padding:6px 10px;width:60px;text-align:center;font-weight:600}
+.lnk{color:#1a4fa0;text-decoration:underline;font-size:13px}
+.muted{font-size:12px;color:#6b7280}
+/* 1 · tab strip */
+.strip{display:flex;align-items:flex-end;gap:4px;padding:10px 16px 0;background:#eef0f3;border-radius:12px 12px 0 0;border-bottom:1px solid #d9dde3}
+.tab{display:flex;align-items:center;gap:8px;padding:8px 14px;border-radius:9px 9px 0 0;background:#dfe3e9;color:#4b5563;font-weight:600;font-size:13px;border:1px solid #d9dde3;border-bottom:0;position:relative;top:1px}
+.tab .kind{font-size:10px;text-transform:uppercase;letter-spacing:.05em;color:#6b7280;font-weight:700}
+.tab.on{background:#fff;color:#1D3058}
+.tab .x{color:#9ca3af;font-weight:400;margin-left:4px}
+.tab.home{background:transparent;border:0;color:#1a4fa0;text-decoration:underline;padding-left:0}
+/* 2 · stacked sheets */
+.stack{position:relative;padding-top:0}
+.sheet{position:absolute;left:0;right:0;background:#fff;border:1px solid #e5e7eb;border-radius:12px;box-shadow:0 4px 18px rgba(0,0,0,.06);padding:10px 24px;font-weight:600;color:#6b7280;display:flex;justify-content:space-between;align-items:center}
+.sheet .kind{font-size:10px;text-transform:uppercase;letter-spacing:.05em;color:#9ca3af;margin-right:10px}
+.sheet .back{font-size:12px;color:#1a4fa0;text-decoration:underline;font-weight:600}
+/* 3 · pills with a kind label */
+.pills{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:10px}
+.pill{display:inline-flex;align-items:center;gap:7px;border:1px solid #cfd4da;background:#fff;border-radius:999px;padding:4px 12px 4px 6px;font-size:13px;color:#1a4fa0;font-weight:600}
+.pill .dot{width:20px;height:20px;border-radius:50%;background:#eef0f3;color:#4b5563;font-size:10px;font-weight:800;display:grid;place-items:center}
+.pill.on{background:#1D3058;border-color:#1D3058;color:#fff}.pill.on .dot{background:#9F8C6A;color:#fff}
+.chev{color:#9ca3af}
+</style></head><body>
+
+<h2>1 · tabs along the top of the popup. Each open layer is a tab, the current one in front. Click a tab to go there, the x closes that layer and everything after it.</h2>
+<div class="stage">
+ <div class="modal" style="border-radius:12px">
+  <div class="strip">
+   <span class="tab home">Day, Fri 30 Oct</span>
+   <span class="tab"><span class="kind">Person</span>Jordan I<span class="x">×</span></span>
+   <span class="tab on"><span class="kind">Job</span>Ecosave Gas &amp; Power<span class="x">×</span></span>
+  </div>
+  <div class="head"><div><h3>Ecosave Gas &amp; Power</h3><div class="sub">Production · day 9 of 9</div></div><span class="btn">Close all</span></div>
+  <div class="body">
+   <div class="row"><b>Jordan I</b><span class="t"><span class="hm">7:45</span><span class="lnk">Take off</span></span></div>
+   <div class="row"><b>Bradley T</b><span class="t"><span class="hm">4:00</span><span class="lnk">Take off</span></span></div>
+  </div>
+ </div>
+</div>
+<p class="muted" style="max-width:980px">Closest to the word you used. Reads like browser tabs, so nobody needs telling how it works. Downside: a long job name makes a wide tab, and four layers deep gets busy on a laptop.</p>
+
+<h2>2 · stacked sheets. The layers underneath stay visible as strips above the open one, like papers on a desk. Click a strip to bring it to the front.</h2>
+<div class="stage" style="height:330px">
+ <div class="stack">
+  <div class="sheet" style="top:0;margin:0 28px"><span><span class="kind">Day</span>Fri 30 Oct 2026</span></div>
+  <div class="sheet" style="top:40px;margin:0 14px"><span><span class="kind">Person</span>Jordan I · 31h planned, over by 23h 15m</span><span class="back">Back here</span></div>
+  <div class="modal" style="position:absolute;top:80px;left:0;right:0">
+   <div class="head"><div><h3>Ecosave Gas &amp; Power</h3><div class="sub">Production · day 9 of 9</div></div><div style="display:flex;gap:8px"><span class="btn">Back to Jordan I</span><span class="btn">Close</span></div></div>
+   <div class="body">
+    <div class="row"><b>Jordan I</b><span class="t"><span class="hm">7:45</span><span class="lnk">Take off</span></span></div>
+    <div class="row"><b>Bradley T</b><span class="t"><span class="hm">4:00</span><span class="lnk">Take off</span></span></div>
+   </div>
+  </div>
+ </div>
+</div>
+<p class="muted" style="max-width:980px">You can see what is underneath without reading a trail, and each strip can carry one useful line, like Jordan's over-allocation. Downside: it eats height, and three strips plus a popup is tall on a small screen.</p>
+
+<h2>3 · pills with a step number and a kind. The trail from the first mock, made into something you can hit with a finger, the current step in navy.</h2>
+<div class="stage">
+ <div class="modal">
+  <div class="head">
+   <div>
+    <div class="pills">
+     <span class="pill"><span class="dot">1</span>Day, Fri 30 Oct</span><span class="chev">›</span>
+     <span class="pill"><span class="dot">2</span>Jordan I</span><span class="chev">›</span>
+     <span class="pill on"><span class="dot">3</span>Ecosave Gas &amp; Power</span>
+    </div>
+    <h3>Ecosave Gas &amp; Power</h3><div class="sub">Production · day 9 of 9</div>
+   </div>
+   <div style="display:flex;gap:8px"><span class="btn">Back</span><span class="btn">Close</span></div>
+  </div>
+  <div class="body">
+   <div class="row"><b>Jordan I</b><span class="t"><span class="hm">7:45</span><span class="lnk">Take off</span></span></div>
+   <div class="row"><b>Bradley T</b><span class="t"><span class="hm">4:00</span><span class="lnk">Take off</span></span></div>
+  </div>
+ </div>
+</div>
+<p class="muted" style="max-width:980px">Cheapest to build and the least change to the popups. Works on a phone because the pills wrap. Downside: it is still a trail to read rather than something you see.</p>
+
+<h2>What is the same in all three</h2>
+<p class="muted" style="max-width:980px;margin:0">The layers and the chains from the first mock. Back goes one up, Close drops the lot, the browser Back button walks the trail, a refresh reopens where you were, and Open job from a person keeps the person underneath. Pick a direction and I will build it, or say which bits of two you want put together.</p>
+</body></html>

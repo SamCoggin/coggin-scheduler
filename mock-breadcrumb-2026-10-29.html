@@ -1,0 +1,99 @@
+<!doctype html><html><head><meta charset="utf-8"><title>Scheduler breadcrumb</title>
+<style>
+body{font-family:-apple-system,Inter,sans-serif;background:#f5f6f8;margin:0;padding:24px;color:#1f2937;font-size:13px}
+h2{font-size:11px;color:#6b7280;font-weight:600;margin:26px 0 8px;text-transform:uppercase;letter-spacing:.05em}
+.modal{max-width:1240px;background:#fff;border:1px solid #e5e7eb;border-radius:12px;box-shadow:0 8px 30px rgba(0,0,0,.08)}
+.head{padding:16px 24px 12px;border-bottom:1px solid #e5e7eb;display:flex;justify-content:space-between;align-items:flex-start}
+.crumb{font-size:12px;color:#6b7280;margin-bottom:8px;display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.crumb a{color:#1a4fa0;text-decoration:underline;cursor:pointer}.crumb .sep{color:#9ca3af}.crumb b{color:#1f2937;font-weight:600}
+h3{margin:0;font-size:24px;color:#1D3058}.sub{font-size:13px;color:#6b7280;margin-top:2px}
+.btn{display:inline-block;border:1px solid #d1d5db;background:#f3f4f6;border-radius:7px;padding:7px 12px;font-weight:600;font-size:13px}.btn.p{background:#1a4fa0;color:#fff;border-color:#1a4fa0}
+.body{padding:14px 24px 18px}
+.row{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-top:1px solid #eef0f3}.row b{font-size:14px}.row .t{display:flex;gap:12px;align-items:center}
+.hm{border:1px solid #d1d5db;border-radius:7px;padding:6px 10px;width:60px;text-align:center;font-weight:600}
+.lnk{color:#1a4fa0;text-decoration:underline;font-size:13px}
+.foot{padding:12px 24px;border-top:1px solid #e5e7eb;display:flex;justify-content:flex-end;gap:10px}
+.bar{max-width:1240px;background:#fff;border:1px solid #e5e7eb;border-radius:10px;padding:10px 16px;display:flex;gap:18px;align-items:center;font-size:13px}
+.bar .tabs{display:flex;gap:6px}.bar .tab{padding:5px 10px;border-radius:6px;background:#eef0f3;font-weight:600}.bar .tab.on{background:#1D3058;color:#fff}
+.muted{font-size:12px;color:#6b7280}
+</style></head><body>
+
+<h2>A · how it opens today: Day view, Jordan's panel, then Open job. The panel closes and there is no way back to Jordan.</h2>
+<div class="bar"><div class="tabs"><span class="tab on">Day</span><span class="tab">Week</span><span class="tab">Month</span><span class="tab">Routes</span><span class="tab">Manager</span></div><span class="muted">Fri 30 Oct 2026 · Close on the job takes you back to the Day view, not to Jordan</span></div>
+
+<h2>B · with the trail: every layer that is open, in order, each one a link back</h2>
+<div class="modal">
+ <div class="head">
+  <div>
+   <div class="crumb"><a>Day</a><span class="sep">›</span><a>Fri 30 Oct</a><span class="sep">›</span><a>Jordan I</a><span class="sep">›</span><b>Ecosave Gas &amp; Power</b></div>
+   <h3>Ecosave Gas &amp; Power</h3><div class="sub">Production · day 9 of 9</div>
+  </div>
+  <div style="display:flex;gap:8px"><span class="btn">Back to Jordan I</span><span class="btn">Close</span></div>
+ </div>
+ <div class="body">
+  <div class="row"><b>Jordan I</b><span class="t"><span class="hm">7:45</span><span class="lnk">Take off</span></span></div>
+  <div class="row"><b>Bradley T</b><span class="t"><span class="hm">4:00</span><span class="lnk">Take off</span></span></div>
+ </div>
+ <div class="foot"><span class="btn p">Done</span></div>
+</div>
+
+<h2>C · one level up, Jordan's day. Back goes to the Day view. Press Ecosave on his list and the trail grows again.</h2>
+<div class="modal">
+ <div class="head">
+  <div>
+   <div class="crumb"><a>Day</a><span class="sep">›</span><a>Fri 30 Oct</a><span class="sep">›</span><b>Jordan I</b></div>
+   <h3>Jordan I</h3><div class="sub">Fri 30th Oct</div>
+  </div>
+  <div style="display:flex;gap:8px"><span class="btn">Back to Day</span><span class="btn">Close</span></div>
+ </div>
+ <div class="body">
+  <div class="row"><b>Re-Tek UK Ltd</b><span class="t"><span class="hm">7:45</span><span class="lnk">Open job</span><span class="lnk">Take off</span></span></div>
+  <div class="row"><b>Ecosave Gas &amp; Power</b><span class="t"><span class="hm">7:45</span><span class="lnk">Open job</span><span class="lnk">Take off</span></span></div>
+ </div>
+ <div class="foot"><span class="btn">Mark as off</span><span class="btn p">Done</span></div>
+</div>
+
+<h2>D · a deeper trail from the Week view, through a round</h2>
+<div class="modal">
+ <div class="head">
+  <div>
+   <div class="crumb"><a>Week</a><span class="sep">›</span><a>w/c 26 Oct</a><span class="sep">›</span><a>Thu 29 Oct</a><span class="sep">›</span><a>Round, FX73 CWF</a><span class="sep">›</span><b>Balfour Beatty</b></div>
+   <h3>Balfour Beatty</h3><div class="sub">Clearance · arrive 09:30 · on the round</div>
+  </div>
+  <div style="display:flex;gap:8px"><span class="btn">Back to the round</span><span class="btn">Close</span></div>
+ </div>
+</div>
+
+<h2>E · the two popups that open straight off a view: Day sheet and Timings. One level, so a short trail.</h2>
+<div class="modal">
+ <div class="head">
+  <div>
+   <div class="crumb"><a>Week</a><span class="sep">›</span><a>w/c 26 Oct</a><span class="sep">›</span><b>Day sheet, Thu 29 Oct</b></div>
+   <h3>Day sheet, Thu 29 Oct</h3><div class="sub">Type in what came back on the sheet</div>
+  </div>
+  <div style="display:flex;gap:8px"><span class="btn">Back to Week</span><span class="btn">Close</span></div>
+ </div>
+</div>
+<div class="modal" style="margin-top:10px">
+ <div class="head">
+  <div>
+   <div class="crumb"><a>Day</a><span class="sep">›</span><a>Fri 30 Oct</a><span class="sep">›</span><b>Timings, last four weeks</b></div>
+   <h3>Timings, last four weeks</h3><div class="sub">Planned against actual</div>
+  </div>
+  <div style="display:flex;gap:8px"><span class="btn">Back to Day</span><span class="btn">Close</span></div>
+ </div>
+</div>
+
+<h2>F · the full inventory, and what each gets</h2>
+<div class="bar" style="display:block">
+ <p class="muted" style="margin:0 0 6px"><b>Views (the top tabs):</b> Day, Week, Month, Routes, Manager. Each is the first step of the trail. The recycling tally is a block inside Day and Manager, not a view, so it has no step.</p>
+ <p class="muted" style="margin:0 0 6px"><b>Popups:</b> the job editor, a person's day, a round, the Day sheet, Timings. All five get the trail in their header and a Back button beside Close.</p>
+ <p class="muted" style="margin:0 0 6px"><b>Chains that can happen:</b> view › day › person › job; view › day › round › job; view › day › job; view › day › Day sheet; view › Timings. The Manager PIN screen is part of the Manager view and needs nothing.</p>
+ <p class="muted" style="margin:0"><b>Outside the trail:</b> the card back inside a Trello card is its own page and opens the Scheduler in a new tab, so it starts a fresh trail. The guide and the printed sheets are not layers.</p>
+</div>
+
+<h2>G · the rules</h2>
+<p class="muted" style="max-width:980px;margin:0">
+The trail is the view, the day, then each panel in the order it was opened: a person, a round, a job. Any link jumps straight to that layer and drops the layers after it. Back goes one layer up. Close drops the lot and lands on the view, as it does today. The trail is held in the page address, so the browser's own Back button walks it too and a refresh reopens where you were. Nothing about the panels themselves changes: same boxes, same buttons, same saving. The one behaviour change is Open job from a person's day, which today closes the person and opens the job; with the trail the person stays underneath and Back returns to them.
+</p>
+</body></html>

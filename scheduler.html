@@ -297,6 +297,16 @@
   .veil{position:fixed;inset:0;background:rgba(0,0,0,.55);display:block;padding:24px 16px 24px;overflow-y:auto;z-index:10}
   .modal{zoom:.88;background:var(--card);border-radius:12px;width:min(640px,100%);margin:0 auto;box-shadow:0 8px 24px rgba(9,30,66,.35);padding:22px 26px 26px}
   .modal .head{display:flex;align-items:flex-start;gap:12px;margin-bottom:6px}
+  /* THE TRAIL (Sam, 29 Oct 2026, "a bread crumb feature when opening tabs", option 1 built): every open layer is a tab
+     along the top of the popup, the current one in front. A tab goes to that layer, its x closes it and all after it. */
+  .modal .lstrip{display:flex;align-items:flex-end;gap:4px;margin:-22px -26px 14px;padding:10px 16px 0;background:#eef0f3;border-radius:12px 12px 0 0;border-bottom:1px solid #d9dde3;flex-wrap:wrap}
+  .modal .lstrip .ltab{display:inline-flex;align-items:center;gap:8px;padding:7px 12px;border-radius:9px 9px 0 0;background:#dfe3e9;color:#4b5563;font-weight:600;font-size:13px;border:1px solid #d9dde3;border-bottom:0;position:relative;top:1px;cursor:pointer;max-width:320px}
+  .modal .lstrip .ltab .lname{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .modal .lstrip .ltab .kind{font-size:10px;text-transform:uppercase;letter-spacing:.05em;color:#6b7280;font-weight:700}
+  .modal .lstrip .ltab.on{background:var(--card);color:#1D3058;cursor:default}
+  .modal .lstrip .ltab .lx{color:#9ca3af;font-weight:400;margin-left:2px;cursor:pointer;padding:0 2px} .modal .lstrip .ltab .lx:hover{color:#c9372c}
+  .modal .lstrip .ltab.home{background:transparent;border:0;color:#1a4fa0;text-decoration:underline;padding-left:0;top:0}
+  .modal .lstrip .lall{margin-left:auto;align-self:center;font-size:12px;color:#1a4fa0;text-decoration:underline;cursor:pointer;padding-bottom:8px}
   .modal h3{margin:0;font-size:20px;font-weight:700;flex:1;line-height:1.3}
   .modal .close{border:0;background:var(--list);border-radius:6px;padding:6px 12px;font-weight:600}
   .modal .sub{color:var(--muted);font-size:13px;margin-bottom:18px}
@@ -1143,6 +1153,39 @@ var SNAP=null, DETAIL={};
   function crewText(c){ return c.length<2?c[0]:c.slice(0,-1).join(", ")+" and "+c[c.length-1]; }
   function inRound(j,k){ var rs=roundsOn(k,allJobs().filter(function(x){return onDay(x,k);})); return rs.filter(function(r){return r.stops.indexOf(j)>=0;}); }
   var openRound=null, openOp=null;   // openOp = "day|operative": the operative's day editor (Sam, 14 Oct 2026)
+  // THE LAYER STACK (Sam, 29 Oct 2026, mock option 1). The five popups each keep their own open-state variable, and before
+  // this only one could be open: Open job from a person's day cleared the person and there was no way back. The stack
+  // records the layers in the order they were opened. render() reconciles it against the variables: a layer whose
+  // variable is set and is not on the stack is pushed; a top layer whose variable has been cleared (Close, Done, the
+  // veil) is popped and the layer beneath it has its variable put back, so it shows again. Nothing else about the
+  // popups changes. The strip of tabs along the top of the popup is drawn from the stack.
+  var LAYERS=[];
+  function layerNow(){ if(ACT_OPEN) return {kind:"sheet",val:ACT_OPEN}; if(TIMINGS_OPEN) return {kind:"timings",val:true}; if(openRound) return {kind:"round",val:openRound}; if(openOp) return {kind:"op",val:openOp}; if(open) return {kind:"job",val:open}; return null; }
+  function layerSet(e){ ACT_OPEN=null; TIMINGS_OPEN=false; openRound=null; openOp=null; open=null; if(!e) return; if(e.kind==="sheet") ACT_OPEN=e.val; else if(e.kind==="timings") TIMINGS_OPEN=true; else if(e.kind==="round") openRound=e.val; else if(e.kind==="op") openOp=e.val; else if(e.kind==="job") open=e.val; }
+  function layerSame(a,b){ return !!a&&!!b&&a.kind===b.kind&&a.val===b.val; }
+  function layerSync(){ var cur=layerNow();
+    if(!cur){ if(LAYERS.length){ LAYERS.pop(); if(LAYERS.length) layerSet(LAYERS[LAYERS.length-1]); } return; }   // no history.back() here: it would fire popstate and pop twice
+    var at=-1; for(var i=0;i<LAYERS.length;i++){ if(layerSame(LAYERS[i],cur)) at=i; }
+    if(at===LAYERS.length-1&&at>=0) return;
+    if(at>=0){ LAYERS.length=at+1; return; }
+    LAYERS.push(cur); try{ history.pushState({layer:LAYERS.length},""); }catch(_e){} }
+  function layerLabel(e){
+    if(e.kind==="sheet") return {kind:"Day sheet",name:niceDay(e.val)};
+    if(e.kind==="timings") return {kind:"Timings",name:"Last four weeks"};
+    if(e.kind==="round") return {kind:"Round",name:String(e.val).split("|").slice(1).join(" ")||"Round"};
+    if(e.kind==="op") return {kind:"Person",name:String(e.val).split("|")[1]||"Person"};
+    var o=(open===e.val)?findOpen():null; var j=o&&o.job; var t=j?(j.title.split(" - ").slice(1).join(" - ")||j.title):"Job";
+    return {kind:o&&o.shop?"Production":o&&o.leg?"Leg":"Job",name:t}; }
+  function layerHome(){ if(view==="day") return "Day, "+niceDay(dayCur); return {day:"Day",week:"Week",month:"Month",routes:"Routes",manager:"Manager"}[view]||"Back"; }
+  function layerGo(n){ LAYERS.length=n; layerSet(n?LAYERS[n-1]:null); render(); }
+  function layerStrip(){ if(!LAYERS.length) return null; var st=el("div","lstrip");
+    var home=el("span","ltab home",layerHome()); home.title="Close every layer and go back to the "+layerHome(); home.onclick=function(){ layerGo(0); }; st.appendChild(home);
+    LAYERS.forEach(function(e,i){ var on=i===LAYERS.length-1, L=layerLabel(e); var t=el("span","ltab"+(on?" on":"")); t.appendChild(el("span","kind",L.kind)); t.appendChild(el("span","lname",L.name)); t.title=on?L.kind+": "+L.name:"Go back to "+L.name;
+      if(!on) t.onclick=function(){ layerGo(i+1); };
+      var x=el("span","lx","\u00d7"); x.title="Close "+L.name+(on?"":" and everything after it"); x.onclick=function(ev){ ev.stopPropagation(); layerGo(i); }; t.appendChild(x); st.appendChild(t); });
+    if(LAYERS.length>1){ var all=el("span","lall","Close all"); all.onclick=function(){ layerGo(0); }; st.appendChild(all); }
+    return st; }
+  try{ window.addEventListener("popstate",function(){ if(LAYERS.length){ LAYERS.pop(); layerSet(LAYERS.length?LAYERS[LAYERS.length-1]:null); render(); } }); }catch(_e){}
   // TIME WINDOWS AND THE DRIVER DAY (Sam, 13 Sep 2026). A transport job can carry "arrive after" and "finish by".
   // The day is walked from 8:00: legs out, wait for the window, site time, legs back, then labour and production work.
   // 3.5 tonne vans, no tachograph (Sam, 29 Sep 2026): GB domestic rules, not the EU 4h30/45 rule. Driving is capped at
@@ -2064,7 +2107,7 @@ var SNAP=null, DETAIL={};
       var bt=el("button",off?"off":"on",v.reg+": "+(off?"off the road":"on the road")); bt.title=off?"Put "+v.reg+" back on the road":"Take "+v.reg+" off the road for now. For a breakdown or a service with dates, use the Vehicles page in the CRM."; bt.onclick=function(){ if(off) VANS_OFF=VANS_OFF.filter(function(r){return r!==v.reg;}); else VANS_OFF.push(v.reg); persist(); render(); }; fleet.appendChild(bt); });
     fleet.appendChild(el("span","hint",vansOnRoad(k)+" of "+VEHICLES.length+" on the road today. A job on a van that is off is flagged. Dated downtime comes from the CRM's Vehicles page."));
     pl.appendChild(fleet); b.appendChild(pl);
-    var mo=ACT_OPEN?actualsModal():TIMINGS_OPEN?timingsModal():openRound?roundModal():openOp?opModal():modal(); if(mo){ document.body.appendChild(mo); if(window.__keepScroll) mo.scrollTop=window.__keepScroll; }
+    layerSync(); var mo=ACT_OPEN?actualsModal():TIMINGS_OPEN?timingsModal():openRound?roundModal():openOp?opModal():modal(); if(mo){ var mbox=mo.querySelector&&mo.querySelector(".modal"), lst=layerStrip(); if(mbox&&lst) mbox.insertBefore(lst,mbox.firstChild); document.body.appendChild(mo); if(window.__keepScroll) mo.scrollTop=window.__keepScroll; }
     $("#prev").onclick=function(){ var x=new Date(dayCur+"T12:00"); x.setDate(x.getDate()-1); dayCur=iso(x); render(); };
     $("#next").onclick=function(){ var x=new Date(dayCur+"T12:00"); x.setDate(x.getDate()+1); dayCur=iso(x); render(); };
   }
@@ -3919,7 +3962,7 @@ var SNAP=null, DETAIL={};
             ci.onchange=upd; ki.onchange=upd; rowm.appendChild(ci); rowm.appendChild(ki); form.appendChild(rowm); });
           tk.appendChild(form); } });
       if(!CRM_KEY) tk.appendChild(el("span","low","Paste the CRM key in the Manager view to save the tally.")); b.appendChild(tk); }
-    var mo=ACT_OPEN?actualsModal():TIMINGS_OPEN?timingsModal():openRound?roundModal():openOp?opModal():modal(); if(mo){ document.body.appendChild(mo); if(window.__keepScroll) mo.scrollTop=window.__keepScroll; }
+    layerSync(); var mo=ACT_OPEN?actualsModal():TIMINGS_OPEN?timingsModal():openRound?roundModal():openOp?opModal():modal(); if(mo){ var mbox=mo.querySelector&&mo.querySelector(".modal"), lst=layerStrip(); if(mbox&&lst) mbox.insertBefore(lst,mbox.firstChild); document.body.appendChild(mo); if(window.__keepScroll) mo.scrollTop=window.__keepScroll; }
     $("#prev").onclick=function(){week--;render();}; $("#next").onclick=function(){week++;render();};
   }
   // PULL IN EDITS MADE ELSEWHERE (Sam, 18 Oct 2026: "I need to add a background refresh and toggle for this view to
@@ -3931,7 +3974,7 @@ var SNAP=null, DETAIL={};
   var AUTO=true;
   var REFRESHING=false, POLL_EVERY=10000, CRM_EVERY_TICKS=6, TICK=0;
   var PENDING_SNAP=null, FOREIGN=null, SEEN_FOREIGN={};   // a change to the job on screen, waiting for the person to choose
-  var SCHED_VERSION="29 Oct 09:12:00";   /* bumped on every push: shows which version is running and which built a sheet (Sam, 22 Oct 2026, "still not live?!") */
+  var SCHED_VERSION="29 Oct 09:48:00";   /* bumped on every push: shows which version is running and which built a sheet (Sam, 22 Oct 2026, "still not live?!") */
   /* A NEWER SCHEDULER RELOADS ITSELF (Sam, 22 Oct 2026, a sheet built from a window opened before the push). Checked every two
      minutes and before any sheet is built; a reload waits while an editor is open. */
   function liveVersion(){ return fetch("./scheduler.html?vc="+Date.now(),{cache:"no-store"}).then(function(r){ return r.ok?r.text():""; }).then(function(t){ var m=/SCHED_VERSION\s*=\s*"([^"]+)"/.exec(t||""); return m?m[1]:""; }).catch(function(){ return ""; }); }
