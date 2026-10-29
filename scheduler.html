@@ -3403,9 +3403,20 @@ var SNAP=null, DETAIL={};
           rowsF.forEach(function(r){ doc.setFontSize(10); if(r.lb){ doc.setFont("helvetica","bold"); doc.text(r.lb,L+5,fy); } doc.setFont(r.lb?"helvetica":"helvetica",r.lb?"normal":"bold"); doc.text(r.tx,L+5+r.lw,fy); fy+=r.tx.length*4.6+1.6; });
           y+=bh+6; } }
       var collect=/collect/i.test(ARRIVAL_WHO[j.arrive]||"");
+      /* DRIVER SIGNS FOR THE LOAD (Sam, 29 Oct 2026, mock approved): someone else's driver takes a waste load away, so our
+         operative gets a full name and signature once loaded, before the vehicle sets off. Not on loads coming to us. */
+      var drvSign=isWasteJob(j)&&(collect||/Plastic Collection|Skip Exchange/i.test(labelNames(j.labels||[]).join(" ")));
+      if(drvSign){ var sh=44; if(y+sh+6>278) cont(); doc.setLineWidth(1); doc.setDrawColor(17); doc.roundedRect(L,y,W,sh,2,2); doc.setDrawColor(0);
+        doc.setFont("helvetica","bold"); doc.setFontSize(12); doc.text("DRIVER SIGNS FOR THE LOAD",L+5,y+7.5);
+        doc.setFont("helvetica","normal"); doc.setFontSize(9); doc.text("Once loaded and before the driver sets off. Do not let the vehicle leave without it.",L+5,y+12.5);
+        doc.setLineWidth(0.4); doc.setFont("helvetica","bold"); doc.setFontSize(8);
+        doc.text("FULL NAME",L+5,y+22,{charSpace:0.2}); doc.line(L+32,y+22.5,L+W-5,y+22.5);
+        doc.text("SIGNATURE",L+5,y+38,{charSpace:0.2}); doc.line(L+32,y+38.5,L+W-5,y+38.5);
+        y+=sh+6; }
       if(!isWasteJob(j)){ if(y+20>278) cont(); heading(hasKnow?2:1,collect?"Load onto their vehicle":/arriv/i.test(ARRIVAL_WHO[j.arrive]||"")?"Unload from their vehicle":"Items"); kit.items(info.items,cont); }
       // before they leave: equal step boxes, each with the code it needs
-      var steps=[]; if(!don&&d.signoff) steps.push(["Get the customer to sign it off",d.signoff,"Sign-off"]);
+      var steps=[]; if(drvSign) steps.push(["Driver's full name and signature above, before they set off","",""]);
+      if(!don&&d.signoff) steps.push(["Get the customer to sign it off",d.signoff,"Sign-off"]);
       steps.push(["Add photos of the load to the Trello card and move the job to Job Completed","https://trello.com/c/"+(j.short||j.id),"Trello card"]);
       var ph=45; if(y+ph+6>278) cont(); y+=2; doc.setFillColor(17,17,17); doc.roundedRect(L,y,W,ph,2,2,"F"); doc.setTextColor(255); doc.setFont("helvetica","bold"); doc.setFontSize(12); doc.text("BEFORE THEY LEAVE",L+5,y+7.5);
       var n=steps.length, gw=4, sw=(W-10-gw*(n-1))/n, sy=y+11, shh=ph-15;
@@ -3413,7 +3424,7 @@ var SNAP=null, DETAIL={};
         doc.setDrawColor(17); doc.setLineWidth(0.5); doc.roundedRect(sx+3,sy+3,4.5,4.5,0.5,0.5); doc.setDrawColor(0);
         doc.setTextColor(110); doc.setFont("helvetica","bold"); doc.setFontSize(7); doc.text("STEP "+(i+1),sx+10,sy+6.3,{charSpace:0.2});
         doc.setTextColor(17); doc.setFontSize(10); var tl2=doc.splitTextToSize(st[0],sw-30).slice(0,4); doc.text(tl2,sx+3,sy+13);
-        qr(st[1],sx+sw-23,sy+2.5,20); doc.setFont("helvetica","bold"); doc.setFontSize(6.5); doc.text(st[2],sx+sw-13,sy+26.3,{align:"center"}); });
+        if(st[1]){ qr(st[1],sx+sw-23,sy+2.5,20); doc.setFont("helvetica","bold"); doc.setFontSize(6.5); doc.text(st[2],sx+sw-13,sy+26.3,{align:"center"}); } });
       doc.setTextColor(0); y+=ph+4; setFoot("Any issues, contact the operations manager."); };
     kit.myEndOfDay=function(w,info){ var vans=info.vans||[], prod=info.prod||0, other=info.other||0;
       var today=[].concat(vans.map(function(v){ return "Van "+v.van+", "+v.drops+(v.drops===1?" drop":" drops"); }),prod?[prod+(prod===1?" production job":" production jobs")]:[],other?[other+(other===1?" other job":" other jobs")]:[]).join(" · ")||"nothing planned for you, workshop and recycling";
@@ -3916,7 +3927,7 @@ var SNAP=null, DETAIL={};
   var AUTO=true;
   var REFRESHING=false, POLL_EVERY=10000, CRM_EVERY_TICKS=6, TICK=0;
   var PENDING_SNAP=null, FOREIGN=null, SEEN_FOREIGN={};   // a change to the job on screen, waiting for the person to choose
-  var SCHED_VERSION="29 Oct 08:38:56";   /* bumped on every push: shows which version is running and which built a sheet (Sam, 22 Oct 2026, "still not live?!") */
+  var SCHED_VERSION="29 Oct 08:40:27";   /* bumped on every push: shows which version is running and which built a sheet (Sam, 22 Oct 2026, "still not live?!") */
   /* A NEWER SCHEDULER RELOADS ITSELF (Sam, 22 Oct 2026, a sheet built from a window opened before the push). Checked every two
      minutes and before any sheet is built; a reload waits while an editor is open. */
   function liveVersion(){ return fetch("./scheduler.html?vc="+Date.now(),{cache:"no-store"}).then(function(r){ return r.ok?r.text():""; }).then(function(t){ var m=/SCHED_VERSION\s*=\s*"([^"]+)"/.exec(t||""); return m?m[1]:""; }).catch(function(){ return ""; }); }
