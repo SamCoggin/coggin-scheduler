@@ -3377,9 +3377,9 @@ var SNAP=null, DETAIL={};
         var who=ARRIVAL_WHO[j.arrive]||"", coming=/collect/i.test(who)?"Collecting":/arriv|deliver/i.test(who)?"Dropping off":"Coming";
         var whoV=/^Customer/.test(who)?"The customer":who.replace(/ (collecting|arriving)$/i,"")||"Not set";
         // NAME THE BUYER (Sam, 29 Oct 2026: the plastic sheet printed "Buyer"): a role word gives way to the name on the card
-        if(/^(buyer|haulier|carrier|courier|transport)$/i.test(whoV)){ var nmW=d.kv[whoV.toLowerCase()]||d.kv.buyer||d.kv["transport provider"]||""; if(nmW) whoV=nmW; }
+        if(/^(buyer|haulier|carrier|courier|transport)$/i.test(whoV)){ var nmW=d.kv[whoV.toLowerCase()]||d.kv.buyer||d.kv["buyer business name"]||d.kv["buyer name"]||d.kv["transport provider"]||""; if(nmW) whoV=nmW; }
         var arr=j.from?"after "+j.from:j.collectAt?"around "+j.collectAt:j.by?"by "+j.by:"Not given yet";
-        var facts=[["Time",timeTxt||"Not set"],[coming,whoV],["Arriving",arr],["Ref",d.kv.ref||""]].filter(function(f){ return f[1]; }), fw=(W-(facts.length-1)*3)/facts.length;
+        var facts=[["Time",timeTxt||"Not set"],[coming,whoV],["Arriving",arr],["Ref",d.kv.ref||d.kv["reference number"]||d.kv.reference||""]].filter(function(f){ return f[1]; }), fw=(W-(facts.length-1)*3)/facts.length;
         facts.forEach(function(f,i){ var fx=L+i*(fw+3); doc.setLineWidth(0.5); doc.setDrawColor(17); doc.roundedRect(fx,y,fw,11,1.2,1.2); doc.setDrawColor(0); label(f[0],fx+3,y+4); doc.setFont("helvetica","bold"); doc.setFontSize(10); doc.text(doc.splitTextToSize(f[1],fw-5)[0],fx+3,y+8.8); });
         y+=15;
         // WHO IS COMING (Sam, 2 Oct 2026: "can we add the persons name and relevant details on the labour sheet"): name, phone
@@ -3397,7 +3397,7 @@ var SNAP=null, DETAIL={};
          box for, so every filled line prints as written, label in bold. Blank "Label:" lines are left out. */
       if(isWasteJob(j)){ var fl=String(DETAIL[j.id]&&DETAIL[j.id].desc||"").replace(/\*\*/g,"").replace(/\r/g,"").split("\n").map(function(r){ return r.replace(/\[([^\]]*)\]\([^)]*\)/g,"$1").trim(); })
           .filter(function(r){ if(!r) return false; var m0=/^([^:]{1,40}):\s*(.*)$/.exec(r); return !(m0&&NOT_SET.test(m0[2].trim())); });
-        if(fl.length){ doc.setFontSize(10); var rowsF=fl.map(function(r){ var m1=/^([^:]{1,40}):\s*(.*)$/.exec(r); var lb=m1?m1[1]+": ":""; doc.setFont("helvetica","bold"); var lw=lb?doc.getTextWidth(lb):0; doc.setFont("helvetica","normal"); return {lb:lb,lw:lw,tx:doc.splitTextToSize(m1?m1[2]:r,W-10-lw)}; });
+        if(fl.length){ doc.setFontSize(10); var rowsF=fl.map(function(r){ var m1=/^([^:]{1,40}):\s*(.*)$/.exec(r); var lb=m1?m1[1]+": ":""; doc.setFont("helvetica","bold"); var lw=lb?doc.getTextWidth(lb):0; if(lb) doc.setFont("helvetica","normal"); return {lb:lb,lw:lw,tx:doc.splitTextToSize(m1?m1[2]:r,W-10-lw)}; });
           var bh=10+rowsF.reduce(function(t,r){ return t+r.tx.length*4.6+1.6; },0); if(y+bh>278) cont();
           doc.setLineWidth(0.5); doc.setDrawColor(17); doc.roundedRect(L,y,W,bh,1.5,1.5); doc.setDrawColor(0); label("From the card",L+5,y+5); var fy=y+11;
           rowsF.forEach(function(r){ doc.setFontSize(10); if(r.lb){ doc.setFont("helvetica","bold"); doc.text(r.lb,L+5,fy); } doc.setFont(r.lb?"helvetica":"helvetica",r.lb?"normal":"bold"); doc.text(r.tx,L+5+r.lw,fy); fy+=r.tx.length*4.6+1.6; });
@@ -3916,7 +3916,7 @@ var SNAP=null, DETAIL={};
   var AUTO=true;
   var REFRESHING=false, POLL_EVERY=10000, CRM_EVERY_TICKS=6, TICK=0;
   var PENDING_SNAP=null, FOREIGN=null, SEEN_FOREIGN={};   // a change to the job on screen, waiting for the person to choose
-  var SCHED_VERSION="29 Oct 08:33:15";   /* bumped on every push: shows which version is running and which built a sheet (Sam, 22 Oct 2026, "still not live?!") */
+  var SCHED_VERSION="29 Oct 08:38:56";   /* bumped on every push: shows which version is running and which built a sheet (Sam, 22 Oct 2026, "still not live?!") */
   /* A NEWER SCHEDULER RELOADS ITSELF (Sam, 22 Oct 2026, a sheet built from a window opened before the push). Checked every two
      minutes and before any sheet is built; a reload waits while an editor is open. */
   function liveVersion(){ return fetch("./scheduler.html?vc="+Date.now(),{cache:"no-store"}).then(function(r){ return r.ok?r.text():""; }).then(function(t){ var m=/SCHED_VERSION\s*=\s*"([^"]+)"/.exec(t||""); return m?m[1]:""; }).catch(function(){ return ""; }); }
