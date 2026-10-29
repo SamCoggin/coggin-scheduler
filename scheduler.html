@@ -2870,7 +2870,7 @@ var SNAP=null, DETAIL={};
       if(/^access$/.test(head)&&!NOT_SET.test(l)) out.access.push(l); });
     if(!out.address){ var pc=pcOf(j); if(pc&&!/^area:/.test(pc)) out.address=pc; }
     // DONATION CARDS WRITE IT AS LINES (2 Oct 2026, Bluebird showed "Not on the card"): "Site Contact Name:" and "Mobile Number:"
-    if(!out.contacts.length){ var kv0=out.kv, nm0=kv0["site contact name"]||kv0["contact name"]||kv0["name"]||"", ph0=kv0["mobile number"]||kv0["contact phone/mobile number"]||kv0["phone"]||kv0["number"]||"";
+    if(!out.contacts.length){ var kv0=out.kv, nm0=kv0["site contact name"]||kv0["contact name"]||kv0["name"]||"", ph0=kv0["mobile number"]||kv0["contact number"]||kv0["contact phone/mobile number"]||kv0["phone number"]||kv0["phone"]||kv0["number"]||"";
       if(nm0||ph0) out.contacts.push([nm0,ph0].filter(Boolean).join(" · ")); }
     if(!out.access.length&&out.kv.access) out.access.push(out.kv.access);
     // ONE CONTACT ONCE (Sam, 2 Oct 2026, CUBE HR printed Lisa twice): a secondary that is the same person is dropped
@@ -3916,7 +3916,7 @@ var SNAP=null, DETAIL={};
   var AUTO=true;
   var REFRESHING=false, POLL_EVERY=10000, CRM_EVERY_TICKS=6, TICK=0;
   var PENDING_SNAP=null, FOREIGN=null, SEEN_FOREIGN={};   // a change to the job on screen, waiting for the person to choose
-  var SCHED_VERSION="29 Oct 08:28:13";   /* bumped on every push: shows which version is running and which built a sheet (Sam, 22 Oct 2026, "still not live?!") */
+  var SCHED_VERSION="29 Oct 08:33:15";   /* bumped on every push: shows which version is running and which built a sheet (Sam, 22 Oct 2026, "still not live?!") */
   /* A NEWER SCHEDULER RELOADS ITSELF (Sam, 22 Oct 2026, a sheet built from a window opened before the push). Checked every two
      minutes and before any sheet is built; a reload waits while an editor is open. */
   function liveVersion(){ return fetch("./scheduler.html?vc="+Date.now(),{cache:"no-store"}).then(function(r){ return r.ok?r.text():""; }).then(function(t){ var m=/SCHED_VERSION\s*=\s*"([^"]+)"/.exec(t||""); return m?m[1]:""; }).catch(function(){ return ""; }); }
