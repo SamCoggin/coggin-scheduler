@@ -1283,11 +1283,17 @@ var SNAP=null, DETAIL={};
   }
   // the badge says exactly what is still missing, since a transport job has
   // more than one time on it
-  function badge(part,isToday){
+  function badge(part,isToday,k){
     var cls="bdg "+(isToday?"now":"todo");
     if(part.contractor&&!part.who.length) return el("span","bdg sub",(/courier/i.test(part.contractor)?"Courier: ":"Subcontractor: ")+part.contractor);
     if(!part.who.length) return el("span",cls,"Unassigned");
-    if(part.isPrep){ if(part.mins==null) return el("span",cls,"No production time"); return el("span","bdg",eachText(part)); }
+    if(part.isPrep){ if(part.mins==null) return el("span",cls,"No production time");
+      // TODAY'S SHARE, NOT THE WHOLE JOB (Sam, 29 Oct 2026, Ecosave card: "why is it saying 69h and 45m each"). A
+      // nine-day job read 9 x 7:45 per person. On a day card the badge is what each person does that day, from the
+      // grid; people not in the workshop today are left out. Without a day (the job list), the old total stands.
+      if(k){ var on=prepWhoOn(part,k); if(!on.length) return el("span",cls,"Nobody on it today"); var sh=on.map(function(w){ return prepCell(part,w,k); }); var same=sh.every(function(m){ return m===sh[0]; });
+        return el("span","bdg",same?fmt(sh[0])+(on.length>1?" each":""):on.map(function(w,i){ return w.split(" ")[0]+" "+fmt(sh[i]); }).join(", ")); }
+      return el("span","bdg",eachText(part)); }
     var missing=[];
     if(part.site&&part.drive==null&&!part.onRound) missing.push("No travel time");
     if(part.site&&!part.vehicle&&!part.roundVan&&!attending(part)) missing.push("No vehicle"); else if(part.site&&hireDue(part)) missing.push("Hire not booked");
@@ -1938,7 +1944,7 @@ var SNAP=null, DETAIL={};
     var ft=el("div","foot");
     if(!isPrep&&!j.isLeg&&!(j.contractor&&!j.who.length)){ var stdX=standardFor(j.movement||j.label,j.load); if(aboveStandard(stdX,j.who,j.mins)) ft.appendChild(el("span","bdg now","Above the estimate")); }
     if(isPrep){ var pstdX=prodStandardFor(j.load,j.prep.who.length); if(aboveProdStandard(pstdX,j.prep.who,j.prep.mins,j.prep.start,j.prep.date)) ft.appendChild(el("span","bdg now","Above the estimate")); }
-    ft.appendChild(badge(partX,isToday)); if(!isPrep&&j.site&&j.by){ var twc=jobTiming(j,k); if(twc&&twc.late) ft.appendChild(el("span","bdg now","Finishes "+hmStr(twc.end)+", after "+j.by)); }
+    ft.appendChild(badge(partX,isToday,k)); if(!isPrep&&j.site&&j.by){ var twc=jobTiming(j,k); if(twc&&twc.late) ft.appendChild(el("span","bdg now","Finishes "+hmStr(twc.end)+", after "+j.by)); }
     c.appendChild(ft);
     var pd=RECORD_ON?partX.done:null; if(pd){ ft.appendChild(el("span","bdg"+(pd.status==="no"?" now":" ok"),pd.status==="no"?"Did not go: "+(pd.reason||"no reason"):"Done"+(pd.mins!=null?", "+fmt(pd.mins)+(isPrep?" production":" on site"):""))); } else if(needsRecord(j,isPrep)) ft.appendChild(el("span","bdg todo","Record how it went"));
     // A HELD CARD OPENS ITS DEAL (Sam, 17 Sep 2026: "do the same on the scheduler held cards"): a new tab on
@@ -3976,7 +3982,7 @@ var SNAP=null, DETAIL={};
   var AUTO=true;
   var REFRESHING=false, POLL_EVERY=10000, CRM_EVERY_TICKS=6, TICK=0;
   var PENDING_SNAP=null, FOREIGN=null, SEEN_FOREIGN={};   // a change to the job on screen, waiting for the person to choose
-  var SCHED_VERSION="29 Oct 17:22:00";   /* bumped on every push: shows which version is running and which built a sheet (Sam, 22 Oct 2026, "still not live?!") */
+  var SCHED_VERSION="29 Oct 17:40:00";   /* bumped on every push: shows which version is running and which built a sheet (Sam, 22 Oct 2026, "still not live?!") */
   /* A NEWER SCHEDULER RELOADS ITSELF (Sam, 22 Oct 2026, a sheet built from a window opened before the push). Checked every two
      minutes and before any sheet is built; a reload waits while an editor is open. */
   function liveVersion(){ return fetch("./scheduler.html?vc="+Date.now(),{cache:"no-store"}).then(function(r){ return r.ok?r.text():""; }).then(function(t){ var m=/SCHED_VERSION\s*=\s*"([^"]+)"/.exec(t||""); return m?m[1]:""; }).catch(function(){ return ""; }); }
