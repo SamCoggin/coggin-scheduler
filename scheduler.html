@@ -3069,13 +3069,28 @@ var SNAP=null, DETAIL={};
     // A PAGE NEVER BLEEDS (Sam, 15 Oct 2026, DWF: "Job sheets can never page bleed"). kit.tight is 0, 1 or 2: the list
     // rows shrink, the photos go at 2, and kit.fits below redraws a page tighter until it stays on one sheet.
     kit.tight=0;
-    var list2=function(items,cont){ var colW=(W-6)/2, i0=0, rh=kit.tight>=2?6.5:kit.tight===1?8:10, ph0=kit.tight>=2?0:kit.tight===1?7:8, fsz=kit.tight>=2?8:kit.tight===1?8.5:9.5;
-      while(i0<items.length){ var room=Math.max(1,Math.floor((268-y)/rh)), take=Math.min(items.length-i0,room*2), half=Math.ceil(take/2);
-        for(var q=0;q<take;q++){ var it=items[i0+q], col=q<half?0:1, row=col?q-half:q, ix=L+col*(colW+6), iy=y+row*rh, tx0=ph0?ix+18:ix+9;
-          if(ph0){ if(!img(it.photo,ix,iy+1,9,ph0)) noPhoto(ix,iy+1,9,ph0); }
-          doc.setFont("helvetica","bold"); doc.setFontSize(fsz); doc.text(String(it.qty),ph0?ix+11:ix,iy+rh*0.62); doc.setFont("helvetica","normal"); doc.setFontSize(fsz-1); doc.text(doc.splitTextToSize(it.name,colW-(ph0?20:12))[0],tx0,iy+rh*0.62);
-          doc.setDrawColor(215); doc.setLineWidth(0.25); doc.line(ix,iy+rh,ix+colW,iy+rh); doc.setDrawColor(0); }
-        y+=half*rh+3; i0+=take; if(i0<items.length) cont(); } };
+    // NEVER CLIPPED (Sam, 2 Nov 2026: a desk line on the sheet ended "White (cut to"). Every name is wrapped in full, a row is
+    // as tall as its name, and the two columns fill top to bottom; a long list carries on over the page.
+    var list2=function(items,cont){ var colW=(W-6)/2, i0=0, rh=kit.tight>=2?6.5:kit.tight===1?8:10, ph0=kit.tight>=2?0:kit.tight===1?7:8, fsz=kit.tight>=2?8:kit.tight===1?8.5:9.5, lh=(fsz-1)*0.42, tw=colW-(ph0?20:12);
+      var linesOf=function(it){ doc.setFont("helvetica","normal"); doc.setFontSize(fsz-1); return doc.splitTextToSize(String(it.name||""),tw); };
+      var rowH=function(ls){ return Math.max(rh,ls.length*lh+3); };
+      while(i0<items.length){ var rows=[], i=i0, tot=0;
+        if(268-y<rowH(linesOf(items[i0]))){ cont(); continue; }   // no room for even the first row: over the page first
+        for(;i<items.length;i++){ var ls=linesOf(items[i]), h=rowH(ls); rows.push({it:items[i],ls:ls,h:h}); tot+=h; }
+        // how many go in each column: balance when the rest fits on this page, else fill the left column to the foot first
+        var avail=268-y, colsFit=[], c=0, used=0, half=tot/2;
+        for(var k=0;k<rows.length;k++){ var r=rows[k];
+          if(c===0&&colsFit.length&&((tot<=avail*2&&used+r.h>half)||used+r.h>avail)){ c=1; used=0; }   // the rest fits: balance the columns; it does not: fill the left to the foot first
+          if(used+r.h>avail&&(c===1||colsFit.length)) break;                                          // over the page: the rest carries on
+          colsFit.push(c); used+=r.h; }
+        var take=colsFit.length; if(!take){ cont(); continue; }
+        var yy=[y,y], maxY=y;
+        for(var q=0;q<take;q++){ var r=rows[q], col=colsFit[q], ix=L+col*(colW+6), iy=yy[col], tx0=ph0?ix+18:ix+9;
+          if(ph0){ if(!img(r.it.photo,ix,iy+1,9,ph0)) noPhoto(ix,iy+1,9,ph0); }
+          doc.setFont("helvetica","bold"); doc.setFontSize(fsz); doc.text(String(r.it.qty),ph0?ix+11:ix,iy+(r.ls.length>1?lh+1.5:r.h*0.62));
+          doc.setFont("helvetica","normal"); doc.setFontSize(fsz-1); doc.text(r.ls,tx0,iy+(r.ls.length>1?lh+1.5:r.h*0.62));
+          doc.setDrawColor(215); doc.setLineWidth(0.25); doc.line(ix,iy+r.h,ix+colW,iy+r.h); doc.setDrawColor(0); yy[col]=iy+r.h; if(yy[col]>maxY) maxY=yy[col]; }
+        y=maxY+3; i0+=take; if(i0<items.length) cont(); } };
     // A BUILD TAKES THE FULL WIDTH (Sam, 28 Oct 2026, mock approved: mock-build-item-2026-10-28.html). A bench or custom
     // desk squeezed into a quarter tile cut its part names off; now the build photo, name and details sit on the left and
     // every part on the right in two columns, full name, colour underneath and a tick box. Plain items keep the tiles.
@@ -3143,15 +3158,17 @@ var SNAP=null, DETAIL={};
         if(y+8+rowH>278){ setFoot("Loading carries on over the page."); yardHead(true); colHead(); }
         var segTop=y; gHead(false);
         var closeSeg=function(){ doc.setLineWidth(0.5); doc.setDrawColor(17); doc.roundedRect(L,segTop,W,y-segTop,1.5,1.5); doc.setDrawColor(0); };
-        items.forEach(function(it,ii){ if(y+rowH>278){ closeSeg(); setFoot("Loading carries on over the page."); yardHead(true); colHead(); segTop=y; gHead(true); }
+        items.forEach(function(it,ii){ doc.setFont("helvetica","normal"); doc.setFontSize(10); var nl=doc.splitTextToSize(String(it.name||""),cLoad-L-44), h=Math.max(rowH,nl.length*4.2+5);   /* the whole name, the row grows (never clipped, 2 Nov 2026) */
+          if(y+h>278){ closeSeg(); setFoot("Loading carries on over the page."); yardHead(true); colHead(); segTop=y; gHead(true); }
           if(ii>0){ doc.setDrawColor(215); doc.setLineWidth(0.25); doc.line(L,y,L+W,y); doc.setDrawColor(0); }
-          if(!img(it.photo,L+4,y+1.5,17,13)) noPhoto(L+4,y+1.5,17,13);
-          doc.setFont("helvetica","bold"); doc.setFontSize(14); doc.text(String(it.qty),L+26,y+10,{align:"center"});
-          doc.setFont("helvetica","normal"); doc.setFontSize(10); var nl=doc.splitTextToSize(it.name,cLoad-L-44).slice(0,2); doc.text(nl,L+34,y+(nl.length>1?7.6:9.6));
-          box(cLoad-2.75,y+5.25,5.5); y+=rowH; });
+          if(!img(it.photo,L+4,y+h/2-6.5,17,13)) noPhoto(L+4,y+h/2-6.5,17,13);
+          doc.setFont("helvetica","bold"); doc.setFontSize(14); doc.text(String(it.qty),L+26,y+h/2+2,{align:"center"});
+          doc.setFont("helvetica","normal"); doc.setFontSize(10); doc.text(nl,L+34,nl.length>1?y+h/2-(nl.length-1)*2.1+1.3:y+9.6);
+          box(cLoad-2.75,y+h/2-2.75,5.5); y+=h; });
         closeSeg(); y+=4; });
-      if(y+32>278){ setFoot("Loading carries on over the page."); yardHead(true); }
+      if(y+3+kitH()>284){ setFoot("Loading carries on over the page."); yardHead(true); }   /* the whole kit block, or a new page: the box sat on the foot line (Sam, 2 Nov 2026) */
       y+=3; kitCheck(2); setFoot("Then turn the page for the first stop."); };
+    var kitH=function(){ return 7.5+4+Math.ceil(VAN_KIT_BACK.length/3)*7+3+4+Math.ceil(VAN_KIT_ROAD.length/3)*7+3+8+4; };
     // the kit ticks, drawn on the loading sheet or, when there is nothing to load, on the first stop page
     var kitCheck=function(n){ heading(n,"Always in the van"); doc.setFont("helvetica","normal"); doc.setFontSize(7.5); doc.setTextColor(90); doc.text("tick each one before you set off",L+W,y-4.2,{align:"right"}); doc.setTextColor(0);
       var cw=(W-8)/3, grid=function(list){ list.forEach(function(t,i){ var cx=L+(i%3)*(cw+4), cy=y+Math.floor(i/3)*7; box(cx,cy+1.2,4); doc.setFont("helvetica",/Tool box/.test(t)?"bold":"normal"); var fz=9; doc.setFontSize(fz); while(fz>7&&doc.getTextWidth(t)>cw-8){ fz-=0.5; doc.setFontSize(fz); } doc.text(t,cx+6.5,cy+4.6);   /* never clipped: the words shrink a little instead */ doc.setDrawColor(215); doc.setLineWidth(0.25); doc.line(cx,cy+7,cx+cw,cy+7); doc.setDrawColor(0); }); y+=Math.ceil(list.length/3)*7; };
@@ -3982,7 +3999,7 @@ var SNAP=null, DETAIL={};
   var AUTO=true;
   var REFRESHING=false, POLL_EVERY=10000, CRM_EVERY_TICKS=6, TICK=0;
   var PENDING_SNAP=null, FOREIGN=null, SEEN_FOREIGN={};   // a change to the job on screen, waiting for the person to choose
-  var SCHED_VERSION="29 Oct 17:40:00";   /* bumped on every push: shows which version is running and which built a sheet (Sam, 22 Oct 2026, "still not live?!") */
+  var SCHED_VERSION="2 Nov 10:05:00";   /* bumped on every push: shows which version is running and which built a sheet (Sam, 22 Oct 2026, "still not live?!") */
   /* A NEWER SCHEDULER RELOADS ITSELF (Sam, 22 Oct 2026, a sheet built from a window opened before the push). Checked every two
      minutes and before any sheet is built; a reload waits while an editor is open. */
   function liveVersion(){ return fetch("./scheduler.html?vc="+Date.now(),{cache:"no-store"}).then(function(r){ return r.ok?r.text():""; }).then(function(t){ var m=/SCHED_VERSION\s*=\s*"([^"]+)"/.exec(t||""); return m?m[1]:""; }).catch(function(){ return ""; }); }
