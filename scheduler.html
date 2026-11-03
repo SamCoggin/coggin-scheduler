@@ -2890,10 +2890,20 @@ var SNAP=null, DETAIL={};
     pickWork(l).forEach(function(t){ var tl=doc.splitTextToSize(t,W-6), bh=2+tl.length*4.2+2; doc.setFillColor(244,244,244); doc.setDrawColor(17); doc.setLineWidth(0.7); doc.rect(L,y,W,bh,"FD"); doc.text(tl,L+3,y+4.7); y+=bh+2; });
     if(l.spec_notes){ doc.setFontSize(8.5); var sl=doc.splitTextToSize("Spec: "+l.spec_notes,W-6), bh=2+sl.length*3.8+2; doc.setFillColor(244,244,244); doc.setDrawColor(150); doc.setLineWidth(0.25); doc.rect(L,y,W,bh,"FD"); doc.text(sl,L+3,y+4.1); y+=bh+2; }
     doc.setDrawColor(0); return y; }
-  function loadPickPhoto(url){ return fetch(url).then(function(x){ if(!x.ok) throw new Error(x.status); return x.blob(); }).then(function(b){ return new Promise(function(res,rej){
+  // A PHOTO THAT DID NOT LOAD IS TRIED AGAIN (Sam, 3 Nov 2026: "WHY ARE SOME OF THE IMAGES MISSING!!!"). Two stock photos out
+  // of the day's thirty failed once while the sheet was built, and the loader gave up on the first miss with nothing said:
+  // the slot read "no photo" under a STOCK PHOTO caption. Now three goes with a pause between, six photos in flight at a
+  // time so the file host is not hit with the whole day at once, and a url that still fails is remembered in PICK_FAIL so
+  // the slot can say "not loaded" and the download can say how many. A failed url is not cached, so the next download
+  // tries it again.
+  var PICK_FAIL={};
+  function loadPickPhoto(url,go){ go=go||1; return fetchPickPhoto(url).then(function(){ delete PICK_FAIL[url]; }).catch(function(){ if(go<3) return new Promise(function(r){ setTimeout(r,500*go); }).then(function(){ return loadPickPhoto(url,go+1); }); PICK_FAIL[url]=true; }); }
+  function loadPickPhotos(urls){ var q=urls.slice(), run=function(){ if(!q.length) return Promise.resolve(); return loadPickPhoto(q.shift()).then(run); }; return Promise.all([run(),run(),run(),run(),run(),run()]); }
+  function photosFailedNote(){ var n=Object.keys(PICK_FAIL).length; if(n) alert(n+(n===1?" photo":" photos")+" did not load from the CRM, so the sheet says \"not loaded\" where "+(n===1?"it goes":"they go")+". Download it again to try "+(n===1?"it":"them")+" once more."); }
+  function fetchPickPhoto(url){ return fetch(url).then(function(x){ if(!x.ok) throw new Error(x.status); return x.blob(); }).then(function(b){ return new Promise(function(res,rej){
       var u=URL.createObjectURL(b), im=new Image(); im.onload=function(){ try{ var mx=600, sc=Math.min(1,mx/Math.max(im.width,im.height)), c=document.createElement("canvas"); c.width=Math.max(1,Math.round(im.width*sc)); c.height=Math.max(1,Math.round(im.height*sc));
         var g=c.getContext("2d"); g.fillStyle="#fff"; g.fillRect(0,0,c.width,c.height); g.drawImage(im,0,0,c.width,c.height); PICK_IMG[url]={d:c.toDataURL("image/jpeg",0.82),w:c.width,h:c.height}; URL.revokeObjectURL(u); res(); }catch(e){ rej(e); } };
-      im.onerror=function(){ URL.revokeObjectURL(u); rej(new Error("image")); }; im.src=u; }); }).catch(function(){}); }
+      im.onerror=function(){ URL.revokeObjectURL(u); rej(new Error("image")); }; im.src=u; }); }); }
   // THE TRANSPORT SHEET (Sam, 2 Oct 2026, mock approved after several rounds). One PDF for the day's vans, downloaded with the
   // day sheet. Page one is the yard: load the van (last drop in first, a photo on every line, the blanket rule) and the kit
   // check. Then one page per stop in drop order: name, arrival, address and contact large, a code to scan to sign off,
@@ -2969,7 +2979,7 @@ var SNAP=null, DETAIL={};
     var urls={}, byCard={};
     runs.forEach(function(r){ r.stops.forEach(function(s){ s.items=itemsOf(s.j); s.d=cardDetails(s.j); byCard[s.j.id]={run:r,stop:s}; s.items.forEach(function(it){ [it.photo].concat((it.parts||[]).map(function(p){ return p.photo; })).forEach(function(u){ if(u&&!PICK_IMG[u]) urls[u]=1; }); }); }); });
     var info={}; ids.forEach(function(x){ if(byCard[x.id]) return; var j=JOBS.filter(function(q){ return q.id===x.id; })[0]; if(!j) return; info[j.id]={items:itemsOf(j),d:cardDetails(j)}; info[j.id].items.forEach(function(it){ [it.photo].concat((it.parts||[]).map(function(p){ return p.photo; })).forEach(function(u){ if(u&&!PICK_IMG[u]) urls[u]=1; }); }); });
-    await Promise.all(Object.keys(urls).slice(0,200).map(loadPickPhoto));
+    await loadPickPhotos(Object.keys(urls).slice(0,200)); photosFailedNote();
     return {runs:runs,byCard:byCard,info:info};
   }
   // THE JOB PAGES KIT (2 Oct 2026, mock approved: "a per job, job sheet for the day"). Draws onto the day sheet's own PDF:
@@ -2986,7 +2996,7 @@ var SNAP=null, DETAIL={};
       doc.setFont("helvetica","bold"); doc.setFontSize(9); doc.text((c.qty||1)+"x",L+9.5,mid+1.3);
       var px=L+19, ps=RH-2, im=c.photo&&PICK_IMG[c.photo];
       if(im){ try{ var r0=im.w/im.h, dw=ps, dh=ps; if(r0>1) dh=ps/r0; else dw=ps*r0; doc.setDrawColor(200); doc.setLineWidth(0.25); doc.rect(px,cy+1,ps,ps); doc.addImage(im.d,"JPEG",px+(ps-dw)/2,cy+1+(ps-dh)/2,dw,dh,undefined,"FAST"); }catch(e){ im=null; } }
-      if(!im){ doc.setDrawColor(170); doc.setLineDashPattern([0.8,0.8],0); doc.rect(px,cy+1,ps,ps); doc.setLineDashPattern([],0); doc.setFont("helvetica","normal"); doc.setFontSize(5.5); doc.setTextColor(150); doc.text("no photo",px+ps/2,mid+1,{align:"center"}); doc.setTextColor(0); }
+      if(!im){ doc.setDrawColor(170); doc.setLineDashPattern([0.8,0.8],0); doc.rect(px,cy+1,ps,ps); doc.setLineDashPattern([],0); doc.setFont("helvetica","normal"); doc.setFontSize(5.5); doc.setTextColor(150); doc.text(c.photo?"failed":"no photo",px+ps/2,mid+1,{align:"center"}); doc.setTextColor(0); }
       doc.setFont("helvetica","normal"); doc.setFontSize(9); doc.setDrawColor(17);
       var txt=doc.splitTextToSize([c.name,c.sku].filter(Boolean).join(" \u00b7 ")+(topNote&&(c.role==="top"||c.replaces_role==="top")?" \u00b7 top only, not the frame or legs":""),W-78).slice(0,2);
       doc.text(txt,px+ps+3,mid+(txt.length>1?-0.6:1.3));
@@ -2996,7 +3006,8 @@ var SNAP=null, DETAIL={};
     var L=15, W=180, y=15, kit={};
     var qr=function(url,x,y0,size){ if(typeof qrcode!=="function"||!url) return false; var q=qrcode(0,"M"); q.addData(url); q.make(); var n=q.getModuleCount(), m=size/n; doc.setFillColor(0,0,0); for(var r0=0;r0<n;r0++) for(var c0=0;c0<n;c0++) if(q.isDark(r0,c0)) doc.rect(x+c0*m,y0+r0*m,m+0.02,m+0.02,"F"); return true; };
     var img=function(url,x,y0,w,h){ var im=url&&PICK_IMG[url]; if(!im) return false; try{ var r0=im.w/im.h, dw=w, dh=h; if(r0>w/h) dh=w/r0; else dw=h*r0; doc.addImage(im.d,"JPEG",x+(w-dw)/2,y0+(h-dh)/2,dw,dh,undefined,"FAST"); return true; }catch(e){ return false; } };
-    var noPhoto=function(x,y0,w,h){ doc.setDrawColor(170); doc.setLineDashPattern([0.8,0.8],0); doc.rect(x,y0,w,h); doc.setLineDashPattern([],0); doc.setFont("helvetica","bold"); doc.setFontSize(6); doc.setTextColor(120); doc.text("no photo",x+w/2,y0+h/2+1,{align:"center"}); doc.setTextColor(0); doc.setDrawColor(0); };
+    // "no photo" is the CRM having none; a url that was asked for and never came says "not loaded" (3 Nov 2026)
+    var noPhoto=function(x,y0,w,h,url){ var txt=url?(w<14?"failed":"not loaded"):"no photo"; doc.setDrawColor(170); doc.setLineDashPattern([0.8,0.8],0); doc.rect(x,y0,w,h); doc.setLineDashPattern([],0); doc.setFont("helvetica","bold"); doc.setFontSize(6); doc.setTextColor(120); doc.text(txt,x+w/2,y0+h/2+1,{align:"center"}); doc.setTextColor(0); doc.setDrawColor(0); };
     var box=function(x,y0,s0){ doc.setLineWidth(0.45); doc.setDrawColor(17); doc.roundedRect(x,y0,s0,s0,0.5,0.5); doc.setDrawColor(0); };
     var crewFoot="";
     var newPage=function(text){ doc.addPage(); y=15; foots.push({page:doc.getNumberOfPages(),text:text||""}); };   // no crew names in the footer (Sam, 2 Oct 2026): the name tags at the top say who
@@ -3057,13 +3068,13 @@ var SNAP=null, DETAIL={};
     // ONE PART PER ROW (Sam, 28 Oct 2026, MediaCo bench: two columns left each name 3 mm wide, so "Bench end leg" printed a letter a line)
     var partsH=function(items){ var mx=0; items.forEach(function(it){ var n=(it.parts||[]).length; if(n) mx=Math.max(mx,4+n*11); }); return mx; };
     var tiles=function(items){ var tw=(W-12)/4, ph=partsH(items), th=38+ph; items.forEach(function(it,i){ var tx=L+(i%4)*(tw+4), ty=y+Math.floor(i/4)*(th+4); doc.setDrawColor(180); doc.setLineWidth(0.3); doc.roundedRect(tx,ty,tw,th,1,1); doc.setDrawColor(0);
-        if(!img(it.photo,tx+2,ty+2,tw-4,16)) noPhoto(tx+(tw-20)/2,ty+2,20,16);
+        if(!img(it.photo,tx+2,ty+2,tw-4,16)) noPhoto(tx+(tw-20)/2,ty+2,20,16,it.photo);
         // the product on top, its size and colours on a smaller line (Sam, 2 Oct 2026: names were cut off mid-way)
         var parts=String(it.name||"").split(/\s*\|\s*/), main=parts[0], det=parts.slice(1).join(" · ");
         doc.setFont("helvetica","bold"); doc.setFontSize(9); var ml=doc.splitTextToSize((it.qty!==""?it.qty+" x  ":"")+main,tw-4).slice(0,2); doc.text(ml,tx+2,ty+23);
         if(det){ doc.setFont("helvetica","normal"); doc.setFontSize(7); doc.setTextColor(100); doc.text(doc.splitTextToSize(det,tw-4).slice(0,3),tx+2,ty+23+ml.length*3.6); doc.setTextColor(0); }
         var ps=it.parts||[]; if(ps.length){ var py=ty+38; doc.setDrawColor(215); doc.setLineWidth(0.25); doc.line(tx+2,py-1,tx+tw-2,py-1); doc.setFont("helvetica","bold"); doc.setFontSize(5.5); doc.setTextColor(60); doc.text("THESE PARTS MAKE IT, NOTHING EXTRA",tx+2,py+2); doc.setTextColor(0);
-          ps.forEach(function(pt,pi){ var px=tx+2, qy=py+4+pi*11; if(!img(pt.photo,px,qy,9,9)) noPhoto(px,qy,9,9);
+          ps.forEach(function(pt,pi){ var px=tx+2, qy=py+4+pi*11; if(!img(pt.photo,px,qy,9,9)) noPhoto(px,qy,9,9,pt.photo);
             doc.setFont("helvetica","bold"); doc.setFontSize(7); doc.text(String(pt.qty||1)+"x",px+11,qy+4); doc.setFont("helvetica","normal"); doc.setFontSize(6.5); doc.text(doc.splitTextToSize(String(pt.name||""),tw-24).slice(0,2),px+17,qy+3.2); }); } });
       y+=Math.ceil(items.length/4)*(th+4)+2; };
     // A PAGE NEVER BLEEDS (Sam, 15 Oct 2026, DWF: "Job sheets can never page bleed"). kit.tight is 0, 1 or 2: the list
@@ -3086,7 +3097,7 @@ var SNAP=null, DETAIL={};
         var take=colsFit.length; if(!take){ cont(); continue; }
         var yy=[y,y], maxY=y;
         for(var q=0;q<take;q++){ var r=rows[q], col=colsFit[q], ix=L+col*(colW+6), iy=yy[col], tx0=ph0?ix+18:ix+9;
-          if(ph0){ if(!img(r.it.photo,ix,iy+1,9,ph0)) noPhoto(ix,iy+1,9,ph0); }
+          if(ph0){ if(!img(r.it.photo,ix,iy+1,9,ph0)) noPhoto(ix,iy+1,9,ph0,r.it.photo); }
           doc.setFont("helvetica","bold"); doc.setFontSize(fsz); doc.text(String(r.it.qty),ph0?ix+11:ix,iy+(r.ls.length>1?lh+1.5:r.h*0.62));
           doc.setFont("helvetica","normal"); doc.setFontSize(fsz-1); doc.text(r.ls,tx0,iy+(r.ls.length>1?lh+1.5:r.h*0.62));
           doc.setDrawColor(215); doc.setLineWidth(0.25); doc.line(ix,iy+r.h,ix+colW,iy+r.h); doc.setDrawColor(0); yy[col]=iy+r.h; if(yy[col]>maxY) maxY=yy[col]; }
@@ -3100,12 +3111,12 @@ var SNAP=null, DETAIL={};
       var photoH=kit.tight>=2?0:28, leftH=4+photoH+4+7+detL.length*3.6+3, rightH=10+Math.ceil(ps.length/cols)*rowH, h=Math.max(leftH,rightH);
       if(y+h>278) cont();
       doc.setDrawColor(180); doc.setLineWidth(0.35); doc.roundedRect(L,y,W,h,1.2,1.2); doc.setDrawColor(215); doc.setLineWidth(0.25); doc.line(L+LW,y+2,L+LW,y+h-2); doc.setDrawColor(0);
-      var ly=y+4; if(photoH){ if(!img(it.photo,L+3,ly,LW-6,photoH)) noPhoto(L+(LW-20)/2,ly+4,20,photoH-8); ly+=photoH+4; }
+      var ly=y+4; if(photoH){ if(!img(it.photo,L+3,ly,LW-6,photoH)) noPhoto(L+(LW-20)/2,ly+4,20,photoH-8,it.photo); ly+=photoH+4; }
       doc.setFont("helvetica","bold"); doc.setFontSize(12); var ml=doc.splitTextToSize((it.qty!==""?it.qty+" x  ":"")+main,LW-6).slice(0,2); doc.text(ml,L+3,ly+4); ly+=ml.length*5+2;
       if(detL.length){ doc.setFont("helvetica","normal"); doc.setFontSize(8); doc.setTextColor(90); doc.text(detL,L+3,ly+1); doc.setTextColor(0); }
       doc.setFont("helvetica","bold"); doc.setFontSize(6.5); doc.setTextColor(60); doc.text("THESE PARTS MAKE IT, NOTHING EXTRA",RX,y+6); doc.setTextColor(0);
       ps.forEach(function(pt,pi){ var px=RX+(pi%cols)*(colW+6), qy=y+10+Math.floor(pi/cols)*rowH, ps0=rowH-3;
-        if(!img(pt.photo,px,qy,ps0,ps0)) noPhoto(px,qy,ps0,ps0);
+        if(!img(pt.photo,px,qy,ps0,ps0)) noPhoto(px,qy,ps0,ps0,pt.photo);
         doc.setFont("helvetica","bold"); doc.setFontSize(10); doc.text(String(pt.qty||1)+"x",px+ps0+2,qy+ps0/2+1.5);
         var bits=String(pt.name||"").split(/\s*\u00b7\s*|\s*\|\s*/), pn=bits[0]||"Part", sub=bits.slice(1).join(" \u00b7 ").replace(/[()]/g,"");
         var tx=px+ps0+11, tw2=colW-ps0-11-7; doc.setFont("helvetica","bold"); doc.setFontSize(8); var nl=doc.splitTextToSize(pn,tw2).slice(0,2); doc.text(nl,tx,qy+3.5);
@@ -3161,7 +3172,7 @@ var SNAP=null, DETAIL={};
         items.forEach(function(it,ii){ doc.setFont("helvetica","normal"); doc.setFontSize(10); var nl=doc.splitTextToSize(String(it.name||""),cLoad-L-44), h=Math.max(rowH,nl.length*4.2+5);   /* the whole name, the row grows (never clipped, 2 Nov 2026) */
           if(y+h>278){ closeSeg(); setFoot("Loading carries on over the page."); yardHead(true); colHead(); segTop=y; gHead(true); }
           if(ii>0){ doc.setDrawColor(215); doc.setLineWidth(0.25); doc.line(L,y,L+W,y); doc.setDrawColor(0); }
-          if(!img(it.photo,L+4,y+h/2-6.5,17,13)) noPhoto(L+4,y+h/2-6.5,17,13);
+          if(!img(it.photo,L+4,y+h/2-6.5,17,13)) noPhoto(L+4,y+h/2-6.5,17,13,it.photo);
           doc.setFont("helvetica","bold"); doc.setFontSize(14); doc.text(String(it.qty),L+26,y+h/2+2,{align:"center"});
           doc.setFont("helvetica","normal"); doc.setFontSize(10); doc.text(nl,L+34,nl.length>1?y+h/2-(nl.length-1)*2.1+1.3:y+9.6);
           box(cLoad-2.75,y+h/2-2.75,5.5); y+=h; });
@@ -3324,7 +3335,7 @@ var SNAP=null, DETAIL={};
           var ym=brow===2?y1+td0*sc:y1+td0*sc/2; if(brow===2){ doc.setLineWidth(0.7); doc.line(x0,ym,x0+pw,ym); } doc.setFillColor(17,17,17); var rr=Math.max(0.35,Math.min(0.9,pw/60)); for(var c1=0;c1<=per;c1++) doc.circle(x0+c1*tw0*sc,ym,rr,"F"); doc.setDrawColor(0);
           if(label){ doc.setFont("helvetica","normal"); doc.setFontSize(6.5); doc.setTextColor(90); doc.text(per+" x "+tw0+" wide \u00b7 "+brow+(brow===1?" row of ":" rows of ")+td0+" deep \u00b7 "+(per*tw0)+" x "+(brow*td0)+" overall",px+boxW/2,py+boxH-3.6,{align:"center"}); doc.text("Thick line is the beam, a dot per leg",px+boxW/2,py+boxH-0.6,{align:"center"}); doc.setTextColor(0); } };
         if(bank>0&&!l.photo_is_build) benchPlan(L+1,y0+2,44,35,false);   /* the bench plan fills the big photo slot */
-        else { /* THE ONE IN THE BAY (Sam, 23 Oct 2026: "the marketing image looks different to the actual product in stock"): the storage photo first, a build photo sales attached next, the marketing photo last */ var ph1=l.photo_is_build?(l.product_photo||l.storage_photo):(l.storage_photo||l.product_photo); if(!(ph1&&img(ph1,L+1,y0+2,44,35))) noPhoto(L+1,y0+2,44,35); }
+        else { /* THE ONE IN THE BAY (Sam, 23 Oct 2026: "the marketing image looks different to the actual product in stock"): the storage photo first, a build photo sales attached next, the marketing photo last */ var ph1=l.photo_is_build?(l.product_photo||l.storage_photo):(l.storage_photo||l.product_photo), ph2=ph1===l.storage_photo?l.product_photo:l.storage_photo; var phDrawn=""; /* the other photo stands in when the first did not load (3 Nov 2026) */ if(ph1&&img(ph1,L+1,y0+2,44,35)) phDrawn=ph1; else if(ph2&&img(ph2,L+1,y0+2,44,35)) phDrawn=ph2; else noPhoto(L+1,y0+2,44,35,ph1||ph2); }
         if(whereH){ var bx0=INX; [[loc,"LOCATION",true],[l.sku,"CODE",false]].forEach(function(b){ if(!b[0]) return; doc.setFont("helvetica","bold"); doc.setFontSize(9); var vw=doc.getTextWidth(String(b[0])); doc.setFontSize(4.6); var bw=Math.max(vw,doc.getTextWidth(b[1]))+4.5;
             if(b[2]){ doc.setFillColor(17,17,17); doc.roundedRect(bx0,y0+1.6,bw,7,0.8,0.8,"F"); doc.setTextColor(200); } else { doc.setDrawColor(17); doc.setLineWidth(0.4); doc.roundedRect(bx0,y0+1.6,bw,7,0.8,0.8); doc.setDrawColor(0); doc.setTextColor(90); }
             doc.text(b[1],bx0+2.2,y0+3.7,{charSpace:0.15}); doc.setFontSize(9); doc.setTextColor(b[2]?255:17); doc.text(String(b[0]),bx0+2.2,y0+7.4); doc.setTextColor(0); bx0+=bw+2; }); }
@@ -3339,7 +3350,7 @@ var SNAP=null, DETAIL={};
         else ty+=2.4+1;
         if(sls.length){ doc.setFillColor(243,244,246); doc.rect(INX-1,ty-2.4,INW+2,sls.length*3.4+1.6,"F"); doc.setFont("helvetica","bold"); doc.setFontSize(7.5); doc.text(sls,INX,ty+1.05); /* centred in the grey box: same space above and below (Sam, 22 Oct 2026, mock) */ ty+=sls.length*3.4+2; }
         /* the bench plan is in the photo slot now, not under the name */   // the plan prints under the name whether or not a photo fills the slot (Sam, 22 Oct 2026)
-        if(!(bank>0&&!l.photo_is_build)){ var cap0=l.photo_is_build?(l.product_photo?"BUILD PHOTO":""):l.storage_photo?"STOCK PHOTO":l.product_photo?"CATALOGUE PHOTO":""; if(cap0){ doc.setFont("helvetica","bold"); doc.setFontSize(4.8); doc.setTextColor(110); doc.text(cap0,L+23,y0+40.2,{align:"center",charSpace:0.15}); doc.setTextColor(0); } }   /* every photo says what it is (Sam, 23 Oct 2026) */   /* the photo is the actual item, so it says so */
+        if(!(bank>0&&!l.photo_is_build)){ var cap0=!phDrawn?"":phDrawn===l.storage_photo?"STOCK PHOTO":l.photo_is_build?"BUILD PHOTO":"CATALOGUE PHOTO"; if(cap0){ doc.setFont("helvetica","bold"); doc.setFontSize(4.8); doc.setTextColor(110); doc.text(cap0,L+23,y0+40.2,{align:"center",charSpace:0.15}); doc.setTextColor(0); } }   /* every photo says what it is (Sam, 23 Oct 2026) */   /* the photo is the actual item, so it says so */
         doc.setDrawColor(200); doc.setLineWidth(0.25); doc.line(CX[0],y0,CX[0],y0+rowH+partsH); doc.line(CX[2],y0,CX[2],y0+rowH+partsH); doc.setDrawColor(0);
         if(single) countsAt(rows[0],y0+rowH/2);
         else { // THE WHOLE ITEM, READ FROM ITS PARTS (Sam, 22 Oct 2026, mock A): parts picked so far, and the item finished, no boxes
@@ -3641,7 +3652,7 @@ var SNAP=null, DETAIL={};
             // With a page per job (2 Oct 2026) an In-progress job's page lists what is left as "Items to finish"
             PICK[id]={picks:!!e.picks,finish:fin,lines:left,all:all.filter(function(l){ return !isPartLine(l); }),picked:pk,allPicked:all.length>0&&!left.length,error:e.error||"",ref:e.ref||""}; });
           var urls={}; Object.keys(PICK).forEach(function(id){ PICK[id].lines.forEach(function(l){ [l.product_photo,l.storage_photo,l._legs&&(l._legs.product_photo||l._legs.storage_photo)].concat((l.build_components||[]).map(function(c){ return c.photo; })).forEach(function(u){ if(u&&!PICK_IMG[u]) urls[u]=1; }); }); });
-          await Promise.all(Object.keys(urls).slice(0,150).map(loadPickPhoto)); } }
+          await loadPickPhotos(Object.keys(urls).slice(0,150)); photosFailedNote(); } }
       if(!PICK) PICK={};
       if(only) PICK.__only=only;
       try{ PICK.__data=await jobPagesData(k); }catch(e){ console.error("job pages",e); }
@@ -3999,7 +4010,7 @@ var SNAP=null, DETAIL={};
   var AUTO=true;
   var REFRESHING=false, POLL_EVERY=10000, CRM_EVERY_TICKS=6, TICK=0;
   var PENDING_SNAP=null, FOREIGN=null, SEEN_FOREIGN={};   // a change to the job on screen, waiting for the person to choose
-  var SCHED_VERSION="2 Nov 10:05:00";   /* bumped on every push: shows which version is running and which built a sheet (Sam, 22 Oct 2026, "still not live?!") */
+  var SCHED_VERSION="3 Nov 08:26:52";   /* bumped on every push: shows which version is running and which built a sheet (Sam, 22 Oct 2026, "still not live?!") */
   /* A NEWER SCHEDULER RELOADS ITSELF (Sam, 22 Oct 2026, a sheet built from a window opened before the push). Checked every two
      minutes and before any sheet is built; a reload waits while an editor is open. */
   function liveVersion(){ return fetch("./scheduler.html?vc="+Date.now(),{cache:"no-store"}).then(function(r){ return r.ok?r.text():""; }).then(function(t){ var m=/SCHED_VERSION\s*=\s*"([^"]+)"/.exec(t||""); return m?m[1]:""; }).catch(function(){ return ""; }); }
