@@ -22,6 +22,7 @@ function normPlan(d){ if(!d||typeof d!=="object") return d;
   // automatic estimate is still off; a figure somebody asked the map for is theirs.
   if(d.who) d.who=normWho(d.who); if(d.prep&&d.prep.who) d.prep.who=normWho(d.prep.who); if(d.legs&&d.legs.length) d.legs.forEach(function(l){ if(l&&l.who) l.who=normWho(l.who); });
   if(d.prep) repairPrepCells(d.prep);   // cells left at a full day by a time typed later (3 Nov 2026), see repairPrepCells
+  if(d.prep&&d.prep.shop&&typeof d.prep.shop==="object"){ var sh={}; Object.keys(d.prep.shop).forEach(function(w){ var n=crewOf(w)||w; if(d.prep.shop[w]) sh[n]=d.prep.shop[w]; }); d.prep.shop=sh; }
   return d; }
 // only these three drive the van. the others go along as a second pair of hands.
 // the five who do site work and yard recycling; the other four are on the crew for
@@ -289,6 +290,27 @@ function badgeText(d,site,round,kind){
 }
 
 // badge for the production (workshop) part of a workshop-stage card
+// ── TWO WORKSHOPS (Sam, 3 Nov 2026, mocks approved: "we have two workshops one is seating and the other is furniture") ──
+// A line goes to a workshop by its section: seating is seating, every other real section is furniture. A line with no
+// real section (made to order, a loan or sample, a card with no deal) goes by its name, and is "unsorted" when the
+// name says nothing, printed on the furniture page with a mark so it is never lost. Sofas, booths and pods are seating.
+// Who is on which workshop is chosen PER JOB (Sam: "We are not ready for" a standing roster "yet so I need to be able
+// to assign who is on what"): P.shop = { "Jack C": "seating" }. A person with no choice prints on both pages.
+var WORKSHOPS=[["seating","Seating"],["furniture","Furniture"]];
+var SEATING_WORDS=/\b(chairs?|stools?|sofas?|booths?|pods?|seating|armchairs?)\b/i;
+function workshopOf(l){ var s=String((l&&l.section)||"").toLowerCase(), nm=String((l&&l.name)||"")+" "+String((l&&l.label)||""); if(s==="seating") return "seating"; if(s&&["other","loan","sample","refurb"].indexOf(s)<0) return "furniture"; return SEATING_WORDS.test(nm)?"seating":"furniture"; }
+function workshopUnsorted(l){ var s=String((l&&l.section)||"").toLowerCase(); return (!s||s==="other")&&!SEATING_WORDS.test(String((l&&l.name)||"")+" "+String((l&&l.label)||"")); }
+function workshopsOf(lines){ var seen={}; (lines||[]).forEach(function(l){ seen[workshopOf(l)]=1; }); return WORKSHOPS.map(function(x){ return x[0]; }).filter(function(w){ return seen[w]; }); }
+function workshopName(w){ var x=WORKSHOPS.filter(function(p){ return p[0]===w; })[0]; return x?x[1]:""; }
+function prepShopOf(P,w){ return (P&&P.shop&&P.shop[w])||""; }
+function setPrepShop(P,w,v){ P.shop=P.shop||{}; if(v) P.shop[w]=v; else delete P.shop[w]; tidyPrepShop(P); }
+function tidyPrepShop(P){ if(!P||!P.shop) return; Object.keys(P.shop).forEach(function(w){ if((P.who||[]).indexOf(w)<0||!P.shop[w]) delete P.shop[w]; }); if(!Object.keys(P.shop).length) delete P.shop; }
+function prepUnplaced(P){ return ((P&&P.who)||[]).filter(function(w){ return !prepShopOf(P,w); }); }
+// "Seating: Jack · Furniture: Jordan, Bart", then anyone still to place; blank when nobody has a workshop
+function prepShopText(P){ if(!P||!P.shop) return ""; var bits=WORKSHOPS.map(function(x){ var ws=(P.who||[]).filter(function(w){ return prepShopOf(P,w)===x[0]; }); return ws.length?x[1]+": "+ws.map(firstName).join(", "):""; }).filter(Boolean); var un=prepUnplaced(P); if(un.length) bits.push(un.map(firstName).join(", ")+" no workshop"); return bits.join(" \u00b7 "); }
+// the people whose chip prints on a workshop's page: placed there, or not placed anywhere yet
+function prepWhoFor(P,ws){ return ((P&&P.who)||[]).filter(function(w){ var s=prepShopOf(P,w); return !s||s===ws; }); }
+
 function prodBadgeText(d,long){
   var p=d&&d.prep; if(!p||!p.date) return {text:"Production: not scheduled",color:"yellow"};
   var who=p.who||[]; var days=p.start&&p.start!==p.date?niceShort(p.start)+" to "+niceShort(p.date):niceShort(p.date);

@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>Workshop split sheet mock</title>
+<style>
+body{margin:0;padding:24px;background:#e9eaee;font-family:Helvetica,Arial,sans-serif;color:#111;font-size:12px}
+.note{max-width:760px;margin:0 auto 14px;color:#444;font-size:13px;line-height:1.5}
+.page{background:#fff;width:720px;min-height:980px;margin:0 auto 28px;padding:44px 48px 40px;box-sizing:border-box;position:relative;box-shadow:0 1px 4px rgba(0,0,0,.15)}
+.kicker{font-size:8px;letter-spacing:.14em;font-weight:700;color:#777;text-transform:uppercase}
+h1{margin:4px 0 8px;font-size:24px}
+.chip{display:inline-block;background:#111;color:#fff;font-weight:700;font-size:10px;padding:5px 10px;border-radius:3px;margin-right:6px}
+.tr{position:absolute;right:48px;top:48px;text-align:right;font-size:11px}
+.tr b{display:block;font-size:12px}
+.band{margin:16px 0 0;border:2px solid #111;border-radius:4px;display:flex;align-items:stretch}
+.band .l{background:#111;color:#fff;padding:10px 14px;font-weight:700;font-size:10px;letter-spacing:.08em;text-transform:uppercase;width:120px}
+.band .r{padding:8px 14px;flex:1}
+.band .r b{font-size:14px;display:block}
+.band .r span{color:#555;font-size:10px}
+.band .q{padding:8px 14px;text-align:right;border-left:1px solid #ddd;font-size:10px;color:#555}
+.band .q b{display:block;font-size:14px;color:#111}
+.rule{border-top:2.5px solid #111;margin:18px 0 10px}
+h2{font-size:12px;letter-spacing:.06em;margin:0 0 4px}
+.sub{color:#666;font-size:10px;margin-bottom:10px}
+table{width:100%;border-collapse:collapse}
+th{font-size:7px;letter-spacing:.1em;color:#777;text-transform:uppercase;text-align:left;padding:4px 0;border-bottom:1px solid #ccc}
+th.c{text-align:center}
+td{vertical-align:top;padding:10px 0;border-bottom:1.5px solid #111}
+.ph{width:118px;height:118px;background:#f1f1f1;border:1px solid #ddd;display:flex;align-items:center;justify-content:center;color:#aaa;font-size:8px;letter-spacing:.1em}
+.cap{font-size:6px;letter-spacing:.14em;color:#888;text-align:center;margin-top:3px}
+.loc{display:inline-block;background:#111;color:#fff;font-size:9px;font-weight:700;padding:3px 7px;border-radius:2px;margin-right:6px}
+.code{display:inline-block;border:1.5px solid #111;font-size:9px;font-weight:700;padding:2px 7px;border-radius:2px}
+.nm{font-size:13px;font-weight:700;margin:6px 0 4px}
+.spec{background:#f3f4f6;border-left:3px solid #111;padding:5px 8px;font-size:9px;line-height:1.4}
+.spec .k{font-size:6px;letter-spacing:.12em;color:#777;font-weight:700;text-transform:uppercase;display:block}
+.num{text-align:center;font-size:11px;padding-top:40px}
+.box{display:inline-block;width:40px;height:18px;border:1.5px solid #111;border-radius:3px;vertical-align:middle;margin-left:6px}
+.un{display:inline-block;border:1.5px dashed #b45309;color:#b45309;font-size:8px;font-weight:700;padding:2px 6px;border-radius:2px;margin-left:6px;letter-spacing:.06em}
+.foot{position:absolute;left:48px;right:48px;bottom:26px;font-size:8px;color:#777;display:flex;justify-content:space-between}
+.finish{margin-top:18px;background:#111;color:#fff;border-radius:4px;padding:10px 12px;display:flex;align-items:center;gap:10px}
+.finish .t{font-weight:700;font-size:10px;width:70px;line-height:1.2}
+.finish .s{background:#fff;color:#111;border-radius:3px;padding:7px 10px;font-size:9px;flex:1}
+.finish .s b{font-size:6px;letter-spacing:.12em;color:#777;display:block}
+.tick{display:inline-block;width:12px;height:12px;border:1.5px solid #111;border-radius:2px;vertical-align:middle;margin-right:6px}
+</style></head><body>
+
+<p class="note"><b>The Overbury job as it would print.</b> One card, one plan, one due date. The sheet splits into a page per workshop by the product category on each line: chairs, stools, sofas, soft seating, booths and pods are seating, everything else (desks, bench desks, screens, storage, tables) is furniture. Each page carries only its own lines and its own finished count, with the whole job's count beside it. A job that is all chairs prints the seating page only.</p>
+
+<!-- PAGE 1: SEATING -->
+<div class="page">
+  <div class="kicker">Production · Tue 3rd Nov</div>
+  <h1>Overbury</h1>
+  <span class="chip">Jack C</span>
+  <div class="tr"><b>Full day · Due Tue 3rd Nov</b>Delivery Wed 4th Nov · Ref 111385</div>
+
+  <div class="band"><div class="l">Seating<br>workshop</div><div class="r"><b>12 chairs on this page</b><span>Page 1 of 2 for this job · the desks are on the furniture page</span></div><div class="q">Finished<b>0 of 12</b>on this page</div><div class="q">Whole job<b>0 of 22</b></div></div>
+
+  <div class="rule"></div>
+  <h2>ITEMS · IN PROGRESS AND FINISHED</h2>
+  <div class="sub">Write today's numbers in the boxes. Only the seating on this job is listed here.</div>
+  <table>
+    <tr><th style="width:130px">Item</th><th></th><th class="c" style="width:90px">In progress<br>now · started today</th><th class="c" style="width:110px">Finished<br>so far · today</th></tr>
+    <tr>
+      <td><div class="ph">CATALOGUE PHOTO</div></td>
+      <td style="padding-left:12px"><span class="loc">Unit 8</span><span class="code">MSH00062</span><div class="nm">10 x Triumph Mesh-back Task Chair</div><div class="spec"><span class="k">Make it · as on the furniture selection</span>Seat: Black · Back: Black · Mesh back · Adjustable arms · Other: Bases need changing to black</div></td>
+      <td class="num">0 <span class="box"></span></td>
+      <td class="num">0 of 10 <span class="box"></span></td>
+    </tr>
+    <tr>
+      <td><div class="ph">CATALOGUE PHOTO</div></td>
+      <td style="padding-left:12px"><span class="loc">Above Showroom</span><span class="code">SFT00039</span><div class="nm">2 x Breakout Chair</div><div class="spec"><span class="k">Make it · as on the furniture selection</span>Seat: Light Grey · Back: Light Grey</div></td>
+      <td class="num">0 <span class="box"></span></td>
+      <td class="num">0 of 2 <span class="box"></span></td>
+    </tr>
+  </table>
+
+  <div class="finish"><div class="t">WHEN YOU FINISH</div><div class="s"><b>Step 2</b><span class="tick"></span>Tick off the seating lines on the Trello card</div><div class="s"><b>Step 3</b><span class="tick"></span>Move the job on once the furniture page is finished too</div></div>
+
+  <div class="foot"><span>This job carries on over the page: furniture workshop.</span><span>Scheduler version 3 Nov</span></div>
+</div>
+
+<!-- PAGE 2: FURNITURE -->
+<div class="page">
+  <div class="kicker">Production · Tue 3rd Nov</div>
+  <h1>Overbury</h1>
+  <span class="chip">Jordan I</span>
+  <div class="tr"><b>Full day · Due Tue 3rd Nov</b>Delivery Wed 4th Nov · Ref 111385</div>
+
+  <div class="band"><div class="l">Furniture<br>workshop</div><div class="r"><b>10 desks on this page</b><span>Page 2 of 2 for this job · the chairs are on the seating page</span></div><div class="q">Finished<b>0 of 10</b>on this page</div><div class="q">Whole job<b>0 of 22</b></div></div>
+
+  <div class="rule"></div>
+  <h2>ITEMS · IN PROGRESS AND FINISHED</h2>
+  <div class="sub">Write today's numbers in the boxes. An item with parts is finished when all its parts are.</div>
+  <table>
+    <tr><th style="width:130px">Item</th><th></th><th class="c" style="width:90px">In progress<br>now · started today</th><th class="c" style="width:110px">Finished<br>so far · today</th></tr>
+    <tr>
+      <td><div class="ph">STOCK PHOTO</div></td>
+      <td style="padding-left:12px"><span class="loc">Unit 5</span><span class="code">DSK00027</span><div class="nm">10 x Cantilever Desk</div><div class="spec"><span class="k">Make it · as on the furniture selection</span>Top: White (was Off-White) · Edge: White (was Off-White) · Legs: Grey · W1400 × D780mm</div>
+        <div style="font-size:10px;margin-top:8px;color:#333">10 x Tops · 1400×780 &nbsp;<span class="loc" style="font-size:8px">Unit 5</span> &nbsp; 10 x Modesty panels &nbsp; 20 x Legs · Grey &nbsp;<span class="loc" style="font-size:8px">Furniture Workshop</span></div></td>
+      <td class="num">parts in progress<br><b>3 of 3</b></td>
+      <td class="num">desks finished<br><b>0 of 10</b></td>
+    </tr>
+    <tr>
+      <td><div class="ph">NO PHOTO</div></td>
+      <td style="padding-left:12px"><span class="loc">Stores</span><span class="code">SPR00112</span><span class="un">UNSORTED</span><div class="nm">1 x Cable tray kit</div><div class="spec"><span class="k">Make it · as on the furniture selection</span>Spares &amp; Components · no item on the job names it, so it prints here</div></td>
+      <td class="num">0 <span class="box"></span></td>
+      <td class="num">0 of 1 <span class="box"></span></td>
+    </tr>
+  </table>
+
+  <div class="finish"><div class="t">WHEN YOU FINISH</div><div class="s"><b>Step 2</b><span class="tick"></span>Tick off the furniture lines on the Trello card</div><div class="s"><b>Step 3</b><span class="tick"></span>Move the job into Ready for Delivery / Collection once both pages are done</div></div>
+
+  <div class="foot"><span>Last page for this job.</span><span>Scheduler version 3 Nov</span></div>
+</div>
+
+<p class="note"><b>Not in this mock, on purpose.</b> The time block, the owner and the days stay one per job, as today. Splitting those into a part per workshop is the queue model from 29 October and waits for that mock. The cable tray line is made up to show the unsorted mark.</p>
+
+</body></html>

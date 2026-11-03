@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>Workshop assignment mock</title>
+<style>
+body{margin:0;padding:24px;background:#f4f5f7;font-family:-apple-system,"Segoe UI",Helvetica,Arial,sans-serif;color:#111;font-size:13px}
+.label{max-width:900px;margin:0 auto 8px;color:#555;font-size:13px;line-height:1.5}
+.wrap{max-width:900px;margin:0 auto 28px}
+.card{background:#fff;border:1px solid #e5e7eb;border-radius:8px;overflow:hidden;margin-bottom:10px}
+.chead{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 14px;background:#fafafa;border-bottom:1px solid #e5e7eb}
+.chead b{font-size:14px}.chead .sub{color:#6b7280;font-size:12px;margin-left:8px}
+.cbody{padding:12px 14px}
+.ophead{font-size:11px;color:#6b7280;font-weight:600;letter-spacing:.04em;text-transform:uppercase;padding:0 0 8px}
+.row{display:flex;align-items:center;gap:12px;padding:9px 10px;border:1px solid #e5e7eb;border-radius:8px;margin-bottom:6px;background:#fff}
+.row.on{border-color:#1D3058;background:#f3f5fa}
+.row .n{font-weight:600;width:110px}
+.row .st{color:#6b7280;font-size:12px;flex:1}
+.row .st.free{color:#15803d}.row .st.busy{color:#b45309}
+.tick{font-size:12px;font-weight:600;color:#1D3058;width:68px;text-align:right}
+.seg{display:inline-flex;border:1px solid #c7ccd4;border-radius:6px;overflow:hidden}
+.seg button{height:28px;padding:0 12px;border:0;background:#fff;color:#1D3058;font:inherit;font-size:12px;font-weight:600;cursor:pointer;border-right:1px solid #c7ccd4}
+.seg button:last-child{border-right:0}
+.seg button.on{background:#1D3058;color:#fff}
+.seg.none button{color:#6b7280}
+.hint{color:#6b7280;font-size:12px;margin-top:8px}
+.hint.amber{color:#b45309}
+.chip{font-size:11px;font-weight:600;padding:3px 9px;border-radius:999px;background:#fff7e6;color:#b45309;white-space:nowrap}
+.chip.ok{background:#ecfdf3;color:#15803d}
+.split{display:flex;gap:8px;margin-bottom:10px;font-size:12px}
+.split div{flex:1;border:1px solid #e5e7eb;border-radius:8px;padding:8px 10px;background:#fafafa}
+.split b{display:block;font-size:12px;color:#1D3058;margin-bottom:2px}
+.split span{color:#6b7280}
+</style></head><body>
+
+<p class="label"><b>A. A mixed job (Overbury: 12 chairs, 10 desks).</b> The Operatives block is the one you have now. Once a person is assigned, a Seating / Furniture choice appears on their row, nothing else moves. The strip above it says what the job holds in each workshop. Nobody is placed for you.</p>
+<div class="wrap">
+  <div class="card">
+    <div class="chead"><span><b>Operatives</b><span class="sub">Tue 3 Nov · 2 free</span></span><span class="chip">Bart has no workshop yet</span></div>
+    <div class="cbody">
+      <div class="split"><div><b>Seating</b><span>12 chairs · 10 x Triumph, 2 x Breakout</span></div><div><b>Furniture</b><span>10 desks · 10 x Cantilever 1400×780</span></div></div>
+      <div class="row on"><span class="n">Jack C</span><span class="st busy">6h 15m on jobs</span><span class="seg"><button class="on">Seating</button><button>Furniture</button></span><span class="tick">Assigned</span></div>
+      <div class="row on"><span class="n">Jordan I</span><span class="st busy">7h 45m on jobs</span><span class="seg"><button>Seating</button><button class="on">Furniture</button></span><span class="tick">Assigned</span></div>
+      <div class="row on"><span class="n">Bart H</span><span class="st free">free all day</span><span class="seg none"><button>Seating</button><button>Furniture</button></span><span class="tick">Assigned</span></div>
+      <div class="row"><span class="n">Rob D</span><span class="st free">free all day</span><span class="tick">Assign</span></div>
+      <div class="row"><span class="n">Bradley H</span><span class="st busy">out on site all day</span><span class="tick">Assign</span></div>
+      <div class="row"><span class="n">Sam C</span><span class="st">backup</span><span class="tick">Assign</span></div>
+      <p class="hint amber">Pick a workshop for Bart. Until then his name prints on both pages of the sheet.</p>
+    </div>
+  </div>
+</div>
+
+<p class="label"><b>B. The same block once Bart is placed.</b> The chip turns green and the sheet prints Jack on the seating page, Jordan and Bart on the furniture page. The time block and the days are unchanged: one figure per person per job, as today.</p>
+<div class="wrap">
+  <div class="card">
+    <div class="chead"><span><b>Operatives</b><span class="sub">Tue 3 Nov · 2 free</span></span><span class="chip ok">Seating: Jack · Furniture: Jordan, Bart</span></div>
+    <div class="cbody">
+      <div class="split"><div><b>Seating</b><span>12 chairs · 10 x Triumph, 2 x Breakout</span></div><div><b>Furniture</b><span>10 desks · 10 x Cantilever 1400×780</span></div></div>
+      <div class="row on"><span class="n">Jack C</span><span class="st busy">6h 15m on jobs</span><span class="seg"><button class="on">Seating</button><button>Furniture</button></span><span class="tick">Assigned</span></div>
+      <div class="row on"><span class="n">Jordan I</span><span class="st busy">7h 45m on jobs</span><span class="seg"><button>Seating</button><button class="on">Furniture</button></span><span class="tick">Assigned</span></div>
+      <div class="row on"><span class="n">Bart H</span><span class="st free">free all day</span><span class="seg"><button>Seating</button><button class="on">Furniture</button></span><span class="tick">Assigned</span></div>
+      <div class="row"><span class="n">Rob D</span><span class="st free">free all day</span><span class="tick">Assign</span></div>
+    </div>
+  </div>
+</div>
+
+<p class="label"><b>C. A job in one workshop only (Bennett Jones: 23 chairs).</b> No choice appears. Everyone assigned is on the seating page, and the Day view and capacity read exactly as they do now.</p>
+<div class="wrap">
+  <div class="card">
+    <div class="chead"><span><b>Operatives</b><span class="sub">Tue 3 Nov · 2 free</span></span><span class="chip ok">Seating only</span></div>
+    <div class="cbody">
+      <div class="row on"><span class="n">Jordan I</span><span class="st busy">7h 45m on jobs</span><span class="tick">Assigned</span></div>
+      <div class="row"><span class="n">Jack C</span><span class="st busy">6h 15m on jobs</span><span class="tick">Assign</span></div>
+      <div class="row"><span class="n">Bart H</span><span class="st free">free all day</span><span class="tick">Assign</span></div>
+    </div>
+  </div>
+</div>
+
+<p class="label"><b>Where it shows up.</b> The card back's crew line reads "Seating: Jack · Furniture: Jordan, Bart". The Outstanding filter on the Day view lists a mixed job with someone unplaced. The sheet's page bands carry the names. The Trello badge stays as it is.</p>
+
+</body></html>
