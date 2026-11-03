@@ -20,7 +20,9 @@ function normPlan(d){ if(!d||typeof d!=="object") return d;
   // A WORKED-OUT DRIVE STAYS (Sam, 17 Oct 2026: "still not saved it?"). The 28 Sep rule dropped any driveAuto figure on
   // read, in both views, which also dropped Work it out from the postcode the moment the card was reopened. The
   // automatic estimate is still off; a figure somebody asked the map for is theirs.
-  if(d.who) d.who=normWho(d.who); if(d.prep&&d.prep.who) d.prep.who=normWho(d.prep.who); if(d.legs&&d.legs.length) d.legs.forEach(function(l){ if(l&&l.who) l.who=normWho(l.who); }); return d; }
+  if(d.who) d.who=normWho(d.who); if(d.prep&&d.prep.who) d.prep.who=normWho(d.prep.who); if(d.legs&&d.legs.length) d.legs.forEach(function(l){ if(l&&l.who) l.who=normWho(l.who); });
+  if(d.prep) repairPrepCells(d.prep);   // cells left at a full day by a time typed later (3 Nov 2026), see repairPrepCells
+  return d; }
 // only these three drive the van. the others go along as a second pair of hands.
 // the five who do site work and yard recycling; the other four are on the crew for
 // the odd job but never get a recycling allowance (Sam, 29 Sep 2026: Jess and Molly
@@ -432,7 +434,7 @@ function eachPersonBox(mk,part,o){ o=o||{}; var div=o.div||1, who=(part&&part.wh
   var short=function(m){ var h=Math.floor(m/60), r=m%60; return h?(h+"h"+(r?" "+r+"m":"")):r+"m"; };
   var box=mk("div","eachbox"), head=mk("div","each-h"); head.appendChild(mk("b",null,"Each person")); head.appendChild(mk("span",null,mainShown!=null?"Main time "+tm(mainShown)+(div>1?" a day":""):"No main time yet")); box.appendChild(head);
   who.forEach(function(w){ var own=!!(part.each&&part.each[w]!=null), cur=minsFor(part,w), shown=cur==null?null:Math.round(cur/div);
-    var set=function(v){ setEach(part,w,v==null?null:v*div); o.commit(); };
+    var set=function(v){ setEach(part,w,v==null?null:v*div); o.commit(w); };
     var row=mk("div","each-r"); row.appendChild(mk("div","each-n",w));
     var hm=mk("div","each-hm"), h=mk("input"), m=mk("input"); h.type="number"; h.min="0"; h.placeholder="0"; m.type="number"; m.min="0"; m.max="59"; m.step="5"; m.placeholder="0";
     h.setAttribute("aria-label",w+" hours"); m.setAttribute("aria-label",w+" minutes"); h.inputMode=m.inputMode="numeric";
@@ -633,7 +635,11 @@ function minsLeftOn(k){ var n=new Date(), t=n.getFullYear()+"-"+String(n.getMont
 // step when the days change. One-day production is unchanged: mins is the day's time.
 function prepDayCount(P){ if(!P||!P.date) return 0; var a=P.start&&P.start<P.date?P.start:P.date, n=0; for(var x=new Date(a+"T12:00"); x.toISOString().slice(0,10)<=P.date; x.setDate(x.getDate()+1)){ if(x.getDay()!==0&&x.getDay()!==6) n++; } return n; }
 function prepPerDay(P){ var n=prepDayCount(P); if(n<=1) return P.mins; return P.perDay!=null?P.perDay:(P.mins!=null?Math.round(P.mins/n):null); }
-function setPrepPerDay(P,v){ var n=prepDayCount(P); var was=prepPerDay(P); if(n<=1){ P.mins=v; P.perDay=null; } else { P.perDay=v; P.mins=v==null?null:v*n; } if(P.grid&&was!=null&&v!=null) rescalePrepGrid(P,was,v); }
+// CELLS FOLLOW THE TIME (Sam, 3 Nov 2026, Re-Tek UK Ltd: the card said 2 hours each, the day read Jordan 7h 45m).
+// Adding a person before any time is typed fills their cells at a full day, and the first typed time used to leave
+// them there: the block said 2h, the day sheet and the card header summed the cells. With no figure yet the cells
+// are at DAY_MINS, so that is what they are rescaled from.
+function setPrepPerDay(P,v){ var n=prepDayCount(P); var was=prepPerDay(P); if(n<=1){ P.mins=v; P.perDay=null; } else { P.perDay=v; P.mins=v==null?null:v*n; } if(P.grid&&v!=null) rescalePrepGrid(P,was!=null?was:DAY_MINS,v); }
 // THE PRODUCTION DAY GRID (Sam, 21 Oct 2026: "the operative can be on and off days with ranging times", mock approved).
 // P.grid = { "Jack C": { "2026-10-20": 465, "2026-10-22": 225 } }: one cell per person per day, minutes that day, no
 // key means off. Full is the block's per-day figure, AM is 3h 45m, PM is 4h, anything else is typed. The grid is the
@@ -681,6 +687,14 @@ function fillPrepRow(P,w){ var pd=prepPerDay(P)||DAY_MINS; prepDayList(P).forEac
 function clearPrepRow(P,w){ var g=prepGrid(P); delete g[w]; P.grid=g; P.who=(P.who||[]).filter(function(x){ return x!==w; }); stretchPrepWindow(P); }
 // the block's per-day figure changed: cells that sat at the old figure follow it, typed ones stay
 function rescalePrepGrid(P,oldPd,newPd){ if(!P||!P.grid||oldPd==null||newPd==null) return; Object.keys(P.grid).forEach(function(w){ Object.keys(P.grid[w]).forEach(function(k){ if(P.grid[w][k]===oldPd) P.grid[w][k]=newPd; }); }); }
+// A PLAN SAVED WITH THE GAP ABOVE (cells at a full day, a smaller time on the block or the person) is put right as it is
+// read, in every view: a cell still at DAY_MINS takes the person's own day figure. Returns true when anything moved.
+function repairPrepCells(P){ if(!P||!P.grid||(P.mins==null&&P.perDay==null)) return false; var n=prepDayCount(P)||1, pd=prepPerDay(P), moved=false;
+  Object.keys(P.grid).forEach(function(w){ var row=P.grid[w]; if(!row) return; var own=P.each&&P.each[w]!=null?Math.round(P.each[w]/n):pd; if(own==null||own===DAY_MINS) return;
+    Object.keys(row).forEach(function(k){ if(row[k]===DAY_MINS){ row[k]=own; moved=true; } }); });
+  return moved; }
+// one person's own figure changed in the each-person box: their cells take it, a day each
+function setPrepEachCells(P,w,div){ if(!P||!P.grid||!w) return; var v=minsFor(P,w); if(v==null) return; var day=Math.round(v/(div||1)); prepDaysFor(P,w).forEach(function(k){ setPrepCell(P,w,k,day); }); }
 // the window dates changed: new days come on at the block's figure for everyone, days outside the window go
 function fitPrepGrid(P){ if(!P||!P.grid) return; var all=prepDayList(P), pd=prepPerDay(P)||DAY_MINS; Object.keys(P.grid).forEach(function(w){ var row=P.grid[w]; Object.keys(row).forEach(function(k){ if(all.indexOf(k)<0) delete row[k]; }); all.forEach(function(k){ if(row[k]===undefined&&!PREP_OFF(w,k)) row[k]=pd; }); }); }
 function stretchPrepWindow(P){ if(!P||!P.grid) return; var days=[]; Object.keys(P.grid).forEach(function(w){ days=days.concat(Object.keys(P.grid[w]).filter(function(k){ return P.grid[w][k]>0; })); }); if(!days.length) return; days.sort(); if(!P.start||days[0]<P.start) P.start=days[0]; if(!P.date||days[days.length-1]>P.date) P.date=days[days.length-1]; if(P.start>P.date) P.start=P.date; delete P.days; }

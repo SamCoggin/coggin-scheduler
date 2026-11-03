@@ -1,0 +1,60 @@
+<!doctype html><html><head><meta charset="utf-8"><title>Skip exchange sheet mock</title>
+<style>
+body{font-family:Helvetica,Arial,sans-serif;background:#e9eaee;margin:0;padding:24px;color:#111}
+.page{background:#fff;width:794px;height:1123px;box-shadow:0 2px 12px rgba(0,0,0,.1);padding:46px 48px;box-sizing:border-box;position:relative;margin-bottom:28px}
+.lab{font-size:9px;letter-spacing:.14em;color:#777;font-weight:700;text-transform:uppercase}
+h1{font-size:30px;margin:4px 0 8px;font-weight:800}
+.pill{display:inline-block;background:#111;color:#fff;font-size:12px;font-weight:700;padding:5px 12px;border-radius:7px}
+.facts{display:flex;gap:12px;margin:16px 0 0}.fact{flex:1;border:2px solid #111;border-radius:6px;padding:8px 10px}.fact b{display:block;font-size:14px;margin-top:3px}
+.rule{height:3px;background:#111;margin:18px 0 20px}
+.sec{display:flex;align-items:center;gap:10px;margin:0 0 12px}.n{width:22px;height:22px;border-radius:50%;background:#111;color:#fff;font-size:11px;font-weight:800;display:grid;place-items:center}.sec b{font-size:14px;letter-spacing:.06em}
+.grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}.g{border:1px solid #ccc;border-radius:6px;padding:10px 12px}.g .k{font-size:9px;letter-spacing:.12em;color:#777;font-weight:700}.g b{display:block;font-size:14px;margin-top:3px}
+.step{display:flex;gap:14px;align-items:flex-start;border-bottom:1px solid #ddd;padding:14px 0}.box{width:22px;height:22px;border:2px solid #111;border-radius:4px;flex-shrink:0;margin-top:2px}
+.step b{font-size:15px;display:block}.step span{font-size:12px;color:#555;display:block;margin-top:3px}
+.finish{position:absolute;left:48px;right:48px;bottom:90px;background:#111;color:#fff;border-radius:8px;padding:16px 18px}
+.finish h3{margin:0 0 12px;font-size:15px;letter-spacing:.06em}.fr{display:flex;gap:12px}.fc{flex:1;background:#fff;color:#111;border-radius:6px;padding:12px 12px 12px 40px;position:relative;font-size:13px;font-weight:700}.fc:before{content:"";position:absolute;left:12px;top:12px;width:18px;height:18px;border:2px solid #111;border-radius:4px}.fc small{display:block;font-size:9px;letter-spacing:.12em;color:#777;margin-bottom:3px}
+.qr{flex:0 0 90px;background:#fff;border-radius:6px;display:grid;place-items:end center;font-size:9px;color:#111;font-weight:700;padding-bottom:6px}
+.foot{position:absolute;left:48px;right:48px;bottom:40px;font-size:9px;color:#666;display:flex;justify-content:space-between}
+.note{font-size:12px;color:#555;max-width:794px;margin:-12px 0 30px}
+</style></head><body>
+
+<div class="page">
+ <div class="lab">Skip · Mon 26th Oct</div>
+ <h1>Wood Waste Exchange</h1>
+ <span class="pill">Rob D</span>
+ <div class="facts">
+  <div class="fact"><div class="lab">Time</div><b>Driver due 08:00 to 15:00</b></div>
+  <div class="fact"><div class="lab">Day</div><b>Mon 26th Oct</b></div>
+  <div class="fact"><div class="lab">Where</div><b>Forton, exchange area</b></div>
+ </div>
+ <div class="rule"></div>
+
+ <div class="sec"><div class="n">1</div><b>THE SKIP</b></div>
+ <div class="grid">
+  <div class="g"><div class="k">WASTE</div><b>Wood</b></div>
+  <div class="g"><div class="k">SKIP</div><b>1 x RORO</b></div>
+  <div class="g"><div class="k">SERVICE</div><b>Exchange</b></div>
+  <div class="g"><div class="k">SUPPLIER</div><b>JA Jackson (Fox Group)</b></div>
+  <div class="g"><div class="k">BOOKED WITH</div><b style="font-size:12px">bianca.cooper@foxgroup.co</b></div>
+  <div class="g"><div class="k">ON THE DAY</div><b style="font-size:12px">Driver reports to the front office</b></div>
+ </div>
+
+ <div class="sec" style="margin-top:22px"><div class="n">2</div><b>WHEN THE DRIVER COMES</b></div>
+ <div class="step"><div class="box"></div><div><b>Photograph the full skip before it goes</b><span>Contents visible, from the side and above</span></div></div>
+ <div class="step"><div class="box"></div><div><b>Walk the driver to the exchange area</b><span>Nothing parked in the way, forklift clear of the swap</span></div></div>
+ <div class="step"><div class="box"></div><div><b>Get the waste transfer note from the driver</b><span>Signed, with the weight or volume on it. No note, ring the office before they leave</span></div></div>
+ <div class="step"><div class="box"></div><div><b>Photograph the empty skip in place</b><span>Lid or sheet on if it rains</span></div></div>
+
+ <div class="finish">
+  <h3>WHEN YOU FINISH</h3>
+  <div class="fr">
+   <div class="fc"><small>STEP 1</small>Upload the photos and the waste transfer note to the Trello card</div>
+   <div class="fc"><small>STEP 2</small>Move the card to Jobs Completed</div>
+   <div class="qr">Trello card</div>
+  </div>
+ </div>
+ <div class="foot"><span>Any issues, tell the operations manager before the driver leaves.</span><span>Scheduler version · Page 7 of 12</span></div>
+</div>
+<p class="note">How it works: a card on the Skips list, or any card whose description carries "Skip Size:" or "Waste Type:", prints this fixed skip sheet instead of the facility sheet. The six facts are read from the card's lines (Service Type, Waste Type, No. of Skips, Skip Size, Supplier, Booking Email); everything else on the card is ignored, so the email template never prints. The four steps and the finish panel are the same on every skip sheet. No "What you did" lines.</p>
+
+</body></html>

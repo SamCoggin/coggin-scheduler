@@ -1659,7 +1659,7 @@ var SNAP=null, DETAIL={};
         var plan=(part.mins!=null?"Planned "+fmt(part.mins):"No time was planned")+(dn.mins!=null&&part.mins!=null?(dn.mins>part.mins?", took "+fmt(dn.mins-part.mins)+" longer":dn.mins<part.mins?", "+fmt(part.mins-dn.mins)+" quicker":", as planned"):"");
         wh.appendChild(el("div","hint",plan)); var clr2=el("button","close","Clear the record"); clr2.onclick=function(){ part.done=null; persist(); render(); }; wh.appendChild(clr2); }
       right.appendChild(wh); }
-    if(!contractorOnly){ var perDayP=o.shop&&prepDayCount(part)>1, getT=perDayP?function(){ return prepPerDay(part); }:function(){ return part.mins; }, setT=perDayP?function(v){ setPrepPerDay(part,v); }:setMins;
+    if(!contractorOnly){ var perDayP=o.shop&&prepDayCount(part)>1, getT=perDayP?function(){ return prepPerDay(part); }:function(){ return part.mins; }, setT=o.shop?function(v){ setPrepPerDay(part,v); if(part.leg) part.leg.mins=v; }:setMins;   // a production time goes through the grid, so the cells follow it (3 Nov 2026)
       var tb=block(o.shop?(perDayP?"Production Time":"Production Time per Operative"):(j.site?"Site Time per Operative":j.facility?"Time per Operative":"Goods In and Out Time per Operative"),"time");
       // BIG JOBS IN DAYS, NOT HOURS (Sam, 2 Oct 2026, mock approved after Sketch Studios came out at 8h 22m a day): a
       // production over several days is Full days (7h 45m each, every day) or Part days (so many hours a day). No total
@@ -1676,7 +1676,7 @@ var SNAP=null, DETAIL={};
       var r3=el("div","row"); r3.appendChild(el("span","hint","or exactly")); r3.appendChild(hmBoxes(getT,setT,"Time")); tb.appendChild(r3); }
       // DIFFERENT TIME FOR SOMEBODY (Sam, 2 Oct 2026: "add it to labour, transport and the scheduler editor"), the same
       // box as the card's. On a production over several days the times here are a day's, like the main time above.
-      var ebx=(perDayP&&prepPerDay(part)===DAY_MINS&&!part.each)?null:eachPersonBox(el,part,{div:perDayP?prepDayCount(part):1,commit:function(){ if(part.leg) part.leg.each=part.each; render(); }}); if(ebx) tb.appendChild(ebx);
+      var ebx=(perDayP&&prepPerDay(part)===DAY_MINS&&!part.each)?null:eachPersonBox(el,part,{div:perDayP?prepDayCount(part):1,commit:function(w){ if(part.leg) part.leg.each=part.each; if(o.shop) setPrepEachCells(part,w,perDayP?prepDayCount(part):1); render(); }}); if(ebx) tb.appendChild(ebx);
       right.appendChild(tb); }
     var blocks=Array.prototype.slice.call(right.children); blocks.sort(function(a,b){ return (+a.dataset.order||15)-(+b.dataset.order||15); });
     right.innerHTML=""; var more=null; blocks.forEach(function(bk){ if((+bk.dataset.order||15)>=20){ if(!more){ more=el("details","more"); more.summ=el("summary",null,"More"); more.appendChild(more.summ); right.appendChild(more); } more.appendChild(bk); } else right.appendChild(bk); });

@@ -1,0 +1,90 @@
+<!doctype html><html><head><meta charset="utf-8"><title>Workshop queues</title>
+<style>
+body{font-family:-apple-system,Inter,sans-serif;background:#f5f6f8;margin:0;padding:24px;color:#1f2937;font-size:13px}
+h2{font-size:11px;color:#6b7280;font-weight:600;margin:30px 0 8px;text-transform:uppercase;letter-spacing:.05em}
+.bar{max-width:1240px;background:#fff;border:1px solid #e5e7eb;border-radius:10px;padding:10px 16px;display:flex;gap:18px;align-items:center;font-size:13px;margin-bottom:12px}
+.tabs{display:flex;gap:6px}.tab{padding:5px 10px;border-radius:6px;background:#eef0f3;font-weight:600}.tab.on{background:#1D3058;color:#fff}
+.cols{max-width:1240px;display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.ws{background:#fff;border:1px solid #e5e7eb;border-radius:12px;overflow:hidden}
+.wh{padding:12px 16px;border-bottom:1px solid #e5e7eb;display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
+.wh h3{margin:0;font-size:18px;color:#1D3058}.wh .own{font-size:12px;color:#6b7280;margin-top:2px}
+.cap{font-size:12px;text-align:right}.cap b{display:block;font-size:14px}.cap.ok b{color:#166534}.cap.short b{color:#9a5a00}.cap.red b{color:#c9372c}
+.q{padding:4px 0}
+.job{display:grid;grid-template-columns:1fr auto;gap:4px 12px;padding:10px 16px;border-top:1px solid #f1f5f9;align-items:center}
+.job .n{font-weight:600;font-size:14px}.job .m{font-size:12px;color:#6b7280;grid-column:1}.job .r{text-align:right;font-size:12px;color:#6b7280;grid-row:1/span 2}.job .r b{display:block;font-size:13px;color:#1f2937}
+.job.now{background:#eff6ff}.job.jump{background:#fff7ed}.job.jump .n:after{content:" · jumped the queue";font-weight:500;color:#9a5a00;font-size:12px}
+.job.wait .n{color:#6b7280}
+.pill{display:inline-block;font-size:11px;font-weight:600;padding:2px 8px;border-radius:999px;margin-left:6px;vertical-align:middle}.g{background:#e6f6ec;color:#166534}.a{background:#fff4e0;color:#9a5a00}.rd{background:#fde8e8;color:#b42318}.gr{background:#eef0f3;color:#4b5563}
+.pull{margin:10px 16px 14px;border:1px solid #fed7aa;background:#fff7ed;border-radius:8px;padding:10px 12px;display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+.pull b{font-weight:600}.btn{display:inline-block;border:1px solid #d1d5db;background:#fff;border-radius:7px;padding:6px 12px;font-weight:600;font-size:13px;white-space:nowrap}.btn.p{background:#1D3058;color:#fff;border-color:#1D3058}
+.pool{max-width:1240px;background:#fff;border:1px solid #e5e7eb;border-radius:12px;margin-top:14px;padding:12px 16px}
+.pool h3{margin:0 0 8px;font-size:14px;color:#1D3058}
+.per{display:grid;grid-template-columns:140px 1fr auto;gap:10px;padding:8px 0;border-top:1px solid #f1f5f9;align-items:center}.per b{font-size:14px}.per .d{font-size:13px}.per .d small{display:block;color:#6b7280;font-size:12px}
+.muted{font-size:12px;color:#6b7280}
+.day{max-width:1240px;background:#fff;border:1px solid #e5e7eb;border-radius:12px;margin-top:14px;padding:12px 16px}
+.day h3{margin:0 0 8px;font-size:14px;color:#1D3058}
+.row{display:grid;grid-template-columns:120px 1fr auto;gap:10px;padding:7px 0;border-top:1px solid #f1f5f9;font-size:13px}.row .t{color:#6b7280}
+</style></head><body>
+
+<div class="bar"><div class="tabs"><span class="tab">Day</span><span class="tab">Week</span><span class="tab">Month</span><span class="tab on">Workshops</span></div><span class="muted">Thu 29 Oct · the week to Fri 6 Nov · figures below are examples, the build reads the real items and standards</span></div>
+
+<h2>A · the two queues. Each job sits in due order under the workshop its items belong to. Ecosave is in both, because it has 108 chairs and 89 desks and tables.</h2>
+<div class="cols">
+ <div class="ws">
+  <div class="wh"><div><h3>Seating</h3><div class="own">Jack owns it · Jordan covers</div></div><div class="cap short"><b>Short by 6h by Fri 30 Oct</b>Queue 21h 30m · Jack has 15h 30m to Friday</div></div>
+  <div class="q">
+   <div class="job now"><span class="n">Ecosave Gas &amp; Power<span class="pill a">Due Fri 30 Oct</span></span><span class="r"><b>9h left</b>Seating: 108 chairs, 76 done, 22 a day</span><span class="m">Required Mon 2 Nov · day 9 of 9 · Jack on it now</span></div>
+   <div class="job"><span class="n">Tsunami Axis<span class="pill a">Due Fri 30 Oct</span></span><span class="r"><b>30 min</b>1 person</span><span class="m">Required Mon 2 Nov · Glasgow</span></div>
+   <div class="job"><span class="n">Overbury<span class="pill a">Due Fri 30 Oct</span></span><span class="r"><b>6h</b>Seating: 40 chairs</span><span class="m">Required Wed 4 Nov · Leeds</span></div>
+   <div class="job wait"><span class="n">Bennett Jones<span class="pill gr">Due Mon 2 Nov</span></span><span class="r"><b>6h</b>Seating: 30 chairs</span><span class="m">Required Tue 3 Nov · Manchester · starts when the above are out</span></div>
+  </div>
+  <div class="pull"><div><b>Pull someone in for Thu and Fri?</b><div class="muted">Bart is on recycling Thu, free Fri. Rob is on the Balfour Beatty clearance Thu, free Fri.</div></div><div style="display:flex;gap:8px"><span class="btn p">Bart, Fri</span><span class="btn">Rob, Fri</span><span class="btn">Move Overbury to Mon</span></div></div>
+ </div>
+ <div class="ws">
+  <div class="wh"><div><h3>Furniture</h3><div class="own">Jordan owns it · Jack covers</div></div><div class="cap ok"><b>Fits, 2h spare by Fri 30 Oct</b>Queue 13h 30m · Jordan has 15h 30m to Friday</div></div>
+  <div class="q">
+   <div class="job now"><span class="n">Ecosave Gas &amp; Power<span class="pill a">Due Fri 30 Oct</span></span><span class="r"><b>7h 30m left</b>Furniture: 88 desks, 1 table, 76 done</span><span class="m">Required Mon 2 Nov · Jordan on it now</span></div>
+   <div class="job"><span class="n">Re-Tek UK Ltd<span class="pill gr">Due Mon 2 Nov</span></span><span class="r"><b>6h</b>Furniture: 12 desks</span><span class="m">Required Thu 5 Nov · Redditch</span></div>
+  </div>
+  <div class="pull" style="border-color:#bfdbfe;background:#eff6ff"><div><b>Nothing to do here.</b><div class="muted">Jordan has 2h spare on Friday. The seating queue can have it: Jordan covers seating.</div></div><span class="btn">Give Jordan's 2h to seating</span></div>
+ </div>
+</div>
+
+<h2>B · the support pool. Where each person is this week, and what pulling them in does.</h2>
+<div class="pool">
+ <h3>Support</h3>
+ <div class="per"><b>Bart H</b><span class="d">Thu: recycling · Fri: free · Mon: Balfour Beatty clearance (driver)<small>First pull-in for furniture, his hands are there. Pulling him in takes the day off recycling and puts the job on his day sheet.</small></span><span class="btn">Pull in</span></div>
+ <div class="per"><b>Rob D</b><span class="d">Thu: Balfour Beatty clearance (driver) · Fri: free · Mon: deliveries<small>Pull in for either workshop.</small></span><span class="btn">Pull in</span></div>
+ <div class="per"><b>Bradley H</b><span class="d">Thu: deliveries · Fri: recycling · Mon: recycling<small>Pull in for either workshop.</small></span><span class="btn">Pull in</span></div>
+ <p class="muted" style="margin:10px 0 0">Nobody in the pool is on a workshop job unless pulled in. A pull-in is for named days. When it is undone the day goes back to recycling.</p>
+</div>
+
+<h2>C · a new job lands that would lose the deal if it waited. It is dropped in at its due date and the queue shows what it pushes.</h2>
+<div class="cols">
+ <div class="ws">
+  <div class="wh"><div><h3>Seating</h3><div class="own">Jack owns it · Jordan covers</div></div><div class="cap red"><b>Does not fit by Fri 30 Oct, even with everyone</b>Queue 29h 30m · Jack, Jordan's spare and Bart give 21h 30m</div></div>
+  <div class="q">
+   <div class="job now"><span class="n">Ecosave Gas &amp; Power<span class="pill a">Due Fri 30 Oct</span></span><span class="r"><b>9h left</b></span><span class="m">Jack on it now</span></div>
+   <div class="job jump"><span class="n">Acme Property Ltd<span class="pill rd">Due Fri 30 Oct</span></span><span class="r"><b>8h</b>Seating: 50 chairs</span><span class="m">Added today by Jess · 10 day window from the enquiry · needed Mon 2 Nov</span></div>
+   <div class="job"><span class="n">Tsunami Axis<span class="pill a">Due Fri 30 Oct</span></span><span class="r"><b>30 min</b></span><span class="m"></span></div>
+   <div class="job wait"><span class="n">Overbury<span class="pill a">Due Fri 30 Oct</span></span><span class="r"><b>6h</b></span><span class="m">Pushed: will not be out by Friday. Required Wed 4 Nov, so Mon is still fine.</span></div>
+   <div class="job wait"><span class="n">Bennett Jones<span class="pill gr">Due Mon 2 Nov</span></span><span class="r"><b>6h</b></span><span class="m">Required Tue 3 Nov · at risk</span></div>
+  </div>
+  <div class="pull" style="border-color:#fecaca;background:#fef2f2"><div><b>Something has to move.</b><div class="muted">Overbury to Mon is free, it is not required until Wed. Bennett Jones is then one day short: pull Rob in Mon, or tell them Wed.</div></div><div style="display:flex;gap:8px"><span class="btn p">Move Overbury to Mon</span><span class="btn">Rob, Mon</span></div></div>
+ </div>
+ <div class="muted" style="padding:12px">Red here means the week does not fit with everyone in, which is the only time the Scheduler should go red. Amber means it fits if someone is pulled in. Green means the owner has it. The red on a person's day, "over by 23h 15m", goes away: a person is never on more than one day of work a day.</div>
+</div>
+
+<h2>D · what a person's day reads once the queues drive it</h2>
+<div class="day">
+ <h3>Jack C · Thu 29 Oct</h3>
+ <div class="row"><span>Production</span><span>Ecosave Gas &amp; Power, seating, until it is out</span><span class="t">7h 45m</span></div>
+ <div class="row"><span>Then</span><span>Tsunami Axis, 30 min, then Overbury</span><span class="t">in queue order</span></div>
+ <p class="muted" style="margin:8px 0 0">One day, in order. No cells to fill. If Jack is off, the queue flows to Jordan, then to whoever is pulled in. The day sheet prints the same order. The item counts come off the queue as they are finished, as they do today.</p>
+</div>
+
+<h2>E · the rules</h2>
+<p class="muted" style="max-width:980px;margin:0">
+A production job goes to seating or furniture from its items; a mixed job is in both with its own count in each. Estimates come from the standard per item, as the Manager view already works them out, and the queue is in due order. Capacity to a due date is the owner's working days, plus a cover's spare, plus anyone pulled in for named days. The owner's day flows down the queue, so nobody is ever planned twice. The support pool is on recycling, deliveries and clearances unless pulled in, and the tally and the rounds already know that. The per-person grid stays for site work and for pinning someone to a job on a day when you want to; it stops being the way production is planned. Changing who owns a workshop is one setting, so the hand-over from Bart to Jordan is a switch, not a rebuild. Later, when Jordan starts showing Jack furniture, the cover works both ways and the skill matrix is the two owner settings plus who covers what.
+</p>
+</body></html>
