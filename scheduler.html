@@ -2899,7 +2899,12 @@ var SNAP=null, DETAIL={};
   var PICK_FAIL={};
   function loadPickPhoto(url,go){ go=go||1; return fetchPickPhoto(url).then(function(){ delete PICK_FAIL[url]; }).catch(function(){ if(go<3) return new Promise(function(r){ setTimeout(r,500*go); }).then(function(){ return loadPickPhoto(url,go+1); }); PICK_FAIL[url]=true; }); }
   function loadPickPhotos(urls){ var q=urls.slice(), run=function(){ if(!q.length) return Promise.resolve(); return loadPickPhoto(q.shift()).then(run); }; return Promise.all([run(),run(),run(),run(),run(),run()]); }
-  function photosFailedNote(){ var n=Object.keys(PICK_FAIL).length; if(n) alert(n+(n===1?" photo":" photos")+" did not load from the CRM, so the sheet says \"not loaded\" where "+(n===1?"it goes":"they go")+". Download it again to try "+(n===1?"it":"them")+" once more."); }
+  // NO SHEET WITH A HOLE IN IT (Sam, 3 Nov 2026: "i dont want the download if the photos are not added to save wasting
+  // time"). A download stops here when a photo still has not loaded after the retries, and says so; nothing is saved.
+  // The automatic sheet that goes on the Trello card when a plan is saved is not a download and still goes on, with
+  // "not loaded" in the slot, because a card with no sheet is worse than a card with a slot to redo.
+  var PICK_STRICT=false;
+  function photosFailedStop(){ var n=Object.keys(PICK_FAIL).length; if(n&&PICK_STRICT) throw new Error(n+(n===1?" photo":" photos")+" did not load from the CRM, so nothing was downloaded. Press the button again to try "+(n===1?"it":"them")+" once more."); }
   function fetchPickPhoto(url){ return fetch(url).then(function(x){ if(!x.ok) throw new Error(x.status); return x.blob(); }).then(function(b){ return new Promise(function(res,rej){
       var u=URL.createObjectURL(b), im=new Image(); im.onload=function(){ try{ var mx=600, sc=Math.min(1,mx/Math.max(im.width,im.height)), c=document.createElement("canvas"); c.width=Math.max(1,Math.round(im.width*sc)); c.height=Math.max(1,Math.round(im.height*sc));
         var g=c.getContext("2d"); g.fillStyle="#fff"; g.fillRect(0,0,c.width,c.height); g.drawImage(im,0,0,c.width,c.height); PICK_IMG[url]={d:c.toDataURL("image/jpeg",0.82),w:c.width,h:c.height}; URL.revokeObjectURL(u); res(); }catch(e){ rej(e); } };
@@ -2979,7 +2984,7 @@ var SNAP=null, DETAIL={};
     var urls={}, byCard={};
     runs.forEach(function(r){ r.stops.forEach(function(s){ s.items=itemsOf(s.j); s.d=cardDetails(s.j); byCard[s.j.id]={run:r,stop:s}; s.items.forEach(function(it){ [it.photo].concat((it.parts||[]).map(function(p){ return p.photo; })).forEach(function(u){ if(u&&!PICK_IMG[u]) urls[u]=1; }); }); }); });
     var info={}; ids.forEach(function(x){ if(byCard[x.id]) return; var j=JOBS.filter(function(q){ return q.id===x.id; })[0]; if(!j) return; info[j.id]={items:itemsOf(j),d:cardDetails(j)}; info[j.id].items.forEach(function(it){ [it.photo].concat((it.parts||[]).map(function(p){ return p.photo; })).forEach(function(u){ if(u&&!PICK_IMG[u]) urls[u]=1; }); }); });
-    await loadPickPhotos(Object.keys(urls).slice(0,200)); photosFailedNote();
+    await loadPickPhotos(Object.keys(urls).slice(0,200)); photosFailedStop();
     return {runs:runs,byCard:byCard,info:info};
   }
   // THE JOB PAGES KIT (2 Oct 2026, mock approved: "a per job, job sheet for the day"). Draws onto the day sheet's own PDF:
@@ -3593,13 +3598,13 @@ var SNAP=null, DETAIL={};
     var btn=$("#sheets"), was=btn?btn.textContent:""; if(btn){ btn.disabled=true; btn.textContent="Building the job sheets..."; }
     try{
       SHEET_SEL=sel;   /* always set: copies apply even when everything is ticked */
-      var r=await daySheetBuild(k,sel.all?null:sel.keys);
+      PICK_STRICT=true; var r=await daySheetBuild(k,sel.all?null:sel.keys); PICK_STRICT=false;
       if(!r.jobOnly){ alert("Nobody has a job with a card on "+niceDay(k)+", so there are no job sheets to print."); return; }
       r.doc.save("job-sheets-"+k+".pdf");
       SHEET_SEL=null;
       if(btn){ btn.textContent="Putting the sheets on the cards..."; } await attachDayProductionSheets(k,sel.all?null:sel.keys);
     } catch(e){ if(/did not load/.test(String(e&&e.message))) alert(e.message); else throw e; }
-    finally { SHEET_SEL=null; if(btn){ btn.disabled=false; btn.textContent=was||"Download job sheets"; } }
+    finally { SHEET_SEL=null; PICK_STRICT=false; if(btn){ btn.disabled=false; btn.textContent=was||"Download job sheets"; } }
   }
   // THE JOB SHEET FROM THE EDITOR (Sam, 14 Oct 2026). The same build as the day's job sheets, kept to this job's rows.
   async function jobSheetDownload(j,o,btn){
@@ -3608,13 +3613,13 @@ var SNAP=null, DETAIL={};
     var keys=o&&o.shop?["p"+j.id]:["j"+j.id];
     var was=btn?btn.textContent:""; if(btn){ btn.disabled=true; btn.textContent="Building..."; }
     try{
-      var r=await daySheetBuild(k,keys);
+      PICK_STRICT=true; var r=await daySheetBuild(k,keys); PICK_STRICT=false;
       if(!r.jobOnly){ alert("This job has no page to print: it needs a card and somebody on it for "+niceDay(k)+"."); return; }
       var nm=(j.short||j.id||"job").toLowerCase().replace(/[^a-z0-9]+/g,"-");
       r.doc.save("job-sheet-"+nm+"-"+k+".pdf");
       if(o&&o.shop) attachProductionSheet(j,r.doc,k);
     } catch(e){ if(/did not load/.test(String(e&&e.message))) alert(e.message); else throw e; }
-    finally { if(btn){ btn.disabled=false; btn.textContent=was||"Job sheet"; } }
+    finally { PICK_STRICT=false; if(btn){ btn.disabled=false; btn.textContent=was||"Job sheet"; } }
   }
   // THE PRODUCTION SHEET ON THE CARD (Sam, 22 Oct 2026: "make it so the production sheet replaces the picking sheet as they
   // will naturally still go here"). The page just built goes to the card as "Production sheet <ref>", replacing the older
@@ -3652,7 +3657,7 @@ var SNAP=null, DETAIL={};
             // With a page per job (2 Oct 2026) an In-progress job's page lists what is left as "Items to finish"
             PICK[id]={picks:!!e.picks,finish:fin,lines:left,all:all.filter(function(l){ return !isPartLine(l); }),picked:pk,allPicked:all.length>0&&!left.length,error:e.error||"",ref:e.ref||""}; });
           var urls={}; Object.keys(PICK).forEach(function(id){ PICK[id].lines.forEach(function(l){ [l.product_photo,l.storage_photo,l._legs&&(l._legs.product_photo||l._legs.storage_photo)].concat((l.build_components||[]).map(function(c){ return c.photo; })).forEach(function(u){ if(u&&!PICK_IMG[u]) urls[u]=1; }); }); });
-          await loadPickPhotos(Object.keys(urls).slice(0,150)); photosFailedNote(); } }
+          await loadPickPhotos(Object.keys(urls).slice(0,150)); photosFailedStop(); } }
       if(!PICK) PICK={};
       if(only) PICK.__only=only;
       try{ PICK.__data=await jobPagesData(k); }catch(e){ console.error("job pages",e); }
@@ -4010,7 +4015,7 @@ var SNAP=null, DETAIL={};
   var AUTO=true;
   var REFRESHING=false, POLL_EVERY=10000, CRM_EVERY_TICKS=6, TICK=0;
   var PENDING_SNAP=null, FOREIGN=null, SEEN_FOREIGN={};   // a change to the job on screen, waiting for the person to choose
-  var SCHED_VERSION="3 Nov 08:26:52";   /* bumped on every push: shows which version is running and which built a sheet (Sam, 22 Oct 2026, "still not live?!") */
+  var SCHED_VERSION="3 Nov 08:31:57";   /* bumped on every push: shows which version is running and which built a sheet (Sam, 22 Oct 2026, "still not live?!") */
   /* A NEWER SCHEDULER RELOADS ITSELF (Sam, 22 Oct 2026, a sheet built from a window opened before the push). Checked every two
      minutes and before any sheet is built; a reload waits while an editor is open. */
   function liveVersion(){ return fetch("./scheduler.html?vc="+Date.now(),{cache:"no-store"}).then(function(r){ return r.ok?r.text():""; }).then(function(t){ var m=/SCHED_VERSION\s*=\s*"([^"]+)"/.exec(t||""); return m?m[1]:""; }).catch(function(){ return ""; }); }
