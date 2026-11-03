@@ -309,7 +309,9 @@ function frontBadges(d,site,round,kind){
   // A FORTON JOB SAYS LABOUR (Sam, 2 Oct 2026: "why is it saying Bradley H no time on this trello card?"). It sat under
   // "Production: Bradley H, 30 min" with no word for which part it was. The tier name now leads, as production's does.
   var word=tag?tag.replace(/: $/,""):(kind||"Goods In and Out")+": "+who.join(", ")+",";
-  var travel=!site?"":(round?(round.total==null?" · no round travel":" · round "+tight(round.total)):(d.drive==null?" · no travel":" · travel "+tight(d.drive)));
+  // "NO TRAVEL" READ AS NONE NEEDED (Sam, 3 Nov 2026, Ecosave 1F5E03: "why is it saying no travel on this card?"). It
+  // meant no travel time typed yet and the card not on a round. The badge now says what to do, in the same width.
+  var travel=!site?"":(round?(round.total==null?" · add round travel":" · round "+tight(round.total)):(d.drive==null?" · add travel":" · travel "+tight(d.drive)));
   var missing=d.mins==null||(site&&(round?round.total==null:d.drive==null));
   out.push({text:word+(d.mins==null?" no time":" "+tight(d.mins)+(who.length>1?" each":""))+travel,color:missing?"yellow":"green"});
   return out;
