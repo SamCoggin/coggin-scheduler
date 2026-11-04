@@ -123,6 +123,7 @@ var HEAD=[
   [/^subcontract work and materials$/i,"support"],
   [/^parts$/i,"parts"],
   [/^loan chairs$/i,"loan"],
+  [/^collect for recycling/i,"recycle"],
   [/^(job|ref|service|delivery details|clearance details|refurb collection details|buyback drop-off details|delivery info|other items|additional info|standard time)$/i,"skip"]
 ];
 function cleanDesc(txt){
@@ -133,7 +134,7 @@ function cleanDesc(txt){
 }
 function parseDesc(txt){
   txt=cleanDesc(txt);
-  var groups={contact:[],where:[],what:[],access:[],notes:[],support:[],parts:[],loan:[]}, cur="notes";
+  var groups={contact:[],where:[],what:[],access:[],notes:[],support:[],parts:[],loan:[],recycle:[]}, cur="notes";
   txt.split("\n").forEach(function(raw){
     var l=raw.replace(/^\s*[-*_,]+\s*/,"").replace(/_+$/,"").trim(); if(!l) return;
     var bare=l.replace(/:$/,"").trim(), hit=null;
@@ -155,6 +156,14 @@ function parseDesc(txt){
 function loanItemsOf(desc){
   var g=parseDesc(desc||"");
   return (g.loan||[]).map(function(l){return l.replace(/^[,\s]+/,"");}).filter(function(l){return /^\d+\s*x\s*/i.test(l);});
+}
+// THE CHAIRS COMING BACK (4 Nov 2026, Sam: "why does it say nothing about collecting chairs to come back to us?"). The CRM
+// writes a "COLLECT FOR RECYCLING (FOC)" block on a resale delivery card, one "N x type" line each, taken back to base
+// free of charge with the delivery. They are not the job's items (nothing is unloaded) and they are not in the load
+// going out; they are their own step on the stop page so the operatives bring them back.
+function recycleItemsOf(desc){
+  var g=parseDesc(desc||"");
+  return (g.recycle||[]).map(function(l){return l.replace(/^[,\s]+/,"");}).filter(function(l){return /^\d+\s*x\s*/i.test(l);});
 }
 // the items on a card: "N x thing" lines from the description and the product checklist
 function itemsOf(desc,checks){
