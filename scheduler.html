@@ -3096,12 +3096,12 @@ var SNAP=null, DETAIL={};
     // name, each with a small photo, count and name, so eight desks never read as eight desks plus sixteen tops.
     // ONE PART PER ROW (Sam, 28 Oct 2026, MediaCo bench: two columns left each name 3 mm wide, so "Bench end leg" printed a letter a line)
     var partsH=function(items){ var mx=0; items.forEach(function(it){ var n=(it.parts||[]).length; if(n) mx=Math.max(mx,4+n*11); }); return mx; };
-    var tiles=function(items){ var tw=(W-12)/4, ph=partsH(items), th=38+ph; items.forEach(function(it,i){ var tx=L+(i%4)*(tw+4), ty=y+Math.floor(i/4)*(th+4); doc.setDrawColor(180); doc.setLineWidth(0.3); doc.roundedRect(tx,ty,tw,th,1,1); doc.setDrawColor(0);
-        if(!img(it.photo,tx+2,ty+2,tw-4,16)) noPhoto(tx+(tw-20)/2,ty+2,20,16,it.photo);
+    var tiles=function(items){ var tw=(W-12)/4, ph=partsH(items), th=(items.every(function(it){ return it.nophoto; })?22:38)+ph; items.forEach(function(it,i){ var tx=L+(i%4)*(tw+4), ty=y+Math.floor(i/4)*(th+4); doc.setDrawColor(180); doc.setLineWidth(0.3); doc.roundedRect(tx,ty,tw,th,1,1); doc.setDrawColor(0);
+        var top=it.nophoto?ty+8:ty+23; if(!it.nophoto){ if(!img(it.photo,tx+2,ty+2,tw-4,16)) noPhoto(tx+(tw-20)/2,ty+2,20,16,it.photo); }
         // the product on top, its size and colours on a smaller line (Sam, 2 Oct 2026: names were cut off mid-way)
         var parts=String(it.name||"").split(/\s*\|\s*/), main=parts[0], det=parts.slice(1).join(" · ");
-        doc.setFont("helvetica","bold"); doc.setFontSize(9); var ml=doc.splitTextToSize((it.qty!==""?it.qty+" x  ":"")+main,tw-4).slice(0,2); doc.text(ml,tx+2,ty+23);
-        if(det){ doc.setFont("helvetica","normal"); doc.setFontSize(7); doc.setTextColor(100); doc.text(doc.splitTextToSize(det,tw-4).slice(0,3),tx+2,ty+23+ml.length*3.6); doc.setTextColor(0); }
+        doc.setFont("helvetica","bold"); doc.setFontSize(9); var ml=doc.splitTextToSize((it.qty!==""?it.qty+" x  ":"")+main,tw-4).slice(0,2); doc.text(ml,tx+2,top);
+        if(det){ doc.setFont("helvetica","normal"); doc.setFontSize(7); doc.setTextColor(100); doc.text(doc.splitTextToSize(det,tw-4).slice(0,3),tx+2,top+ml.length*3.6); doc.setTextColor(0); }
         var ps=it.parts||[]; if(ps.length){ var py=ty+38; doc.setDrawColor(215); doc.setLineWidth(0.25); doc.line(tx+2,py-1,tx+tw-2,py-1); doc.setFont("helvetica","bold"); doc.setFontSize(5.5); doc.setTextColor(60); doc.text("THESE PARTS MAKE IT, NOTHING EXTRA",tx+2,py+2); doc.setTextColor(0);
           ps.forEach(function(pt,pi){ var px=tx+2, qy=py+4+pi*11; if(!img(pt.photo,px,qy,9,9)) noPhoto(px,qy,9,9,pt.photo);
             doc.setFont("helvetica","bold"); doc.setFontSize(7); doc.text(String(pt.qty||1)+"x",px+11,qy+4); doc.setFont("helvetica","normal"); doc.setFontSize(6.5); doc.text(doc.splitTextToSize(String(pt.name||""),tw-24).slice(0,2),px+17,qy+3.2); }); } });
@@ -3126,8 +3126,8 @@ var SNAP=null, DETAIL={};
         var take=colsFit.length; if(!take){ cont(); continue; }
         var yy=[y,y], maxY=y;
         for(var q=0;q<take;q++){ var r=rows[q], col=colsFit[q], ix=L+col*(colW+6), iy=yy[col], tx0=ph0?ix+18:ix+9;
-          if(ph0){ if(!img(r.it.photo,ix,iy+1,9,ph0)) noPhoto(ix,iy+1,9,ph0,r.it.photo); }
-          doc.setFont("helvetica","bold"); doc.setFontSize(fsz); doc.text(String(r.it.qty),ph0?ix+11:ix,iy+(r.ls.length>1?lh+1.5:r.h*0.62));
+          var slot=ph0&&!r.it.nophoto; if(slot){ if(!img(r.it.photo,ix,iy+1,9,ph0)) noPhoto(ix,iy+1,9,ph0,r.it.photo); } if(!slot) tx0=ix+9;   /* the customer's old chairs have no photo to show (Sam, 4 Nov 2026) */
+          doc.setFont("helvetica","bold"); doc.setFontSize(fsz); doc.text(String(r.it.qty),slot?ix+11:ix,iy+(r.ls.length>1?lh+1.5:r.h*0.62));
           doc.setFont("helvetica","normal"); doc.setFontSize(fsz-1); doc.text(r.ls,tx0,iy+(r.ls.length>1?lh+1.5:r.h*0.62));
           doc.setDrawColor(215); doc.setLineWidth(0.25); doc.line(ix,iy+r.h,ix+colW,iy+r.h); doc.setDrawColor(0); yy[col]=iy+r.h; if(yy[col]>maxY) maxY=yy[col]; }
         y=maxY+3; i0+=take; if(i0<items.length) cont(); } };
@@ -3261,7 +3261,7 @@ var SNAP=null, DETAIL={};
       if(y+20>278) cont(); heading(n0+(hasKnow?2:1),isReturn?"Return to them":collect?"Collect":"Unload"); kit.items(s.items,cont);
       /* THE CHAIRS COMING BACK (4 Nov 2026, Sam: "why does it say nothing about collecting chairs to come back to us?"): the card's
          COLLECT FOR RECYCLING block is its own numbered step after the unload, in the CRM's own words, one tick line per item. */
-      var back=(j.recycleBack||[]).map(function(l){ var mm=/^(\d+)\s*x\s+(.+)$/i.exec(l); return mm?{qty:parseInt(mm[1],10),name:mm[2],photo:""}:{qty:1,name:l,photo:""}; });   /* the same rows as the unload list */
+      var back=(j.recycleBack||[]).map(function(l){ var mm=/^(\d+)\s*x\s+(.+)$/i.exec(l); return mm?{qty:parseInt(mm[1],10),name:mm[2],photo:"",nophoto:true}:{qty:1,name:l,photo:"",nophoto:true}; });   /* the same rows as the unload list, without a photo slot */
       if(back.length&&!collect&&!isReturn){ if(y+20>278) cont(); heading(n0+(hasKnow?3:2),"Collect for recycling"); kit.items(back,cont); }   /* the heading says it; no sentence under it (Sam, 4 Nov 2026) */
       // before you leave: one black panel, two steps and the Trello code
       if(y+44>278) cont(); y+=2; var ph=40; doc.setFillColor(17,17,17); doc.roundedRect(L,y,W,ph,2,2,"F");
@@ -4055,7 +4055,7 @@ var SNAP=null, DETAIL={};
   var AUTO=true;
   var REFRESHING=false, POLL_EVERY=10000, CRM_EVERY_TICKS=6, TICK=0;
   var PENDING_SNAP=null, FOREIGN=null, SEEN_FOREIGN={};   // a change to the job on screen, waiting for the person to choose
-  var SCHED_VERSION="4 Nov 08:19:13";   /* bumped on every push: shows which version is running and which built a sheet (Sam, 22 Oct 2026, "still not live?!") */
+  var SCHED_VERSION="4 Nov 08:22:41";   /* bumped on every push: shows which version is running and which built a sheet (Sam, 22 Oct 2026, "still not live?!") */
   /* A NEWER SCHEDULER RELOADS ITSELF (Sam, 22 Oct 2026, a sheet built from a window opened before the push). Checked every two
      minutes and before any sheet is built; a reload waits while an editor is open. */
   function liveVersion(){ return fetch("./scheduler.html?vc="+Date.now(),{cache:"no-store"}).then(function(r){ return r.ok?r.text():""; }).then(function(t){ var m=/SCHED_VERSION\s*=\s*"([^"]+)"/.exec(t||""); return m?m[1]:""; }).catch(function(){ return ""; }); }
