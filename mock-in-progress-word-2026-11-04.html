@@ -1,0 +1,32 @@
+<!doctype html><meta charset="utf-8"><title>Mock: the in-progress column says it in words</title>
+<style>
+body{font-family:Helvetica,Arial,sans-serif;margin:28px;color:#111;max-width:980px}
+h1{font-size:18px;margin:0 0 4px}p.lead{color:#555;margin:0 0 22px;font-size:14px}
+.sheet{border:1px solid #ccc;padding:18px 22px;margin-bottom:26px;background:#fff}
+.sheet h2{font-size:11px;letter-spacing:.14em;margin:0 0 10px;color:#333}
+table{border-collapse:collapse;width:100%;font-size:12px}
+th{font-size:8px;letter-spacing:.12em;color:#555;text-align:center;padding:4px 6px;border-bottom:1.5px solid #111}
+th.l{text-align:left}td{padding:12px 6px;border-bottom:1px solid #ddd;vertical-align:middle;text-align:center}
+td.l{text-align:left}td.name{font-weight:700}td.sub{font-size:9px;color:#777;font-weight:400;display:block}
+.box{display:inline-block;width:34px;height:16px;border:1.2px solid #111;border-radius:3px;vertical-align:middle}
+.word{font-size:9.5px;font-weight:700;letter-spacing:.06em}.word.done{color:#111}.word.ns{color:#888}
+.num{font-weight:700;font-size:13px}
+.note{font-size:12px;color:#444;background:#f3f4f6;padding:10px 12px;border-left:3px solid #111;margin-top:14px}
+</style>
+<h1>The in-progress column: a word where the number says nothing</h1>
+<p class="lead">Same sheet, same boxes. Only the printed figure under IN PROGRESS changes, and only when it is a bare 0.</p>
+
+<div class="sheet"><h2>NOW (the 4 Nov sheet)</h2>
+<table><tr><th class="l">ITEM</th><th>IN PROGRESS<br><span style="font-weight:400;letter-spacing:0">now</span></th><th>started today</th><th>FINISHED<br><span style="font-weight:400;letter-spacing:0">so far</span></th><th>today</th></tr>
+<tr><td class="l name">10 x Cantilever Desk<span class="sub">nothing started</span></td><td class="num">0</td><td><span class="box"></span></td><td>0 of 10</td><td><span class="box"></span></td></tr>
+<tr><td class="l name">10 x Mobile Pedestal<span class="sub">3 on the bench</span></td><td class="num">3</td><td><span class="box"></span></td><td>2 of 10</td><td><span class="box"></span></td></tr>
+<tr><td class="l name">1 x Round Coffee Table<span class="sub">all finished</span></td><td class="num">0</td><td><span class="box"></span></td><td>1 of 1</td><td><span class="box"></span></td></tr>
+</table></div>
+
+<div class="sheet"><h2>PROPOSED</h2>
+<table><tr><th class="l">ITEM</th><th>IN PROGRESS<br><span style="font-weight:400;letter-spacing:0">now</span></th><th>started today</th><th>FINISHED<br><span style="font-weight:400;letter-spacing:0">so far</span></th><th>today</th></tr>
+<tr><td class="l name">10 x Cantilever Desk<span class="sub">nothing started</span></td><td><span class="word ns">NOT STARTED</span></td><td><span class="box"></span></td><td>0 of 10</td><td><span class="box"></span></td></tr>
+<tr><td class="l name">10 x Mobile Pedestal<span class="sub">3 on the bench</span></td><td class="num">3</td><td><span class="box"></span></td><td>2 of 10</td><td><span class="box"></span></td></tr>
+<tr><td class="l name">1 x Round Coffee Table<span class="sub">all finished</span></td><td><span class="word done">COMPLETED</span></td><td></td><td>1 of 1</td><td></td></tr>
+</table>
+<div class="note">Three states, one rule. A number while something is on the bench. NOT STARTED when nothing has been touched (the boxes stay, there is work to write in). COMPLETED when every one is finished, and the two boxes go, because there is nothing left to write. The same wording on the part rows under a desk.</div></div>

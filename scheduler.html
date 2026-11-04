@@ -3334,7 +3334,11 @@ var SNAP=null, DETAIL={};
       /* A CARD WITH NO CRM DEAL (a viewing, a sample) still prints as rows (Sam, 23 Oct 2026): the card's items become lines */
       if(!pageLines.length&&(o.items||[]).length) pageLines=(o.items||[]).map(function(it){ var q=parseInt(String(it.qty||"1"),10)||1; return {name:String(it.name||"Item").replace(/\s+/g," ").trim(),qty:q,headerCustomer:String(q),product_photo:it.photo||"",section:"other"}; });
       if(!pageLines.length){ kit.items(o.items||[],cont); }
-      var countsAt=function(r,yc){ doc.setFont("helvetica","normal"); doc.setFontSize(8.5); doc.text(String(Math.max(0,r.p-r.f)),mid(0),yc+1.2,{align:"center"});   /* in progress = started, not finished (Sam, 22 Oct 2026, mock approved) */ doc.text(r.f+" of "+r.q,mid(2),yc+1.2,{align:"center"});
+      /* A WORD WHERE THE NUMBER SAYS NOTHING (Sam, 4 Nov 2026, mock approved: "change 0 to completed"): COMPLETED when every one is
+         finished, NOT STARTED when nothing has been touched, the number while something is on the bench. The boxes already go when done. */
+      var countsAt=function(r,yc){ var np=Math.max(0,r.p-r.f), done=r.q>0&&r.f>=r.q, fresh=!r.p&&!r.f;
+        if(done||fresh){ doc.setFont("helvetica","bold"); doc.setFontSize(6.5); doc.setTextColor(done?17:130); if(done) doc.text("COMPLETED",mid(0),yc+1.2,{align:"center",charSpace:0.2}); else doc.text(["NOT","STARTED"],mid(0),yc-0.4,{align:"center",charSpace:0.2}); doc.setTextColor(0); }
+        else { doc.setFont("helvetica","normal"); doc.setFontSize(8.5); doc.text(String(np),mid(0),yc+1.2,{align:"center"}); }   /* in progress = started, not finished (Sam, 22 Oct 2026, mock approved) */ doc.text(r.f+" of "+r.q,mid(2),yc+1.2,{align:"center"});
         doc.setLineWidth(0.45); doc.setDrawColor(17); if(r.p<r.q) doc.roundedRect(mid(1)-6.5,yc-3,13,6,0.8,0.8); if(r.f<r.q) doc.roundedRect(mid(3)-6.5,yc-3,13,6,0.8,0.8); doc.setDrawColor(0); };
       /* THE STRIP IS MEASURED FIRST (4 Nov 2026, Sam: "this page split seems silly?"): the last item and the WHEN YOU FINISH strip
          stay together, so a page is never just the strip. The strip may run to 284 like the kit block; the foot line is at 288. */
@@ -4061,7 +4065,7 @@ var SNAP=null, DETAIL={};
   var AUTO=true;
   var REFRESHING=false, POLL_EVERY=10000, CRM_EVERY_TICKS=6, TICK=0;
   var PENDING_SNAP=null, FOREIGN=null, SEEN_FOREIGN={};   // a change to the job on screen, waiting for the person to choose
-  var SCHED_VERSION="4 Nov 08:32:41";   /* bumped on every push: shows which version is running and which built a sheet (Sam, 22 Oct 2026, "still not live?!") */
+  var SCHED_VERSION="4 Nov 08:38:38";   /* bumped on every push: shows which version is running and which built a sheet (Sam, 22 Oct 2026, "still not live?!") */
   /* A NEWER SCHEDULER RELOADS ITSELF (Sam, 22 Oct 2026, a sheet built from a window opened before the push). Checked every two
      minutes and before any sheet is built; a reload waits while an editor is open. */
   function liveVersion(){ return fetch("./scheduler.html?vc="+Date.now(),{cache:"no-store"}).then(function(r){ return r.ok?r.text():""; }).then(function(t){ var m=/SCHED_VERSION\s*=\s*"([^"]+)"/.exec(t||""); return m?m[1]:""; }).catch(function(){ return ""; }); }
