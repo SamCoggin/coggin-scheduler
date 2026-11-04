@@ -2835,6 +2835,10 @@ var SNAP=null, DETAIL={};
         // ONE JOB'S PAGES (Sam, 14 Oct 2026: "print the job sheet from the schedule editor"): __only names the row keys
         // to draw, so the editor prints this job's pages alone, numbered from 1, with its van's loading sheet in front.
         var only=PICK.__only||null;
+        /* ONE PILE PER WORKSHOP (Sam, 4 Nov 2026: "the order does not put all the seating workshop and furniture workshop pages in
+           the order of each workshop"): production pages are queued as the bars are walked and drawn after them, every seating
+           page first and every furniture page after, jobs in their day order inside each pile. Their crew foot is kept with them. */
+        var prodQ={};
         bars.forEach(function(b){ if(!b.crew) return; kit.crew(UNPLANNED?"Team not set":b.title);
           b.cells.forEach(function(c){ var r=c[6]; if(!r||!r.card) return; if(only&&only.indexOf(r.key)<0&&!(SHEET_SEL&&r.part==="Transport")) return; var j=JOBS.filter(function(q){ return q.id===r.card; })[0]; if(!j) return;
             if(r.part==="Production"){ var i=PICK[r.card]||{}, lines=i.lines||[], fin=j.stage==="In progress"&&!(j.prep&&j.prep.stages);
@@ -2843,17 +2847,19 @@ var SNAP=null, DETAIL={};
               // A PAGE PER WORKSHOP (Sam, 3 Nov 2026, mocks approved): a job with seating and furniture lines prints a page for each, with
               // only that workshop's lines and the people placed on it (or placed nowhere yet). A job in one workshop prints as before.
               var allL=i.all&&i.all.length?i.all:lines, wsList=workshopsOf(allL), wsSplit=wsList.length>1, cntOf=function(ls){ var f=0,q=0; ls.forEach(function(l){ var c0=pickCount(i.picked||{},l); f+=c0.f; q+=c0.q; }); return {f:f,q:q}; };
+              var crewFootNow=UNPLANNED?"Team not set":b.title;
               for(var cpP=0;cpP<copiesOf(r.key);cpP++){ (wsSplit?wsList:[null]).forEach(function(ws,wi){ var inWs=function(l){ return !ws||workshopOf(l)===ws; }, wsLines=lines.filter(inWs), wsAll=(i.all||[]).filter(inWs), wsPage=wsAll.length?wsAll:wsLines, names=ws&&j.prep?prepWhoFor(j.prep,ws):null;
+                var pile=ws||wsList[0]||"furniture"; (prodQ[pile]=prodQ[pile]||[]).push(function(){ kit.crew(crewFootNow); var p0=doc.getNumberOfPages(); if(starts[r.key]==null) starts[r.key]=p0+1;
                 kit.production({unplanned:UNPLANNED===j.id,day:niceDay(k),crew:names?names.join(" + "):b.title,name:r.name,code:"https://trello.com/c/"+(j.short||j.id),started:j.stage==="In progress",title:i.allPicked?"All finished":(lines.length&&lines.every(function(l){ return l.section==="refurb"; }))?"Items to refurbish":fin?"Items to finish":"Pick and finish",
                 facts:[["Time",c[3]],["Due",j.prodDue?niceDay(j.prodDue):""],[j.site?"Delivery":"Ready by",j.date?niceDay(j.date):""],["Ref",i.ref||""]],lines:wsLines,all:wsAll,picked:i.picked||{},items:inf&&inf.items?inf.items:[],
-                  ws:ws?{key:ws,name:workshopName(ws),page:wi+1,of:wsList.length,next:wsList[wi+1]?workshopName(wsList[wi+1]).toLowerCase():"",other:wsList.filter(function(x){ return x!==ws; }).map(function(x){ return workshopName(x).toLowerCase(); }).join(" and "),here:cntOf(wsPage),whole:cntOf(allL),unsorted:wsPage.filter(workshopUnsorted).length,allChairs:wsPage.length>0&&wsPage.every(function(l){ return /chair/i.test(String(l.name||"")); }),allDesks:wsPage.length>0&&wsPage.every(function(l){ return /desk/i.test(String(l.name||"")); })}:null}); }); }
-              starts[r.key]=beforeP+1;
+                  ws:ws?{key:ws,name:workshopName(ws),page:wi+1,of:wsList.length,next:wsList[wi+1]?workshopName(wsList[wi+1]).toLowerCase():"",other:wsList.filter(function(x){ return x!==ws; }).map(function(x){ return workshopName(x).toLowerCase(); }).join(" and "),here:cntOf(wsPage),whole:cntOf(allL),unsorted:wsPage.filter(workshopUnsorted).length,allChairs:wsPage.length>0&&wsPage.every(function(l){ return /chair/i.test(String(l.name||"")); }),allDesks:wsPage.length>0&&wsPage.every(function(l){ return /desk/i.test(String(l.name||"")); })}:null}); }); }); }
               return; }
             if(r.part==="Transport"){ var bc=DATA.byCard[r.card]; if(!bc) return; if(!yardDone[bc.run.key]){ yardDone[bc.run.key]=1; var vanOn=!only||(SHEET_SEL&&SHEET_SEL.vans.indexOf(bc.run.key)>=0); if(vanOn&&kit.hasLoad(bc.run)) for(var cpY=0;cpY<copiesOf(bc.run.key);cpY++) kit.yard(bc.run); }
               if(only&&only.indexOf(r.key)<0) return;   /* the van's loading sheet can be picked without its stops (28 Oct 2026) */   // no loading sheet on a single job from the editor (Sam, 14 Oct 2026, DWF: "I just want the job sheet")
               var before=doc.getNumberOfPages(); for(var cpS=0;cpS<copiesOf(r.key);cpS++) kit.fits(function(){ kit.stop(bc.run,bc.stop); }); starts[r.key]=before+1; return; }
             if(r.part==="Goods In and Out"){ var lb=DATA.info[r.card]; if(!lb) return; var before2=doc.getNumberOfPages(); for(var cpL=0;cpL<copiesOf(r.key);cpL++) kit.fits(function(){ kit.labour(j,lb,b.title,r.sub,c[3]); }); starts[r.key]=before2+1; }
             if(r.part==="Facility"){ var before3=doc.getNumberOfPages(); for(var cpF=0;cpF<copiesOf(r.key);cpF++) kit.fits(function(){ kit.facility(j,b.title,c[3],k); }); starts[r.key]=before3+1; } }); });
+        WORKSHOPS.map(function(x){ return x[0]; }).concat(Object.keys(prodQ)).forEach(function(pile){ (prodQ[pile]||[]).forEach(function(draw){ draw(); }); prodQ[pile]=[]; });
         /* THE END OF DAY CHECK, the last page of the day's print (Sam, 24 Oct 2026, mock approved, nine checks). Rob D walks
            the site from 4:30 and hands the page to the operations manager by 5:00. When Rob is on leave the page prints
            "Closing checker" and whoever covers writes their name. Not on a single job's print from the editor. */
@@ -3431,7 +3437,7 @@ var SNAP=null, DETAIL={};
       var x=L+lab+2; steps.forEach(function(st){ doc.setFillColor(255,255,255); doc.roundedRect(x,y+2,cw,CH,1,1,"F"); box(x+2,y+2+CH/2-2,4);
         doc.setTextColor(110); doc.setFont("helvetica","bold"); doc.setFontSize(6); doc.text(st[0].toUpperCase(),x+8,y+2+CH/2+1,{charSpace:0.2}); var lw=doc.getTextWidth(st[0].toUpperCase())+2.2;
         doc.setTextColor(17); doc.setFontSize(fs); var tx=x+8+lw, lines=oneLine?[st[1]]:doc.splitTextToSize(st[1],cw-(tx-x)-5).slice(0,2); doc.text(lines,tx,y+2+CH/2+(lines.length>1?-0.6:1)); x+=cw+gap; });
-      doc.setTextColor(0); y+=SH+5; setFoot(o.ws?(o.ws.next?"This job carries on over the page: "+o.ws.next+" workshop.":"Last page for this job."):""); };
+      doc.setTextColor(0); y+=SH+5; setFoot(o.ws?(o.ws.next?"The "+o.ws.next+" lines of this job are on the "+o.ws.next+" workshop's page, in that pile.":"Last page for this job."):""); };
     // the black WHEN YOU FINISH strip at the foot of a facility or skip page: two step chips and the card's QR
     var finishPanel=function(j,ph,steps){ doc.setFillColor(17,17,17); doc.roundedRect(L,y,W,ph,2,2,"F");
       doc.setTextColor(255); doc.setFont("helvetica","bold"); doc.setFontSize(13); doc.text("WHEN YOU FINISH",L+5,y+8);
@@ -4055,7 +4061,7 @@ var SNAP=null, DETAIL={};
   var AUTO=true;
   var REFRESHING=false, POLL_EVERY=10000, CRM_EVERY_TICKS=6, TICK=0;
   var PENDING_SNAP=null, FOREIGN=null, SEEN_FOREIGN={};   // a change to the job on screen, waiting for the person to choose
-  var SCHED_VERSION="4 Nov 08:22:41";   /* bumped on every push: shows which version is running and which built a sheet (Sam, 22 Oct 2026, "still not live?!") */
+  var SCHED_VERSION="4 Nov 08:32:41";   /* bumped on every push: shows which version is running and which built a sheet (Sam, 22 Oct 2026, "still not live?!") */
   /* A NEWER SCHEDULER RELOADS ITSELF (Sam, 22 Oct 2026, a sheet built from a window opened before the push). Checked every two
      minutes and before any sheet is built; a reload waits while an editor is open. */
   function liveVersion(){ return fetch("./scheduler.html?vc="+Date.now(),{cache:"no-store"}).then(function(r){ return r.ok?r.text():""; }).then(function(t){ var m=/SCHED_VERSION\s*=\s*"([^"]+)"/.exec(t||""); return m?m[1]:""; }).catch(function(){ return ""; }); }
