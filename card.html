@@ -47,6 +47,7 @@
   .seg{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:8px}
   .seg button{border:2px solid var(--line);background:var(--card);border-radius:6px;padding:8px 4px;font-weight:700}
   .seg button.on{border-color:var(--blue);background:var(--blue);color:#fff}
+  .seg.two{grid-template-columns:repeat(2,1fr);flex:1;margin:0 0 0 10px} .stdbox .row{display:flex;align-items:center;gap:8px;margin-top:8px}
   .vseg button{display:flex;flex-direction:column;align-items:center;gap:2px;padding:9px 4px;line-height:1.1}
   .vseg button b{font-size:14px} .vseg button small{font-size:10.5px;font-weight:500;color:var(--muted)} .vseg button.on small{color:rgba(255,255,255,.85)}
   .atime{display:flex;align-items:center;gap:10px;flex-wrap:wrap} .atime+.atime{margin-top:8px} .atime .an{min-width:72px;font-size:14px;font-weight:700} .atime .ato{color:var(--muted);font-size:14px} .atime input{width:120px}
@@ -495,7 +496,28 @@
       /* SAYS WHO GETS WHAT (Sam, 2 Oct 2026: "it say 30 mins each when i want it 30 mins for one and 15 for the other"):
          once somebody has their own time, the row names each person's time instead of "each". */
       var pDiff=d.prep.who.length>1&&d.prep.mins!=null&&d.prep.who.some(function(w){ return minsFor(d.prep,w)!==d.prep.mins; });
-      ps.appendChild(rowEl("ptime",(d.prep.who.length>1?"Time per operative":"Time")+(pnd>1?", each day":""),pDiff?d.prep.who.map(function(w){ var m=minsFor(d.prep,w); return w.split(" ")[0]+" "+(m!=null?fmt(pnd>1?Math.round(m/pnd):m):"?"); }).join(", ")+(pnd>1?" a day":""):d.prep.mins!=null?fmt(pnd>1?prepPerDay(d.prep):d.prep.mins)+(pnd>1?" a day":"")+(d.prep.who.length>1?" each":""):(pstd?"Not set, estimated "+fmt(pstd.mins):"Not set"),function(ed){
+      /* TIME PER WORKSHOP (Sam, 9 Nov 2026, K&DE Woodhouse: "this is a seating and workshop job but does not give me a time for
+         each area to edit in this view?"). When the items span both workshops the row reads a line per workshop, and Change
+         opens the Seating / Furniture choice per person, then a time and an estimate per workshop. Time is still per person
+         underneath, so the day view, the capacity and the sheets follow it as before. One workshop: nothing changes. */
+      var prodItems=(function(){ var ign=d.ignore||[]; return itemsOf(card.desc,checksOf()).filter(function(l){ return ign.indexOf(l)<0; }).concat(d.items||[]); })();
+      var wsAll=itemWorkshopsOf(prodItems), splitShop=wsAll.length>1&&d.prep.who.length>0; if(splitShop) tidyPrepShop(d.prep);
+      var shopValue=function(){ var bits=WORKSHOPS.map(function(x){ return x[1]+": "+shopMinsText(d.prep,x[0],pnd>1?pnd:1); }); var un=prepUnplaced(d.prep); if(un.length) bits.push(un.map(firstName).join(", ")+" no workshop yet"); return bits.join(" · ")+(pnd>1?" a day":""); };
+      var shopEditor=function(ed){
+        var wsb=el("div","stdbox"); wsb.appendChild(el("b",null,"Which workshop")); var unW=prepUnplaced(d.prep);
+        d.prep.who.forEach(function(w){ var r0=el("div","row"); r0.appendChild(el("span",null,w)); var sg=el("div","seg two"); WORKSHOPS.forEach(function(x){ var b0=el("button",prepShopOf(d.prep,w)===x[0]?"on":"",x[1]); b0.type="button"; b0.setAttribute("aria-pressed",prepShopOf(d.prep,w)===x[0]?"true":"false"); b0.onclick=function(){ setPrepShop(d.prep,w,prepShopOf(d.prep,w)===x[0]?"":x[0]); save(); render(); }; sg.appendChild(b0); }); r0.appendChild(sg); wsb.appendChild(r0); });
+        wsb.appendChild(el("div","hint",unW.length?unW.map(firstName).join(", ")+(unW.length===1?" has":" have")+" no workshop yet. Until then their name prints on both pages of the sheet.":"The sheet prints a page per workshop with these names on it.")); ed.appendChild(wsb);
+        WORKSHOPS.forEach(function(x){ var ws2=shopWho(d.prep,x[0]), its=itemsInWorkshop(prodItems,x[0]); if(!its.length) return;
+          var box=el("div","stdbox"); var n=its.reduce(function(t,s){ var m=ITEM_QTY.exec(s); return t+(m?parseInt(m[0],10)||1:1); },0);
+          box.appendChild(el("b",null,x[1]+": "+n+(n===1?" item":" items")+(ws2.length?", "+ws2.map(firstName).join(", "):", nobody placed")));
+          var sstd=ws2.length?prodStandardFor(loadOf(its),ws2.length,pdaysAvail):null;
+          if(sstd){ box.appendChild(el("div","hint","Estimate "+fmt(sstd.mins)+(ws2.length>1?" each":"")+(sstd.days>1?", "+sstd.days+" days":"")+".")); if(shopMins(d.prep,x[0])!==sstd.mins){ var ub=el("button","p","Use the estimate"); ub.onclick=function(){ setShopMins(d.prep,x[0],sstd.mins); save(); render(); }; box.appendChild(ub); } }
+          if(ws2.length) box.appendChild(timeField(d.prep,x[1]+" time per operative"+(pnd>1?", each day":""),function(){ var m=shopMins(d.prep,x[0]); return m==null?null:(pnd>1?Math.round(m/pnd):m); },function(v){ setShopMins(d.prep,x[0],pnd>1?v*pnd:v); }));
+          else box.appendChild(el("div","hint","Place somebody in this workshop above to set its time."));
+          ed.appendChild(box); });
+      };
+      ps.appendChild(rowEl("ptime",splitShop?"Time by workshop"+(pnd>1?", each day":""):(d.prep.who.length>1?"Time per operative":"Time")+(pnd>1?", each day":""),splitShop?shopValue():pDiff?d.prep.who.map(function(w){ var m=minsFor(d.prep,w); return w.split(" ")[0]+" "+(m!=null?fmt(pnd>1?Math.round(m/pnd):m):"?"); }).join(", ")+(pnd>1?" a day":""):d.prep.mins!=null?fmt(pnd>1?prepPerDay(d.prep):d.prep.mins)+(pnd>1?" a day":"")+(d.prep.who.length>1?" each":""):(pstd?"Not set, estimated "+fmt(pstd.mins):"Not set"),function(ed){
+        if(splitShop){ shopEditor(ed); eachBox(ed,d.prep,"production time",pnd); return; }
         if(pstd){ var sb=el("div","stdbox"); sb.appendChild(el("b",null,"Estimate: "+pstd.crew+(pstd.crew===1?" operative":" operatives")+", "+fmt(pstd.mins)+(pstd.crew>1?" each":"")+(pstd.days>1?", "+pstd.days+" days":""))); sb.appendChild(el("div","hint",pstd.why));
           var br=el("div","row"); br.style.marginTop="6px"; if(d.prep.who.length&&d.prep.mins!==pstd.mins){ var ub=el("button","p","Use the estimate for the "+d.prep.who.length+" chosen"); ub.onclick=function(){ d.prep.mins=pstd.mins; save(); render(); }; br.appendChild(ub); } sb.appendChild(br); ed.appendChild(sb); }
         else if(ESTIMATE_ON) ed.appendChild(el("div","hint","The estimate comes from the items on the card. "+(Lp.unmatched.length?"Some items are not in the table: "+Lp.unmatched.join("; ")+".":Lp.rows.length?"":"No items found on the card.")));

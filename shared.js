@@ -317,6 +317,17 @@ function tidyPrepShop(P){ if(!P||!P.shop) return; Object.keys(P.shop).forEach(fu
 function prepUnplaced(P){ return ((P&&P.who)||[]).filter(function(w){ return !prepShopOf(P,w); }); }
 // "Seating: Jack · Furniture: Jordan, Bart", then anyone still to place; blank when nobody has a workshop
 function prepShopText(P){ if(!P||!P.shop) return ""; var bits=WORKSHOPS.map(function(x){ var ws=(P.who||[]).filter(function(w){ return prepShopOf(P,w)===x[0]; }); return ws.length?x[1]+": "+ws.map(firstName).join(", "):""; }).filter(Boolean); var un=prepUnplaced(P); if(un.length) bits.push(un.map(firstName).join(", ")+" no workshop"); return bits.join(" \u00b7 "); }
+// TIME PER WORKSHOP (Sam, 9 Nov 2026, K&DE Woodhouse: "this is a seating and workshop job but does not give me a time
+// for each area to edit"). Time stays per person underneath; a workshop's time is set on everyone placed in it. The card
+// has no CRM lines, so its "N x name" items are sorted into workshops by name, the same rule a nameless line follows.
+var ITEM_QTY=/^\d+\s*x\s*/i;
+function itemWorkshopsOf(items){ var seen={}; (items||[]).forEach(function(s){ seen[workshopOf({name:String(s).replace(ITEM_QTY,"")})]=1; }); return WORKSHOPS.map(function(x){ return x[0]; }).filter(function(w){ return seen[w]; }); }
+function itemsInWorkshop(items,ws){ return (items||[]).filter(function(s){ return workshopOf({name:String(s).replace(ITEM_QTY,"")})===ws; }); }
+function shopWho(P,ws){ return ((P&&P.who)||[]).filter(function(w){ return prepShopOf(P,w)===ws; }); }
+// one figure when everyone in the workshop has the same, else each name's; null when nobody there has a time
+function shopMins(P,ws){ var ms=shopWho(P,ws).map(function(w){ return minsFor(P,w); }).filter(function(m){ return m!=null; }); if(!ms.length) return null; return ms.every(function(m){ return m===ms[0]; })?ms[0]:null; }
+function setShopMins(P,ws,v){ var ws2=shopWho(P,ws); if(!ws2.length) return; if(P.mins==null) P.mins=v; P.each=P.each||{}; ws2.forEach(function(w){ P.each[w]=v; }); tidyEach(P); }
+function shopMinsText(P,ws,div){ div=div||1; var ws2=shopWho(P,ws); if(!ws2.length) return "nobody placed"; var one=shopMins(P,ws); var f=function(m){ return m==null?"?":fmt(div>1?Math.round(m/div):m); }; if(one!=null||ws2.every(function(w){ return minsFor(P,w)==null; })) return ws2.map(firstName).join(", ")+" "+(one!=null?f(one):"no time"); return ws2.map(function(w){ return firstName(w)+" "+f(minsFor(P,w)); }).join(", "); }
 // the people whose chip prints on a workshop's page: placed there, or not placed anywhere yet
 function prepWhoFor(P,ws){ return ((P&&P.who)||[]).filter(function(w){ var s=prepShopOf(P,w); return !s||s===ws; }); }
 
