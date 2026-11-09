@@ -3455,9 +3455,13 @@ var SNAP=null, DETAIL={};
        description carries "Skip Size:" or "Waste Type:" is a skip exchange, collection or delivery. The page is the six facts
        read off the card, four fixed ticks for when the driver comes, and the finish strip. Nothing else on the card prints,
        so a booking email template kept on the card for the office never reaches the yard. */
-    var isSkipCard=function(dd){ return /^\s*\*?\s*(skip size|waste type)\s*:/im.test(String(dd&&dd.desc||"")); };
+    /* THROUGH THE BOLD (Sam, 9 Nov 2026, Wood Waste Exchange: "why does the wood waste have a 10 point list?"). The card's
+       labels are written **Waste Type:** and **Skip Size**: with the colon either side of the marks, so one optional asterisk
+       missed every line and the card fell through to the facility page. Any run of asterisks is skipped on both sides of the
+       colon, and the Skip Exchange label is a skip card on its own. */
+    var isSkipCard=function(dd,j){ return /^\s*\**\s*(skip size|waste type)\s*\**\s*:/im.test(String(dd&&dd.desc||""))||!!(j&&/Skip Exchange/i.test(labelNames(j.labels||[]).join(" "))); };
     kit.skip=function(j,crewTxt,timeTxt,k0){ var nm=j.title.split(" - ").slice(1).join(" - ")||j.title, crewL=crewTxt.split(" + "), dd=DETAIL[j.id]||{desc:"",checks:[]};
-      var f={}; String(dd.desc||"").split(/\r?\n/).forEach(function(ln){ var m=/^\s*\*?\s*([a-z .]+?)\s*:\s*(.+)$/i.exec(ln); if(m) f[m[1].trim().toLowerCase()]=m[2].trim(); });
+      var f={}; String(dd.desc||"").split(/\r?\n/).forEach(function(ln){ var m=/^\s*\**\s*([a-z .]+?)\s*\**\s*:\s*\**\s*(.+?)\s*\**\s*$/i.exec(ln); if(m&&m[2].trim()) f[m[1].trim().toLowerCase()]=m[2].trim(); });
       var g=function(k2){ return f[k2]||""; };
       newPage(); label("Skip · "+niceDay(k0),L,y+1);
       doc.setFont("helvetica","bold"); doc.setFontSize(20); var tl=doc.splitTextToSize(nm,W).slice(0,2); doc.text(tl,L,y+9); y+=9+(tl.length-1)*7.5+4;
@@ -3477,7 +3481,7 @@ var SNAP=null, DETAIL={};
       var ph=40; y=Math.max(y+8,278-ph-14); finishPanel(j,ph,[["STEP 1","Upload the photos and the waste transfer note to the Trello card"],["STEP 2","Move the card to Jobs Completed"]]);
       y+=ph+4; setFoot("Any issues, tell the operations manager."); };
     kit.facility=function(j,crewTxt,timeTxt,k0){ var nm=j.title.split(" - ").slice(1).join(" - ")||j.title, crewL=crewTxt.split(" + "), dd=DETAIL[j.id]||{desc:"",checks:[]};
-      if(isSkipCard(dd)) return kit.skip(j,crewTxt,timeTxt,k0);
+      if(isSkipCard(dd,j)) return kit.skip(j,crewTxt,timeTxt,k0);
       var where="", tasks=[];
       String(dd.desc||"").split(/\r?\n/).forEach(function(ln){ var t=ln.replace(/^\s*(?:[-*\u2022]|\d+[.)])\s*/,"").replace(/^\[[ x]\]\s*/i,"").replace(/\*\*/g,"").trim(); if(!t) return; var wm=/^where\s*:\s*(.+)$/i.exec(t); if(wm){ where=wm[1].trim(); return; } tasks.push(t); });
       if(dd.checks&&dd.checks.length) tasks=dd.checks.map(function(c){ return c.n; });
