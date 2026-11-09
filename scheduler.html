@@ -2966,7 +2966,7 @@ var SNAP=null, DETAIL={};
       if(/contact/.test(head)&&!kv){ var c=l.replace(/\s+[—-]\s+/," · ").trim(); if(!/^n\/a$/i.test(c)) out.contacts.push(c); return; }
       if(/contact/.test(head)&&kv&&/secondary/i.test(kv[1])){ var c2=kv[2].replace(/\s+[—-]\s+/," · ").trim(); if(!NOT_SET.test(c2)&&!/^n\/a/i.test(c2)) out.contacts.push(c2); return; }
       if(/^(address|delivery address|collection address)$/.test(head)&&!kv){ if(!out.address) out.address=l; return; }
-      if(kv){ var k0=kv[1].toLowerCase().trim(), v=kv[2].trim(); if(/^(address|delivery address|collection address|postcode)$/.test(k0)){ if(!out.address&&!NOT_SET.test(v)) out.address=v; return; } if(!NOT_SET.test(v)) out.kv[k0]=v; return; }
+      if(kv){ var k0=kv[1].toLowerCase().trim(), v=kv[2].trim(); if(/^(address|delivery address|collection address|postcode)$/.test(k0)){ if(!out.address&&!NOT_SET.test(v)) out.address=v; return; } if(!NOT_SET.test(v)||(/^no$/i.test(v)&&/^(lift access|loading bay)$/.test(k0))) out.kv[k0]=v; return; }   /* "Lift access: No" is a fact the operatives need (9 Nov 2026) */
       if(/^access$/.test(head)&&!NOT_SET.test(l)) out.access.push(l); });
     if(!out.address){ var pc=pcOf(j); if(pc&&!/^area:/.test(pc)) out.address=pc; }
     // DONATION CARDS WRITE IT AS LINES (2 Oct 2026, Bluebird showed "Not on the card"): "Site Contact Name:" and "Mobile Number:"
@@ -2976,13 +2976,19 @@ var SNAP=null, DETAIL={};
     // ONE CONTACT ONCE (Sam, 2 Oct 2026, CUBE HR printed Lisa twice): a secondary that is the same person is dropped
     var seenC={}; out.contacts=out.contacts.filter(function(c){ var key=c.toLowerCase().replace(/[^a-z0-9]/g,""); if(seenC[key]) return false; seenC[key]=1; return true; });
     return out; }
-  function knowRows(d){ var kv=d.kv, rows=[], g=function(k){ return kv[k]||""; };
-    var getIn=[g("floor"),g("lift")?"Lift: "+g("lift"):"",g("stairs")?"Stairs: "+g("stairs"):"",g("distance to entrance")?g("distance to entrance")+" from the vehicle":"",g("loading")?g("loading"):"",g("loading bay")?"Loading bay: "+g("loading bay"):""].filter(Boolean).join(", ");
+  /* THE CARD'S OWN LABELS (Sam, 9 Nov 2026, Debenhams: "why is some of the access info missing from the sheet"). A clearance
+     or buyback card writes "Floor / locations", "Lift access", "Distance to items", "Vehicle size access", "RAMS required" and
+     the rest, and this only knew the delivery card's words, so a full site form printed as "Stairs: One flight". Each row
+     now reads every spelling the CRM writes. */
+  function knowRows(d){ var kv=d.kv, rows=[], g=function(){ for(var i=0;i<arguments.length;i++){ if(kv[arguments[i]]) return kv[arguments[i]]; } return ""; };
+    var lift=g("lift","lift access"), bay=g("loading bay");
+    var getIn=[g("floor","floor / locations","floor locations"),lift?(/^no$/i.test(lift)?"No lift":"Lift: "+lift):"",g("stairs")?"Stairs: "+g("stairs"):"",g("distance to entrance","distance to items")?g("distance to entrance","distance to items")+" from the vehicle":"",g("loading"),bay?(/^no$/i.test(bay)?"No loading bay":"Loading bay: "+bay):""].filter(Boolean).join(", ");
     if(getIn) rows.push(["Getting in",getIn]);
-    if(g("parking")) rows.push(["Parking",g("parking")]);
+    var park=[g("parking"),g("parking permits required")?"Permits: "+g("parking permits required"):"",g("vehicle size access"),g("height / width / weight restrictions")?"Restrictions: "+g("height / width / weight restrictions"):""].filter(Boolean).join(". ");
+    if(park) rows.push(["Parking",park]);
     if(d.access.length) rows.push(["Access",d.access.join(" ")]);
-    if(g("working hours")) rows.push(["Hours",g("working hours")]);
-    var arr=[g("security"),g("ppe")?"PPE: "+g("ppe"):"",g("rams")?"RAMS: "+g("rams"):""].filter(Boolean).join(". "); if(arr) rows.push(["On arrival",arr]);
+    var hrs=[g("working hours"),g("time restrictions")?"Time restrictions: "+g("time restrictions"):""].filter(Boolean).join(". "); if(hrs) rows.push(["Hours",hrs]);
+    var arr=[g("security"),g("ppe")?"PPE: "+g("ppe"):"",g("rams","rams required")?"RAMS: "+g("rams","rams required"):"",g("site inductions required")?"Inductions: "+g("site inductions required"):""].filter(Boolean).join(". "); if(arr) rows.push(["On arrival",arr]);
     if(g("known hazards")) rows.push(["Hazards",g("known hazards")]);
     if(g("additional info")) rows.push(["Notes",g("additional info")]);
     return rows; }
