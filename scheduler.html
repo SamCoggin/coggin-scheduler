@@ -2956,7 +2956,9 @@ var SNAP=null, DETAIL={};
   var NOT_SET=/^(n\/a|na|none|no|not needed|not applicable|-|tbc|unknown|yes\s*-\s*n\/a)?\.?$/i;
   function cardDetails(j){
     var dd=DETAIL[j.id], txt=String(dd&&dd.desc||"").replace(/\*\*/g,"").replace(/\r/g,"");
-    var out={contacts:[],address:"",kv:{},access:[],signoff:"",photos:""}, head="";
+    var out={contacts:[],address:"",kv:{},access:[],signoff:"",photos:"",ramsSigned:null}, head="";
+    // the RAMS sign-off is a checklist item the CRM writes on a clearance or buyback card; ticked means signed (9 Nov 2026)
+    (dd&&dd.checks||[]).forEach(function(c){ if(/rams/i.test(c.n||"")&&/sign/i.test(c.n||"")) out.ramsSigned=!!c.done; });
     var links=[], re=/\[([^\]]*)\]\((https?:\/\/[^)\s]+)\)/g, m; while((m=re.exec(txt))) links.push({label:m[1],url:m[2]});
     var so=links.filter(function(x){ return /sign/i.test(x.label)||/sign-?off/i.test(x.url); })[0]; if(so) out.signoff=so.url;
     else { var bare=/(https?:\/\/\S*sign-?off\S*)/i.exec(txt); if(bare) out.signoff=bare[1].replace(/[)\].,]+$/,""); }
@@ -2980,7 +2982,13 @@ var SNAP=null, DETAIL={};
      or buyback card writes "Floor / locations", "Lift access", "Distance to items", "Vehicle size access", "RAMS required" and
      the rest, and this only knew the delivery card's words, so a full site form printed as "Stairs: One flight". Each row
      now reads every spelling the CRM writes. */
-  function knowRows(d){ var kv=d.kv, rows=[], g=function(){ for(var i=0;i<arguments.length;i++){ if(kv[arguments[i]]) return kv[arguments[i]]; } return ""; };
+  function knowRows(d){ var kv=d.kv, rows=[];
+    // SHOUTED ANSWERS READ AS SENTENCES (Sam, 9 Nov 2026: "why is ground and first floor cap lists?"): the customer typed
+    // the site form in capitals, and the card keeps their letters; the sheet prints a value with no lower case in sentence case
+    var sc=function(v){ return (v&&v.length>3&&/[A-Z]/.test(v)&&!/[a-z]/.test(v))?v.charAt(0)+v.slice(1).toLowerCase():v; };
+    var g=function(){ for(var i=0;i<arguments.length;i++){ if(kv[arguments[i]]) return sc(kv[arguments[i]]); } return ""; };
+    // "RAMS: Yes" told the operatives nothing (Sam, 9 Nov 2026). A card that needs one says whether it is signed yet.
+    var ramsTxt=function(){ var r=g("rams","rams required"); if(!r) return ""; if(/^yes$/i.test(r)) return d.ramsSigned===true?"RAMS signed":"RAMS needed, not signed yet"; return "RAMS: "+r; };
     var lift=g("lift","lift access"), bay=g("loading bay");
     var getIn=[g("floor","floor / locations","floor locations"),lift?(/^no$/i.test(lift)?"No lift":"Lift: "+lift):"",g("stairs")?"Stairs: "+g("stairs"):"",g("distance to entrance","distance to items")?g("distance to entrance","distance to items")+" from the vehicle":"",g("loading"),bay?(/^no$/i.test(bay)?"No loading bay":"Loading bay: "+bay):""].filter(Boolean).join(", ");
     if(getIn) rows.push(["Getting in",getIn]);
@@ -2988,7 +2996,7 @@ var SNAP=null, DETAIL={};
     if(park) rows.push(["Parking",park]);
     if(d.access.length) rows.push(["Access",d.access.join(" ")]);
     var hrs=[g("working hours"),g("time restrictions")?"Time restrictions: "+g("time restrictions"):""].filter(Boolean).join(". "); if(hrs) rows.push(["Hours",hrs]);
-    var arr=[g("security"),g("ppe")?"PPE: "+g("ppe"):"",g("rams","rams required")?"RAMS: "+g("rams","rams required"):"",g("site inductions required")?"Inductions: "+g("site inductions required"):""].filter(Boolean).join(". "); if(arr) rows.push(["On arrival",arr]);
+    var arr=[g("security"),g("ppe")?"PPE: "+g("ppe"):"",ramsTxt(),g("site inductions required")?"Inductions: "+g("site inductions required"):""].filter(Boolean).join(". "); if(arr) rows.push(["On arrival",arr]);
     if(g("known hazards")) rows.push(["Hazards",g("known hazards")]);
     if(g("additional info")) rows.push(["Notes",g("additional info")]);
     return rows; }
