@@ -485,15 +485,23 @@
       // ONE DAY FOR A SHORT JOB (Sam, 1 Oct 2026: "Production days is not relevant for a job that only takes 30 mins").
       // When the time fits in one working day it is one date, Production day; a range only for longer work, or one
       // already set as a range.
-      var oneDay=d.prep.mins!=null&&d.prep.mins<=DAY_MINS&&!(d.prep.start&&d.prep.date&&d.prep.start!==d.prep.date);
+      // SEVERAL DAYS IS ALWAYS REACHABLE (Sam, 13 Nov 2026, Fine Bedding: "it only allows me to add a time but it needs
+      // days"). A time of 0 locked the row to one day and the quick times stop at a full day, so the range could not be
+      // got to from the card. 0 now reads as not set, and "More than one day" opens the range from a one-day job.
+      var oneDay=!window.__prodMulti&&d.prep.mins!=null&&d.prep.mins>0&&d.prep.mins<=DAY_MINS&&!(d.prep.start&&d.prep.date&&d.prep.start!==d.prep.date);
+      // ADD A DAY, as the Scheduler has it: the next working day goes on the end and the total follows.
+      var addDayBtn=function(ed){ if(!d.prep.date) return; var nx=new Date(d.prep.date+"T12:00"); do{ nx.setDate(nx.getDate()+1); }while(nx.getDay()===0||nx.getDay()===6||(typeof isBankHoliday==="function"&&isBankHoliday(nx.toISOString().slice(0,10)))); var nk=nx.toISOString().slice(0,10);
+        var ar=el("div","row"); var ab=el("button","p","Add a day"); ab.title="Adds "+niceShort(nk)+" to the end"; ab.onclick=function(){ if(!d.prep.start) d.prep.start=d.prep.date; d.prep.date=nk; window.__prodMulti=true; syncPrepTotal(d.prep); fitPrepGrid(d.prep); save(); render(); }; ar.appendChild(ab); ar.appendChild(el("span","hint","Adds "+niceShort(nk)+" to the end.")); ed.appendChild(ar); };
       var pdaysRow=ps.appendChild(rowEl("pdays",oneDay?"Production day":"Production days",daysTxt,oneDay?function(ed){ var pr=el("div","row");
         var d0=el("input"); d0.type="date"; d0.value=d.prep.date||""; d0.setAttribute("aria-label","Production day"); d0.onchange=function(){ d.prep.date=d0.value||null; d.prep.start=d.prep.date; fitPrepGrid(d.prep); save(); render(); };
-        pr.appendChild(d0); var clr0=el("button","p","Clear"); clr0.onclick=function(){ d.prep.start=null; d.prep.date=null; delete d.prep.grid; save(); render(); }; pr.appendChild(clr0); ed.appendChild(pr);
-        ed.appendChild(el("div","hint","Pick the day and it appears under Production in the Scheduler.")); dueEd(ed); }:function(ed){ var pr=el("div","row");
+        pr.appendChild(d0); var clr0=el("button","p","Clear"); clr0.onclick=function(){ d.prep.start=null; d.prep.date=null; delete d.prep.grid; save(); render(); }; pr.appendChild(clr0);
+        var mb=el("button","p","More than one day"); mb.onclick=function(){ window.__prodMulti=true; render(); }; pr.appendChild(mb); ed.appendChild(pr);
+        ed.appendChild(el("div","hint","Pick the day and it appears under Production in the Scheduler. For a job over several days press More than one day.")); dueEd(ed); }:function(ed){ var pr=el("div","row");
         var d1=el("input"); d1.type="date"; d1.value=d.prep.start||""; var d2=el("input"); d2.type="date"; d2.value=d.prep.date||"";
         d1.onchange=function(){ d.prep.start=d1.value||null; if(d.prep.start&&(!d.prep.date||d.prep.date<d.prep.start)) d.prep.date=d.prep.start; if(!d.prep.start) d.prep.date=null; syncPrepTotal(d.prep); fitPrepGrid(d.prep); save(); render(); };
         d2.onchange=function(){ d.prep.date=d2.value||null; if(d.prep.date&&(!d.prep.start||d.prep.start>d.prep.date)) d.prep.start=d.prep.date; if(!d.prep.date) d.prep.start=null; syncPrepTotal(d.prep); fitPrepGrid(d.prep); save(); render(); };
         pr.appendChild(el("span",null,"From")); pr.appendChild(d1); pr.appendChild(el("span",null,"to")); pr.appendChild(d2); var clr=el("button","p","Clear"); clr.onclick=function(){ d.prep.start=null; d.prep.date=null; delete d.prep.grid; save(); render(); }; pr.appendChild(clr); ed.appendChild(pr);
+        addDayBtn(ed);
         ed.appendChild(el("div","hint","Set the days and it appears under Production in the Scheduler.")); dueEd(ed); var pf=prodFit(d.prep.mins,d.prep.date?workDays(d.prep.start||d.prep.date,d.prep.date).length:0); if(pf) ed.appendChild(el("div","hint far",pf)); },d.prep.date?"":(prodFit(d.prep.mins,d.prep.date?workDays(d.prep.start||d.prep.date,d.prep.date).length:0)?"todo":"")));
       var pnd=prepDayCount(d.prep);
       /* SAYS WHO GETS WHAT (Sam, 2 Oct 2026: "it say 30 mins each when i want it 30 mins for one and 15 for the other"):
@@ -524,7 +532,17 @@
         if(pstd){ var sb=el("div","stdbox"); sb.appendChild(el("b",null,"Estimate: "+pstd.crew+(pstd.crew===1?" operative":" operatives")+", "+fmt(pstd.mins)+(pstd.crew>1?" each":"")+(pstd.days>1?", "+pstd.days+" days":""))); sb.appendChild(el("div","hint",pstd.why));
           var br=el("div","row"); br.style.marginTop="6px"; if(d.prep.who.length&&d.prep.mins!==pstd.mins){ var ub=el("button","p","Use the estimate for the "+d.prep.who.length+" chosen"); ub.onclick=function(){ d.prep.mins=pstd.mins; save(); render(); }; br.appendChild(ub); } sb.appendChild(br); ed.appendChild(sb); }
         else if(ESTIMATE_ON) ed.appendChild(el("div","hint","The estimate comes from the items on the card. "+(Lp.unmatched.length?"Some items are not in the table: "+Lp.unmatched.join("; ")+".":Lp.rows.length?"":"No items found on the card.")));
-        ed.appendChild(el("div","lbl","Production time per operative"+(pnd>1?", each day":""))); ed.appendChild(pnd>1?timeField(d.prep,"",function(){ return prepPerDay(d.prep); },function(v){ setPrepPerDay(d.prep,v); }):timeField(d.prep,"")); if(pnd>1) ed.appendChild(el("div","hint",pnd+" working days, so "+(d.prep.mins!=null?fmt(d.prep.mins)+" each in all":"no total yet")+"."));
+        ed.appendChild(el("div","lbl","Production time per operative"+(pnd>1?", each day":""))); if(pnd>1){
+          // FULL DAYS OR PART DAYS, the Scheduler's own choice (2 Oct 2026), now on the card (13 Nov 2026).
+          var fullD=prepPerDay(d.prep)===DAY_MINS&&!d.prep.each, partD=!fullD&&(d.prep.perDay!=null||d.prep.mins!=null||d.prep.partDays);
+          var fm=el("div","seg two"); fm.style.margin="0 0 8px"; var fb=el("button",fullD?"on":"","Full days"), pb2=el("button",partD?"on":"","Part days"); fb.type="button"; pb2.type="button"; fb.setAttribute("aria-pressed",fullD?"true":"false"); pb2.setAttribute("aria-pressed",partD?"true":"false");
+          fb.onclick=function(){ delete d.prep.each; delete d.prep.partDays; setPrepPerDay(d.prep,DAY_MINS); save(); render(); };
+          pb2.onclick=function(){ d.prep.partDays=true; if(prepPerDay(d.prep)===DAY_MINS) setPrepPerDay(d.prep,null); save(); render(); };
+          fm.appendChild(fb); fm.appendChild(pb2); ed.appendChild(fm);
+          if(fullD) ed.appendChild(el("div","hint",fmt(DAY_MINS)+" a day each, "+pnd+" working days. No totals to work out."));
+          else if(partD){ ed.appendChild(timeField(d.prep,"",function(){ return prepPerDay(d.prep); },function(v){ setPrepPerDay(d.prep,v); })); var pdm=prepPerDay(d.prep); ed.appendChild(el("div","hint"+(pdm!=null&&pdm>DAY_MINS?" far":""),pdm==null?"Type the hours each day.":pdm>DAY_MINS?fmt(pdm)+" a day is more than a "+fmt(DAY_MINS)+" day. Pick Full days and add a day instead.":pnd+" working days of "+fmt(pdm)+" each, so "+fmt(d.prep.mins)+" each in all.")); }
+          else ed.appendChild(el("div","hint","Pick Full days, or Part days for a few hours a day."));
+        } else ed.appendChild(timeField(d.prep,""));
         // SOMEBODY BREAKING OFF (Sam, 18 Sep 2026: "an operative might have to break off a job onto something
         // else"). One time for everybody is the norm; where it is not, set that person's own time here and the
         // day view, the capacity and the job sheets all follow it.
@@ -581,7 +599,19 @@
           if(std){ var sb=el("div","stdbox"); sb.appendChild(el("b",null,"Estimate: "+std.crew+(std.crew===1?" operative":" operatives")+(std.mins!=null?", "+fmt(std.mins)+(std.crew>1?" each":""):""))); sb.appendChild(el("div","hint",/[.]$/.test(std.why)?std.why:std.why+"."));
             if(std.mins!=null){ var br=el("div","row"); br.style.marginTop="6px"; if(d.mins!==std.mins){ var ub=el("button","p","Use the estimate"); ub.onclick=function(){ d.mins=std.mins; save(); render(); }; br.appendChild(ub); } sb.appendChild(br); } ed.appendChild(sb); }
           ed.appendChild(el("div","lbl",site?"Site time per operative":facility?"Time per operative":(loading?"Loading time per operative":"Goods In and Out time per operative"))); ed.appendChild(timeField(d,"")); eachBox(ed,d,site?"site time":"labour time");
-          if(site&&!onRound){ ed.appendChild(el("div","lbl","Travel time, return")); ed.appendChild(hm(function(){return d.drive;},function(v){d.drive=v;},"Travel")); ed.appendChild(el("div","hint","There and back, typed. When this job shares a vehicle with another the same day, the travel moves to the round.")); if(d.drive!=null&&d.drive>360) ed.appendChild(el("div","warn","More than a day's travel with the job in between. Consider a courier or subcontractor.")); }
+          if(site&&!onRound){ ed.appendChild(el("div","lbl","Travel time, return")); ed.appendChild(hm(function(){return d.drive;},function(v){d.drive=v; d.driveAuto=false;},"Travel")); ed.appendChild(el("div","hint",d.drive!=null&&d.driveAuto?"Road time from Google, plus 20 percent for traffic. Change it if you know better. When this job shares a vehicle with another the same day, the travel moves to the round.":"There and back. When this job shares a vehicle with another the same day, the travel moves to the round."));
+            // WORK IT OUT, the Scheduler's button (17 Oct 2026), on the card (13 Nov 2026). Forton to the site and back
+            // from the same CRM route function, plus the traffic allowance, rounded to five minutes. Never automatic.
+            (function(){ var pcRe=/\b([A-Z]{1,2}\d[A-Z\d]?)\s*(\d[A-Z]{2})\b/i, pm=pcRe.exec(parseDesc(card.desc||"").where.join(" "))||pcRe.exec(String(card.desc||"").replace(/\*\*/g,"")); var pcW=pm?(pm[1]+" "+pm[2]).toUpperCase():"";
+              if(!pcW){ ed.appendChild(el("div","hint","No full postcode on the card, so the travel has to be typed.")); return; }
+              var wr=el("div","row"); var wb=el("button","p","Work it out from the postcode"); wb.title="Road time from Forton to "+pcW+" and back, from Google, plus "+Math.round((TRAFFIC-1)*100)+" percent for traffic.";
+              wb.onclick=function(){ wb.disabled=true; wb.textContent="Asking the map\u2026";
+                (boardData.crmKey?Promise.resolve(boardData.crmKey):t.get("member","private","crmKey","").catch(function(){return "";})).then(function(key){ if(!key) throw new Error("no key");
+                  return fetch("https://coggin-sos-os.base44.app/api/apps/69c930a6240fba922f369aa2/functions/routeLegs",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({key:key,points:["PR3 1AD",pcW,"PR3 1AD"]})}); })
+                .then(function(x){ return x.json(); }).then(function(res){ if(!res||!res.ok||!res.legs||!res.legs.length) throw new Error((res&&res.error)||"no answer");
+                  var mins=res.legs.reduce(function(a,L){ return a+(Number(L.mins)||0); },0); d.drive=Math.max(5,Math.round(mins*TRAFFIC/5)*5); d.driveAuto=true; save(); render(); })
+                .catch(function(e){ wb.disabled=false; wb.textContent=String(e&&e.message)==="no key"?"Needs the board's CRM key, type it":"Could not reach the map, type it"; wb.title=String(e&&e.message||e); }); };
+              wr.appendChild(wb); wr.appendChild(el("span","hint","Forton to "+pcW+" and back.")); ed.appendChild(wr); })(); if(d.drive!=null&&d.drive>360) ed.appendChild(el("div","warn","More than a day's travel with the job in between. Consider a courier or subcontractor.")); }
         },(d.mins==null&&d.who.length&&!contractorOnly)?"bad":(d.mins==null||(site&&d.drive==null))?"todo":""));
         // STARTS AT (Sam, 28 Sep 2026: "what happens if it is just a morning or a couple hours"). Optional, site jobs
         // only. Set, the crew read as out until start + site time + travel and free after; blank, they read as out all day.
@@ -599,14 +629,18 @@
           // A HIRE VAN BOOKED IN THE CRM shows here (6 Oct 2026): the card's "Hired for this job" Transport line with its reg.
           var hireL=(String(card.desc||"").replace(/\*\*/g,"").match(/^- Transport: [^\n]+/gm)||[]).map(function(l){ return l.replace(/^- Transport: /,""); });
           var hireTxt=hireL.length?" + hire: "+hireL.join("; "):"";
-          var vTxt=(!d.vehicle?(hireL.length?"":"No vehicle"):(d.vehicle==="hire"?"Hire"+(d.hireFrom?", "+d.hireFrom:"")+(d.hireRef?", "+d.hireRef:""):vansOf(d).join(" and ")))+(hireTxt&&d.vehicle!=="hire"?(d.vehicle?hireTxt:hireTxt.replace(/^ \+ /,"")):"");
+          var vTxt=(!d.vehicle?(hireL.length?"":"No vehicle"):(d.vehicle==="hire"?"Hire"+(d.hireBooked?" booked":" not booked")+(d.hireFrom?", "+d.hireFrom:"")+(d.hireRef?", "+d.hireRef:""):vansOf(d).join(" and ")))+(hireTxt&&d.vehicle!=="hire"?(d.vehicle?hireTxt:hireTxt.replace(/^ \+ /,"")):"");
           ts.appendChild(rowEl("veh","Vehicle",vTxt,function(ed){
             // a segmented picker: the reg on top, what it is underneath, the chosen one filled (Sam, 29 Sep 2026: "UI upgrade needed here")
             var sg=el("div","seg vseg"); (typeof VEHICLES!=="undefined"?VEHICLES:[]).concat([{reg:"hire",name:"Hire a vehicle"}]).forEach(function(v){
               var on=vansOf(d).indexOf(v.reg)>=0; var b=el("button",on?"on":""); b.appendChild(el("b",null,v.reg==="hire"?"Hire":v.reg)); b.appendChild(el("small",null,v.reg==="hire"?"supplier below":String(v.name||"").replace(/\s*\(.*$/,"").replace(/^Renault Master /,"")+(/(20\d\d)/.test(v.name||"")?", "+/(20\d\d)/.exec(v.name)[1]:"")));
               b.setAttribute("aria-pressed",on?"true":"false"); b.onclick=function(){ var cur=vansOf(d); if(v.reg==="hire") setVans(d,cur.indexOf("hire")>=0?[]:["hire"]); else { cur=cur.filter(function(x){return x!=="hire";}); var i=cur.indexOf(v.reg); if(i>=0) cur.splice(i,1); else cur.push(v.reg); setVans(d,cur); } save(); render(); }; sg.appendChild(b); }); ed.appendChild(sg);   // both our vans can go; Hire stands alone (6 Oct 2026)
             if(d.vehicle==="hire"){ var hs=el("div","seg"); HIRE_SUPPLIERS.forEach(function(nm){ var sb=el("button",d.hireFrom===nm?"on":"",nm); sb.onclick=function(){ d.hireFrom=(d.hireFrom===nm?"":nm); save(); render(); }; hs.appendChild(sb); }); ed.appendChild(hs);
-              var hr=el("div","row"); var hi=el("input"); hi.type="text"; hi.placeholder="Vehicle and reference"; hi.setAttribute("aria-label","Hire vehicle and reference"); hi.value=d.hireRef||""; hi.onchange=function(){ d.hireRef=hi.value; save(); render(); }; hr.appendChild(hi); ed.appendChild(hr); }
+              var hr=el("div","row"); var hi=el("input"); hi.type="text"; hi.placeholder="Vehicle and reference"; hi.setAttribute("aria-label","Hire vehicle and reference"); hi.value=d.hireRef||""; hi.onchange=function(){ d.hireRef=hi.value; save(); render(); }; hr.appendChild(hi);
+              // BOOKED, the Scheduler's tick, on the card (13 Nov 2026). Same warning: not booked and the job is close.
+              var ck=el("label","ck"); var cb2=el("input"); cb2.type="checkbox"; cb2.checked=!!d.hireBooked; cb2.onchange=function(){ d.hireBooked=cb2.checked; save(); render(); }; ck.style.cssText="display:inline-flex;align-items:center;gap:6px;font-weight:700;margin-left:10px"; ck.appendChild(cb2); ck.appendChild(document.createTextNode("Booked")); hr.appendChild(ck); ed.appendChild(hr);
+              var tdy=new Date().toISOString().slice(0,10), hDue=!d.hireBooked&&due&&due>=tdy&&workDaysBetween(tdy,due)<=6;
+              ed.appendChild(el("div","hint"+(hDue?" far":""),d.hireBooked?"Booked. The reference prints on the routes sheet.":hDue?"Not booked and the job is within 5 working days. Book it now.":"Tick Booked once the hire company has confirmed.")); }
             ed.appendChild(el("div","hint",d.vehicle?"Tap one again to take it off. Both vans can go on a job.":"Which vehicles go out. Both vans can go on a job."));
             if(hireL.length) ed.appendChild(el("div","hint","Booked in the CRM: "+hireL.join("; ")+"."));
           },(d.vehicle||hireL.length)?"":"todo"));
