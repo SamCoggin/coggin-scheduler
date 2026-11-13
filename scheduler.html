@@ -3436,7 +3436,7 @@ var SNAP=null, DETAIL={};
         if(!single){ rows.forEach(function(r,ri){ var ls=partLines[ri], pt=partTxt(r), rh=partH(ls,pt), tx=NX+(pt.tied?4:0)+(pt.bigPhoto?12:0); doc.setFillColor(250,250,250); doc.rect(L+7,y,W-7,rh+((pt.canScrap||pt.isLegs)?6:0),"F"); doc.setDrawColor(225); doc.setLineWidth(0.2); doc.line(L+7,y,L+W,y); doc.setDrawColor(0);
             if(pt.tied){ doc.setDrawColor(17); doc.setLineWidth(0.35); doc.line(NX+0.6,y+1.6,NX+0.6,y+3.9); doc.line(NX+0.6,y+3.9,NX+2.8,y+3.9); doc.line(NX+2.1,y+3.2,NX+2.8,y+3.9); doc.line(NX+2.1,y+4.6,NX+2.8,y+3.9); doc.setDrawColor(0); }   /* the panels hang off the tops batch */   // full width: the part picture sits under the item photo (Sam, 22 Oct 2026, mock A)
             if(pt.drawPanel){ doc.setDrawColor(17); doc.setLineWidth(0.3); doc.setFillColor(255,255,255); doc.rect(L+10,y+rh/2-0.9,12,1.8,"FD"); doc.setDrawColor(0); }
-            else if(pt.drawTop){ var dm2=/(\d{3,4})\s*[x\u00D7]\s*(\d{3,4})/i.exec(r.n+" "+(r.size||"")), tw2=dm2?+dm2[1]:1200, td2=dm2?+dm2[2]:800, sc2=Math.min(14/tw2,(rh-2.5)/td2); doc.setDrawColor(17); doc.setLineWidth(0.3); doc.setFillColor(255,255,255); doc.rect(L+8+(16-tw2*sc2)/2,y+1.25+((rh-2.5)-td2*sc2)/2,tw2*sc2,td2*sc2,"FD"); doc.setDrawColor(0); }   // a drawn top, never the donor desk photo (Sam, 22 Oct 2026)
+            else if(pt.drawTop){ var dm2=/(\d{3,4})\s*[x\u00D7]\s*[WDH]?(\d{3,4})/i.exec(r.n+" "+(r.size||"")), tw2=dm2?+dm2[1]:1200, td2=dm2?+dm2[2]:800, sc2=Math.min(14/tw2,(rh-2.5)/td2); doc.setDrawColor(17); doc.setLineWidth(0.3); doc.setFillColor(255,255,255); doc.rect(L+8+(16-tw2*sc2)/2,y+1.25+((rh-2.5)-td2*sc2)/2,tw2*sc2,td2*sc2,"FD"); doc.setDrawColor(0); }   // a drawn top, never the donor desk photo (Sam, 22 Oct 2026)
             else if(pt.bigPhoto){ if(!img(pt.comp.photo,L+8,y+1.5,27,22)) noPhoto(L+8,y+1.5,27,22,pt.comp.photo); }
             else if(pt.thumb) img(pt.comp.photo,L+8,y+1,16,rh-2);
             var hasP=false;
@@ -4088,7 +4088,7 @@ var SNAP=null, DETAIL={};
   var AUTO=true;
   var REFRESHING=false, POLL_EVERY=10000, CRM_EVERY_TICKS=6, TICK=0;
   var PENDING_SNAP=null, FOREIGN=null, SEEN_FOREIGN={};   // a change to the job on screen, waiting for the person to choose
-  var SCHED_VERSION="13 Nov 10:15:00";   /* bumped on every push: shows which version is running and which built a sheet (Sam, 22 Oct 2026, "still not live?!") */
+  var SCHED_VERSION="13 Nov 12:00:00";   /* bumped on every push: shows which version is running and which built a sheet (Sam, 22 Oct 2026, "still not live?!") */
   /* A NEWER SCHEDULER RELOADS ITSELF (Sam, 22 Oct 2026, a sheet built from a window opened before the push). Checked every two
      minutes and before any sheet is built; a reload waits while an editor is open. */
   function liveVersion(){ return fetch("./scheduler.html?vc="+Date.now(),{cache:"no-store"}).then(function(r){ return r.ok?r.text():""; }).then(function(t){ var m=/SCHED_VERSION\s*=\s*"([^"]+)"/.exec(t||""); return m?m[1]:""; }).catch(function(){ return ""; }); }
