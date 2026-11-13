@@ -641,9 +641,12 @@ function prodStatusOf(P,due,today,inShop){
   // time for the due date"). The start date comes from the time typed per operative: each full 7h45 of it is a
   // working day, so 18h each needs 3 days and starts 2 working days before it is due; a one-day job starts on its due
   // day. No time typed, no start date. text and full are the same sentence now; full is kept for the Scheduler's calls.
-  var need=P.mins!=null?Math.max(1,Math.ceil(P.mins/DAY_MINS)):null, start=need==null?null:(need>1?workingDaysBefore(due,need-1):due);
+  // A TIME OF 0 IS NO TIME (Sam, 13 Nov 2026: "showing this line before the time is added is not right"). 0 minutes
+  // read as a one-day job and gave a start date; it now reads as not set, like a blank.
+  var hasMins=P.mins!=null&&P.mins>0;
+  var need=hasMins?Math.max(1,Math.ceil(P.mins/DAY_MINS)):null, start=need==null?null:(need>1?workingDaysBefore(due,need-1):due);
   var out=function(cls,text,planned){ return {cls:cls,text:text,full:text,start:start,need:need,planned:!!planned}; };
-  if(P.date&&who.length&&P.mins!=null){
+  if(P.date&&who.length&&hasMins){
     if(P.date>due){ var late=workDaysBetween(due,P.date)-1;
       // WHO IS LATE, when the crew have their own days (19 Oct 2026): "Jordan and Jack finish Fri 30th Oct" rather than
       // the whole crew, because Bradley came off on the Wednesday.
