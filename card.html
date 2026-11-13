@@ -298,11 +298,16 @@
   // Someone on leave on any of the part's days is greyed out and cannot be
   // picked (Sam, 17 Sep 2026). Already picked stays clickable, so it can be removed.
   function people(part,transport,fill,days){
-    var w=el("div","people"), offOn={}, awayOn={}; (days||[]).forEach(function(k){ var L=loadOn(k,part); CREW.forEach(function(n){ if(L[n]&&L[n].off) offOn[n]=true; }); });
+    // ON LEAVE FOR SOME OF THE DAYS IS NOT ON LEAVE FOR THE JOB (Sam, 13 Nov 2026: "Why can't I add Bart to this on Monday
+    // as he is not on leave Monday", on production booked Fri 13 to Mon 16 Nov with Bart off on the Friday only). One day's
+    // leave greyed him out for the whole span. He is only greyed out when he is off on EVERY day of the part. Off for some,
+    // he can be picked, the button says which days he is off, and on production those days go in as off, not Full.
+    var w=el("div","people"), offDays={}, offOn={}, awayOn={}; (days||[]).forEach(function(k){ var L=loadOn(k,part); CREW.forEach(function(n){ if(L[n]&&L[n].off){ (offDays[n]=offDays[n]||[]).push(k); } }); });
+    CREW.forEach(function(n){ if(offDays[n]&&offDays[n].length===(days||[]).length) offOn[n]=true; });
     // NEVER ASSUMED OUT ALL DAY (Sam, 6 Oct 2026: "Why wont it let me select Bart when he has free time?"). Another site job
     // with no arrival time marked him out on site all day here, while the bars below showed his free time: the same rule
     // the Scheduler dropped on 2 Oct ("why is it also saying bart is out all day?"). His free time below is the answer.
-    CREW.forEach(function(n){ var picked=part.who.indexOf(n)>=0, off=offOn[n]&&!picked, away=awayOn[n]&&!picked&&!off; var b=el("button","p"+(picked?" on":"")+(off?" off":"")+(away?" away":""),n); if(away) b.title=n+" is out on site all day"; if(off){ b.disabled=true; b.title=n+" is on leave"; b.appendChild(el("i","lv","on leave")); } if(transport&&DRIVERS.indexOf(n)>=0) b.appendChild(el("i","drv","driver")); b.onclick=function(){ var i=part.who.indexOf(n); if(i<0){ part.who.push(n); if(!transport&&part===d.prep&&part.date) fillPrepRow(part,n); } else { part.who.splice(i,1); if(part.grid) delete part.grid[n]; } if(part.who.length&&part.mins==null&&fill){ var m=fill(); if(m!=null) part.mins=m; } save(); render(); }; w.appendChild(b); });
+    CREW.forEach(function(n){ var picked=part.who.indexOf(n)>=0, off=offOn[n]&&!picked, away=awayOn[n]&&!picked&&!off; var b=el("button","p"+(picked?" on":"")+(off?" off":"")+(away?" away":""),n); if(away) b.title=n+" is out on site all day"; if(off){ b.disabled=true; b.title=n+" is on leave"; b.appendChild(el("i","lv","on leave")); } else if(offDays[n]&&offDays[n].length){ var offTxt="off "+offDays[n].map(function(k){ return niceShort(k); }).join(", "); b.title=n+" is on leave "+offDays[n].map(function(k){ return niceShort(k); }).join(", ")+" and free the other days"; b.appendChild(el("i","lv",offTxt)); } if(transport&&DRIVERS.indexOf(n)>=0) b.appendChild(el("i","drv","driver")); b.onclick=function(){ var i=part.who.indexOf(n); if(i<0){ part.who.push(n); if(!transport&&part===d.prep&&part.date){ fillPrepRow(part,n); (offDays[n]||[]).forEach(function(k){ setPrepCell(part,n,k,0); }); } } else { part.who.splice(i,1); if(part.grid) delete part.grid[n]; } if(part.who.length&&part.mins==null&&fill){ var m=fill(); if(m!=null) part.mins=m; } save(); render(); }; w.appendChild(b); });
     return w;
   }
   function fld(label){ var f=el("div","fld"); if(label) f.appendChild(el("div","lbl",label)); return f; }
