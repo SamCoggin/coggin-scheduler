@@ -578,6 +578,8 @@ function partsOf(desc){
   return P;
 }
 // the firm named on a transport line: "G&T Express, customer loads" -> "G&T Express"; "our van" and "customer ..." -> ""
+// a customer drop-off whose Parts block carries a dated goods-in line
+function dropOffDay(P){ return !!(P&&/customer (delivers|drops off)/i.test(String(P.transport||""))&&(P.labourLegs||[]).some(function(L){ return L&&L.date; })); }
 function partsCarrier(P){ if(!P||!P.transport||P.ours) return ""; if(/^(customer|seller)\b/i.test(P.transport)) return ""; return P.transport.split(",")[0].trim(); }
 // No Parts block on the card (made before 14 Sep 2026, or by hand): what the label alone implies for the labour part.
 // Labour only when somebody else's vehicle is involved (Sam, 15 Sep 2026): our crew load and unload their own van

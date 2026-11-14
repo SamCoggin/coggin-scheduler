@@ -739,9 +739,9 @@ var SNAP=null, DETAIL={};
       var carrier=partsCarrier(P); if(carrier&&!j.contractor&&j.site) j.contractor=carrier;
       // ONLY WHEN SOMEBODY ELSE'S VEHICLE IS INVOLVED (Sam, 15 Sep 2026: "there is a duplication going on"). A stale
       // labour leg the old rule seeded is dropped again as long as nobody has been put on it.
-      var wanted=carrier?(P.labourLegs||[]):[];
+      /* A CUSTOMER DROP-OFF WITH ITS DAY ON THE CARD (14 Nov 2026, B28D12): the CRM writes "Goods in and out: unload in on <date>" when the customer brings the furniture in on a known day. That is a goods-in job at Forton, wanted whether or not a carrier is involved. */ var wanted=(carrier||dropOffDay(P))?(P.labourLegs||[]):[];
       for(var li=LEGS.length-1;li>=0;li--){ var L=LEGS[li]; if(L.parent!==j.id||L.type!=="labour"||L.src==="support"||L.src==="hand") continue; if(!wanted.some(function(x){return x.where===L.where;})&&((!(L.who&&L.who.length)&&L.mins==null)||(!carrier&&!j.site))){ LEGS.splice(li,1); STALE_LEGS[j.id]=true; } }   // they bring it or fetch it from Forton: the job itself is the labour, so an old leg goes even if somebody was put on it (Spaceline Q2, 17 Sep 2026)
-      wanted.forEach(function(x){ if(!LEGS.some(function(L){return L.parent===j.id&&L.type==="labour"&&L.where===x.where;})) LEGS.push({parent:j.id,type:"labour",date:x.date||j.date,who:[],mins:null,drive:null,where:x.where}); }); });
+      wanted.forEach(function(x){ /* an entry somebody added by hand for that day already covers it */ if(!LEGS.some(function(L){return L.parent===j.id&&L.type==="labour"&&(L.where===x.where||(L.src==="hand"&&x.date&&L.date===x.date));})) LEGS.push({parent:j.id,type:"labour",date:x.date||j.date,who:[],mins:null,drive:null,where:x.where}); }); });
     if(SNAP.boardData&&SNAP.boardData.roundDrive){ for(var k in SNAP.boardData.roundDrive) ROUND_DRIVE[k]=SNAP.boardData.roundDrive[k]; }
     if(SNAP.boardData&&SNAP.boardData.roundLegs){ for(var k2 in SNAP.boardData.roundLegs) ROUND_LEGS[k2]=SNAP.boardData.roundLegs[k2]; }
     PLACES=(SNAP.boardData&&SNAP.boardData.setOffPlaces)||[];
@@ -4124,7 +4124,7 @@ var SNAP=null, DETAIL={};
   var AUTO=true;
   var REFRESHING=false, POLL_EVERY=10000, CRM_EVERY_TICKS=6, TICK=0;
   var PENDING_SNAP=null, FOREIGN=null, SEEN_FOREIGN={};   // a change to the job on screen, waiting for the person to choose
-  var SCHED_VERSION="14 Nov 23:30:00";   /* bumped on every push: shows which version is running and which built a sheet (Sam, 22 Oct 2026, "still not live?!") */
+  var SCHED_VERSION="15 Nov 00:30:00";   /* bumped on every push: shows which version is running and which built a sheet (Sam, 22 Oct 2026, "still not live?!") */
   /* A NEWER SCHEDULER RELOADS ITSELF (Sam, 22 Oct 2026, a sheet built from a window opened before the push). Checked every two
      minutes and before any sheet is built; a reload waits while an editor is open. */
   function liveVersion(){ return fetch("./scheduler.html?vc="+Date.now(),{cache:"no-store"}).then(function(r){ return r.ok?r.text():""; }).then(function(t){ var m=/SCHED_VERSION\s*=\s*"([^"]+)"/.exec(t||""); return m?m[1]:""; }).catch(function(){ return ""; }); }

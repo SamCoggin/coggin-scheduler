@@ -224,9 +224,9 @@
       if(/^(courier|sub-?contractor|contractor|haulier)$/i.test(d.contractor||"")){ d.contractor=""; dropped=true; }
       CARRIER_PENDING=!!pc0&&generic&&!d.contractor&&!(d.who&&d.who.length);
       if(pc0&&!generic&&!d.contractor&&!(d.who&&d.who.length)){ d.contractor=pc0; dropped=true; }
-      var wantedL=partsCarrier(PARTS)?(PARTS.labourLegs||[]):[];
+      /* A CUSTOMER DROP-OFF WITH ITS DAY ON THE CARD (14 Nov 2026, B28D12): the CRM writes "Goods in and out: unload in on <date>" when the customer brings the furniture in on a known day. That is a goods-in job at Forton, wanted whether or not a carrier is involved. */ var wantedL=(partsCarrier(PARTS)||dropOffDay(PARTS))?(PARTS.labourLegs||[]):[];
       for(var li=d.legs.length-1;li>=0;li--){ var Lx=d.legs[li]; if(Lx.type!=="labour"||Lx.src==="support"||Lx.src==="hand") continue; if(!wantedL.some(function(x){return x.where===Lx.where;})&&!(Lx.who&&Lx.who.length)&&Lx.mins==null){ d.legs.splice(li,1); dropped=true; } }
-      wantedL.forEach(function(x){ if(!d.legs.some(function(L){return L.type==="labour"&&L.where===x.where;})) d.legs.push({type:"labour",date:x.date||(card.due?card.due.slice(0,10):null),who:[],mins:null,drive:null,where:x.where}); });
+      wantedL.forEach(function(x){ /* an entry somebody added by hand for that day already covers it */ if(!d.legs.some(function(L){return L.type==="labour"&&(L.where===x.where||(L.src==="hand"&&x.date&&L.date===x.date));})) d.legs.push({type:"labour",date:x.date||(card.due?card.due.slice(0,10):null),who:[],mins:null,drive:null,where:x.where}); });
       // TRAVEL FROM THE POSTCODE (Sam, 17 Sep 2026): a site job with no travel yet gets the return drive from the
       // description's postcode, the same figure the Scheduler page uses. Typed travel is never overwritten.
       if(site&&!d.contractor&&d.drive==null){ var dv=driveFor(card.name,card.desc); if(dv!=null){ d.drive=dv; dropped=true; } }
