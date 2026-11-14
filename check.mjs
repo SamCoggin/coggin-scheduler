@@ -74,7 +74,8 @@ setTimeout(()=>{ const walk=(n,o=[])=>{o.push(n);(n.children||[]).forEach(c=>wal
 
 // FINISHED PRODUCTION: the card in Ready keeps its plan when saved, and Jack's day still shows its 2h as finished
 setTimeout(()=>{ const walk=(n,o=[])=>{o.push(n);(n.children||[]).forEach(c=>walk(c,o));return o;}; const T=walk(reg['#board']).map(x=>x.textContent).filter(Boolean).join(' ');
-  const kept=global.__sets&&global.__sets.c11&&global.__sets.c11.prep&&global.__sets.c11.prep.date==='2026-09-14';
+  // 14 Nov 2026: a save now writes only the jobs this screen changed, so an untouched finished card is not written at all. Kept means never written, or written with its plan intact.
+  const kept=!(global.__sets&&global.__sets.c11)||(global.__sets.c11.prep&&global.__sets.c11.prep.date==='2026-09-14');
   console.log('finished production keeps hours:', !!kept && /Jack C Driver 5h 45m free Production AB12CH\s+finished 2h/.test(T)); },1500);
 
 // A PRODUCTION'S OPERATIVES ARE READ ACROSS ITS DAYS (30 Sep 2026: "it is saying operatives are free on the 22nd?"):

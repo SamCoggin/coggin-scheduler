@@ -906,20 +906,56 @@ var SNAP=null, DETAIL={};
     PROD_TIMER[j.id]=setTimeout(async function(){ try{ var k=daysOf(pr)[0]||pr.date; var r=await daySheetBuild(k,["p"+j.id]); if(r&&r.jobOnly){ var a=await attachProductionSheet(j,r.doc,k); if(a&&a.ok&&t) t.set(j.id,"shared","prodSheet","planned").catch(function(){}); } }catch(e){ console.warn("production sheet (auto)",e); } },5000); }
   // save what changed back onto the cards
   var lastSaved={};
+  // THE PLAN AS IT IS SAVED ON A CARD, built in one place so the save and the "has this window changed it" test agree.
+  function planOf(j){
+    tidyEach(j); var d={date:j.moved?j.moved.from:j.date,who:j.who,mins:j.mins,each:j.each||undefined,drive:j.drive,driveAuto:!!j.driveAuto,at:j.at||undefined,cube:j.cubeSet,ignore:j.ignore&&j.ignore.length?j.ignore:undefined,items:j.manual&&j.manual.length?j.manual:undefined,load:j.load&&j.load.any?{m3:j.load.m3,kg:j.load.kg,complete:j.load.complete,rows:j.load.rows.map(function(r){return {n:r.n,type:r.type,m3:r.m3,kg:r.kg,built:r.built,est:r.est};}),unmatched:j.load.unmatched}:undefined,contractor:j.contractor||"",from:j.from||null,by:j.by||null,collectAt:j.collectAt||undefined,vehicle:j.vehicle||null,vehicles:vansOf(j).length>1?vansOf(j):undefined,soloOk:j.soloOk||"",qc:j.qc||null,done:j.done||null,hireRef:j.hireRef||"",hireFrom:j.hireFrom||"",hireBooked:!!j.hireBooked,prodDue:j.prodDueSet?j.prodDue:null,prep:j.prep?{who:j.prep.who,mins:j.prep.mins,perDay:j.prep.perDay!=null?j.prep.perDay:undefined,each:j.prep.each&&Object.keys(j.prep.each).length?j.prep.each:undefined,shop:j.prep.shop&&Object.keys(j.prep.shop).length?j.prep.shop:undefined,start:j.prep.start,date:j.prep.date,done:j.prep.done||null,picked:j.prep.picked&&Object.keys(j.prep.picked).length?j.prep.picked:undefined,stages:j.prep.stages?true:undefined,grid:j.prep.grid&&Object.keys(j.prep.grid).length?j.prep.grid:undefined,days:!j.prep.grid&&j.prep.days&&Object.keys(j.prep.days).length?j.prep.days:undefined}:(j.donePrep||null),
+        legs:LEGS.filter(function(L){return L.parent===j.id;}).map(function(L){ tidyEach(L); return {type:L.type,date:L.date,who:L.who,mins:L.mins,each:L.each||undefined,drive:L.drive,where:L.where,from:L.from||null,by:L.by||null,pc:L.pc||null,src:L.src||null};})};
+    return d; }
+  /* THE LAST PERSON TO CHANGE A JOB WINS, NOT THE LAST SCREEN TO WAKE UP (Sam, 14 Nov 2026, Tsunami Axis B28D12: a goods-in
+     entry added on the card was saved at 17:13:27.0 and written back without it at 17:13:29.9 by a Scheduler open on
+     another screen). Three rules, all here:
+       1. seedSaved: after every read of the board, what is in memory counts as already saved, so a save writes only the
+          jobs this screen has changed since. It used to write every job that differed from its own copy.
+       2. writePlan: before a job is written, its plan on the card is read again. If it is not what this screen last read
+          or last wrote, somebody else has changed it: nothing is written, and the board is read again so their version
+          comes in.
+       3. OUTDATED (in persist): a screen on an old version writes nothing. */
+  var OUTDATED=false, OUTDATED_TOLD=false, OWN={}, WRITING={};
+  function ownMark(id,js,at){ var o=OWN[id]||(OWN[id]={sigs:[],ats:[]}); o.sigs.push(js); o.ats.push(at); if(o.sigs.length>8){ o.sigs.shift(); o.ats.shift(); } }
+  function boardSig(){ var extra=CONTRACTORS.filter(function(c){return ["MAK Installations","Courier","Other contractor"].indexOf(c)<0;}); return JSON.stringify({roundDrive:ROUND_DRIVE,roundLegs:ROUND_LEGS,setOffPlaces:PLACES,contractors:extra,vansOff:VANS_OFF,crmKey:CRM_KEY,off:OFF,offWhy:OFF_WHY,dismissed:Object.keys(DISMISSED)}); }
+  function seedSaved(){ lastSaved={}; JOBS.forEach(function(j){ if(STALE_LEGS[j.id]) return; try{ lastSaved[j.id]=JSON.stringify(planOf(j)); }catch(e){} }); try{ lastSaved.__board=boardSig(); }catch(e){} }
+  function storedSig(cur){ if(!cur) return ""; var c; try{ c=normPlan(JSON.parse(JSON.stringify(cur))); }catch(e){ c=cur; } return planSig(c); }
+  function writePlan(j,d,js){
+    var id=j.id, known=PLAN_SIG[id]; PLAN_SIG[id]=js;
+    WRITING[id]=(WRITING[id]||Promise.resolve()).then(function(){
+      var read; try{ read=Promise.resolve(t.get(id,"shared","sched",null)); }catch(e){ read=Promise.resolve(undefined); }
+      return read.catch(function(){ return undefined; }).then(function(cur){
+        if(cur!==undefined){ var cs=storedSig(cur), o=OWN[id]||{sigs:[],ats:[]};
+          var same=cs===(known||"")||cs===js||o.sigs.indexOf(cs)>=0||!!(cur&&cur.savedAt&&o.ats.indexOf(cur.savedAt)>=0);
+          if(!same){ PLAN_SIG[id]=known; delete lastSaved[id]; stampUpd((j.title||"A job")+" was changed on another screen. Their version is being taken in.",true); /* read as an automatic refresh, so a job open for editing gets the existing "changed by" choice and is not pulled out from under the person */ setTimeout(function(){ try{ refreshBoard(true,true); }catch(e){} },300); return; } }
+        // WHO SAVED IT AND WHEN (18 Oct 2026): so another open Scheduler can say whose change it is pulling in.
+        // NOT by/at (Sam, 19 Oct 2026, B60788: "Starts at 2026-10-19T13:25:25.260Z to"): those are the job's own finish-by and
+        // starts-at times, and the stamp overwrote them on every save. The stamp has its own keys.
+        d.savedBy=ME||undefined; d.savedAt=new Date().toISOString(); ownMark(id,js,d.savedAt); if(known!==undefined) ownMark(id,known,"");   /* the version this save replaced is ours to replace: a slow read handing it back is not somebody else's change */
+        var w; try{ w=t.set(id,"shared","sched",d); }catch(e){ w=null; } syncCardMembers(id,d,CRM_KEY,inWorkshop(j));
+        return Promise.resolve(w).catch(function(){});
+      });
+    });
+  }
+  window.__saveApi={persist:function(){ return persist(); },jobs:function(){ return JOBS; },setOutdated:function(v){ OUTDATED=!!v; }}; // reachable by check-save.mjs
   function persist(){
     if(!t) return;
     /* NEVER WHILE A STAND-IN PLAN IS IN PLACE (Sam, 24 Oct 2026, MedIQ A0403C: production "already filled out" as Mon 26 Oct,
        Jack, 7h 45m). The unplanned sheet borrows a day and a person to build; saving then wrote them onto the card. */
     if(UNPLANNED){ setTimeout(persist,4000); return; }
+    /* AN OUT-OF-DATE SCREEN DOES NOT SAVE (Sam, 14 Nov 2026). A Scheduler left open on the version before a fix kept
+       writing its own copy of a job over newer changes. Once this screen knows a newer version is published it writes
+       nothing and says so; reloading picks the new version up. */
+    if(OUTDATED){ if(!OUTDATED_TOLD){ OUTDATED_TOLD=true; try{ alert("A new version of the Scheduler is ready. Reload this page to carry on. Changes made on this screen are not being saved until you do."); }catch(e){} } stampUpd("new version ready, reload to carry on",true); return; }
     JOBS.forEach(function(j){
-      tidyEach(j); var d={date:j.moved?j.moved.from:j.date,who:j.who,mins:j.mins,each:j.each||undefined,drive:j.drive,driveAuto:!!j.driveAuto,at:j.at||undefined,cube:j.cubeSet,ignore:j.ignore&&j.ignore.length?j.ignore:undefined,items:j.manual&&j.manual.length?j.manual:undefined,load:j.load&&j.load.any?{m3:j.load.m3,kg:j.load.kg,complete:j.load.complete,rows:j.load.rows.map(function(r){return {n:r.n,type:r.type,m3:r.m3,kg:r.kg,built:r.built,est:r.est};}),unmatched:j.load.unmatched}:undefined,contractor:j.contractor||"",from:j.from||null,by:j.by||null,collectAt:j.collectAt||undefined,vehicle:j.vehicle||null,vehicles:vansOf(j).length>1?vansOf(j):undefined,soloOk:j.soloOk||"",qc:j.qc||null,done:j.done||null,hireRef:j.hireRef||"",hireFrom:j.hireFrom||"",hireBooked:!!j.hireBooked,prodDue:j.prodDueSet?j.prodDue:null,prep:j.prep?{who:j.prep.who,mins:j.prep.mins,perDay:j.prep.perDay!=null?j.prep.perDay:undefined,each:j.prep.each&&Object.keys(j.prep.each).length?j.prep.each:undefined,shop:j.prep.shop&&Object.keys(j.prep.shop).length?j.prep.shop:undefined,start:j.prep.start,date:j.prep.date,done:j.prep.done||null,picked:j.prep.picked&&Object.keys(j.prep.picked).length?j.prep.picked:undefined,stages:j.prep.stages?true:undefined,grid:j.prep.grid&&Object.keys(j.prep.grid).length?j.prep.grid:undefined,days:!j.prep.grid&&j.prep.days&&Object.keys(j.prep.days).length?j.prep.days:undefined}:(j.donePrep||null),
-        legs:LEGS.filter(function(L){return L.parent===j.id;}).map(function(L){ tidyEach(L); return {type:L.type,date:L.date,who:L.who,mins:L.mins,each:L.each||undefined,drive:L.drive,where:L.where,from:L.from||null,by:L.by||null,pc:L.pc||null,src:L.src||null};})};
-      var js=JSON.stringify(d); if(lastSaved[j.id]===js) return; lastSaved[j.id]=js; PLAN_SIG[j.id]=js;
-      // WHO SAVED IT AND WHEN (18 Oct 2026): so another open Scheduler can say whose change it is pulling in.
-      // NOT by/at (Sam, 19 Oct 2026, B60788: "Starts at 2026-10-19T13:25:25.260Z to"): those are the job's own finish-by and
-      // starts-at times, and the stamp overwrote them on every save. The stamp has its own keys.
-      d.savedBy=ME||undefined; d.savedAt=new Date().toISOString();
-      t.set(j.id,"shared","sched",d); syncCardMembers(j.id,d,CRM_KEY,inWorkshop(j));
+      var d=planOf(j);
+      var js=JSON.stringify(d); if(lastSaved[j.id]===js) return; lastSaved[j.id]=js;
+      writePlan(j,d,js);
     });
     JOBS.forEach(queueProductionSheet);
     var extra=CONTRACTORS.filter(function(c){return ["MAK Installations","Courier","Other contractor"].indexOf(c)<0;});
@@ -4088,12 +4124,12 @@ var SNAP=null, DETAIL={};
   var AUTO=true;
   var REFRESHING=false, POLL_EVERY=10000, CRM_EVERY_TICKS=6, TICK=0;
   var PENDING_SNAP=null, FOREIGN=null, SEEN_FOREIGN={};   // a change to the job on screen, waiting for the person to choose
-  var SCHED_VERSION="14 Nov 22:00:00";   /* bumped on every push: shows which version is running and which built a sheet (Sam, 22 Oct 2026, "still not live?!") */
+  var SCHED_VERSION="14 Nov 23:30:00";   /* bumped on every push: shows which version is running and which built a sheet (Sam, 22 Oct 2026, "still not live?!") */
   /* A NEWER SCHEDULER RELOADS ITSELF (Sam, 22 Oct 2026, a sheet built from a window opened before the push). Checked every two
      minutes and before any sheet is built; a reload waits while an editor is open. */
   function liveVersion(){ return fetch("./scheduler.html?vc="+Date.now(),{cache:"no-store"}).then(function(r){ return r.ok?r.text():""; }).then(function(t){ var m=/SCHED_VERSION\s*=\s*"([^"]+)"/.exec(t||""); return m?m[1]:""; }).catch(function(){ return ""; }); }
   async function outdated(){ if(typeof fetch!=="function"||typeof location==="undefined"||EMBED) return false; var v=await liveVersion(); return !!v&&v!==SCHED_VERSION; }
-  if(typeof setInterval==="function"&&typeof location!=="undefined") setInterval(function(){ outdated().then(function(o){ if(o&&!editorOpen()) location.reload(); }); },120000);
+  if(typeof setInterval==="function"&&typeof location!=="undefined") setInterval(function(){ outdated().then(function(o){ OUTDATED=!!o; if(o&&!editorOpen()) location.reload(); else if(o) stampUpd("new version ready, reload to carry on",true); }); },120000);
   function stampUpd(txt,hold){ var u=$("#upd"); if(u) u.textContent=txt+" \u00b7 version "+SCHED_VERSION; var lv=$("#live"); if(lv) lv.className="live"+(hold?" hold":""); }
   function setRefreshTxt(txt){ var r=$("#refreshTxt"); if(r) r.textContent=txt; }
   function hhmm(d){ d=d||new Date(); return pad(d.getHours())+":"+pad(d.getMinutes()); }
@@ -4108,7 +4144,7 @@ var SNAP=null, DETAIL={};
     Object.keys(PLAN_SIG).forEach(function(id){ if(!seen[id]) changed.push(id); });
     return {changed:changed,by:by,at:at};
   }
-  function applySnap(snap){ buildFromSnap(snap); lastSaved={}; render(); stampUpd("updated "+hhmm()); }
+  function applySnap(snap){ buildFromSnap(snap); seedSaved(); render(); stampUpd("updated "+hhmm()); }
   function takeSnap(snap,auto){
     var d=diffSnap(snap);
     if(!d.changed.length){ if(auto&&!PENDING_SNAP) stampUpd("checked "+hhmm()); return; }
@@ -4147,14 +4183,14 @@ var SNAP=null, DETAIL={};
   if(t||EMBED){
     $("#src").textContent="Reading the board...";
     if(EMBED){ window.addEventListener("message",function(ev){ var msg=ev.data||{}; if(msg.type!=="coggin-sheet") return; var reply=function(m){ try{ ev.source.postMessage(m,"*"); }catch(e){} };
-        loadBoard({raw:msg.raw||{}}).then(function(snap){ buildFromSnap(snap); lastSaved={}; var oj=JOBS.filter(function(j){return j.id===msg.open;})[0]; if(!oj) throw new Error("This card is not a job the Scheduler knows yet. Does it have a due date and a list the Scheduler reads?"); if(oj.date) dayCur=oj.date; view="day"; open=msg.sheet==="prep"&&oj.prep?oj.id+":prep":oj.id; render(); var oo=findOpen(); if(!oo) throw new Error("This job has no page to print yet.");
+        loadBoard({raw:msg.raw||{}}).then(function(snap){ buildFromSnap(snap); seedSaved(); var oj=JOBS.filter(function(j){return j.id===msg.open;})[0]; if(!oj) throw new Error("This card is not a job the Scheduler knows yet. Does it have a due date and a list the Scheduler reads?"); if(oj.date) dayCur=oj.date; view="day"; open=msg.sheet==="prep"&&oj.prep?oj.id+":prep":oj.id; render(); var oo=findOpen(); if(!oo) throw new Error("This job has no page to print yet.");
           return jobSheetDownload(oo.job,oo,null); }).then(function(){ reply({type:"coggin-sheet-done"}); }).catch(function(e){ reply({type:"coggin-sheet-error",error:String(e&&e.message||e)}); }); });
       /* ADD THE SHEET TO THE CARD, FROM THE CARD (Sam, 24 Oct 2026, Bennett Jones 8FB359: "can we not add a button here to
          add the relevant sheet instead?"). The card posts its board, this builds the production sheet, with a stand-in day
          and person when the job is not planned yet, and puts it on the card. Nothing is saved: in embed mode there is no t. */
       window.addEventListener("message",function(ev){ var msg=ev.data||{}; if(msg.type!=="coggin-attach") return; var reply=function(m){ try{ ev.source.postMessage(m,"*"); }catch(e){} };
         var oj=null, was=null;
-        loadBoard({raw:msg.raw||{}}).then(function(snap){ buildFromSnap(snap); lastSaved={}; oj=JOBS.filter(function(j){return j.id===msg.open;})[0];
+        loadBoard({raw:msg.raw||{}}).then(function(snap){ buildFromSnap(snap); seedSaved(); oj=JOBS.filter(function(j){return j.id===msg.open;})[0];
           if(!oj) throw new Error("This card is not a job the Scheduler knows yet. Does it have a due date and a list the Scheduler reads?");
           if(!oj.prep) throw new Error("This card has no production part, so there is no production sheet for it.");
           if(!CRM_KEY) throw new Error("The CRM key is not on the board yet, so the sheet cannot be read or attached.");
@@ -4165,7 +4201,7 @@ var SNAP=null, DETAIL={};
         .then(function(r){ reply({type:"coggin-attach-done",planned:r.planned}); }).catch(function(e){ reply({type:"coggin-attach-error",error:String(e&&e.message||e)}); })
         .then(function(){ if(oj&&was) oj.prep=was; UNPLANNED=null; }); });
       try{ window.parent.postMessage({type:"coggin-sheet-ready"},"*"); }catch(e){} }
-    if(!EMBED) loadBoard().then(function(snap){ buildFromSnap(snap); lastSaved={}; wireRefresh(); try{ var P0=new URLSearchParams(location.search), rq=P0.get("round"), oq=P0.get("open"); if(rq&&/^\d{4}-\d{2}-\d{2}\|/.test(rq)){ dayCur=rq.split("|")[0]; view="day"; openRound=rq; } else if(oq){ var oj=JOBS.filter(function(j){return j.id===oq;})[0]; if(oj){ var sq=P0.get("sheet"), wantPrep=(sq==="prep"||P0.get("part")==="prep")&&!!oj.prep; /* &part=prep: a workshop card opens its production, on its production day (Sam, 9 Nov 2026) */ dayCur=wantPrep?(oj.prep.start||oj.prep.date||oj.date||dayCur):(oj.date||dayCur); view="day"; open=wantPrep?oq+":prep":oq; if(sq){ var sheetJob=oj; } } } }catch(e){} /* ?open=<card id>: the card back opens its own job here (Sam, 19 Oct 2026); &sheet=prep|job downloads the job sheet as it opens (21 Oct 2026) */ render();
+    if(!EMBED) loadBoard().then(function(snap){ buildFromSnap(snap); seedSaved(); wireRefresh(); try{ var P0=new URLSearchParams(location.search), rq=P0.get("round"), oq=P0.get("open"); if(rq&&/^\d{4}-\d{2}-\d{2}\|/.test(rq)){ dayCur=rq.split("|")[0]; view="day"; openRound=rq; } else if(oq){ var oj=JOBS.filter(function(j){return j.id===oq;})[0]; if(oj){ var sq=P0.get("sheet"), wantPrep=(sq==="prep"||P0.get("part")==="prep")&&!!oj.prep; /* &part=prep: a workshop card opens its production, on its production day (Sam, 9 Nov 2026) */ dayCur=wantPrep?(oj.prep.start||oj.prep.date||oj.date||dayCur):(oj.date||dayCur); view="day"; open=wantPrep?oq+":prep":oq; if(sq){ var sheetJob=oj; } } } }catch(e){} /* ?open=<card id>: the card back opens its own job here (Sam, 19 Oct 2026); &sheet=prep|job downloads the job sheet as it opens (21 Oct 2026) */ render();
       // FROM THE CARD, JUST THE SHEET (Sam, 21 Oct 2026: "when I click job sheet it opens the schedule editor?"): build it,
       // download it, and close this window again so the card is back on screen.
       if(typeof sheetJob!=="undefined"&&sheetJob){ var srcEl=$("#src"); if(srcEl) srcEl.textContent="Building the job sheet..."; setTimeout(function(){ var oo=findOpen(); if(!oo){ alert("This job has no page to print yet."); return; }
