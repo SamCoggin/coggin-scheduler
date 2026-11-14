@@ -225,7 +225,7 @@
       CARRIER_PENDING=!!pc0&&generic&&!d.contractor&&!(d.who&&d.who.length);
       if(pc0&&!generic&&!d.contractor&&!(d.who&&d.who.length)){ d.contractor=pc0; dropped=true; }
       var wantedL=partsCarrier(PARTS)?(PARTS.labourLegs||[]):[];
-      for(var li=d.legs.length-1;li>=0;li--){ var Lx=d.legs[li]; if(Lx.type!=="labour"||Lx.src==="support") continue; if(!wantedL.some(function(x){return x.where===Lx.where;})&&!(Lx.who&&Lx.who.length)&&Lx.mins==null){ d.legs.splice(li,1); dropped=true; } }
+      for(var li=d.legs.length-1;li>=0;li--){ var Lx=d.legs[li]; if(Lx.type!=="labour"||Lx.src==="support"||Lx.src==="hand") continue; if(!wantedL.some(function(x){return x.where===Lx.where;})&&!(Lx.who&&Lx.who.length)&&Lx.mins==null){ d.legs.splice(li,1); dropped=true; } }
       wantedL.forEach(function(x){ if(!d.legs.some(function(L){return L.type==="labour"&&L.where===x.where;})) d.legs.push({type:"labour",date:x.date||(card.due?card.due.slice(0,10):null),who:[],mins:null,drive:null,where:x.where}); });
       // TRAVEL FROM THE POSTCODE (Sam, 17 Sep 2026): a site job with no travel yet gets the return drive from the
       // description's postcode, the same figure the Scheduler page uses. Typed travel is never overwritten.
@@ -681,7 +681,7 @@
           var r=el("div","row"); var tsel=el("select"); LEG_TYPES_CARD.forEach(function(t2){ var o=el("option",null,t2[1]); o.value=t2[0]; tsel.appendChild(o); }); tsel.setAttribute("aria-label","Leg type"); r.appendChild(tsel);
           var di=el("input"); di.type="date"; di.value=card.due?card.due.slice(0,10):""; di.setAttribute("aria-label","Leg date"); r.appendChild(di);
           var wi=el("input"); wi.type="text"; wi.placeholder="Where, or what"; wi.setAttribute("aria-label","Where"); r.appendChild(wi);
-          var ab=el("button","p","Add"); ab.onclick=function(){ if(!di.value) return; d.legs.push({type:tsel.value,date:di.value,who:[],mins:null,drive:null,where:wi.value||""}); save(); OPEN.addleg=false; render(); }; r.appendChild(ab); ed.appendChild(r);
+          var ab=el("button","p","Add"); ab.onclick=function(){ if(!di.value) return; /* ADDED BY HAND STAYS (Sam, 14 Nov 2026, B28D12: a goods-in entry for the day 210 chairs arrive vanished the moment it was added, because an unassigned entry the Parts block does not ask for is pruned as stale). src:"hand" marks it as somebody's choice. */ d.legs.push({type:tsel.value,date:di.value,who:[],mins:null,drive:null,where:wi.value||"",src:"hand"}); save(); OPEN.addleg=false; render(); }; r.appendChild(ab); ed.appendChild(r);
           ed.appendChild(el("div","hint","Extra labour is a separate trip or a separate piece of work on this job. Each one gets its own operatives, day and time in the sections below."));
         }));
       }
