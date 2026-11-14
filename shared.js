@@ -231,7 +231,13 @@ function combinedWork(name){ var p=splitLabel(name); return p?p.work:""; }
 // Courier or Sub-contractor on the label: who the card says is carrying it, "" when it is our crew
 function carrierOf(labels){ var n=labelNames(labels); for(var i=0;i<n.length;i++){ var p=splitLabel(n[i]); if(p&&/^(courier|sub-contractor)$/i.test(p.move)) return p.move; } return ""; }
 function labelNames(labels){ return (labels||[]).map(function(l){return typeof l==="string"?l:(l&&l.name)||"";}).filter(Boolean); }
-function movementOf(labels,desc){ if(isSampleLabels(labels)) return sampleMovement(desc); var n=labelNames(labels); for(var c=0;c<n.length;c++){ var cm=combinedMovement(n[c]); if(cm) return cm; } for(var i=0;i<n.length;i++){ if(MOVEMENT_LABELS.indexOf(n[i])>=0) return n[i]; } for(var k=0;k<n.length;k++){ var m=OLD_MOVEMENT[n[k].toLowerCase()]; if(m) return m; } return ""; }
+// A REFURB THE CUSTOMER DROPS OFF AND WE TAKE BACK (Sam, 14 Nov 2026, Tsunami Axis B28D12): the label still says
+// "Customer Drops Off", so the card read "Customer or courier collecting, so nothing goes on our vehicle" on a job
+// with four vans booked to return 210 chairs. The CRM now writes the Parts transport line as "our van returns,
+// customer drops off" (or "<firm>, return leg, customer drops off"), and that line makes it a Delivery: production,
+// then our van out on the due date.
+function isDropOffWeReturn(labels,desc){ if(!labelNames(labels).some(function(x){ return /^refurb\s*-\s*customer drops off$/i.test(x.trim()); })) return false; var t=String(partsOf(desc||"").transport||""); return /\bour van returns\b|\breturn leg\b/i.test(t); }
+function movementOf(labels,desc){ if(isSampleLabels(labels)) return sampleMovement(desc); if(isDropOffWeReturn(labels,desc)) return "Delivery"; var n=labelNames(labels); for(var c=0;c<n.length;c++){ var cm=combinedMovement(n[c]); if(cm) return cm; } for(var i=0;i<n.length;i++){ if(MOVEMENT_LABELS.indexOf(n[i])>=0) return n[i]; } for(var k=0;k<n.length;k++){ var m=OLD_MOVEMENT[n[k].toLowerCase()]; if(m) return m; } return ""; }
 function workOf(labels){ var n=labelNames(labels); for(var c=0;c<n.length;c++){ var cw=combinedWork(n[c]); if(cw) return cw; } for(var i=0;i<n.length;i++){ if(WORK_LABELS.indexOf(n[i])>=0) return n[i]; } for(var k=0;k<n.length;k++){ var w=OLD_WORK[n[k].toLowerCase()]; if(w) return w; } return ""; }
 // our van goes out: the transport movements
 function isSiteMove(mv){ return mv==="Delivery"||mv==="Collection"||mv==="Collect and Return"||mv==="Site Visit"; }
