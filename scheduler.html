@@ -2711,6 +2711,7 @@ var SNAP=null, DETAIL={};
       if(j.facility){ base.part="Facility"; base.at=hm(j.at); base.sub=""; A4(base); return; }
       base.part="Goods In and Out"; base.at=j.arrive&&!j.isLeg?hm(j.from):null;
       base.sub=j.arrive&&!j.isLeg?(arrivalText(j.arrive,j.from,j.by,j.collectAt)||(ARRIVAL_WHO[j.arrive]||"Arriving")+", time not given yet"):(j.isLeg?(j.leg.where||""):(j.work||""));
+      /* AN ENTRY ON A CARD GETS ITS OWN PAGE (Sam, 16 Nov 2026, mock approved: the Tsunami Axis drop-off and the Nando's courier load were on the screen and not in the download). */ if(j.isLeg&&j.leg){ base.card=pj.id; base.leg=j.leg; }
       A4(base); });
     // THE PICKING LINE (Sam, 2 Oct 2026, mock approved): a job picks on its first production day, or on its own day when
     // it has no production; its own picking sheet from the CRM goes behind the day sheet.
@@ -2896,7 +2897,7 @@ var SNAP=null, DETAIL={};
             if(r.part==="Transport"){ var bc=DATA.byCard[r.card]; if(!bc) return; if(!yardDone[bc.run.key]){ yardDone[bc.run.key]=1; var vanOn=!only||(SHEET_SEL&&SHEET_SEL.vans.indexOf(bc.run.key)>=0); if(vanOn&&kit.hasLoad(bc.run)) for(var cpY=0;cpY<copiesOf(bc.run.key);cpY++) kit.yard(bc.run); }
               if(only&&only.indexOf(r.key)<0) return;   /* the van's loading sheet can be picked without its stops (28 Oct 2026) */   // no loading sheet on a single job from the editor (Sam, 14 Oct 2026, DWF: "I just want the job sheet")
               var before=doc.getNumberOfPages(); for(var cpS=0;cpS<copiesOf(r.key);cpS++) kit.fits(function(){ kit.stop(bc.run,bc.stop); }); starts[r.key]=before+1; return; }
-            if(r.part==="Goods In and Out"){ var lb=DATA.info[r.card]; if(!lb) return; var before2=doc.getNumberOfPages(); for(var cpL=0;cpL<copiesOf(r.key);cpL++) kit.fits(function(){ kit.labour(j,lb,b.title,r.sub,c[3]); }); starts[r.key]=before2+1; }
+            if(r.part==="Goods In and Out"){ var lb=DATA.info[r.card]||(DATA.byCard[r.card]?{items:DATA.byCard[r.card].stop.items,d:DATA.byCard[r.card].stop.d}:null); if(!lb) return; var before2=doc.getNumberOfPages(); for(var cpL=0;cpL<copiesOf(r.key);cpL++) kit.fits(function(){ kit.labour(j,lb,b.title,r.sub,c[3],r.leg||null); }); starts[r.key]=before2+1; }
             if(r.part==="Facility"){ var before3=doc.getNumberOfPages(); for(var cpF=0;cpF<copiesOf(r.key);cpF++) kit.fits(function(){ kit.facility(j,b.title,c[3],k); }); starts[r.key]=before3+1; } }); });
         WORKSHOPS.map(function(x){ return x[0]; }).concat(Object.keys(prodQ)).forEach(function(pile){ (prodQ[pile]||[]).forEach(function(draw){ draw(); }); prodQ[pile]=[]; });
         /* THE END OF DAY CHECK, the last page of the day's print (Sam, 24 Oct 2026, mock approved, nine checks). Rob D walks
@@ -3060,6 +3061,8 @@ var SNAP=null, DETAIL={};
     runs.forEach(function(r){ r.stops.forEach(function(s){ add(s.j); }); });
     allJobs().filter(function(j){ return onDay(j,k)&&!j.isHold&&!j.site&&!j.isLeg&&!j.completed&&j.who.length; }).forEach(add);
     prepJobs().filter(function(j){ return !j.isHold&&j.prep&&j.prep.date&&daysOf(j.prep).indexOf(k)>=0&&j.prep.who.length; }).forEach(add);
+    /* a goods-in entry prints from its card, so the card's items and details are read too (16 Nov 2026) */
+    allJobs().filter(function(j){ return onDay(j,k)&&j.isLeg&&j.leg&&j.leg.type!=="production"&&!j.site&&j.parentJob&&!j.parentJob.isHold&&!j.parentJob.completed&&j.who.length; }).forEach(function(j){ add(j.parentJob); });
     if(CRM_KEY&&ids.length){ var res=await fetch(CRM_PICKING_URL,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({key:CRM_KEY,action:"photos",cards:ids})}).then(function(x){ return x.json(); }).catch(function(){ return null; });
       if(res&&res.ok&&res.items) ITEMS=res.items; }
     var itemsOf=function(j){ var crm=(ITEMS[j.id]||[]).filter(function(x){ return x.name; }); if(crm.length) return crm.map(function(x){ return {qty:x.qty||1,name:x.name,photo:x.photo||"",parts:Array.isArray(x.parts)?x.parts:[]}; });
@@ -3566,16 +3569,19 @@ var SNAP=null, DETAIL={};
         doc.setDrawColor(200); doc.setLineWidth(0.3); doc.line(L+8,y+rowH-1.5,L+W,y+rowH-1.5); doc.setDrawColor(0); y+=rowH; }
       y+=4; finishPanel(j,ph,[["STEP 1","Photograph the finished job and add it to the Trello card"],["STEP 2","Move the card to Jobs Completed"]]);
       y+=ph+4; setFoot("Any issues, tell the operations manager before you leave it."); };
-    kit.labour=function(j,info,crewTxt,sub,timeTxt){ var d=info.d, nm=j.title.split(" - ").slice(1).join(" - ")||j.title, don=isDonation(j), crewL=crewTxt.split(" + ");
+    kit.labour=function(j,info,crewTxt,sub,timeTxt,leg){ var legIn=!!leg&&/\bunload/i.test(String(leg.where||"")), legOut=!!leg&&!legIn&&/\bload|collect/i.test(String(leg.where||"")); var d=info.d, nm=j.title.split(" - ").slice(1).join(" - ")||j.title, don=isDonation(j), crewL=crewTxt.split(" + ");
       var head=function(cont){ newPage(); label(cont?"Goods In and Out · "+crewTxt+", continued":"Goods In and Out",L,y+1);
         doc.setFont("helvetica","bold"); doc.setFontSize(cont?14:20); var tl=doc.splitTextToSize(nm,W).slice(0,2); doc.text(tl,L,y+(cont?7:9)); y+=(cont?7:9)+(tl.length-1)*7.5+4;
         if(cont){ rule(); y+=5; return; }
         pillsAt(crewL,L,y); y+=11;
         var who=ARRIVAL_WHO[j.arrive]||"", coming=/collect/i.test(who)?"Collecting":/arriv|deliver/i.test(who)?"Dropping off":"Coming";
         var whoV=/^Customer/.test(who)?"The customer":who.replace(/ (collecting|arriving)$/i,"")||"Not set";
+        // AN ENTRY ON A CARD (16 Nov 2026): the card's own arrival answers belong to its own day, so the entry's wording says who is coming
+        if(leg){ coming=legIn?"Dropping off":legOut?"Collecting":"Coming"; whoV=(legIn&&/customer (delivers|drops off)/i.test(String(j.parts&&j.parts.transport||"")))?"The customer":(j.contractor||"The customer"); }
         // NAME THE BUYER (Sam, 29 Oct 2026: the plastic sheet printed "Buyer"): a role word gives way to the name on the card
         if(/^(buyer|haulier|carrier|courier|transport)$/i.test(whoV)){ var nmW=d.kv[whoV.toLowerCase()]||d.kv.buyer||d.kv["buyer business name"]||d.kv["buyer name"]||d.kv["transport provider"]||""; if(nmW) whoV=nmW; }
         var arr=j.from?"after "+j.from:j.collectAt?"around "+j.collectAt:j.by?"by "+j.by:"Not given yet";
+        if(leg) arr=leg.from?"after "+leg.from:leg.by?"by "+leg.by:"Not given yet";
         var facts=[["Time",timeTxt||"Not set"],[coming,whoV],["Arriving",arr],["Ref",d.kv.ref||d.kv["reference number"]||d.kv.reference||""]].filter(function(f){ return f[1]; }), fw=(W-(facts.length-1)*3)/facts.length;
         facts.forEach(function(f,i){ var fx=L+i*(fw+3); doc.setLineWidth(0.5); doc.setDrawColor(17); doc.roundedRect(fx,y,fw,11,1.2,1.2); doc.setDrawColor(0); label(f[0],fx+3,y+4); doc.setFont("helvetica","bold"); doc.setFontSize(10); doc.text(doc.splitTextToSize(f[1],fw-5)[0],fx+3,y+8.8); });
         y+=15;
@@ -3586,10 +3592,12 @@ var SNAP=null, DETAIL={};
         var cols=[["Contact name",nm0||"Not on the card"],["Contact number",ph0||"Not on the card"]];   // name and number only (Sam, 2 Oct 2026)
         var cw=W/cols.length, ch=15; doc.setLineWidth(0.5); doc.setDrawColor(17); doc.roundedRect(L,y,W,ch,1.5,1.5); for(var ci=1;ci<cols.length;ci++) doc.line(L+ci*cw,y,L+ci*cw,y+ch); doc.setDrawColor(0);
         cols.forEach(function(c,ci){ label(c[0],L+ci*cw+4,y+5); doc.setFont("helvetica","bold"); doc.setFontSize(c[0]==="Email"?9.5:12); doc.text(doc.splitTextToSize(c[1],cw-8)[0],L+ci*cw+4,y+11.2); });
-        y+=ch+6; };
+        y+=ch+6;
+        if(leg&&leg.where){ doc.setFont("helvetica","bold"); doc.setFontSize(12); var vl=doc.splitTextToSize(String(leg.where).charAt(0).toUpperCase()+String(leg.where).slice(1),W-8).slice(0,3), vh=9+vl.length*5.2; doc.setLineWidth(0.5); doc.setDrawColor(17); doc.roundedRect(L,y-2,W,vh,1.5,1.5); doc.setDrawColor(0); label("This visit",L+4,y+3); doc.setFont("helvetica","bold"); doc.setFontSize(12); doc.text(vl,L+4,y+9); y+=vh+4; } };
       var cont=function(){ setFoot("This job carries on over the page."); head(true); };
       head(false);
-      var hasKnow=knowRows(d).length>0; kit.know(d,cont,1); if(hasKnow) y+=3;
+      /* the card's access notes are for its own site visit, not for an entry at Forton */
+      var hasKnow=!leg&&knowRows(d).length>0; if(!leg) kit.know(d,cont,1); if(hasKnow) y+=3;
       /* FROM THE CARD (Sam, 29 Oct 2026, mock approved): a waste job's card is pallets, buyer and instructions the sheet has no
          box for, so every filled line prints as written, label in bold. Blank "Label:" lines are left out. */
       if(isWasteJob(j)){ var fl=String(DETAIL[j.id]&&DETAIL[j.id].desc||"").replace(/\*\*/g,"").replace(/\r/g,"").split("\n").map(function(r){ return r.replace(/\[([^\]]*)\]\([^)]*\)/g,"$1").trim(); })
@@ -3599,7 +3607,7 @@ var SNAP=null, DETAIL={};
           doc.setLineWidth(0.5); doc.setDrawColor(17); doc.roundedRect(L,y,W,bh,1.5,1.5); doc.setDrawColor(0); label("From the card",L+5,y+5); var fy=y+11;
           rowsF.forEach(function(r){ doc.setFontSize(10); if(r.lb){ doc.setFont("helvetica","bold"); doc.text(r.lb,L+5,fy); } doc.setFont(r.lb?"helvetica":"helvetica",r.lb?"normal":"bold"); doc.text(r.tx,L+5+r.lw,fy); fy+=r.tx.length*4.6+1.6; });
           y+=bh+6; } }
-      var collect=/collect/i.test(ARRIVAL_WHO[j.arrive]||"");
+      var collect=leg?legOut:/collect/i.test(ARRIVAL_WHO[j.arrive]||"");
       /* DRIVER SIGNS FOR THE LOAD (Sam, 29 Oct 2026, mock approved): someone else's driver takes a waste load away, so our
          operative gets a full name and signature once loaded, before the vehicle sets off. Not on loads coming to us. */
       var drvSign=isWasteJob(j)&&(collect||/Plastic Collection|Skip Exchange/i.test(labelNames(j.labels||[]).join(" ")));
@@ -3610,11 +3618,11 @@ var SNAP=null, DETAIL={};
         doc.text("FULL NAME",L+5,y+22,{charSpace:0.2}); doc.line(L+32,y+22.5,L+W-5,y+22.5);
         doc.text("SIGNATURE",L+5,y+38,{charSpace:0.2}); doc.line(L+32,y+38.5,L+W-5,y+38.5);
         y+=sh+6; }
-      if(!isWasteJob(j)){ if(y+20>278) cont(); heading(hasKnow?2:1,collect?"Load onto their vehicle":/arriv/i.test(ARRIVAL_WHO[j.arrive]||"")?"Unload from their vehicle":"Items"); kit.items(info.items,cont); }
+      if(!isWasteJob(j)){ if(y+20>278) cont(); heading(hasKnow?2:1,collect?"Load onto their vehicle":(leg?legIn:/arriv/i.test(ARRIVAL_WHO[j.arrive]||""))?"Unload from their vehicle":"Items"); kit.items(info.items,cont); }
       // before they leave: equal step boxes, each with the code it needs
       var steps=[]; if(drvSign) steps.push(["Driver's full name and signature above, before they set off","",""]);
-      if(!don&&d.signoff) steps.push(["Get the customer to sign it off",d.signoff,"Sign-off"]);
-      steps.push(["Add photos of the load to the Trello card and move the job to Job Completed","https://trello.com/c/"+(j.short||j.id),"Trello card"]);
+      if(!don&&d.signoff&&!leg) steps.push(["Get the customer to sign it off",d.signoff,"Sign-off"]);   /* the card's sign-off link is for its own visit; an entry is not the end of the job */
+      steps.push([leg?"Add photos of the load to the Trello card":"Add photos of the load to the Trello card and move the job to Job Completed","https://trello.com/c/"+(j.short||j.id),"Trello card"]);
       var ph=45; if(y+ph+6>278) cont(); y+=2; doc.setFillColor(17,17,17); doc.roundedRect(L,y,W,ph,2,2,"F"); doc.setTextColor(255); doc.setFont("helvetica","bold"); doc.setFontSize(12); doc.text("BEFORE THEY LEAVE",L+5,y+7.5);
       var n=steps.length, gw=4, sw=(W-10-gw*(n-1))/n, sy=y+11, shh=ph-15;
       steps.forEach(function(st,i){ var sx=L+5+i*(sw+gw); doc.setFillColor(255,255,255); doc.roundedRect(sx,sy,sw,shh,1.2,1.2,"F");
@@ -4124,7 +4132,7 @@ var SNAP=null, DETAIL={};
   var AUTO=true;
   var REFRESHING=false, POLL_EVERY=10000, CRM_EVERY_TICKS=6, TICK=0;
   var PENDING_SNAP=null, FOREIGN=null, SEEN_FOREIGN={};   // a change to the job on screen, waiting for the person to choose
-  var SCHED_VERSION="15 Nov 00:30:00";   /* bumped on every push: shows which version is running and which built a sheet (Sam, 22 Oct 2026, "still not live?!") */
+  var SCHED_VERSION="16 Nov 07:54:49";   /* bumped on every push: shows which version is running and which built a sheet (Sam, 22 Oct 2026, "still not live?!") */
   /* A NEWER SCHEDULER RELOADS ITSELF (Sam, 22 Oct 2026, a sheet built from a window opened before the push). Checked every two
      minutes and before any sheet is built; a reload waits while an editor is open. */
   function liveVersion(){ return fetch("./scheduler.html?vc="+Date.now(),{cache:"no-store"}).then(function(r){ return r.ok?r.text():""; }).then(function(t){ var m=/SCHED_VERSION\s*=\s*"([^"]+)"/.exec(t||""); return m?m[1]:""; }).catch(function(){ return ""; }); }
