@@ -82,6 +82,7 @@
   .sed .people{margin-top:4px}
   .stdbox{margin-top:12px;padding:10px 12px;border-radius:8px;background:var(--card);border:1px solid var(--line)}
   .stdbox b{display:block;font-size:14px}
+  .sv.editing{color:var(--muted);font-weight:700} .banner.held,.pst.held{opacity:.55}
   .banner{padding:10px 14px;background:var(--red);color:#fff;font-weight:800;font-size:14px;border-bottom:1px solid var(--line)}
   .who{font-size:15px}
   .vtot{padding:10px 12px;border-radius:8px;background:var(--list);margin-bottom:10px}
@@ -347,13 +348,42 @@
   // below: something wide that sits under the label row at full width, like the day grid (Sam, 21 Oct 2026: "ui is fucked
   // here", the grid in the value column pushed Change off the edge)
   function rowEl(key,label,value,editor,cls,below){
-    var r=el("div","srow"+(cls?" "+cls:"")); var top=el("div","stop2"); top.appendChild(el("span","sl",label)); var v=el("span","sv"); if(typeof value==="string") v.textContent=value; else v.appendChild(value); top.appendChild(v);
-    if(editor){ var bt=el("button","chg",OPEN[key]?"Done":"Change"); bt.onclick=function(){ OPEN[key]=!OPEN[key]; keepOpen(); render(); }; top.appendChild(bt); } r.appendChild(top);
+    // NOTHING MOVES WHILE YOU CHOOSE (Sam, 17 Nov 2026: "you select and things move around, really bad UX"). Every tap
+    // redraws the panel, and the summary beside the label re-wrapped as the choice changed, so the options under it
+    // dropped away from the finger. While a row is open its summary reads Editing, one fixed line; the choice shows in
+    // the options themselves and the summary comes back on Done. One row open at a time: opening another closes the
+    // first, so the options are never pushed down by a second editor above them.
+    var r=el("div","srow"+(cls?" "+cls:"")); var top=el("div","stop2"); top.appendChild(el("span","sl",label)); var v=el("span","sv"); var openNow=!!(editor&&OPEN[key]);
+    if(openNow){ v.textContent="Editing"; v.className="sv editing"; } else if(typeof value==="string") v.textContent=value; else v.appendChild(value); top.appendChild(v);
+    if(editor){ var bt=el("button","chg",OPEN[key]?"Done":"Change"); bt.onclick=function(){ var was=!!OPEN[key]; Object.keys(OPEN).forEach(function(k){ delete OPEN[k]; }); if(!was) OPEN[key]=true; keepOpen(); render(); }; top.appendChild(bt); } r.appendChild(top);
     if(below){ var bw=el("div","sbelow"); bw.appendChild(below); r.appendChild(bw); }
     if(editor&&OPEN[key]){ var ed=el("div","sed"); editor(ed); r.appendChild(ed); }
     return r;
   }
   function banner(text){ return el("div","banner",text); }
+  // WARNINGS HOLD STILL TOO. The red strips and the late chip came and went between the rows as each choice was made.
+  // They now sit in one place, straight under the section's heading, and while a row is open they show what was true
+  // when it opened (dimmed); they catch up when Done is pressed. Keyed by the section's heading.
+  var HELD={};
+  function editingNow(){ return Object.keys(OPEN).some(function(k){ return !!OPEN[k]; }); }
+  function settleNotes(app){
+    var editing=editingNow(); var seen={};
+    [].slice.call(app.querySelectorAll(".sec")).forEach(function(s){
+      var h=s.querySelector(".sec-h"); if(!h) return;
+      var nm=h.querySelector(".name"); var key=s.className+"|"+(nm?nm.textContent:""); if(seen[key]){ key+="#"+seen[key]; } seen[key]=(seen[key]||0)+1;
+      var notes=[].slice.call(s.children).filter(function(c){ return /(^| )(banner|pst)( |$)/.test(c.className); });
+      var chip=h.querySelector(".latechip");
+      var live={notes:notes.map(function(n){ return {cls:n.className.replace(/ held$/,""),text:n.textContent}; }),chip:chip?chip.textContent:""};
+      if(!editing||!HELD[key]) HELD[key]=live;
+      var show=editing?HELD[key]:live;
+      notes.forEach(function(n){ s.removeChild(n); }); if(chip) h.removeChild(chip);
+      var after=h; show.notes.forEach(function(n){ var e=el("div",n.cls+(editing?" held":""),n.text); s.insertBefore(e,after.nextSibling); after=e; });
+      if(show.chip) h.appendChild(el("span","latechip",show.chip));
+    });
+  }
+  // The control that was tapped keeps the focus across the redraw, so a keyboard or a second tap carries on from it.
+  function focusIndex(app){ var a=document.activeElement; if(!a||!app.contains(a)) return -1; return [].slice.call(app.querySelectorAll("button,input,select,textarea")).indexOf(a); }
+  function refocus(app,i){ if(i<0) return; var e=app.querySelectorAll("button,input,select,textarea")[i]; if(e&&e.focus){ try{ e.focus({preventScroll:true}); }catch(x){} } }
   function checksOf(){ var cc=[]; (card.checklists||[]).forEach(function(cl){ (cl.checkItems||cl.items||cl.checkitems||[]).forEach(function(it){ cc.push({n:it.name||it.text||it.title||""}); }); }); return cc; }
   // THE CRM SAYS WHAT EACH LINE IS (Sam, 18 Sep 2026: "product category is the safest way to do this"). The
   // Standard time section carries "Timed as: 4 x Meeting chair", built from the product categories, so a chair
@@ -381,7 +411,7 @@
     app.appendChild(sec); }
   function render(){
     keepOpen();
-    var app=document.getElementById("app"); app.innerHTML="";
+    var app=document.getElementById("app"); var focusWas=focusIndex(app); app.innerHTML="";
     if(leaveCard&&card&&d){ renderLeave(app); return; }
     // OPEN THIS JOB IN THE SCHEDULER (Sam, 19 Oct 2026: "I want to be able to open the scheduler editor from this view").
     // The full editor, on this job's day, with this job open. Same modal the round link uses.
@@ -452,7 +482,7 @@
       else if(!d.prep.date) ps.appendChild(banner("No production days set."));
       if(prodDue&&d.prep.date&&d.prep.date>prodDue){ var lateWho=prepHasSpans(d.prep)?d.prep.who.filter(function(w){ var ds=prepDaysFor(d.prep,w); return ds.length&&ds[ds.length-1]>prodDue; }):[];
         // IN THE HEADER, NOT A RED BAND (Sam, 21 Oct 2026, card mock approved): a red chip beside the due date
-        var lateTxt=(lateWho.length&&lateWho.length<d.prep.who.length?nameList(lateWho)+(lateWho.length===1?" finishes ":" finish "):"Finishes ")+niceShort(d.prep.date)+", "+(function(){ var n=workDaysBetween(prodDue,d.prep.date); return n+(n===1?" day late":" days late"); })();
+        var lateTxt=(lateWho.length&&lateWho.length<d.prep.who.length?nameList(lateWho)+(lateWho.length===1?" finishes ":" finish "):"Finishes ")+niceShort(d.prep.date)+", "+(function(){ var n=Math.max(1,workDaysBetween(prodDue,d.prep.date)-1); return n+(n===1?" working day late":" working days late"); })();
         var shh=ps.querySelector(".sec-h"); if(shh){ var lc=el("span","latechip",lateTxt); shh.appendChild(lc); } }
       if(overP) ps.appendChild(banner("Above the estimate: "+overP+". The estimate is "+fmt(pstd.work)+" of work."));
       // WILL IT BE READY (Sam, 18 Sep 2026: "the things we need to make sure do not get affected is the due date.
@@ -748,9 +778,11 @@
     });
     var otherLegs=(d.legs||[]).filter(function(L){return L.type!=="labour";});
     if(otherLegs.length){ var ls=section("labour","Goods In and Out",""); var lf=fld(""); otherLegs.forEach(function(Lg){ lf.appendChild(el("div",null,Lg.type.replace("_"," ")+(Lg.where?": "+Lg.where:"")+", "+(Lg.date?niceShort(Lg.date):"no date")+(Lg.who&&Lg.who.length?", "+Lg.who.join(", "):", unassigned")+(Lg.mins!=null?", "+fmt(Lg.mins):""))); }); lf.appendChild(el("div","hint","Legs are added and edited in the Scheduler.")); ls.appendChild(lf); app.appendChild(ls); }
+    settleNotes(app); refocus(app,focusWas);
     fit();
   }
-  function fit(){ requestAnimationFrame(function(){ var h=document.getElementById("app").getBoundingClientRect().height+16; t.sizeTo(Math.ceil(h)).catch(function(){}); }); }
+  var HOLD_H=0;
+  function fit(){ requestAnimationFrame(function(){ var h=document.getElementById("app").getBoundingClientRect().height+16; if(editingNow()){ h=Math.max(h,HOLD_H); HOLD_H=h; } else HOLD_H=0; t.sizeTo(Math.ceil(h)).catch(function(){}); }); }
   if(window.ResizeObserver){ new ResizeObserver(function(){ fit(); }).observe(document.getElementById("app")); }
   window.addEventListener("resize",fit);
   t.render(function(){ load(); });
