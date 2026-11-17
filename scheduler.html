@@ -631,8 +631,8 @@ var SNAP=null, DETAIL={};
     return LEGS.map(function(L,i){
       var parent=JOBS.filter(function(j){return j.id===L.parent;})[0]; if(!parent) return null;
       var tdef=LEG_TYPES.filter(function(t){return t[0]===L.type;})[0];
-      // NAMED FOR WHAT THEY ARE (Sam, 15 Sep 2026, on Harper): a driver's sheet must say "Collect from Russkell
-      // Upholstery, for Harper Interiors", not the parent's name. Labour legs keep the parent's name; their block says the rest.
+      // NAMED FOR WHAT THEY ARE (Sam, 15 Sep 2026, on Example Interiors): a driver's sheet must say "Collect from Example Upholstery
+      // Upholstery, for Example Interiors", not the parent's name. Labour legs keep the parent's name; their block says the rest.
       var customer=parent.title.split(" - ").slice(1).join(" - ")||parent.title;
       var legTitle=L.type==="to_sub"?"Deliver to "+(L.where||"subcontractor")+", for "+customer:L.type==="from_sub"?"Collect from "+(L.where||"subcontractor")+", for "+customer:L.type==="site"?"Site visit"+(L.where?" at "+L.where:"")+", for "+customer:parent.title;
       var j={id:L.parent+":leg"+i,leg:L,each:L.each,parentJob:parent,title:legTitle,label:parent.label,work:parent.work,stageLabel:tdef[1]+(L.where?": "+L.where:""),date:L.date,start:null,who:L.who,contractor:"",mins:L.mins,site:tdef[2],drive:L.drive,from:L.from||null,by:L.by||null,isLeg:true,pc:L.pc||parent.pc};
@@ -740,7 +740,7 @@ var SNAP=null, DETAIL={};
       // ONLY WHEN SOMEBODY ELSE'S VEHICLE IS INVOLVED (Sam, 15 Sep 2026: "there is a duplication going on"). A stale
       // labour leg the old rule seeded is dropped again as long as nobody has been put on it.
       /* A CUSTOMER DROP-OFF WITH ITS DAY ON THE CARD (14 Nov 2026, B28D12): the CRM writes "Goods in and out: unload in on <date>" when the customer brings the furniture in on a known day. That is a goods-in job at Forton, wanted whether or not a carrier is involved. */ var wanted=(carrier||dropOffDay(P))?(P.labourLegs||[]):[];
-      for(var li=LEGS.length-1;li>=0;li--){ var L=LEGS[li]; if(L.parent!==j.id||L.type!=="labour"||L.src==="support"||L.src==="hand") continue; if(!wanted.some(function(x){return x.where===L.where;})&&((!(L.who&&L.who.length)&&L.mins==null)||(!carrier&&!j.site))){ LEGS.splice(li,1); STALE_LEGS[j.id]=true; } }   // they bring it or fetch it from Forton: the job itself is the labour, so an old leg goes even if somebody was put on it (Spaceline Q2, 17 Sep 2026)
+      for(var li=LEGS.length-1;li>=0;li--){ var L=LEGS[li]; if(L.parent!==j.id||L.type!=="labour"||L.src==="support"||L.src==="hand") continue; if(!wanted.some(function(x){return x.where===L.where;})&&((!(L.who&&L.who.length)&&L.mins==null)||(!carrier&&!j.site))){ LEGS.splice(li,1); STALE_LEGS[j.id]=true; } }   // they bring it or fetch it from Forton: the job itself is the labour, so an old leg goes even if somebody was put on it (Example Fit-Out, 17 Sep 2026)
       wanted.forEach(function(x){ /* an entry somebody added by hand for that day already covers it */ if(!LEGS.some(function(L){return L.parent===j.id&&L.type==="labour"&&(L.where===x.where||(L.src==="hand"&&x.date&&L.date===x.date));})) LEGS.push({parent:j.id,type:"labour",date:x.date||j.date,who:[],mins:null,drive:null,where:x.where}); }); });
     if(SNAP.boardData&&SNAP.boardData.roundDrive){ for(var k in SNAP.boardData.roundDrive) ROUND_DRIVE[k]=SNAP.boardData.roundDrive[k]; }
     if(SNAP.boardData&&SNAP.boardData.roundLegs){ for(var k2 in SNAP.boardData.roundLegs) ROUND_LEGS[k2]=SNAP.boardData.roundLegs[k2]; }
@@ -750,7 +750,7 @@ var SNAP=null, DETAIL={};
     // the member sync existed were never sent. Every open sends today's and future jobs that have operatives; the
     // helper skips anything it has already sent this session, so this costs one call per changed card.
     var ck=(SNAP.boardData&&SNAP.boardData.crmKey)||"", todayK=iso(TODAY);
-    /* A NEW CARD GETS ITS SHEET WHEN THE SCHEDULER OPENS (Sam, 24 Oct 2026, Bennett Jones 8FB359: "why did the production
+    /* A NEW CARD GETS ITS SHEET WHEN THE SCHEDULER OPENS (Sam, 24 Oct 2026, Example Partners 8FB359: "why did the production
        sheet not get added"): the check ran only on a save, so a card nobody touched waited. */
     if(ck) JOBS.forEach(queueProductionSheet);
     if(ck){ JOBS.forEach(function(j){ if(j.date<todayK) return; if(!(j.who&&j.who.length)&&!(j.prep&&j.prep.who&&j.prep.who.length)) return; syncCardMembers(j.id,{who:j.who,prep:j.prep},ck,inWorkshop(j)); }); }
@@ -896,7 +896,7 @@ var SNAP=null, DETAIL={};
       return; }
     if(!(j.id in PROD_SIG)){ PROD_SIG[j.id]=sig;
       if(!ready&&pr&&!pr.date&&CRM_KEY&&t) t.get(j.id,"shared","prodSheet",null).then(function(v){ if(!v){ UNPLANNED_Q.push(j); runUnplanned(); } }).catch(function(){});
-      /* A JOB PLANNED BEFORE THIS EXISTED (Sam, 24 Oct 2026, Tsunami Axis A81294: planned, one old attachment, no production
+      /* A JOB PLANNED BEFORE THIS EXISTED (Sam, 24 Oct 2026, Example Workspace A81294: planned, one old attachment, no production
          sheet): on first sight a planned job whose card does not say "planned" gets its full sheet, once. */
       if(ready&&CRM_KEY&&t) t.get(j.id,"shared","prodSheet",null).then(function(v){ if(v==="planned") return; clearTimeout(PROD_TIMER[j.id]);
         PROD_TIMER[j.id]=setTimeout(async function(){ try{ var k=daysOf(pr)[0]||pr.date; var r=await daySheetBuild(k,["p"+j.id]); if(r&&r.jobOnly){ var a=await attachProductionSheet(j,r.doc,k); if(a&&a.ok&&t) t.set(j.id,"shared","prodSheet","planned").catch(function(){}); } }catch(e){ console.warn("production sheet (first planned)",e); } },8000+Math.floor(Math.random()*4000)); }).catch(function(){});
@@ -911,7 +911,7 @@ var SNAP=null, DETAIL={};
     tidyEach(j); var d={date:j.moved?j.moved.from:j.date,who:j.who,mins:j.mins,each:j.each||undefined,drive:j.drive,driveAuto:!!j.driveAuto,at:j.at||undefined,cube:j.cubeSet,ignore:j.ignore&&j.ignore.length?j.ignore:undefined,items:j.manual&&j.manual.length?j.manual:undefined,load:j.load&&j.load.any?{m3:j.load.m3,kg:j.load.kg,complete:j.load.complete,rows:j.load.rows.map(function(r){return {n:r.n,type:r.type,m3:r.m3,kg:r.kg,built:r.built,est:r.est};}),unmatched:j.load.unmatched}:undefined,contractor:j.contractor||"",from:j.from||null,by:j.by||null,collectAt:j.collectAt||undefined,vehicle:j.vehicle||null,vehicles:vansOf(j).length>1?vansOf(j):undefined,soloOk:j.soloOk||"",qc:j.qc||null,done:j.done||null,hireRef:j.hireRef||"",hireFrom:j.hireFrom||"",hireBooked:!!j.hireBooked,prodDue:j.prodDueSet?j.prodDue:null,prep:j.prep?{who:j.prep.who,mins:j.prep.mins,perDay:j.prep.perDay!=null?j.prep.perDay:undefined,each:j.prep.each&&Object.keys(j.prep.each).length?j.prep.each:undefined,shop:j.prep.shop&&Object.keys(j.prep.shop).length?j.prep.shop:undefined,start:j.prep.start,date:j.prep.date,done:j.prep.done||null,picked:j.prep.picked&&Object.keys(j.prep.picked).length?j.prep.picked:undefined,stages:j.prep.stages?true:undefined,grid:j.prep.grid&&Object.keys(j.prep.grid).length?j.prep.grid:undefined,days:!j.prep.grid&&j.prep.days&&Object.keys(j.prep.days).length?j.prep.days:undefined}:(j.donePrep||null),
         legs:LEGS.filter(function(L){return L.parent===j.id;}).map(function(L){ tidyEach(L); return {type:L.type,date:L.date,who:L.who,mins:L.mins,each:L.each||undefined,drive:L.drive,where:L.where,from:L.from||null,by:L.by||null,pc:L.pc||null,src:L.src||null};})};
     return d; }
-  /* THE LAST PERSON TO CHANGE A JOB WINS, NOT THE LAST SCREEN TO WAKE UP (Sam, 14 Nov 2026, Tsunami Axis B28D12: a goods-in
+  /* THE LAST PERSON TO CHANGE A JOB WINS, NOT THE LAST SCREEN TO WAKE UP (Sam, 14 Nov 2026, Example Workspace B28D12: a goods-in
      entry added on the card was saved at 17:13:27.0 and written back without it at 17:13:29.9 by a Scheduler open on
      another screen). Three rules, all here:
        1. seedSaved: after every read of the board, what is in memory counts as already saved, so a save writes only the
@@ -1055,7 +1055,7 @@ var SNAP=null, DETAIL={};
       if(fromScrap) out.push({n:"Modesty panels",q:u,bold:"CUT FROM SCRAP TOPS",after:"scrap store",drawPanel:true});
       else if(twoTop) out.push({n:"Modesty panels",q:u,from:(u-sc)>0?"from "+(u-sc)+" more tops in this batch"+(sc?", "+sc+" from scrap":""):"all from scrap panels",tied:true,drawPanel:true,canScrap:true,scrap:sc});
       var lg=/(\d+)\s*legs/i.exec(hb), lgl=l._legs||null, lc=/Legs:\s*([^\u00b7,]+)/i.exec(String(l.attr_colour||""));
-      if(lg&&+lg[1]>0) out.push({n:"Legs",q:+lg[1],photo:lgl&&(lgl.storage_photo||lgl.product_photo)||"",sku:lgl&&lgl.sku||"",loc:lgl&&lgl.stock_location||"",colour:lc?lc[1].trim():"",legs:true,ready:(lgl&&typeof lgl.leg_ready==="number")?lgl.leg_ready:null}); }   /* THE LEG ROW SAYS MORE (Sam, 12 Nov 2026, mock approved, Lancaster and Morecambe College: the sheet asked for LEG00001 while all were at paint, the job went out on LEG00009 and nobody was told): a photo you can read, a warning when none are painted, and a box for the code when different legs are used */
+      if(lg&&+lg[1]>0) out.push({n:"Legs",q:+lg[1],photo:lgl&&(lgl.storage_photo||lgl.product_photo)||"",sku:lgl&&lgl.sku||"",loc:lgl&&lgl.stock_location||"",colour:lc?lc[1].trim():"",legs:true,ready:(lgl&&typeof lgl.leg_ready==="number")?lgl.leg_ready:null}); }   /* THE LEG ROW SAYS MORE (Sam, 12 Nov 2026, mock approved, Example College: the sheet asked for LEG00001 while all were at paint, the job went out on LEG00009 and nobody was told): a photo you can read, a warning when none are painted, and a box for the code when different legs are used */
     else out=[{n:l.section==="seating"?"Chairs":l.section==="storage"?"Units":l.section==="tables"?"Tables":l.section==="desk_tops"?"Tops":"Items",q:u}];
     (extra||[]).forEach(function(e){ if(e&&e.n) out.push({n:String(e.n),q:Number(e.q)||u,x:true}); }); return out; }
   function pickCount(P,l){ var q=pickUnits(l), e=P[pickKey(l)]||null; var ps=pickPartsOf(l,e&&e.extra,e&&e.scrap);
@@ -1379,7 +1379,7 @@ var SNAP=null, DETAIL={};
     var tc=el("button","close","Open in Trello"); tc.style.marginRight="8px";
     // A NEW TAB (Sam, 1 Oct 2026: "I want it to open a new window tab rather than on the same window tab"), so the
     // Scheduler stays open behind it. t.showCard swapped the whole Trello window over to the card.
-    // a leg is part of its job's card, so it opens that card (Sam, 1 Oct 2026, Balfour Beatty: "Malformed URL")
+    // a leg is part of its job's card, so it opens that card (Sam, 1 Oct 2026, Example Construction: "Malformed URL")
     var cardJ=j.isLeg&&j.parentJob?j.parentJob:j; if(j.isHold) tc.style.display="none";
     tc.onclick=function(){ var url="https://trello.com/c/"+(cardJ.short||cardJ.id); var w=window.open(url,"_blank"); if(w){ try{ w.opener=null; }catch(e){} } else { try{ if(t&&typeof t.showCard==="function") t.showCard(cardJ.id); }catch(e){} } };
     tc.style.marginRight=""; hact.appendChild(tc);
@@ -1711,7 +1711,7 @@ var SNAP=null, DETAIL={};
       right.appendChild(wh); }
     if(!contractorOnly){ var perDayP=o.shop&&prepDayCount(part)>1, getT=perDayP?function(){ return prepPerDay(part); }:function(){ return part.mins; }, setT=o.shop?function(v){ setPrepPerDay(part,v); if(part.leg) part.leg.mins=v; }:setMins;   // a production time goes through the grid, so the cells follow it (3 Nov 2026)
       var tb=block(o.shop?(perDayP?"Production Time":"Production Time per Operative"):(j.site?"Site Time per Operative":j.facility?"Time per Operative":"Goods In and Out Time per Operative"),"time");
-      // BIG JOBS IN DAYS, NOT HOURS (Sam, 2 Oct 2026, mock approved after Sketch Studios came out at 8h 22m a day): a
+      // BIG JOBS IN DAYS, NOT HOURS (Sam, 2 Oct 2026, mock approved after Example Studios came out at 8h 22m a day): a
       // production over several days is Full days (7h 45m each, every day) or Part days (so many hours a day). No total
       // to work out; the total follows the days.
       if(perDayP){ var full=prepPerDay(part)===DAY_MINS&&!part.each, partOpen=!full&&(part.perDay!=null||part.mins!=null||part.partDays);
@@ -2051,7 +2051,7 @@ var SNAP=null, DETAIL={};
   function needsPlan(j,isPrep){
     if(j.isHold||j.completed) return false; if(j.isLeg) return !j.who.length||j.mins==null;
     var part=isPrep?j.prep:j;
-    // A contractor job needs nothing from us on the day, but its workshop side can still be unplanned (Harper Interiors, 14 Sep 2026: hidden because G&T Express carry it, while production was not scheduled).
+    // A contractor job needs nothing from us on the day, but its workshop side can still be unplanned (Example Interiors, 14 Sep 2026: hidden because Example Haulage carry it, while production was not scheduled).
     if(!isPrep&&j.contractor&&!j.who.length) return !!notReady(j);
     if(!part.who.length||part.mins==null) return true;
     return !isPrep&&!!j.site&&((j.drive==null&&!j.onRound)||(!j.vehicle&&!attending(j))||hireDue(j)||!!notReady(j)||!!shortCrew(j)||!!j.moved);
@@ -2083,7 +2083,7 @@ var SNAP=null, DETAIL={};
       // Production on every day from today, so it is seen before it is late. Select one to plan it.
       // TODAY AND ITS START DAY ONLY, UNDER ITS OWN HEADING (Sam, 1 Oct 2026: "Should harrison drury be showing on the
       // 1st Oct?"): it is a reminder to plan, not work booked on the day, so it said nothing on its own.
-      // A JOB WITH NO TIME HAS NO START DAY, so it also shows on its due day (Sam, 24 Oct 2026, Bennett Jones): every
+      // A JOB WITH NO TIME HAS NO START DAY, so it also shows on its due day (Sam, 24 Oct 2026, Example Partners): every
       // unplanned job is then tied to a day ahead, not only to today.
       var npList=g[0]!=="shop"||k<iso(TODAY)?[]:JOBS.filter(function(j){ var st=prodStatus(j); return st&&!st.planned&&(st.cls==="soon"||st.cls==="late")&&(k===iso(TODAY)||st.start===k||(!st.start&&j.prodDue===k)); });
       if(npList.length) cards.appendChild(el("div","nphead","Needs planning"));
@@ -2698,7 +2698,7 @@ var SNAP=null, DETAIL={};
     var finished=function(j){ return !!(j.completed||(j.isLeg&&j.parentJob&&j.parentJob.completed)); };
     var leftOff=allJobs().filter(function(j){ return onDay(j,k)&&!j.isHold&&finished(j); }).length;
     prepJobs().filter(function(j){ return !j.isHold&&!finished(j)&&!(j.prep&&j.prep.done&&j.prep.done.status==="done")&&j.prep&&j.prep.date&&daysOf(j.prep).indexOf(k)>=0; }).forEach(function(j){ var nd=daysOf(j.prep).length;
-      A4({key:"p"+j.id,card:j.id,short:j.short||"",pickable:"first"   /* EVERY PRODUCTION DAY (Sam, 2 Oct 2026: big orders like Sketch Studios are picked in phases as workshop space allows, so "picked on day 1" was wrong) */,part:"Production",name:name(j),sub:prepSpansLine(j.prep),   /* no "Day 10 of 13" (Sam, 2 Oct 2026: "We also do not need the day count"); each person's own days when they differ (Jack, 19 Oct 2026) */who:prepWhoOn(j.prep,k),contractor:"",mins:function(w){ return Math.round(prepShare(j,w,k)); },extra:"",at:null,cid:j.short||j.id}); });
+      A4({key:"p"+j.id,card:j.id,short:j.short||"",pickable:"first"   /* EVERY PRODUCTION DAY (Sam, 2 Oct 2026: big orders like Example Studios are picked in phases as workshop space allows, so "picked on day 1" was wrong) */,part:"Production",name:name(j),sub:prepSpansLine(j.prep),   /* no "Day 10 of 13" (Sam, 2 Oct 2026: "We also do not need the day count"); each person's own days when they differ (Jack, 19 Oct 2026) */who:prepWhoOn(j.prep,k),contractor:"",mins:function(w){ return Math.round(prepShare(j,w,k)); },extra:"",at:null,cid:j.short||j.id}); });
     allJobs().filter(function(j){ return onDay(j,k)&&!j.isHold&&!finished(j); }).forEach(function(j){ var pj=j.isLeg&&j.parentJob?j.parentJob:j, cid=pj.short||pj.id;
       var base={key:"j"+j.id,card:j.isLeg?"":j.id,short:j.isLeg?"":(j.short||""),pickable:!j.isLeg&&!j.prep&&!/^(Workshop: Ready|Completed)$/.test(j.stageLabel||"")?"first":"",name:name(j),who:j.who.slice(),contractor:j.who.length?"":(j.contractor||""),mins:function(w){ return minsFor(j,w); },extra:"",at:null,cid:cid};
       if(j.isLeg&&j.leg&&j.leg.type==="production"){ base.part="Production"; base.sub=""; A4(base); return; }
@@ -2711,7 +2711,7 @@ var SNAP=null, DETAIL={};
       if(j.facility){ base.part="Facility"; base.at=hm(j.at); base.sub=""; A4(base); return; }
       base.part="Goods In and Out"; base.at=j.arrive&&!j.isLeg?hm(j.from):null;
       base.sub=j.arrive&&!j.isLeg?(arrivalText(j.arrive,j.from,j.by,j.collectAt)||(ARRIVAL_WHO[j.arrive]||"Arriving")+", time not given yet"):(j.isLeg?(j.leg.where||""):(j.work||""));
-      /* AN ENTRY ON A CARD GETS ITS OWN PAGE (Sam, 16 Nov 2026, mock approved: the Tsunami Axis drop-off and the Nando's courier load were on the screen and not in the download). */ if(j.isLeg&&j.leg){ base.card=pj.id; base.leg=j.leg; }
+      /* AN ENTRY ON A CARD GETS ITS OWN PAGE (Sam, 16 Nov 2026, mock approved: the Example Workspace drop-off and the Example Diner courier load were on the screen and not in the download). */ if(j.isLeg&&j.leg){ base.card=pj.id; base.leg=j.leg; }
       A4(base); });
     // THE PICKING LINE (Sam, 2 Oct 2026, mock approved): a job picks on its first production day, or on its own day when
     // it has no production; its own picking sheet from the CRM goes behind the day sheet.
@@ -2790,7 +2790,7 @@ var SNAP=null, DETAIL={};
       // the day and who else is on it, and PICK as one tag. Nothing wraps that does not have to.
       var tx0=function(x){ return x+qs+6; }, tw0=CW-qs-15;
       var timeW=function(r){ if(!r[3]) return 0; doc.setFont("helvetica","bold"); doc.setFontSize(fs+1); return doc.getTextWidth(r[3])+3; };
-      // THE TIME DROPS UNDER THE NAME WHEN IT WILL NOT FIT BESIDE IT (Sam, 2 Oct 2026: "CUBE HR" printed over "30 min each +
+      // THE TIME DROPS UNDER THE NAME WHEN IT WILL NOT FIT BESIDE IT (Sam, 2 Oct 2026: "Example HR" printed over "30 min each +
       // 1h travel"). Beside the name when the name fits on one line next to it, otherwise on its own line under the name.
       var timeBelow=function(r){ if(!r[3]) return false; doc.setFont("helvetica","bold"); doc.setFontSize(fs+1); return doc.getTextWidth(r[0])>tw0-timeW(r); };
       var nameLines=function(r){ doc.setFont("helvetica","bold"); doc.setFontSize(fs+1); return doc.splitTextToSize(r[0],timeBelow(r)?tw0:tw0-timeW(r)); };
@@ -3015,7 +3015,7 @@ var SNAP=null, DETAIL={};
     if(!out.contacts.length){ var kv0=out.kv, nm0=kv0["site contact name"]||kv0["contact name"]||kv0["name"]||"", ph0=kv0["mobile number"]||kv0["contact number"]||kv0["contact phone/mobile number"]||kv0["phone number"]||kv0["phone"]||kv0["number"]||"";
       if(nm0||ph0) out.contacts.push([nm0,ph0].filter(Boolean).join(" · ")); }
     if(!out.access.length&&out.kv.access) out.access.push(out.kv.access);
-    // ONE CONTACT ONCE (Sam, 2 Oct 2026, CUBE HR printed Lisa twice): a secondary that is the same person is dropped
+    // ONE CONTACT ONCE (Sam, 2 Oct 2026, Example HR printed Lisa twice): a secondary that is the same person is dropped
     var seenC={}; out.contacts=out.contacts.filter(function(c){ var key=c.toLowerCase().replace(/[^a-z0-9]/g,""); if(seenC[key]) return false; seenC[key]=1; return true; });
     return out; }
   /* THE CARD'S OWN LABELS (Sam, 9 Nov 2026, Debenhams: "why is some of the access info missing from the sheet"). A clearance
@@ -3283,7 +3283,7 @@ var SNAP=null, DETAIL={};
     kit.hasLoad=function(run){ return run.stops.some(function(s0){ return !takesOn(s0.j); }); };
     // A STOP PAGE IN ARRIVAL ORDER (Sam, 2 Oct 2026, mock approved): who and where, call ahead, know before you go, unload,
     // then one black Before you leave panel with the photos and the move to Job Completed.
-    // THE RETURN DAY OF A COLLECT AND RETURN IS A DELIVERY (Sam, 20 Oct 2026, York College: "why is it saying collection
+    // THE RETURN DAY OF A COLLECT AND RETURN IS A DELIVERY (Sam, 20 Oct 2026, Example College: "why is it saying collection
     // when this is a return"). The card spans the collection day to the return day; on the return day the van unloads.
     // A card with one date tells it another way: once it sits in Ready for Delivery / Collection the work is done and
     // the only journey left is back to them.
@@ -3769,7 +3769,7 @@ var SNAP=null, DETAIL={};
             // PICK WHILE NOT STARTED, NOTHING ONCE IN PROGRESS (Sam, 2 Oct 2026: "when the jobs are still in the list not started the
             // picking list should show and when in progress the picking list is removed", then the To finish list was dropped too:
             // "Why do we need this when this is on the workday sheet?"). An In-progress job prints no picking pages unless it is
-            // ticked Still picking in stages (Sketch Studios).
+            // ticked Still picking in stages (Example Studios).
             var fin=!!(jj&&jj.prep&&jj.stage==="In progress"&&!jj.prep.stages);
             // With a page per job (2 Oct 2026) an In-progress job's page lists what is left as "Items to finish"
             PICK[id]={picks:!!e.picks,finish:fin,lines:left,all:all.filter(function(l){ return !isPartLine(l); }),picked:pk,allPicked:all.length>0&&!left.length,error:e.error||"",ref:e.ref||""}; });
@@ -4193,7 +4193,7 @@ var SNAP=null, DETAIL={};
     if(EMBED){ window.addEventListener("message",function(ev){ var msg=ev.data||{}; if(msg.type!=="coggin-sheet") return; var reply=function(m){ try{ ev.source.postMessage(m,"*"); }catch(e){} };
         loadBoard({raw:msg.raw||{}}).then(function(snap){ buildFromSnap(snap); seedSaved(); var oj=JOBS.filter(function(j){return j.id===msg.open;})[0]; if(!oj) throw new Error("This card is not a job the Scheduler knows yet. Does it have a due date and a list the Scheduler reads?"); if(oj.date) dayCur=oj.date; view="day"; open=msg.sheet==="prep"&&oj.prep?oj.id+":prep":oj.id; render(); var oo=findOpen(); if(!oo) throw new Error("This job has no page to print yet.");
           return jobSheetDownload(oo.job,oo,null); }).then(function(){ reply({type:"coggin-sheet-done"}); }).catch(function(e){ reply({type:"coggin-sheet-error",error:String(e&&e.message||e)}); }); });
-      /* ADD THE SHEET TO THE CARD, FROM THE CARD (Sam, 24 Oct 2026, Bennett Jones 8FB359: "can we not add a button here to
+      /* ADD THE SHEET TO THE CARD, FROM THE CARD (Sam, 24 Oct 2026, Example Partners 8FB359: "can we not add a button here to
          add the relevant sheet instead?"). The card posts its board, this builds the production sheet, with a stand-in day
          and person when the job is not planned yet, and puts it on the card. Nothing is saved: in embed mode there is no t. */
       window.addEventListener("message",function(ev){ var msg=ev.data||{}; if(msg.type!=="coggin-attach") return; var reply=function(m){ try{ ev.source.postMessage(m,"*"); }catch(e){} };

@@ -386,7 +386,7 @@
     // OPEN THIS JOB IN THE SCHEDULER (Sam, 19 Oct 2026: "I want to be able to open the scheduler editor from this view").
     // The full editor, on this job's day, with this job open. Same modal the round link uses.
     if(card&&card.id){ var ob0=el("div","open-sched"); var ob1=el("button","p","Open in the Scheduler"); ob1.title="The full Scheduler, on this job's day, with this job open";
-      // A WORKSHOP CARD OPENS ITS PRODUCTION (Sam, 9 Nov 2026, K&DE Woodhouse: "when i click open in scheduler it opens the
+      // A WORKSHOP CARD OPENS ITS PRODUCTION (Sam, 9 Nov 2026, Example Joinery: "when i click open in scheduler it opens the
       // transport view rather than the relevant list view"): from a workshop list the Scheduler opens the production part on
       // its production day, not the transport editor on the delivery day.
       ob1.onclick=function(){ try{ t.modal({ url:"./scheduler.html?open="+encodeURIComponent(card.id)+(workshop?"&part=prep":"")+"&v="+Math.floor(Date.now()/60000), fullscreen:true, title:"Scheduler" }); }catch(e){ alert("Could not open the Scheduler: "+(e&&e.message||e)); } };
@@ -411,7 +411,7 @@
       jsb.onclick=function(){ viaEmbed(jsb,"coggin-sheet","Building...",null); };
       // ADD THE SHEET TO THE CARD (Sam, 24 Oct 2026): the production sheet, as the card's attachment. A job not planned yet
       // gets the "Not planned yet" sheet; planning it later replaces that with the real one.
-      /* SAY WHAT IS ON THE CARD (Sam, 24 Oct 2026, Bennett Jones: "the sheet is already added to the card, why is it saying add
+      /* SAY WHAT IS ON THE CARD (Sam, 24 Oct 2026, Example Partners: "the sheet is already added to the card, why is it saying add
          the sheet"). The newest Production sheet attachment decides: none, add it; the job planned but the sheet older than
          the plan or still the Not planned yet one, update it; otherwise a line saying it is on, no button. */
       var asb=null, asn=null; if(workshop){ var atts=(card.attachments||[]).filter(function(a){ return /^Production sheet/i.test(String(a&&a.name||"")); }).sort(function(a,b){ return String(b.date||"").localeCompare(String(a.date||"")); }), att=atts[0]||null;
@@ -512,7 +512,7 @@
       /* SAYS WHO GETS WHAT (Sam, 2 Oct 2026: "it say 30 mins each when i want it 30 mins for one and 15 for the other"):
          once somebody has their own time, the row names each person's time instead of "each". */
       var pDiff=d.prep.who.length>1&&d.prep.mins!=null&&d.prep.who.some(function(w){ return minsFor(d.prep,w)!==d.prep.mins; });
-      /* TIME PER WORKSHOP (Sam, 9 Nov 2026, K&DE Woodhouse: "this is a seating and workshop job but does not give me a time for
+      /* TIME PER WORKSHOP (Sam, 9 Nov 2026, Example Joinery: "this is a seating and workshop job but does not give me a time for
          each area to edit in this view?"). When the items span both workshops the row reads a line per workshop, and Change
          opens the Seating / Furniture choice per person, then a time and an estimate per workshop. Time is still per person
          underneath, so the day view, the capacity and the sheets follow it as before. One workshop: nothing changes. */

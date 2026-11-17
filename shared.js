@@ -175,7 +175,7 @@ function itemsOf(desc,checks){
 // the working week is 38 hours 45 minutes Monday to Friday: 7 hours 45 minutes a day
 // (8am to 4:30pm with 30 minutes for lunch and a 15 minute break)
 var WEEK_MINS=38*60+45, DAY_MINS=WEEK_MINS/5, DAY_H=DAY_MINS/60;
-// DOES THE PRODUCTION FIT ITS DAYS? (Sam, 29 Sep 2026: Sketch Studios, 72h each over 9 days is 8h a day, 15 min over the
+// DOES THE PRODUCTION FIT ITS DAYS? (Sam, 29 Sep 2026: Example Studios, 72h each over 9 days is 8h a day, 15 min over the
 // 7h45 day for Jack and Jordan every day. "How do we make it so when they are scheduling it tells them this?")
 // mins is the total per person, nd the working days. Empty string when it fits.
 function prodFit(mins,nd){ if(mins==null||!nd) return ""; var perDay=mins/nd; if(perDay<=DAY_MINS) return ""; var over=perDay-DAY_MINS, need=Math.ceil(mins/DAY_MINS), fits=Math.floor(nd*DAY_MINS/5)*5;
@@ -231,7 +231,7 @@ function combinedWork(name){ var p=splitLabel(name); return p?p.work:""; }
 // Courier or Sub-contractor on the label: who the card says is carrying it, "" when it is our crew
 function carrierOf(labels){ var n=labelNames(labels); for(var i=0;i<n.length;i++){ var p=splitLabel(n[i]); if(p&&/^(courier|sub-contractor)$/i.test(p.move)) return p.move; } return ""; }
 function labelNames(labels){ return (labels||[]).map(function(l){return typeof l==="string"?l:(l&&l.name)||"";}).filter(Boolean); }
-// A REFURB THE CUSTOMER DROPS OFF AND WE TAKE BACK (Sam, 14 Nov 2026, Tsunami Axis B28D12): the label still says
+// A REFURB THE CUSTOMER DROPS OFF AND WE TAKE BACK (Sam, 14 Nov 2026, Example Workspace B28D12): the label still says
 // "Customer Drops Off", so the card read "Customer or courier collecting, so nothing goes on our vehicle" on a job
 // with four vans booked to return 210 chairs. The CRM now writes the Parts transport line as "our van returns,
 // customer drops off" (or "<firm>, return leg, customer drops off"), and that line makes it a Delivery: production,
@@ -323,7 +323,7 @@ function tidyPrepShop(P){ if(!P||!P.shop) return; Object.keys(P.shop).forEach(fu
 function prepUnplaced(P){ return ((P&&P.who)||[]).filter(function(w){ return !prepShopOf(P,w); }); }
 // "Seating: Jack · Furniture: Jordan, Bart", then anyone still to place; blank when nobody has a workshop
 function prepShopText(P){ if(!P||!P.shop) return ""; var bits=WORKSHOPS.map(function(x){ var ws=(P.who||[]).filter(function(w){ return prepShopOf(P,w)===x[0]; }); return ws.length?x[1]+": "+ws.map(firstName).join(", "):""; }).filter(Boolean); var un=prepUnplaced(P); if(un.length) bits.push(un.map(firstName).join(", ")+" no workshop"); return bits.join(" \u00b7 "); }
-// TIME PER WORKSHOP (Sam, 9 Nov 2026, K&DE Woodhouse: "this is a seating and workshop job but does not give me a time
+// TIME PER WORKSHOP (Sam, 9 Nov 2026, Example Joinery: "this is a seating and workshop job but does not give me a time
 // for each area to edit"). Time stays per person underneath; a workshop's time is set on everyone placed in it. The card
 // has no CRM lines, so its "N x name" items are sorted into workshops by name, the same rule a nameless line follows.
 var ITEM_QTY=/^\d+\s*x\s*/i;
@@ -391,7 +391,7 @@ var STANDARD=[
   // SOFT: a placeholder, not a measured figure. A plain labour card with no
   // items listed gets an hour because an hour is the usual ask, so anyone
   // planning real work will pass it and there is nothing wrong with that.
-  // Never warn against these (Sam, 18 Sep 2026, Spaceline Q2: "what is going
+  // Never warn against these (Sam, 18 Sep 2026, Example Fit-Out: "what is going
   // on here? Above the estimate: 2h each, estimated 1h").
   {re:/^(labour|warehouse|yard)$/i, crew:2, mins:60, soft:true},
   {re:/customer delivers$/i,       crew:2, mins:60, soft:true},
@@ -558,11 +558,11 @@ function vehicleAdvice(m3,kg,lutonsOnRoad,opts){
 }
 
 // ── subcontract legs written on the card by the CRM (13 Sep 2026) ──
-// "10 seat pads: Deliver to Russkell Upholstery (PR1 2AB) on 2026-09-15"
-// "10 seat pads: Collect from Russkell Upholstery (PR1 2AB) on 2026-09-22"
+// "10 seat pads: Deliver to Example Upholstery (PR1 2AB) on 2026-09-15"
+// "10 seat pads: Collect from Example Upholstery (PR1 2AB) on 2026-09-22"
 // THE PARTS OF A JOB (Sam, 14 Sep 2026: a sub-contractor collects, the customer loads, the truck comes back to
 // Forton and our operatives unload it). The CRM writes a Parts block on the card; this reads it back:
-//   {production:true/false, site:"clear and load"|"", transport:"G&T Express, customer loads"|"our van"|..., ours:true/false, labour:"unload at Forton"|""}
+//   {production:true/false, site:"clear and load"|"", transport:"Example Haulage, customer loads"|"our van"|..., ours:true/false, labour:"unload at Forton"|""}
 function partsOf(desc){
   var g=parseDesc(desc||""), P={production:false,site:"",transport:"",ours:false,labour:"",known:false};
   (g.parts||[]).forEach(function(l){
@@ -577,7 +577,7 @@ function partsOf(desc){
   P.labourLegs=P.labour?P.labour.split(";").map(function(x){ var m=/^(.*?)(?:\s+on\s+(\d{4}-\d{2}-\d{2}|\d{2}\/\d{2}\/\d{4}))?\s*$/.exec(x.trim()); /* the card shows dd/mm/yyyy (Sam, 17 Nov 2026); cards written before then hold yyyy-mm-dd */ var dt=m&&m[2]?(m[2].indexOf("/")>0?m[2].slice(6)+"-"+m[2].slice(3,5)+"-"+m[2].slice(0,2):m[2]):null; return m&&m[1]?{where:m[1].trim(),date:dt}:null; }).filter(Boolean):[];
   return P;
 }
-// the firm named on a transport line: "G&T Express, customer loads" -> "G&T Express"; "our van" and "customer ..." -> ""
+// the firm named on a transport line: "Example Haulage, customer loads" -> "Example Haulage"; "our van" and "customer ..." -> ""
 // a customer drop-off whose Parts block carries a dated goods-in line
 function dropOffDay(P){ return !!(P&&/customer (delivers|drops off)/i.test(String(P.transport||""))&&(P.labourLegs||[]).some(function(L){ return L&&L.date; })); }
 function partsCarrier(P){ if(!P||!P.transport||P.ours) return ""; if(/^(customer|seller)\b/i.test(P.transport)) return ""; return P.transport.split(",")[0].trim(); }
@@ -634,10 +634,10 @@ if(!ESTIMATE_ON){
 var PLAN_AHEAD_DAYS=5;
 function prodStatusOf(P,due,today,inShop){
   if(!P||!due) return null; var who=P.who||[];
-  // STILL IN THE WORKSHOP AFTER ITS DAYS (Sam, 1 Oct 2026, CUBE HR: "it clearly says it is still in progress and surely
+  // STILL IN THE WORKSHOP AFTER ITS DAYS (Sam, 1 Oct 2026, Example HR: "it clearly says it is still in progress and surely
   // it could pick this up"). Booked days gone by and the card not moved on from Not Started or In-progress means the
   // production is not finished, so it is not on track: move its production days on, and it goes back on Needs planning.
-  // ...AND ONCE TODAY'S WORKING DAY IS OVER (Sam, 2 Oct 2026, Harrison Drury and Lancaster College at 17:00: "These jobs
+  // ...AND ONCE TODAY'S WORKING DAY IS OVER (Sam, 2 Oct 2026, Example Solicitors and Example College at 17:00: "These jobs
   // did not get completed today and will run into Monday"). A card booked to finish today and still in the workshop
   // after 16:30 is not finished either; it said "On track" until the next morning.
   var dayGoneToday=P.date===today&&typeof minsLeftOn==="function"&&minsLeftOn(today)===0;
@@ -684,13 +684,13 @@ function prodStatusOf(P,due,today,inShop){
 function minsLeftOn(k){ var n=new Date(), t=n.getFullYear()+"-"+String(n.getMonth()+1).padStart(2,"0")+"-"+String(n.getDate()).padStart(2,"0"); if(k!==t) return null;
   var now=n.getHours()*60+n.getMinutes(), S=8*60, E=16*60+30; if(now<=S) return DAY_MINS; if(now>=E) return 0; return Math.round((E-now)*DAY_MINS/(E-S)); }
 
-// TIME PER DAY ON A MULTI-DAY PRODUCTION (Sam, 1 Oct 2026, Sketch Studios: he set Full day meaning every day, and it
+// TIME PER DAY ON A MULTI-DAY PRODUCTION (Sam, 1 Oct 2026, Example Studios: he set Full day meaning every day, and it
 // was read as 7h45 in total over 11 days, 42 minutes a day). On more than one day the time is set per operative PER DAY;
 // perDay is kept with the plan and mins (the total everything else reads) is perDay times the working days, kept in
 // step when the days change. One-day production is unchanged: mins is the day's time.
 function prepDayCount(P){ if(!P||!P.date) return 0; var a=P.start&&P.start<P.date?P.start:P.date, n=0; for(var x=new Date(a+"T12:00"); x.toISOString().slice(0,10)<=P.date; x.setDate(x.getDate()+1)){ if(x.getDay()!==0&&x.getDay()!==6) n++; } return n; }
 function prepPerDay(P){ var n=prepDayCount(P); if(n<=1) return P.mins; return P.perDay!=null?P.perDay:(P.mins!=null?Math.round(P.mins/n):null); }
-// CELLS FOLLOW THE TIME (Sam, 3 Nov 2026, Re-Tek UK Ltd: the card said 2 hours each, the day read Jordan 7h 45m).
+// CELLS FOLLOW THE TIME (Sam, 3 Nov 2026, Example Tech Ltd: the card said 2 hours each, the day read Jordan 7h 45m).
 // Adding a person before any time is typed fills their cells at a full day, and the first typed time used to leave
 // them there: the block said 2h, the day sheet and the card header summed the cells. With no figure yet the cells
 // are at DAY_MINS, so that is what they are rescaled from.
