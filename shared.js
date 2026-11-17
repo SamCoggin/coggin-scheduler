@@ -574,7 +574,7 @@ function partsOf(desc){
     else if(k==="labour"||k==="warehouse"||k==="yard"||k==="goods in and out") P.labour=none?"":v;
   });
   // "unload in on 2026-09-16; load out on 2026-09-23" is two legs on two days (a contractor refurb)
-  P.labourLegs=P.labour?P.labour.split(";").map(function(x){ var m=/^(.*?)(?:\s+on\s+(\d{4}-\d{2}-\d{2}))?\s*$/.exec(x.trim()); return m&&m[1]?{where:m[1].trim(),date:m[2]||null}:null; }).filter(Boolean):[];
+  P.labourLegs=P.labour?P.labour.split(";").map(function(x){ var m=/^(.*?)(?:\s+on\s+(\d{4}-\d{2}-\d{2}|\d{2}\/\d{2}\/\d{4}))?\s*$/.exec(x.trim()); /* the card shows dd/mm/yyyy (Sam, 17 Nov 2026); cards written before then hold yyyy-mm-dd */ var dt=m&&m[2]?(m[2].indexOf("/")>0?m[2].slice(6)+"-"+m[2].slice(3,5)+"-"+m[2].slice(0,2):m[2]):null; return m&&m[1]?{where:m[1].trim(),date:dt}:null; }).filter(Boolean):[];
   return P;
 }
 // the firm named on a transport line: "G&T Express, customer loads" -> "G&T Express"; "our van" and "customer ..." -> ""
