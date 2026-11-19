@@ -37,6 +37,9 @@ const lines = {
     L('seating', 'Triumph Mesh-back Task Chair | Black', 10, 'MSH00062', 'Unit 8', { attr_colour: 'Seat: Black · Back: Black', attr_features: 'Mesh back · Adjustable arms', attr_other: 'Bases need changing to black' }),
     L('seating', 'Breakout Chair | Light Grey', 2, 'SFT00039', 'Above Showroom', { attr_colour: 'Seat: Light Grey · Back: Light Grey' }),
     L('other', 'Cable tray kit', 1, 'SPR00112', 'Stores', { label: 'Made to order, not from stock' }),
+    // TWO MADE TO ORDER LINES OF THE SAME KIND (19 Nov 2026, D4A3DC): the size in the rest of the name must still print
+    L('other', 'Meeting table | 1800mmx780mm | Oak Edging | Central port hole', 1, '', '', { label: 'Made to order, not from stock', attr_makeModel: 'Made to order, not from stock' }),
+    L('other', 'Meeting table | 1600mmx780mm | Oak Edging | Central port hole', 1, '', '', { label: 'Made to order, not from stock', attr_makeModel: 'Made to order, not from stock' }),
     // A SWAPPED TOP THAT IS CUT DOWN (19 Nov 2026, D4A3DC): the cut must print on the top's own part row as well as in the box above it
     L('desks', 'Electric Sit-stand Desk | 1400x780mm | White', 10, 'SSD00010', 'Unit 6', { attr_dims: 'W1400 × D780mm', cut_down: { to: '1200×800', from: '1800×800', count: 10 }, build_components: [{ name: 'Cantilever Desk | W1800 x D800mm | Off-White', role: 'top', replaces_role: 'top', qty: 10, sku: 'DSK00029', location: 'Furniture Workshop' }] }),
   ] },
