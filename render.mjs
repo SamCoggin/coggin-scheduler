@@ -38,7 +38,7 @@ const lines = {
     L('seating', 'Breakout Chair | Light Grey', 2, 'SFT00039', 'Above Showroom', { attr_colour: 'Seat: Light Grey · Back: Light Grey' }),
     L('other', 'Cable tray kit', 1, 'SPR00112', 'Stores', { label: 'Made to order, not from stock' }),
     // A SWAPPED TOP THAT IS CUT DOWN (19 Nov 2026, D4A3DC): the cut must print on the top's own part row as well as in the box above it
-    L('desks', 'Electric Sit-stand Desk | 1400x780mm | White', 10, 'SSD00010', 'Unit 6', { attr_dims: 'W1400 × D780mm', cut_down: { to: '1200×800', from: '1800×800', count: 10 }, build_components: [{ name: 'Cantilever Desk | 1800x800mm | Off-White', role: 'top', replaces_role: 'top', qty: 10, sku: 'DSK00029', location: 'Furniture Workshop' }] }),
+    L('desks', 'Electric Sit-stand Desk | 1400x780mm | White', 10, 'SSD00010', 'Unit 6', { attr_dims: 'W1400 × D780mm', cut_down: { to: '1200×800', from: '1800×800', count: 10 }, build_components: [{ name: 'Cantilever Desk | W1800 x D800mm | Off-White', role: 'top', replaces_role: 'top', qty: 10, sku: 'DSK00029', location: 'Furniture Workshop' }] }),
   ] },
   m2: { picks: false, ref: '11053590', lines: [L('seating', 'Senator Evolve Mesh Task Chair | Black', 23, 'MSH00063', 'Unit 8', { attr_colour: 'Seat: Inloom Bondai (Black)', attr_other: 'Back: Keep original' })] },
 };

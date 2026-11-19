@@ -3432,7 +3432,8 @@ var SNAP=null, DETAIL={};
         /* the location and code run inline after the part, beside the cut tag, and move to a line of their own together when it is full (Sam, 23 Oct 2026, mock approved) */
         var pillW=function(t){ if(!t) return 0; doc.setFont("helvetica","bold"); doc.setFontSize(6.8); return doc.getTextWidth(String(t))+3+1.5; };
         var partLines=rows.map(function(r){ var pt=partTxt(r), avail=CX[0]-NX-3-(pt.tied?4:0)-(pt.bigPhoto?12:0); doc.setFont("helvetica","normal"); doc.setFontSize(8.5); var ls=doc.splitTextToSize(pt.main,avail).slice(0,2); var trail=(pt.tag?tagW(pt.tag)+2:0)+pillW(pt.ploc)+pillW(pt.psku)+((pt.ploc||pt.psku)?1:0); doc.setFont("helvetica","normal"); doc.setFontSize(8.5); if(trail&&doc.getTextWidth(ls[ls.length-1])+2+trail>avail) ls=ls.concat([""]).slice(0,3); return ls; });
-        var partH=function(ls,pt){ var h0=2.4+ls.length*3.7+(pt.sub?3:0)+1.4+(pt.notReady?6:0); return pt.bigPhoto?Math.max(h0,25):h0; };   /* the leg photo is 27 by 22, big enough to tell one leg from another */
+        var pillGap=function(ls){ return ls.length>1&&ls[ls.length-1]===""?1.6:0; };   /* tags on a line of their own sit clear of the words above them (Sam, 19 Nov 2026: "this section is looking a little squished") */
+        var partH=function(ls,pt){ var h0=2.4+ls.length*3.7+pillGap(ls)+(pt.sub?3:0)+1.4+(pt.notReady?6:0); return pt.bigPhoto?Math.max(h0,25):h0; };   /* the leg photo is 27 by 22, big enough to tell one leg from another */
         var partRowsH=partLines.reduce(function(t,ls,ri){ return t+partH(ls,partTxt(rows[ri]))+((rows[ri].canScrap||rows[ri].legs)?6:0); },0);
         var rowH=Math.max(leftH,textH), partsH=single?0:partRowsH+1.5;   // parts start under the photo, tag and code, never over them (Sam, 22 Oct 2026)
         if(y+rowH+partsH>272||(lastItem&&y+rowH+partsH+3+SH>284)) cont();   /* the last item brings the strip with it */
@@ -3480,7 +3481,7 @@ var SNAP=null, DETAIL={};
             else if(pt.thumb) img(pt.comp.photo,L+8,y+1,16,rh-2);
             var hasP=false;
             var yb=y+5+(hasP?4.4:0); doc.setFont("helvetica",(pt.isLegs||(r.f>=r.q&&r.q>0))?"bold":"normal"); doc.setFontSize(8.5); doc.setTextColor(17); var mlines=ls.filter(function(t){ return t!==""; }); doc.text(mlines,tx,yb);
-            var lastY=yb+(ls.length-1)*3.7; doc.setFont("helvetica",(pt.isLegs||(r.f>=r.q&&r.q>0))?"bold":"normal"); doc.setFontSize(8.5); var tagX=ls[ls.length-1]===""?tx:tx+doc.getTextWidth(mlines[mlines.length-1])+2;
+            var lastY=yb+(ls.length-1)*3.7+pillGap(ls); doc.setFont("helvetica",(pt.isLegs||(r.f>=r.q&&r.q>0))?"bold":"normal"); doc.setFontSize(8.5); var tagX=ls[ls.length-1]===""?tx:tx+doc.getTextWidth(mlines[mlines.length-1])+2;
             if(pt.tag){ var tw3=tagW(pt.tag); doc.setFillColor(17,17,17); doc.roundedRect(tagX,lastY-2.9,tw3,3.9,0.6,0.6,"F"); doc.setTextColor(255); doc.setFont("helvetica","bold"); doc.setFontSize(6.5); doc.text(pt.tag,tagX+1.6,lastY-0.1); doc.setTextColor(17); tagX+=tw3+2; }
             [[pt.ploc,true],[pt.psku,false]].forEach(function(b){ if(!b[0]) return; doc.setFont("helvetica","bold"); doc.setFontSize(6.8); var pw0=doc.getTextWidth(String(b[0]))+3; if(b[1]){ doc.setFillColor(17,17,17); doc.roundedRect(tagX,lastY-2.9,pw0,3.9,0.6,0.6,"F"); doc.setTextColor(255); } else { doc.setDrawColor(17); doc.setLineWidth(0.35); doc.roundedRect(tagX,lastY-2.9,pw0,3.9,0.6,0.6); doc.setDrawColor(0); doc.setTextColor(17); } doc.text(String(b[0]),tagX+1.5,lastY-0.1); doc.setTextColor(0); tagX+=pw0+1.5; });
             if(pt.sub){ doc.setFont("helvetica","normal"); doc.setFontSize(6.5); doc.setTextColor(120); doc.text(pt.sub,tx,yb+(ls.length-1)*3.7+3.2); doc.setTextColor(0); }
