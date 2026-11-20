@@ -876,7 +876,7 @@ var SNAP=null, DETAIL={};
     try{ while(UNPLANNED_Q.length){ var j=UNPLANNED_Q.shift(); if(!j||!j.prep||j.prep.date) continue;
       var was=j.prep, k=nextWorkday(), out="none";
       try{ j.prep=Object.assign({},was,{date:k,start:null,who:[TEAM[0]],mins:DAY_MINS}); UNPLANNED=j.id;
-        var r=await daySheetBuild(k,["p"+j.id]); if(r&&r.jobOnly){ await attachProductionSheet(j,r.doc,k); out="unplanned"; } }
+        var r=await daySheetBuild(k,["p"+j.id]); if(r&&r.jobOnly){ await attachProductionSheet(j,r.doc,k); out="overview"; } }   /* "overview" since 20 Nov 2026; "unplanned" is a card still holding the old Not planned yet production sheet */
       catch(e){ console.warn("production sheet (unplanned)",e); out=/did not load/.test(String(e&&e.message))?"":"none"; }
       finally{ j.prep=was; UNPLANNED=null; }
       if(out&&t) t.set(j.id,"shared","prodSheet",out).catch(function(){});
@@ -895,7 +895,7 @@ var SNAP=null, DETAIL={};
         clearTimeout(STANDIN_T); STANDIN_T=setTimeout(function(){ persist(); render(); alert("Put back to not planned (a Scheduler fault had filled in Mon 26 Oct, "+TEAM[0]+", 7h 45m):\n\n"+STANDIN_UNDONE.join("\n")); STANDIN_UNDONE=[]; },3000); }).catch(function(){});
       return; }
     if(!(j.id in PROD_SIG)){ PROD_SIG[j.id]=sig;
-      if(!ready&&pr&&!pr.date&&CRM_KEY&&t) t.get(j.id,"shared","prodSheet",null).then(function(v){ if(!v){ UNPLANNED_Q.push(j); runUnplanned(); } }).catch(function(){});
+      if(!ready&&pr&&!pr.date&&CRM_KEY&&t) t.get(j.id,"shared","prodSheet",null).then(function(v){ if(!v||v==="unplanned"){ /* an old Not planned yet sheet is swapped for the job overview, once (Sam, 20 Nov 2026: bring the waiting cards into line) */ UNPLANNED_Q.push(j); runUnplanned(); } }).catch(function(){});
       /* A JOB PLANNED BEFORE THIS EXISTED (Sam, 24 Oct 2026, Example Workspace A81294: planned, one old attachment, no production
          sheet): on first sight a planned job whose card does not say "planned" gets its full sheet, once. */
       if(ready&&CRM_KEY&&t) t.get(j.id,"shared","prodSheet",null).then(function(v){ if(v==="planned") return; clearTimeout(PROD_TIMER[j.id]);
@@ -4175,7 +4175,7 @@ var SNAP=null, DETAIL={};
   var AUTO=true;
   var REFRESHING=false, POLL_EVERY=10000, CRM_EVERY_TICKS=6, TICK=0;
   var PENDING_SNAP=null, FOREIGN=null, SEEN_FOREIGN={};   // a change to the job on screen, waiting for the person to choose
-  var SCHED_VERSION="20 Nov 11:56:37";   /* bumped on every push: shows which version is running and which built a sheet (Sam, 22 Oct 2026, "still not live?!") */
+  var SCHED_VERSION="20 Nov 13:34:12";   /* bumped on every push: shows which version is running and which built a sheet (Sam, 22 Oct 2026, "still not live?!") */
   /* A NEWER SCHEDULER RELOADS ITSELF (Sam, 22 Oct 2026, a sheet built from a window opened before the push). Checked every two
      minutes and before any sheet is built; a reload waits while an editor is open. */
   function liveVersion(){ return fetch("./scheduler.html?vc="+Date.now(),{cache:"no-store"}).then(function(r){ return r.ok?r.text():""; }).then(function(t){ var m=/SCHED_VERSION\s*=\s*"([^"]+)"/.exec(t||""); return m?m[1]:""; }).catch(function(){ return ""; }); }
