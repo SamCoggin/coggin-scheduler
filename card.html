@@ -440,17 +440,17 @@
       var jsb=el("button","p","Job sheet"); jsb.title="Download this job's own page for the day"; jsb.style.marginRight="8px";
       jsb.onclick=function(){ viaEmbed(jsb,"coggin-sheet","Building...",null); };
       // ADD THE SHEET TO THE CARD (Sam, 24 Oct 2026): the production sheet, as the card's attachment. A job not planned yet
-      // gets the "Not planned yet" sheet; planning it later replaces that with the real one.
+      // gets the job overview (20 Nov 2026; before that a "Not planned yet" production sheet); planning it replaces that with the real one.
       /* SAY WHAT IS ON THE CARD (Sam, 24 Oct 2026, Example Partners: "the sheet is already added to the card, why is it saying add
          the sheet"). The newest Production sheet attachment decides: none, add it; the job planned but the sheet older than
          the plan or still the Not planned yet one, update it; otherwise a line saying it is on, no button. */
-      var asb=null, asn=null; if(workshop){ var atts=(card.attachments||[]).filter(function(a){ return /^Production sheet/i.test(String(a&&a.name||"")); }).sort(function(a,b){ return String(b.date||"").localeCompare(String(a.date||"")); }), att=atts[0]||null;
-        var planned=!!(d&&d.prep&&d.prep.date&&d.prep.who&&d.prep.who.length), attUnplanned=!!att&&/not planned yet/i.test(att.name||""), attStale=!!att&&((planned&&(attUnplanned||(d.savedAt&&String(att.date||"")<String(d.savedAt))))||(PROD_CHANGED&&String(att.date||"")<PROD_CHANGED));
+      var asb=null, asn=null; if(workshop){ var atts=(card.attachments||[]).filter(function(a){ return /^(Production sheet|Job overview)/i.test(String(a&&a.name||"")); }).sort(function(a,b){ return String(b.date||"").localeCompare(String(a.date||"")); }), att=atts[0]||null;
+        var planned=!!(d&&d.prep&&d.prep.date&&d.prep.who&&d.prep.who.length), attUnplanned=!!att&&/not planned yet|^job overview/i.test(att.name||"")   /* the job overview is what a job not planned yet carries since 20 Nov 2026; older cards still hold a Not planned yet sheet */, attStale=!!att&&((planned&&(attUnplanned||(d.savedAt&&String(att.date||"")<String(d.savedAt))))||(PROD_CHANGED&&String(att.date||"")<PROD_CHANGED));
         fetchProdChanged();
         var mk2=function(label,busy){ var b=el("button","p",label); b.title="Builds the production sheet and puts it on this card as a file"; b.style.marginRight="8px";
-          b.onclick=function(){ viaEmbed(b,"coggin-attach",busy,function(m){ t.set("card","shared","prodSheet",m.planned?"planned":"unplanned").catch(function(){}); alert(m.planned?"The production sheet is on the card.":"The Not planned yet sheet is on the card. Planning the job replaces it with the full sheet."); }); }; return b; };
+          b.onclick=function(){ viaEmbed(b,"coggin-attach",busy,function(m){ t.set("card","shared","prodSheet",m.planned?"planned":"unplanned").catch(function(){}); alert(m.planned?"The production sheet is on the card.":"The job overview is on the card. Planning the job replaces it with the production sheet."); }); }; return b; };
         if(!att) asb=mk2("Add the sheet to the card","Adding..."); else if(attStale) asb=mk2("Update the sheet on the card","Updating...");
-        else { asn=el("div","hint",attUnplanned?"Not planned yet sheet is on the card. The full sheet goes on once the job is planned.":"Production sheet is on the card, up to date."); asn.style.cssText="margin:0 0 6px;font-size:12px;color:#5e6c84"; } }
+        else { asn=el("div","hint",attUnplanned?"Job overview is on the card. The production sheet goes on once the job is planned.":"Production sheet is on the card, up to date."); asn.style.cssText="margin:0 0 6px;font-size:12px;color:#5e6c84"; } }
       if(asb) ob0.appendChild(asb); ob0.appendChild(jsb); ob0.appendChild(ob1); if(asn) app.appendChild(asn); app.appendChild(ob0); }
     var due=(card.due||"").slice(0,10);
     var contractorOnly=(!!d.contractor||CARRIER_PENDING) && !d.who.length;

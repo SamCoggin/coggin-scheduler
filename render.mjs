@@ -3,6 +3,7 @@
 // from the code alone (production-sheet-attach memory).
 //   node render.mjs            -> both jobs' production pages into render-out.pdf
 //   node render.mjs pm1        -> the mixed job only
+//   node render.mjs overview   -> the mixed job's job overview, the page a job not planned yet gets (20 Nov 2026)
 //   node render.mjs editor     -> opens the mixed job's editor and prints the Which workshop box state
 import fs from 'fs';
 import { createRequire } from 'module';
@@ -79,7 +80,9 @@ setTimeout(async () => {
     process.exit(0);
   }
   try {
-    const only = process.argv[2] ? process.argv[2].split(',') : ['pm1', 'pm2'];
+    const overview = process.argv[2] === 'overview';   // node render.mjs overview -> the mixed job as a job not planned yet
+    if (overview) global.window.__setUnplanned('m1');
+    const only = overview ? ['pm1'] : process.argv[2] ? process.argv[2].split(',') : ['pm1', 'pm2'];
     const r = await global.window.__daySheetBuild('2026-11-03', only);
     if (!r || !r.jobOnly) { console.log('no job pages', r && Object.keys(r)); return; }
     fs.writeFileSync(OUT, Buffer.from(r.doc.output('arraybuffer')));

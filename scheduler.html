@@ -2888,10 +2888,10 @@ var SNAP=null, DETAIL={};
               // only that workshop's lines and the people placed on it (or placed nowhere yet). A job in one workshop prints as before.
               var allL=i.all&&i.all.length?i.all:lines, wsList=workshopsOf(allL), wsSplit=wsList.length>1, cntOf=function(ls){ var f=0,q=0; ls.forEach(function(l){ var c0=pickCount(i.picked||{},l); f+=c0.f; q+=c0.q; }); return {f:f,q:q}; };
               var crewFootNow=UNPLANNED?"Team not set":b.title;
-              for(var cpP=0;cpP<copiesOf(r.key);cpP++){ (wsSplit?wsList:[null]).forEach(function(ws,wi){ var inWs=function(l){ return !ws||workshopOf(l)===ws; }, wsLines=lines.filter(inWs), wsAll=(i.all||[]).filter(inWs), wsPage=wsAll.length?wsAll:wsLines, names=ws&&j.prep?prepWhoFor(j.prep,ws):null;
+              for(var cpP=0;cpP<copiesOf(r.key);cpP++){ (wsSplit?wsList:[null]).forEach(function(ws,wi){ if(UNPLANNED===j.id){ if(wi>0) return; ws=null; } var inWs=function(l){ return !ws||workshopOf(l)===ws; }, wsLines=lines.filter(inWs), wsAll=(i.all||[]).filter(inWs), wsPage=wsAll.length?wsAll:wsLines, names=ws&&j.prep?prepWhoFor(j.prep,ws):null;
                 var pile=ws||wsList[0]||"furniture"; (prodQ[pile]=prodQ[pile]||[]).push(function(){ kit.crew(crewFootNow); var p0=doc.getNumberOfPages(); if(starts[r.key]==null) starts[r.key]=p0+1;
                 kit.production({unplanned:UNPLANNED===j.id,day:niceDay(k),crew:names?names.join(" + "):b.title,name:r.name,code:"https://trello.com/c/"+(j.short||j.id),started:j.stage==="In progress",title:i.allPicked?"All finished":(lines.length&&lines.every(function(l){ return l.section==="refurb"; }))?"Items to refurbish":fin?"Items to finish":"Pick and finish",
-                facts:[["Time",c[3]],["Due",j.prodDue?niceDay(j.prodDue):""],[j.site?"Delivery":"Ready by",j.date?niceDay(j.date):""],["Ref",i.ref||""]],lines:wsLines,all:wsAll,picked:i.picked||{},items:inf&&inf.items?inf.items:[],
+                workshops:wsList.map(workshopName),facts:[["Time",c[3]],["Due",j.prodDue?niceDay(j.prodDue):""],[j.site?"Delivery":"Ready by",j.date?niceDay(j.date):""],["Ref",i.ref||""]],lines:wsLines,all:wsAll,picked:i.picked||{},items:inf&&inf.items?inf.items:[],
                   ws:ws?{key:ws,name:workshopName(ws),page:wi+1,of:wsList.length,next:wsList[wi+1]?workshopName(wsList[wi+1]).toLowerCase():"",other:wsList.filter(function(x){ return x!==ws; }).map(function(x){ return workshopName(x).toLowerCase(); }).join(" and "),here:cntOf(wsPage),whole:cntOf(allL),unsorted:wsPage.filter(workshopUnsorted).length,allChairs:wsPage.length>0&&wsPage.every(function(l){ return /chair/i.test(String(l.name||"")); }),allDesks:wsPage.length>0&&wsPage.every(function(l){ return /desk/i.test(String(l.name||"")); })}:null}); }); }); }
               return; }
             if(r.part==="Transport"){ var bc=DATA.byCard[r.card]; if(!bc) return; if(!yardDone[bc.run.key]){ yardDone[bc.run.key]=1; var vanOn=!only||(SHEET_SEL&&SHEET_SEL.vans.indexOf(bc.run.key)>=0); if(vanOn&&kit.hasLoad(bc.run)) for(var cpY=0;cpY<copiesOf(bc.run.key);cpY++) kit.yard(bc.run); }
@@ -3344,7 +3344,46 @@ var SNAP=null, DETAIL={};
     // finished counts in the same four columns on every row. A part-built item has its parts as indented rows under it; a
     // chair or table carries its counts on its own row. A box prints only where there is something left to write. Rows flow
     // on to the next page with the column header repeated. The finishing steps are one strip at the end.
+    /* THE JOB OVERVIEW (Sam, 20 Nov 2026, mock approved: "I need a job overview sheet and then the production sheet when it goes
+       into the in progress list ... They need the overview sheet to know how much time and who to assign"). A job not planned yet
+       used to get the production sheet drawn with "Not planned yet" and "Team not set". It now gets this one page instead: what
+       the job is, how many items, and each line with the work it needs. No tick boxes, no part rows, no time and no names: it is
+       read on the card to decide the plan, and the planning is done in the Scheduler. One page for the whole job, both workshops. */
+    function overviewWork(l){ var out=[], sent=function(t){ t=String(t||"").replace(/\s+/g," ").trim(); return t?t.charAt(0).toUpperCase()+t.slice(1).toLowerCase():""; };
+      if(l.cut_down&&l.cut_down.to) out.push("Cut "+(l.cut_down.count?l.cut_down.count+" tops":"the top")+" down to "+l.cut_down.to);
+      (Array.isArray(l.attr_changes)?l.attr_changes:[]).forEach(function(x){ if(x&&x.label&&x.now) out.push(x.label+" "+x.now); });
+      pickWork(l).forEach(function(t){ out.push(sent(String(t).replace(/\s*\(.*?\)\s*/g," "))); });
+      if(l.spec_notes) out.push(String(l.spec_notes).trim());
+      if(String(l.section||"")==="refurb"&&l.context) out.push(String(l.context).trim());
+      if(/made to order/i.test(String(l.attr_makeModel||l.label||""))) out.push("Made to order");
+      return out.filter(Boolean).join(" \u00b7 ")||"From stock, no changes"; }
+    kit.overview=function(o){
+      var lines=(o.all&&o.all.length)?o.all:(o.lines||[]);
+      if(!lines.length&&(o.items||[]).length) lines=(o.items||[]).map(function(it){ var q=parseInt(String(it.qty||"1"),10)||1; return {name:String(it.name||"Item").replace(/\s+/g," ").trim(),qty:q,headerCustomer:String(q)}; });
+      var rowsOf=lines.map(function(l){ var parts=String(l.name||"").split(/\s*\|\s*/), hq=String(l.headerCustomer||l.qty||""), qn=/^\d+/.test(hq)?parseInt(/^\d+/.exec(hq)[0],10):(Number(l.qty)||1);
+        var fin=(l.cut_down&&l.cut_down.to)?String(l.cut_down.to):String(l.attr_dims||""), mto=/made to order/i.test(String(l.attr_makeModel||l.label||""))?parts.slice(1).join(" \u00b7 "):"";
+        var bank=Number(l.bench_bank_size)||0, item=bank>0?hq.replace(/^\d+\s*[x\u00D7]\s*/i,""):[parts[0],mto,String(l.attr_colour||""),mto?"":fin].filter(Boolean).join(" \u00b7 ");
+        return {q:qn,item:item,work:overviewWork(l)}; });
+      var total=rowsOf.reduce(function(t,r){ return t+r.q; },0), QX=L, IX=L+16, IW=(W-16)/2-4, WX=L+16+(W-16)/2, WW=(W-16)/2;
+      var facts={}; (o.facts||[]).forEach(function(f){ facts[f[0]]=f[1]||""; });
+      var thead=function(){ doc.setFont("helvetica","bold"); doc.setFontSize(6.5); doc.setTextColor(110); doc.text("QTY",QX,y+3,{charSpace:0.2}); doc.text("ITEM",IX,y+3,{charSpace:0.2}); doc.text("WORK IT NEEDS",WX,y+3,{charSpace:0.2}); doc.setTextColor(0); doc.setDrawColor(120); doc.setLineWidth(0.3); doc.line(L,y+4.6,L+W,y+4.6); doc.setDrawColor(0); y+=5.5; };
+      var foot="The production sheet goes on this card once the job is planned. The checklist is added when the card moves to In-progress.";
+      newPage(foot); label("Job overview \u00b7 Not planned yet",L,y+1);
+      doc.setFont("helvetica","bold"); doc.setFontSize(20); var tl=doc.splitTextToSize(o.name,W-78).slice(0,2); doc.text(tl,L,y+9); var ty=y+9+(tl.length-1)*7;
+      var l1=facts.Due?"Due "+facts.Due:"", dl=facts.Delivery?"Delivery "+facts.Delivery:(facts["Ready by"]?"Ready by "+facts["Ready by"]:""), l2=[dl,facts.Ref?"Ref "+facts.Ref:""].filter(Boolean).join(" \u00b7 ");
+      doc.setFontSize(9); if(l1) doc.text(l1,L+W,y+3,{align:"right"}); doc.setFont("helvetica","normal"); if(l2) doc.text(l2,L+W,y+7.5,{align:"right"});
+      y=Math.max(ty,y+9)+4; rule(); y+=4;
+      var boxes=[["ITEMS TO MAKE",String(total)],["LINES",String(rowsOf.length)],["WORKSHOP",(o.workshops&&o.workshops.length?o.workshops.join(" and "):"Not set")]], bw=(W-8)/3, bh=15;
+      boxes.forEach(function(b,i){ var bx=L+i*(bw+4); doc.setLineWidth(0.35); doc.setDrawColor(17); doc.roundedRect(bx,y,bw,bh,1.2,1.2); doc.setDrawColor(0); doc.setFont("helvetica","bold"); doc.setFontSize(6.5); doc.setTextColor(110); doc.text(b[0],bx+3,y+4.6,{charSpace:0.2}); doc.setTextColor(0);
+        var fz=13; doc.setFontSize(fz); while(fz>8&&doc.getTextWidth(b[1])>bw-6){ fz-=0.5; doc.setFontSize(fz); } doc.text(b[1],bx+3,y+11.6); });
+      y+=bh+6; thead();
+      rowsOf.forEach(function(r){ doc.setFont("helvetica","normal"); doc.setFontSize(9); var il=doc.splitTextToSize(r.item,IW), wl=doc.splitTextToSize(r.work,WW), h=Math.max(il.length,wl.length)*4.1+3.6;
+        if(y+h>278){ setFoot("This job carries on over the page."); newPage(foot); label("Job overview \u00b7 continued",L,y+1); doc.setFont("helvetica","bold"); doc.setFontSize(14); doc.text(doc.splitTextToSize(o.name,W).slice(0,1),L,y+7); y+=11; rule(); y+=4; thead(); }
+        doc.setFont("helvetica","bold"); doc.setFontSize(10); doc.text(String(r.q),QX,y+4.2); doc.setFont("helvetica","normal"); doc.setFontSize(9); doc.text(il,IX,y+4.2); doc.text(wl,WX,y+4.2);
+        y+=h; doc.setDrawColor(215); doc.setLineWidth(0.2); doc.line(L,y,L+W,y); doc.setDrawColor(0); });
+      if(!rowsOf.length){ doc.setFont("helvetica","normal"); doc.setFontSize(9); doc.text("No items have come through from the CRM for this job yet.",L,y+5); y+=8; } };
     kit.production=function(o){
+      if(o.unplanned) return kit.overview(o);
       var CWs=[16,14,16,14], CX=[L+W-60,L+W-44,L+W-28,L+W-14], NX=L+27, NW=(L+W-60)-NX-3, INX=L+49, INW=(L+W-60)-INX-3;   /* the item text sits right of the big photo; part rows keep NX (Sam, 23 Oct 2026, option A) */
       var mid=function(i){ return CX[i]+CWs[i]/2; };
       var tableHead=function(){ doc.setFont("helvetica","bold"); doc.setFontSize(6.5); doc.setTextColor(110); doc.text("ITEM",L,y+3,{charSpace:0.2});
@@ -3745,13 +3784,14 @@ var SNAP=null, DETAIL={};
   // will naturally still go here"). The page just built goes to the card as "Production sheet <ref>", replacing the older
   // one and the old picking sheet. Quietly: a failed upload never stops the download.
   function attachProductionSheet(j,doc,k){ if(!CRM_KEY||!j||!j.id||j.isHold) return Promise.resolve();
-    try{ var b64=doc.output("datauristring").split(",")[1]; var tp=String(j.title||"").split(/\s+-\s+/), ref=tp.filter(function(x){ return /^[0-9A-Z]{6}$/.test(x); })[0]||"", cust=tp.filter(function(x){ return !/^[0-9A-Z]{6}$/.test(x)&&!/^\d{5,}$/.test(x); }).slice(1).join(" - ")||tp[0]||j.title; var name="Production sheet \u00b7 "+cust+(ref?" \u00b7 "+ref:"")+" \u00b7 "+(UNPLANNED===j.id?"not planned yet":niceDay(k));   // the customer and the CRM reference, never Trello's short link (Sam, 22 Oct 2026: "AQovofcd")
+    try{ var b64=doc.output("datauristring").split(",")[1]; var tp=String(j.title||"").split(/\s+-\s+/), ref=tp.filter(function(x){ return /^[0-9A-Z]{6}$/.test(x); })[0]||"", cust=tp.filter(function(x){ return !/^[0-9A-Z]{6}$/.test(x)&&!/^\d{5,}$/.test(x); }).slice(1).join(" - ")||tp[0]||j.title; var name=UNPLANNED===j.id?"Job overview \u00b7 "+cust+(ref?" \u00b7 "+ref:""):"Production sheet \u00b7 "+cust+(ref?" \u00b7 "+ref:"")+" \u00b7 "+niceDay(k);   /* a job not planned yet gets the overview, not a production sheet (20 Nov 2026) */   // the customer and the CRM reference, never Trello's short link (Sam, 22 Oct 2026: "AQovofcd")
       return fetch(CRM_ATTACH_URL,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({key:CRM_KEY,card_id:j.id,name:name,pdf_base64:b64})}).then(function(x){ return x.json(); }).then(function(r){ if(!(r&&r.ok)) console.warn("production sheet not attached",r&&r.error); return r||{ok:false,error:"no reply"}; }).catch(function(e){ console.warn("production sheet not attached",e); return {ok:false,error:String(e&&e.message||e)}; }); }
     catch(e){ return Promise.resolve({ok:false,error:String(e&&e.message||e)}); } }
   // every production job on the day gets its page on its card, one after another, after the day's sheets are saved
   async function attachDayProductionSheets(k,keys){ var jobs=prepJobs().filter(function(j){ return j.prep&&j.prep.date&&!j.isHold&&daysOf(j.prep).indexOf(k)>=0&&j.prep.who.length&&(!keys||keys.indexOf("p"+j.id)>=0); });   /* only the production sheets that were ticked (28 Oct 2026) */
     for(var i=0;i<jobs.length;i++){ try{ var r=await daySheetBuild(k,["p"+jobs[i].id]); if(r&&r.jobOnly) await attachProductionSheet(jobs[i],r.doc,k); }catch(e){ console.warn("production sheet",e); } } }
   window.__daySheetBuild=function(k,only){ return daySheetBuild(k,only); }; // reachable by check.mjs and the render harness
+  window.__setUnplanned=function(id){ UNPLANNED=id||null; }; // the render harness draws the job overview with this (20 Nov 2026)
   async function daySheetBuild(k,only){
     {
       var PICK=null, cards=daySheetPdf(k,null,"cards")||[];
@@ -4135,7 +4175,7 @@ var SNAP=null, DETAIL={};
   var AUTO=true;
   var REFRESHING=false, POLL_EVERY=10000, CRM_EVERY_TICKS=6, TICK=0;
   var PENDING_SNAP=null, FOREIGN=null, SEEN_FOREIGN={};   // a change to the job on screen, waiting for the person to choose
-  var SCHED_VERSION="17 Nov 08:20:00";   /* bumped on every push: shows which version is running and which built a sheet (Sam, 22 Oct 2026, "still not live?!") */
+  var SCHED_VERSION="20 Nov 11:56:37";   /* bumped on every push: shows which version is running and which built a sheet (Sam, 22 Oct 2026, "still not live?!") */
   /* A NEWER SCHEDULER RELOADS ITSELF (Sam, 22 Oct 2026, a sheet built from a window opened before the push). Checked every two
      minutes and before any sheet is built; a reload waits while an editor is open. */
   function liveVersion(){ return fetch("./scheduler.html?vc="+Date.now(),{cache:"no-store"}).then(function(r){ return r.ok?r.text():""; }).then(function(t){ var m=/SCHED_VERSION\s*=\s*"([^"]+)"/.exec(t||""); return m?m[1]:""; }).catch(function(){ return ""; }); }
