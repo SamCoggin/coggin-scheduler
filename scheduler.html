@@ -3351,12 +3351,13 @@ var SNAP=null, DETAIL={};
        read on the card to decide the plan, and the planning is done in the Scheduler. One page for the whole job, both workshops. */
     function overviewWork(l){ var out=[], sent=function(t){ t=String(t||"").replace(/\s+/g," ").trim(); return t?t.charAt(0).toUpperCase()+t.slice(1).toLowerCase():""; };
       if(l.cut_down&&l.cut_down.to) out.push("Cut "+(l.cut_down.count?l.cut_down.count+" tops":"the top")+" down to "+l.cut_down.to);
-      (Array.isArray(l.attr_changes)?l.attr_changes:[]).forEach(function(x){ if(x&&x.label&&x.now) out.push(x.label+" "+x.now); });
+      (Array.isArray(l.attr_changes)?l.attr_changes:[]).forEach(function(x){ if(x&&x.label&&x.now) out.push(x.label+": "+x.now); });
       pickWork(l).forEach(function(t){ out.push(sent(String(t).replace(/\s*\(.*?\)\s*/g," "))); });
       if(l.spec_notes) out.push(String(l.spec_notes).trim());
       if(String(l.section||"")==="refurb"&&l.context) out.push(String(l.context).trim());
       if(/made to order/i.test(String(l.attr_makeModel||l.label||""))) out.push("Made to order");
-      return out.filter(Boolean).join(" \u00b7 ")||"From stock, no changes"; }
+      var seen={}; out=out.filter(function(t){ var k=String(t||"").trim().toLowerCase(); if(!k||seen[k]) return false; seen[k]=1; return true; });   /* the same words twice (a made to order line whose note also says so) print once */
+      return out.join(" \u00b7 ")||"From stock, no changes"; }
     kit.overview=function(o){
       var lines=(o.all&&o.all.length)?o.all:(o.lines||[]);
       if(!lines.length&&(o.items||[]).length) lines=(o.items||[]).map(function(it){ var q=parseInt(String(it.qty||"1"),10)||1; return {name:String(it.name||"Item").replace(/\s+/g," ").trim(),qty:q,headerCustomer:String(q)}; });
@@ -4175,7 +4176,7 @@ var SNAP=null, DETAIL={};
   var AUTO=true;
   var REFRESHING=false, POLL_EVERY=10000, CRM_EVERY_TICKS=6, TICK=0;
   var PENDING_SNAP=null, FOREIGN=null, SEEN_FOREIGN={};   // a change to the job on screen, waiting for the person to choose
-  var SCHED_VERSION="20 Nov 13:34:12";   /* bumped on every push: shows which version is running and which built a sheet (Sam, 22 Oct 2026, "still not live?!") */
+  var SCHED_VERSION="20 Nov 13:34:42";   /* bumped on every push: shows which version is running and which built a sheet (Sam, 22 Oct 2026, "still not live?!") */
   /* A NEWER SCHEDULER RELOADS ITSELF (Sam, 22 Oct 2026, a sheet built from a window opened before the push). Checked every two
      minutes and before any sheet is built; a reload waits while an editor is open. */
   function liveVersion(){ return fetch("./scheduler.html?vc="+Date.now(),{cache:"no-store"}).then(function(r){ return r.ok?r.text():""; }).then(function(t){ var m=/SCHED_VERSION\s*=\s*"([^"]+)"/.exec(t||""); return m?m[1]:""; }).catch(function(){ return ""; }); }
