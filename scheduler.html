@@ -3349,7 +3349,10 @@ var SNAP=null, DETAIL={};
        used to get the production sheet drawn with "Not planned yet" and "Team not set". It now gets this one page instead: what
        the job is, how many items, and each line with the work it needs. No tick boxes, no part rows, no time and no names: it is
        read on the card to decide the plan, and the planning is done in the Scheduler. One page for the whole job, both workshops. */
-    function overviewWork(l){ var out=[], sent=function(t){ t=String(t||"").replace(/\s+/g," ").trim(); return t?t.charAt(0).toUpperCase()+t.slice(1).toLowerCase():""; };
+    /* EVERY ITEM IS DEEP CLEANED (Sam, 20 Nov 2026, on a real sheet: "Every is deep cleaned so no changes is misleading"). So the
+       work always leads with it, and a line with nothing else reads "Deep clean" alone. A made to order line is new, so it does not. */
+    function overviewWork(l){ var out=[], mtoLine=/made to order/i.test(String(l.attr_makeModel||l.label||"")), sent=function(t){ t=String(t||"").replace(/\s+/g," ").trim(); return t?t.charAt(0).toUpperCase()+t.slice(1).toLowerCase():""; };
+      if(!mtoLine) out.push("Deep clean");
       if(l.cut_down&&l.cut_down.to) out.push("Cut "+(l.cut_down.count?l.cut_down.count+" tops":"the top")+" down to "+l.cut_down.to);
       (Array.isArray(l.attr_changes)?l.attr_changes:[]).forEach(function(x){ if(x&&x.label&&x.now) out.push(x.label+": "+x.now); });
       pickWork(l).forEach(function(t){ out.push(sent(String(t).replace(/\s*\(.*?\)\s*/g," "))); });
@@ -3357,17 +3360,18 @@ var SNAP=null, DETAIL={};
       if(String(l.section||"")==="refurb"&&l.context) out.push(String(l.context).trim());
       if(/made to order/i.test(String(l.attr_makeModel||l.label||""))) out.push("Made to order");
       var seen={}; out=out.filter(function(t){ var k=String(t||"").trim().toLowerCase(); if(!k||seen[k]) return false; seen[k]=1; return true; });   /* the same words twice (a made to order line whose note also says so) print once */
-      return out.join(" \u00b7 ")||"From stock, no changes"; }
+      return out.join(" \u00b7 "); }
     kit.overview=function(o){
       var lines=(o.all&&o.all.length)?o.all:(o.lines||[]);
       if(!lines.length&&(o.items||[]).length) lines=(o.items||[]).map(function(it){ var q=parseInt(String(it.qty||"1"),10)||1; return {name:String(it.name||"Item").replace(/\s+/g," ").trim(),qty:q,headerCustomer:String(q)}; });
       var rowsOf=lines.map(function(l){ var parts=String(l.name||"").split(/\s*\|\s*/), hq=String(l.headerCustomer||l.qty||""), qn=/^\d+/.test(hq)?parseInt(/^\d+/.exec(hq)[0],10):(Number(l.qty)||1);
         var fin=(l.cut_down&&l.cut_down.to)?String(l.cut_down.to):String(l.attr_dims||""), mto=/made to order/i.test(String(l.attr_makeModel||l.label||""))?parts.slice(1).join(" \u00b7 "):"";
         var bank=Number(l.bench_bank_size)||0, item=bank>0?hq.replace(/^\d+\s*[x\u00D7]\s*/i,""):[parts[0],mto,String(l.attr_colour||""),mto?"":fin].filter(Boolean).join(" \u00b7 ");
-        return {q:qn,item:item,work:overviewWork(l)}; });
-      var total=rowsOf.reduce(function(t,r){ return t+r.q; },0), QX=L, IX=L+16, IW=(W-16)/2-4, WX=L+16+(W-16)/2, WW=(W-16)/2;
+        var ph1=l.photo_is_build?(l.product_photo||l.storage_photo):(l.storage_photo||l.product_photo), ph2=ph1===l.storage_photo?l.product_photo:l.storage_photo;   /* the one in the bay first, as on the production sheet */
+        return {q:qn,item:item,work:overviewWork(l),ph1:ph1||"",ph2:ph2||""}; });
+      var total=rowsOf.reduce(function(t,r){ return t+r.q; },0), PWd=30, PHt=23, QX=L+PWd+4, IX=QX+12, IW=(W-(IX-L))/2-4, WX=IX+(W-(IX-L))/2, WW=(W-(IX-L))/2;   /* a photo on every line (Sam, 20 Nov 2026: "I think we need to add images also") */
       var facts={}; (o.facts||[]).forEach(function(f){ facts[f[0]]=f[1]||""; });
-      var thead=function(){ doc.setFont("helvetica","bold"); doc.setFontSize(6.5); doc.setTextColor(110); doc.text("QTY",QX,y+3,{charSpace:0.2}); doc.text("ITEM",IX,y+3,{charSpace:0.2}); doc.text("WORK IT NEEDS",WX,y+3,{charSpace:0.2}); doc.setTextColor(0); doc.setDrawColor(120); doc.setLineWidth(0.3); doc.line(L,y+4.6,L+W,y+4.6); doc.setDrawColor(0); y+=5.5; };
+      var thead=function(){ doc.setFont("helvetica","bold"); doc.setFontSize(6.5); doc.setTextColor(110); doc.text("PHOTO",L,y+3,{charSpace:0.2}); doc.text("QTY",QX,y+3,{charSpace:0.2}); doc.text("ITEM",IX,y+3,{charSpace:0.2}); doc.text("WORK IT NEEDS",WX,y+3,{charSpace:0.2}); doc.setTextColor(0); doc.setDrawColor(120); doc.setLineWidth(0.3); doc.line(L,y+4.6,L+W,y+4.6); doc.setDrawColor(0); y+=5.5; };
       var foot="The production sheet goes on this card once the job is planned. The checklist is added when the card moves to In-progress.";
       newPage(foot); label("Job overview \u00b7 Not planned yet",L,y+1);
       doc.setFont("helvetica","bold"); doc.setFontSize(20); var tl=doc.splitTextToSize(o.name,W-78).slice(0,2); doc.text(tl,L,y+9); var ty=y+9+(tl.length-1)*7;
@@ -3377,10 +3381,19 @@ var SNAP=null, DETAIL={};
       var boxes=[["ITEMS TO MAKE",String(total)],["LINES",String(rowsOf.length)],["WORKSHOP",(o.workshops&&o.workshops.length?o.workshops.join(" and "):"Not set")]], bw=(W-8)/3, bh=15;
       boxes.forEach(function(b,i){ var bx=L+i*(bw+4); doc.setLineWidth(0.35); doc.setDrawColor(17); doc.roundedRect(bx,y,bw,bh,1.2,1.2); doc.setDrawColor(0); doc.setFont("helvetica","bold"); doc.setFontSize(6.5); doc.setTextColor(110); doc.text(b[0],bx+3,y+4.6,{charSpace:0.2}); doc.setTextColor(0);
         var fz=13; doc.setFontSize(fz); while(fz>8&&doc.getTextWidth(b[1])>bw-6){ fz-=0.5; doc.setFontSize(fz); } doc.text(b[1],bx+3,y+11.6); });
-      y+=bh+6; thead();
-      rowsOf.forEach(function(r){ doc.setFont("helvetica","normal"); doc.setFontSize(9); var il=doc.splitTextToSize(r.item,IW), wl=doc.splitTextToSize(r.work,WW), h=Math.max(il.length,wl.length)*4.1+3.6;
+      y+=bh+5;
+      /* BEFORE YOU PLAN IT (Sam, 20 Nov 2026: "a prompt that is very clear that makes the user make sure they have everything they
+         need for the order and if they need materials etc they should tag the operations manager to order what is required").
+         The same black-label band the production sheet uses for Before you start. The wording is Claude's, shown to Sam. */
+      var pb=19; doc.setLineWidth(0.5); doc.setDrawColor(17); doc.roundedRect(L,y,W,pb,1.5,1.5); doc.setFillColor(17,17,17); doc.roundedRect(L,y,34,pb,1.5,1.5,"F"); doc.rect(L+30,y,4,pb,"F"); doc.setDrawColor(0);
+      doc.setTextColor(255); doc.setFont("helvetica","bold"); doc.setFontSize(7); doc.text(["BEFORE","YOU PLAN IT"],L+17,y+pb/2-1,{align:"center",charSpace:0.2}); doc.setTextColor(0);
+      doc.setFontSize(10.5); doc.text("Check you have everything this job needs.",L+39,y+6.4);
+      doc.setFont("helvetica","normal"); doc.setFontSize(8.5); doc.text(doc.splitTextToSize("Go through every line: the items, the parts, the fabric and any materials. If anything is missing or has to be ordered, tag the operations manager on this card now and say what is needed.",W-44).slice(0,2),L+39,y+11.2);
+      y+=pb+6; thead();
+      rowsOf.forEach(function(r){ doc.setFont("helvetica","normal"); doc.setFontSize(9); var il=doc.splitTextToSize(r.item,IW), wl=doc.splitTextToSize(r.work,WW), h=Math.max(Math.max(il.length,wl.length)*4.1+3.6,PHt+4);
         if(y+h>278){ setFoot("This job carries on over the page."); newPage(foot); label("Job overview \u00b7 continued",L,y+1); doc.setFont("helvetica","bold"); doc.setFontSize(14); doc.text(doc.splitTextToSize(o.name,W).slice(0,1),L,y+7); y+=11; rule(); y+=4; thead(); }
-        doc.setFont("helvetica","bold"); doc.setFontSize(10); doc.text(String(r.q),QX,y+4.2); doc.setFont("helvetica","normal"); doc.setFontSize(9); doc.text(il,IX,y+4.2); doc.text(wl,WX,y+4.2);
+        if(!((r.ph1&&img(r.ph1,L,y+2,PWd,PHt))||(r.ph2&&img(r.ph2,L,y+2,PWd,PHt)))) noPhoto(L,y+2,PWd,PHt,r.ph1||r.ph2);
+        doc.setFont("helvetica","bold"); doc.setFontSize(10); doc.text(String(r.q),QX,y+6); doc.setFont("helvetica","normal"); doc.setFontSize(9); doc.text(il,IX,y+6); doc.text(wl,WX,y+6);
         y+=h; doc.setDrawColor(215); doc.setLineWidth(0.2); doc.line(L,y,L+W,y); doc.setDrawColor(0); });
       if(!rowsOf.length){ doc.setFont("helvetica","normal"); doc.setFontSize(9); doc.text("No items have come through from the CRM for this job yet.",L,y+5); y+=8; } };
     kit.production=function(o){
@@ -4176,7 +4189,7 @@ var SNAP=null, DETAIL={};
   var AUTO=true;
   var REFRESHING=false, POLL_EVERY=10000, CRM_EVERY_TICKS=6, TICK=0;
   var PENDING_SNAP=null, FOREIGN=null, SEEN_FOREIGN={};   // a change to the job on screen, waiting for the person to choose
-  var SCHED_VERSION="20 Nov 13:34:42";   /* bumped on every push: shows which version is running and which built a sheet (Sam, 22 Oct 2026, "still not live?!") */
+  var SCHED_VERSION="20 Nov 13:46:32";   /* bumped on every push: shows which version is running and which built a sheet (Sam, 22 Oct 2026, "still not live?!") */
   /* A NEWER SCHEDULER RELOADS ITSELF (Sam, 22 Oct 2026, a sheet built from a window opened before the push). Checked every two
      minutes and before any sheet is built; a reload waits while an editor is open. */
   function liveVersion(){ return fetch("./scheduler.html?vc="+Date.now(),{cache:"no-store"}).then(function(r){ return r.ok?r.text():""; }).then(function(t){ var m=/SCHED_VERSION\s*=\s*"([^"]+)"/.exec(t||""); return m?m[1]:""; }).catch(function(){ return ""; }); }
