@@ -3455,7 +3455,12 @@ var SNAP=null, DETAIL={};
       var steps=o.ws?[["Step 2","Tick off the "+o.ws.name.toLowerCase()+" lines on the Trello card"],["Step 3",o.ws.next?"Move the job on once the "+o.ws.next+" page is finished too":"Move the job into Ready for Delivery / Collection once both pages are done"]]:[["Step 2","Tick off the checklist on the Trello card"],["Step 3","Move the job into Ready for Delivery / Collection"]], lab=24, gap=2, cw=(W-lab-2-gap-2)/2;
       var fs=7.4, fits=function(sz){ doc.setFont("helvetica","bold"); doc.setFontSize(6); var lw=doc.getTextWidth("STEP 3")+2.2; doc.setFontSize(sz); return steps.every(function(st){ return doc.getTextWidth(st[1])<=cw-8-lw-5; }); };
       while(fs>6&&!fits(fs)) fs-=0.2; var oneLine=fits(fs), SH=oneLine?12:16, CH=SH-4;
-      pageLines.forEach(function(l,li){ var c=pickCount(o.picked||{},l), rows=c.parts, single=rows.length===1, comps=Array.isArray(l.build_components)?l.build_components:[], lastItem=li===pageLines.length-1;
+      pageLines.forEach(function(l,li){ var c=pickCount(o.picked||{},l), rows=c.parts, comps=Array.isArray(l.build_components)?l.build_components:[], lastItem=li===pageLines.length-1;
+        /* A MADE TO ORDER ITEM MADE FROM ONE STOCK PART STILL LISTS THE PART (Sam, 24 Nov 2026, D4A3DC: two meeting tables
+           each made from a DSK00012 top). An item with one part is drawn as the item itself, which is right when the part IS
+           the item. A made to order item has no code or bay of its own, so the one part was the only thing to pick and it
+           was not on the page. Its part row is always drawn. */
+        var madeFromStock=comps.length>0&&/made to order/i.test(String(l.attr_makeModel||l.label||"")), single=rows.length===1&&!madeFromStock;
         var parts=String(l.name||"").split(/\s*\|\s*/), main=parts[0], loc=String(l.stock_location||"");
         /* A MADE TO ORDER LINE HAS NO STOCK RECORD, so the rest of its name is its only spec (Sam, 19 Nov 2026, D4A3DC: two meeting tables, 1800 and 1600, both printed as "1 x Meeting table" once the name led with what they are). */
         var mtoRest=/made to order/i.test(String(l.attr_makeModel||l.label||""))?parts.slice(1).join(" \u00b7 "):"";
@@ -4190,7 +4195,7 @@ var SNAP=null, DETAIL={};
   var AUTO=true;
   var REFRESHING=false, POLL_EVERY=10000, CRM_EVERY_TICKS=6, TICK=0;
   var PENDING_SNAP=null, FOREIGN=null, SEEN_FOREIGN={};   // a change to the job on screen, waiting for the person to choose
-  var SCHED_VERSION="20 Nov 13:50:05";   /* bumped on every push: shows which version is running and which built a sheet (Sam, 22 Oct 2026, "still not live?!") */
+  var SCHED_VERSION="24 Nov 11:23:24";   /* bumped on every push: shows which version is running and which built a sheet (Sam, 22 Oct 2026, "still not live?!") */
   /* A NEWER SCHEDULER RELOADS ITSELF (Sam, 22 Oct 2026, a sheet built from a window opened before the push). Checked every two
      minutes and before any sheet is built; a reload waits while an editor is open. */
   function liveVersion(){ return fetch("./scheduler.html?vc="+Date.now(),{cache:"no-store"}).then(function(r){ return r.ok?r.text():""; }).then(function(t){ var m=/SCHED_VERSION\s*=\s*"([^"]+)"/.exec(t||""); return m?m[1]:""; }).catch(function(){ return ""; }); }

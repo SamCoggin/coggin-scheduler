@@ -41,6 +41,8 @@ const lines = {
     // TWO MADE TO ORDER LINES OF THE SAME KIND (19 Nov 2026, D4A3DC): the size in the rest of the name must still print
     L('other', 'Meeting table | 1800mmx780mm | Oak Edging | Central port hole', 1, '', '', { label: 'Made to order, not from stock', attr_makeModel: 'Made to order, not from stock' }),
     L('other', 'Meeting table | 1600mmx780mm | Oak Edging | Central port hole', 1, '', '', { label: 'Made to order, not from stock', attr_makeModel: 'Made to order, not from stock' }),
+    // made from a stock part (24 Nov 2026, D4A3DC): the one part must be drawn as a row to pick, with its code and bay
+    L('other', 'Meeting table | 2000mmx780mm | Oak Edging | Central port hole', 1, '', '', { label: 'Made to order, parts from stock', attr_makeModel: 'Made to order, parts from stock', spec_notes: 'Central port hole - Oak Edging', build_components: [{ qty: 1, sku: 'DSK99912', name: 'Cantilever Desk | W2000 x D780mm | Off-White', location: 'Unit 5', role: 'top', replaces_role: '', notes: '', photo: null }] }),
     // A SWAPPED TOP THAT IS CUT DOWN (19 Nov 2026, D4A3DC): the cut must print on the top's own part row as well as in the box above it
     L('desks', 'Electric Sit-stand Desk | 1400x780mm | White', 10, 'SSD00010', 'Unit 6', { attr_dims: 'W1400 × D780mm', cut_down: { to: '1200×800', from: '1800×800', count: 10 }, build_components: [{ name: 'Cantilever Desk | W1800 x D800mm | Off-White', role: 'top', replaces_role: 'top', qty: 10, sku: 'DSK00029', location: 'Furniture Workshop' }] }),
   ] },
